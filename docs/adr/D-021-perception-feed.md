@@ -38,7 +38,7 @@ Chosen option: "minimal frame now, streaming later", because sockets are cheap o
 
 ### Confirmation
 
---follow thomas on a v1 run emits at least one frame per 100 ticks with tick, nearby summary and events-in-earshot; the frame shape is documented in crown #41.
+--follow on a v1 run emits at least one frame per 100 ticks with tick, pilot, pill, position and nearest-agent/exit distances; events-in-earshot is deferred to the v4.0 full stream (errata 2026-08-10, skeptic finding: the v1 design has no event positions to hear from — promising it was a lie in a Confirmation). The frame shape is documented in crown #41.
 
 ## Pros and Cons of the Options
 
