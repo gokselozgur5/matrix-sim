@@ -27,5 +27,8 @@ One table, one rule: a 🟡 decision is **never merged into code before being di
 | D-020 | Observability contract: append-only event log + `METRIC` lines + `DIGEST` chain (canonical state hash every N ticks) | 🟢 | Every DoD asserts on these. Two runs, same seed → identical digest chain; a diff pinpoints the tick where reality diverged. |
 | D-021 | Perception feed: per-brain sensory frames over NeuralLink are the system's true output | 🟡 | v1 ships the interface + `--follow <name>` (log one brain's dream); the full stream is backlog. |
 | D-022 | Acceptance loop replaces the flat anomaly counter | 🟡 | Each link: propose → accept/resist; resistance residue accrues in an anomaly ledger. The One's birth becomes bookkeeping, not a constant. v3.0 gate. |
+| D-023 | Chronos proper: event-sourced state, snapshots, reload = replay | 🔵 | Today objects are the state and the log is observability; the Vision inverts that. Revisit once v3.0's reload works the simple way. |
+| D-024 | Attention-graded fidelity: unwatched regions are not simulated | 🔵 | The lazy-reality principle as mechanics; D-018's budgets are the embryo. v4.0 idea. |
+| D-025 | Supervision tree and the deletion protocol (SIGTERM + grace period + orphan registry) | 🟡 | The Source becomes a real supervisor; exiles become tracked orphans instead of ad-hoc dodgers. v2.0 gate. |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
