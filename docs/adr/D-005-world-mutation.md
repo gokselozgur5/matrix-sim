@@ -1,6 +1,6 @@
 ---
 title: "D-005 — World mutation: pending queues vs snapshot vs double buffer"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #4
@@ -30,7 +30,7 @@ During a tick, an infection replaces an entity, a death removes one, a fork adds
 
 ## Decision Outcome
 
-Proposed option: "pending queues", because they are the only option whose cost stays flat while the universe grows, and their one subtlety (flush order) is exactly the kind of thing our digest chain pins down forever. Final call in thread #4 (v1.0 gate).
+Chosen option: "pending queues", because they are the only option whose cost stays flat while the universe grows, and their one subtlety (flush order) is exactly the kind of thing our digest chain pins down forever. Accepted by the owner's verdict, 2026-08-10 (thread #4).
 
 ### Consequences
 
@@ -64,3 +64,5 @@ A dedicated flush-order test: same seed, entities spawning/dying in one tick, di
 ## More Information
 
 Related: [D-001](D-001-smith-infection-decorator.md), [D-010](D-010-determinism.md). Crown: #86.
+
+Accepted with a naming spark: pending mutations are named WorldEvent from day one, so the Chronos migration (D-023) begins as a rename-free evolution.

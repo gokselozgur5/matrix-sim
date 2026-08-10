@@ -1,6 +1,6 @@
 ---
 title: "D-021 — The perception feed is the system's true output"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #9
@@ -29,7 +29,7 @@ Logs and metrics are OUR instruments; the Matrix's actual deliverable is sensory
 
 ## Decision Outcome
 
-Proposed option: "minimal frame now, streaming later", because sockets are cheap on day one and expensive on day one thousand. Final call in thread #9 (v1.0 gate).
+Chosen option: "minimal frame now, streaming later", because sockets are cheap on day one and expensive on day one thousand. Accepted by the owner's verdict, 2026-08-10 (thread #9).
 
 ### Consequences
 
@@ -61,3 +61,5 @@ Proposed option: "minimal frame now, streaming later", because sockets are cheap
 ## More Information
 
 Related: [D-013](D-013-neurallink-bridge.md), [D-019](D-019-backend-only.md). Crowns: #41, #51. Full streaming: tracker #24.
+
+Accepted with a spark: perception frames stream as JSONL, so a dream is one jq away.

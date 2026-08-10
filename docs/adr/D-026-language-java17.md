@@ -1,6 +1,6 @@
 ---
 title: "D-026 — Implementation language: Java 17 on the JVM"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #92
@@ -29,7 +29,7 @@ C++ was weighed seriously: RAII ownership would model Smith's theft of bodies be
 
 ## Decision Outcome
 
-Proposed option: "Java 17", because the constitution (determinism) and the central mechanic (restore) both point the same way; C++ remains the documented escape hatch if D-024-scale ever demands a native hot path. Final call in thread #92 (v1.0 gate).
+Chosen option: "Java 17", because the constitution (determinism) and the central mechanic (restore) both point the same way; C++ remains the documented escape hatch if D-024-scale ever demands a native hot path. Accepted by the owner's verdict, 2026-08-10 (thread #92).
 
 ### Consequences
 

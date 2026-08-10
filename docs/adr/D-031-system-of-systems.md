@@ -1,6 +1,6 @@
 ---
 title: "D-031 — System-of-systems: SystemNode composite under the Simulation root"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #94
@@ -31,7 +31,7 @@ The owner's framing: everything is a system inside a system, all under one main 
 
 ## Decision Outcome
 
-Proposed option: "SystemNode from v1.0", because the interface costs one file while the root is being written anyway, and it converts the v4.0 Zion phase from a refactor into an append. Final call in thread #94 (v1.0 gate for the interface; v4.0 gate for ZionSystem).
+Chosen option: "SystemNode from v1.0", because the interface costs one file while the root is being written anyway, and it converts the v4.0 Zion phase from a refactor into an append. Accepted by the owner's verdict, 2026-08-10 (thread #94).
 
 ### Consequences
 

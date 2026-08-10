@@ -1,6 +1,6 @@
 ---
 title: "D-012 — Simulation as the only composition root; PodFarm leaves World"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #7
@@ -29,7 +29,7 @@ The draft had World.pods() — the simulation containing the biological layer th
 
 ## Decision Outcome
 
-Proposed option: "Simulation root", because the object graph is the first diagram anyone reads, and it should not lie. Final call in thread #7 (v1.0 gate).
+Chosen option: "Simulation root", because the object graph is the first diagram anyone reads, and it should not lie. Accepted by the owner's verdict, 2026-08-10 (thread #7).
 
 ### Consequences
 

@@ -1,6 +1,6 @@
 ---
 title: "D-009 — Build tooling: plain javac until CI forces the question"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #5
@@ -29,7 +29,7 @@ The whole engine is standard library by design. The only build need today is com
 
 ## Decision Outcome
 
-Proposed option: "plain javac", because a build tool with nothing to build is scaffolding around an empty lot. Final call in thread #5 (v1.0 gate); explicitly reopened by the v4.0 CI item.
+Chosen option: "plain javac", because a build tool with nothing to build is scaffolding around an empty lot. Final call in thread #5 (v1.0 gate); explicitly reopened by the v4.0 CI item.
 
 ### Consequences
 
@@ -61,3 +61,5 @@ README commands compile the repo on a clean JDK-17 box (verified in v1.0 DoD); n
 ## More Information
 
 Related: [D-026](D-026-language-java17.md), [D-027](D-027-performance-budgets.md). Reopens at: v4.0 CI (tracker #24).
+
+Accepted with a spark: the daemon carries a --selftest flag (an in-process digest double-run) — the kernel of CI without a build tool.

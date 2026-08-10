@@ -1,6 +1,6 @@
 ---
 title: "D-002 — Agent catch mechanics: replug ratio and lethality"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #2
@@ -31,7 +31,7 @@ Agents must do something when they catch a red-pill avatar. Pure catch-and-relea
 
 ## Decision Outcome
 
-Proposed option: "90/10", because it keeps every code path alive — including the one that kills. Final call in thread #2 (v1.0 gate).
+Chosen option: "90/10", because it keeps every code path alive — including the one that kills. Accepted by the owner's verdict, 2026-08-10 (thread #2).
 
 ### Consequences
 
@@ -67,3 +67,5 @@ A 2,000-tick v1 run shows: red count oscillating in METRIC lines, at least one p
 ## More Information
 
 Related: [D-006](D-006-arc-tuning.md), [D-013](D-013-neurallink-bridge.md). Crown: #65.
+
+Accepted with an evolution path: once the D-004 place graph matures, the flat ratio is intended to evolve into the emergent exit-race mechanic (capture decided by route geometry, not dice); a future decision will formalize it.

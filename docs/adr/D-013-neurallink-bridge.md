@@ -1,6 +1,6 @@
 ---
 title: "D-013 — Death propagates over a NeuralLink observer bridge, not an Avatar.brain field"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #8
@@ -29,7 +29,7 @@ Avatar.die() currently reaches across the deployment boundary to flatline a brai
 
 ## Decision Outcome
 
-Proposed option: "the observer bridge", because 'the body cannot live without the mind' is a property of the connection, and the package graph should say so. Final call in thread #8 (v1.0 gate).
+Chosen option: "the observer bridge", because 'the body cannot live without the mind' is a property of the connection, and the package graph should say so. Accepted by the owner's verdict, 2026-08-10 (thread #8).
 
 ### Consequences
 
@@ -63,3 +63,5 @@ The grep above is empty; a v1.0 run shows agent-kill → flush events with corre
 ## More Information
 
 Related: [D-011](D-011-human-class.md), [D-005](D-005-world-mutation.md), [D-021](D-021-perception-feed.md). Principle: A1. Crown: #51.
+
+Accepted with a spark: LinkKind is born today with a single value (HARDLINE), so D-032's PIRATE arrives as one enum constant.

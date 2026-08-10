@@ -1,6 +1,6 @@
 ---
 title: "D-011 — Human as a first-class real-world entity"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #6
@@ -29,7 +29,7 @@ The treaty's open door currently deletes people: opt-out removes their objects b
 
 ## Decision Outcome
 
-Proposed option: "Human class", because a person who leaves the pod should not cease to exist — that is the villain's ontology, not ours. Final call in thread #6 (v1.0 gate).
+Chosen option: "Human class", because a person who leaves the pod should not cease to exist — that is the villain's ontology, not ours. Accepted by the owner's verdict, 2026-08-10 (thread #6).
 
 ### Consequences
 
@@ -58,3 +58,5 @@ After the treaty in a v3.0 run, opted-out humans appear in the RealWorld registr
 ## More Information
 
 Related: [D-012](D-012-simulation-root.md), [D-013](D-013-neurallink-bridge.md). Crown: #50.
+
+Accepted with a spark: human names are generated deterministically from the seed — same seed, same Thomas. Determinism doubles as fate.

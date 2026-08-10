@@ -1,6 +1,6 @@
 ---
 title: "D-027 — Performance budgets, --bench mode, and the digest-invariant optimization rule"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #93
@@ -30,7 +30,7 @@ The owner asked for a promise of speed. A promise you cannot falsify is marketin
 
 ## Decision Outcome
 
-Proposed option: "contractual budgets with the digest referee", because bullet time is headroom, and headroom is measured. Final call in thread #93 (v1.0 gate).
+Chosen option: "contractual budgets with the digest referee", because bullet time is headroom, and headroom is measured. Accepted by the owner's verdict, 2026-08-10 (thread #93).
 
 ### Consequences
 
@@ -62,3 +62,5 @@ Proposed option: "contractual budgets with the digest referee", because bullet t
 ## More Information
 
 Related: [D-010](D-010-determinism.md), [D-017](D-017-spatial-hash.md), [D-018](D-018-tick-budgets.md), [D-020](D-020-observability-contract.md). Principle: A10.
+
+Accepted with a spark: each phase closure stamps its PERF line into the phase tracker — speed gains a git history.
