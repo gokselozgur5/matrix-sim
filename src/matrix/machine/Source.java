@@ -56,6 +56,11 @@ public final class Source {
         if (!p.alive) {
             return;
         }
+        if (!world.isPresent(p)) {
+            world.log(Severity.SYS, "the Source: collection of \"" + p.purpose
+                    + "\" voided — the target is no longer itself");
+            return;
+        }
         try {
             p.handleDeletion(world);
             if (p.alive) {

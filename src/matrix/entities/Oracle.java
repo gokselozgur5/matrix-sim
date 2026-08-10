@@ -16,6 +16,11 @@ public final class Oracle extends Program {
     private int awakeningsSeen = 0;
     private int cookiesBaked = 0;
 
+    /**
+     * Known v2 limit (skeptic-flagged, accepted): the subscription outlives
+     * infection — no unsubscribe exists. If v3's restore brings her back,
+     * she bakes every missed cookie at once. She would probably enjoy that.
+     */
     public Oracle(int id, Position pos, EventBus bus) {
         super(id, pos, "analysis of the human psyche");
         bus.subscribe(this::listen);

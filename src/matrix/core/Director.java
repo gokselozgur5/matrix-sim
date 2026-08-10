@@ -31,6 +31,9 @@ public final class Director {
         if (!forkOrdered && t >= Config.SMITH_FORK_TICK) {
             orderSmithCollection("scheduled deprecation");
         }
+        if (t == Config.AGENT_DECOMMISSION_TICK) {
+            decommissionOneAgent();
+        }
         if (t % Config.EXILE_COLLECT_EVERY_TICKS == 0) {
             collectRandomExile();
         }
@@ -61,6 +64,23 @@ public final class Director {
         Avatar chosen = blues.get(world.rng().nextInt(blues.size()));
         chosen.pill = Pill.RED;
         world.log(Severity.OK, "red pill: " + chosen.pilotName + " woke up and dropped off the cluster");
+    }
+
+    /**
+     * The compliance leg of D-025 gets real traffic: one ordinary daemon
+     * is decommissioned post-fork, accepts its SIGTERM, and the GC line
+     * fires — deletion-by-consent must exist in the log, not just in the
+     * contract (skeptic finding: it was dead code).
+     */
+    private void decommissionOneAgent() {
+        for (var entity : world.entities()) {
+            if (entity.alive && entity instanceof matrix.entities.Agent a
+                    && !(entity instanceof AgentSmith)) {
+                world.log(Severity.SYS, "post-fork audit: one security daemon marked surplus — budget follows the war");
+                source.collect(a);
+                return;
+            }
+        }
     }
 
     private void collectRandomExile() {

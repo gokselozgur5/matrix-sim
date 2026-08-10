@@ -1,9 +1,14 @@
 package matrix.core;
 
 import matrix.entities.Agent;
+import matrix.entities.AgentSmith;
 import matrix.entities.Avatar;
+import matrix.entities.ExileProgram;
 import matrix.entities.MatrixEntity;
+import matrix.entities.Oracle;
 import matrix.entities.Pill;
+import matrix.entities.SmithCopy;
+import matrix.entities.SmithPrime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -175,22 +180,52 @@ public final class World {
         return n;
     }
 
-    /** Canonical state feed for the digest chain — id order, tagged, framed (D-020). */
+    /** Identity membership — the Source must not collect what is no longer itself (ghost fix). */
+    public boolean isPresent(MatrixEntity e) {
+        for (MatrixEntity x : entities) {
+            if (x == e) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Canonical state feed for the digest chain — id order, type-tagged,
+     * framed (D-020). SmithCopy recurses into its wrapped original, so
+     * restore-relevant state is visible to the referee (skeptic finding:
+     * two realities differing only inside a copy must not hash equal).
+     */
     public void digestInto(DigestCalculator dc) {
         dc.putLong(tick);
         dc.putLong(rng.draws());
         dc.putInt(nextId);
         dc.putCount(entities.size());
         for (MatrixEntity e : entities) {
-            dc.putInt(e.id);
-            dc.putInt(e.pos.xCm());
-            dc.putInt(e.pos.yCm());
-            dc.putInt(e.alive ? 1 : 0);
-            if (e instanceof Avatar a) {
-                dc.putInt(a.pill.ordinal());
-            } else {
-                dc.putInt(-1);
-            }
+            digestEntity(dc, e);
         }
+    }
+
+    private void digestEntity(DigestCalculator dc, MatrixEntity e) {
+        dc.putInt(typeTag(e));
+        dc.putInt(e.id);
+        dc.putInt(e.pos.xCm());
+        dc.putInt(e.pos.yCm());
+        dc.putInt(e.alive ? 1 : 0);
+        dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
+        if (e instanceof SmithCopy c) {
+            digestEntity(dc, c.original);
+        }
+    }
+
+    private static int typeTag(MatrixEntity e) {
+        if (e instanceof SmithCopy) return 7;
+        if (e instanceof SmithPrime) return 6;
+        if (e instanceof Oracle) return 4;
+        if (e instanceof ExileProgram) return 5;
+        if (e instanceof AgentSmith) return 3;
+        if (e instanceof Agent) return 2;
+        if (e instanceof Avatar) return 1;
+        return 0;
     }
 }

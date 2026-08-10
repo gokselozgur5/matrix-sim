@@ -202,8 +202,14 @@ public final class Simulation {
             chain.add(d);
             emit(d.format());
         }
-        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0 && followed.avatar.alive) {
-            emit(PerceptionFrame.jsonl(t, followed.avatar, world));
+        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
+            if (followed.avatar.alive && world.isPresent(followed.avatar)) {
+                emit(PerceptionFrame.jsonl(t, followed.avatar, world));
+            } else {
+                emit("{\"tick\":" + t + ",\"who\":\"" + followed.human.name
+                        + "\",\"signal\":\"lost — the dream is no longer theirs\"}");
+                followed = null;
+            }
         }
     }
 

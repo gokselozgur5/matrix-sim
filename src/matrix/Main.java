@@ -135,7 +135,7 @@ public final class Main {
 
     private static void usage() {
         System.out.print("""
-                matrix-sim daemon (v1.0)
+                matrix-sim daemon (v2.0)
                   --headless          run without the ops console, then print PERF
                   --ticks N           tick budget for headless runs (default 2000)
                   --seed N            the fate of the universe (default 42)
