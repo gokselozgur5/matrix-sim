@@ -45,58 +45,65 @@ This repo walks toward that vision in small steps: the digest chain (D-020) is t
 
 Package boundary = deployment boundary: `realworld` knows no entity behavior, `entities` knows no pod details. The only bridge is `NeuralLink`. Per D-019 there is no presentation layer anywhere: the entity API carries no glyphs, colors or render priorities; the system is observed through the event log, `METRIC` lines and the `DIGEST` chain (D-020), and — eventually — through the perception feed itself (D-021).
 
-## Class diagram — who is human, who is program
+## Class relationships — as built (v1.0 merged; v2.0 shapes included)
+
+Edge semantics carry the meaning: `*--` **composition** (owns, same fate) · `o--` **aggregation** (holds, separate life) · `-->` **association** (knows) · `..>` **dependency** (uses, never stores) · `<|--`/`<|..` inheritance/realization. Inheritance appears only for true is-a; capabilities are interfaces; one Liskov break stands under protection (D-014).
 
 ```mermaid
 classDiagram
-    class MatrixEntity {
-        <<abstract>>
-        +int id
-        +int x
-        +int y
-        +boolean alive
-        +tick(World)*
-    }
+    direction TB
+    class SystemNode { <<interface>> }
     class Chooses { <<interface>> }
     class SelfReplicating { <<interface>> }
+    class MatrixEntity { <<abstract>> +id +pos +alive +tick(World)* }
+    class Program { <<abstract>> +purpose +handleDeletion(World) }
+    class LinkKind { <<enum>> HARDLINE }
 
-    class Avatar {
-        +Brain brain
-        +Pill pill
-        +die(World)
-    }
-    class TheOne
-    class Program {
-        <<abstract>>
-        +String purpose
-        +handleDeletion(World)
-    }
-    class EnvironmentProgram { +Species species }
-    class Agent { +String name }
-    class AgentSmith { +handleDeletion(World) throws! }
-    class SmithPrime
-    class SmithCopy { +MatrixEntity original }
-    class Oracle
-    class ExileProgram { +Kind kind }
+    Simulation *-- MachineSystem
+    Simulation *-- RealWorldSystem
+    Simulation *-- EventBus
+    SystemNode <|.. MachineSystem
+    SystemNode <|.. RealWorldSystem
+    MachineSystem ..> World : ticks
+    MachineSystem ..> Director : ticks
+    MachineSystem ..> Source : ticks (grace due)
+    RealWorldSystem ..> RealWorld : ticks
+
+    World *-- MatrixEntity : registry, id order
+    World *-- Rng : the only randomness
+    World *-- PlaceGraph
+    World ..> EventBus : publishes
+    Director ..> World : reads, wakes
+    Source *-- OrphanRegistry
+    Source ..> Program : SIGTERM + grace (D-025)
+
+    RealWorld *-- PodFarm
+    RealWorld o-- Human : census
+    PodFarm *-- Pod
+    Human *-- Brain : same fate (D-011)
+    Human o-- Pod : hosted 0..1
+    Human o-- NeuralLink : 0..1 while dreaming
+    NeuralLink --> Avatar : drives, observes death (D-013)
+    NeuralLink --> LinkKind
+    RealWorld ..> World : queues Remove on flatline
 
     MatrixEntity <|-- Avatar
     MatrixEntity <|-- Program
     MatrixEntity <|-- SmithCopy
-    Avatar <|-- TheOne : the anomaly
-    Program <|-- EnvironmentProgram : species = data (D-015)
     Program <|-- Agent
     Program <|-- Oracle
     Program <|-- ExileProgram
     Program <|-- SmithPrime
-    Agent <|-- AgentSmith : refuses GC
+    Agent <|-- AgentSmith : refuses GC — protected LSP break (D-014)
     Chooses <|.. Avatar
-    Chooses <|.. SmithPrime : added at runtime
+    Chooses <|.. SmithPrime : gained at the fork
     SelfReplicating <|.. SmithPrime
     SelfReplicating <|.. SmithCopy
-    SmithCopy *-- MatrixEntity : original kept inside
+    SmithCopy *-- MatrixEntity : original kept inside (D-001)
+    Oracle ..> EventBus : counts awakenings
 ```
 
-The critical distinction: `Avatar.brain` lives **in the real world** (see the sequence below), while a `Program`'s hardware is on the machine side. Neo descends from the human line and never becomes a program; Smith is `Program`-line from start to finish. The two hierarchies never cross. Two proposals refine this picture: D-013 replaces the `Avatar.brain` edge with a NeuralLink observer bridge (so `entities` imports nothing from `realworld`), and D-011 adds a `Human` class on the real-world side so unplugged people are representable. `EnvironmentProgram` is the single class behind every bird, flower and insect — a species is a catalog row, not a class (D-015), and its behavior is a plugged-in strategy (D-016).
+Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. v2.5 will add `EnvironmentProgram` under `Program` with species as data (D-015) and gaits as strategies (D-016); v3.0 adds `TheOne` under `Avatar`.
 
 ## Sequence — jack-in and the death rule
 
@@ -112,8 +119,9 @@ sequenceDiagram
         B-->>W: neural telemetry
     end
     alt the avatar dies inside the Matrix
-        W->>B: Avatar.die() → brain.flatline()
-        B->>B: PodFarm.flush(pod) — "the body cannot live without the mind"
+        NL->>NL: observeDeath() — the rule lives on the CONNECTION (D-013)
+        NL->>B: brain.flatline(), pod flushed
+        NL->>W: Remove queued — the corpse leaves the world
     end
 ```
 

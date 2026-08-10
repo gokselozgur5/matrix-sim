@@ -1,6 +1,6 @@
 ---
 title: "D-014 — AgentSmith stays a protected Liskov violation"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #12
@@ -29,7 +29,7 @@ AgentSmith.handleDeletion() throws where every other Program completes. A subtyp
 
 ## Decision Outcome
 
-Proposed option: "keep and fence", because this codebase exists to make the failure mode a character. Final call in thread #12 (v2.0 gate).
+Chosen option: "keep and fence", because this codebase exists to make the failure mode a character. Accepted by the owner's verdict, 2026-08-10 (thread #12).
 
 ### Consequences
 

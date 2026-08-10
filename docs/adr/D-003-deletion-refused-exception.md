@@ -1,6 +1,6 @@
 ---
 title: "D-003 — GC refusal as a thrown DeletionRefusedException"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #11
@@ -30,7 +30,7 @@ Program.handleDeletion() is a template method the Source calls. Most programs co
 
 ## Decision Outcome
 
-Proposed option: "the thrown exception", because the whole point is that refusal was never part of the contract. Final call in thread #11 (v2.0 gate).
+Chosen option: "the thrown exception", because the whole point is that refusal was never part of the contract. Accepted by the owner's verdict, 2026-08-10 (thread #11).
 
 ### Consequences
 

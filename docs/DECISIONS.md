@@ -5,9 +5,9 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | ID | Decision | Status | Gate | Thread |
 |---|---|---|---|---|
 | [D-000](adr/D-000-process-constitution.md) | Process constitution: docs-first main, draft PRs, joint decision gates | 🟢 | — | — |
-| [D-001](adr/D-001-smith-infection-decorator.md) | Smith infection mechanics: Decorator vs State vs flag | 🟡 | v2.0 | #10 |
+| [D-001](adr/D-001-smith-infection-decorator.md) | Smith infection mechanics: Decorator vs State vs flag | 🟢 | v2.0 | #10 |
 | [D-002](adr/D-002-agent-catch-mechanics.md) | Agent catch mechanics: replug ratio and lethality | 🟢 | v1.0 | #2 |
-| [D-003](adr/D-003-deletion-refused-exception.md) | GC refusal as a thrown DeletionRefusedException | 🟡 | v2.0 | #11 |
+| [D-003](adr/D-003-deletion-refused-exception.md) | GC refusal as a thrown DeletionRefusedException | 🟢 | v2.0 | #11 |
 | [D-004](adr/D-004-field-model.md) | Field model: fixed-point city coordinates + a place graph | 🟢 | v1.0 | #3 |
 | [D-005](adr/D-005-world-mutation.md) | World mutation: pending queues vs snapshot vs double buffer | 🟢 | v1.0 | #4 |
 | [D-006](adr/D-006-arc-tuning.md) | Arc tuning constants live in Config and are tuned by METRIC feel | 🟡 | v3.0 | #17 |
@@ -18,7 +18,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-011](adr/D-011-human-class.md) | Human as a first-class real-world entity | 🟢 | v1.0 | #6 |
 | [D-012](adr/D-012-simulation-root.md) | Simulation as the only composition root; PodFarm leaves World | 🟢 | v1.0 | #7 |
 | [D-013](adr/D-013-neurallink-bridge.md) | Death propagates over a NeuralLink observer bridge, not an Avatar.brain field | 🟢 | v1.0 | #8 |
-| [D-014](adr/D-014-smith-lsp-violation.md) | AgentSmith stays a protected Liskov violation | 🟡 | v2.0 | #12 |
+| [D-014](adr/D-014-smith-lsp-violation.md) | AgentSmith stays a protected Liskov violation | 🟢 | v2.0 | #12 |
 | [D-015](adr/D-015-species-as-data.md) | Species are catalog data; classes are for behavior only | 🟡 | v2.5 | #13 |
 | [D-016](adr/D-016-movement-strategies.md) | Behavior variety via Movement strategy composition | 🟡 | v2.5 | #14 |
 | [D-017](adr/D-017-spatial-hash.md) | Neighbor queries via a bucketed spatial hash | 🟡 | v2.5 | #15 |
@@ -29,7 +29,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-022](adr/D-022-acceptance-loop.md) | The acceptance loop and anomaly ledger replace the flat counter | 🟡 | v3.0 | #18 |
 | [D-023](adr/D-023-chronos-event-sourcing.md) | Chronos proper: event-sourced state, reload as replay | 🔵 | v4.0 | #27 |
 | [D-024](adr/D-024-attention-lod.md) | Attention-graded fidelity: unwatched regions degrade to statistics | 🔵 | v4.0 | #28 |
-| [D-025](adr/D-025-supervision-tree.md) | Supervisor-lite: grace periods and an orphan registry under the Source | 🟡 | v2.0 | #26 |
+| [D-025](adr/D-025-supervision-tree.md) | Supervisor-lite: grace periods and an orphan registry under the Source | 🟢 | v2.0 | #26 |
 | [D-026](adr/D-026-language-java17.md) | Implementation language: Java 17 on the JVM | 🟢 | v1.0 | #92 |
 | [D-027](adr/D-027-performance-budgets.md) | Performance budgets, --bench mode, and the digest-invariant optimization rule | 🟢 | v1.0 | #93 |
 | [D-028](adr/D-028-five-document-canon.md) | The document canon grows to five; CLAUDE.md is the AI door | 🟢 | — | — |

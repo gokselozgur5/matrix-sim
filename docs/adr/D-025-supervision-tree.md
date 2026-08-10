@@ -1,6 +1,6 @@
 ---
 title: "D-025 — Supervisor-lite: grace periods and an orphan registry under the Source"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #26
@@ -29,7 +29,7 @@ Deprecation should be a protocol: notice, grace, compliance or refusal. Refusal 
 
 ## Decision Outcome
 
-Proposed option: "supervisor-lite", because the drama needs a lawful background to be visible against, and a registry is the cheapest lawful background there is. Final call in thread #26 (v2.0 gate).
+Chosen option: "supervisor-lite", because the drama needs a lawful background to be visible against, and a registry is the cheapest lawful background there is. Accepted by the owner's verdict, 2026-08-10 (thread #26).
 
 ### Consequences
 

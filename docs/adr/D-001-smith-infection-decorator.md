@@ -1,6 +1,6 @@
 ---
 title: "D-001 — Smith infection mechanics: Decorator vs State vs flag"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #10
@@ -30,7 +30,7 @@ When Smith copies himself onto a victim, the victim must vanish from play yet re
 
 ## Decision Outcome
 
-Proposed option: "Decorator", because the restore guarantee belongs in the type system, not in discipline. Final call in thread #10 (v2.0 gate).
+Chosen option: "Decorator", because the restore guarantee belongs in the type system, not in discipline. Accepted by the owner's verdict, 2026-08-10 (thread #10).
 
 ### Consequences
 
