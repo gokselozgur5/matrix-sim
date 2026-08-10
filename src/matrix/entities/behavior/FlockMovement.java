@@ -28,20 +28,23 @@ public final class FlockMovement implements Movement {
         int speed = me.species.speedCm();
         long sumX = 0, sumY = 0, headX = 0, headY = 0;
         int sepX = 0, sepY = 0, count = 0;
-        List<MatrixEntity> near = w.nearby(self.pos, Config.FLOCK_NEIGHBOR_RADIUS_CM);
+        long sep2 = (long) Config.FLOCK_SEPARATION_CM * Config.FLOCK_SEPARATION_CM;
+        List<MatrixEntity> near = w.nearby(self, Config.FLOCK_NEIGHBOR_RADIUS_CM);
         for (MatrixEntity n : near) {
             if (n == self || !(n instanceof EnvironmentProgram other)
                     || other.species.kingdom() != Kingdom.FAUNA_BIRD) {
                 continue;
             }
             count++;
-            sumX += n.pos.xCm();
-            sumY += n.pos.yCm();
+            sumX += n.snapXCm;
+            sumY += n.snapYCm;
             headX += other.headingX;
             headY += other.headingY;
-            if (self.pos.within(n.pos, Config.FLOCK_SEPARATION_CM)) {
-                sepX += Integer.signum(self.pos.xCm() - n.pos.xCm());
-                sepY += Integer.signum(self.pos.yCm() - n.pos.yCm());
+            long ddx = (long) self.snapXCm - n.snapXCm;
+            long ddy = (long) self.snapYCm - n.snapYCm;
+            if (ddx * ddx + ddy * ddy <= sep2) {
+                sepX += Integer.signum(self.snapXCm - n.snapXCm);
+                sepY += Integer.signum(self.snapYCm - n.snapYCm);
             }
             if (count >= Config.FLOCK_MAX_NEIGHBORS) {
                 break;
@@ -53,8 +56,8 @@ public final class FlockMovement implements Movement {
             dx = w.rng().nextInt(-speed, speed + 1);
             dy = w.rng().nextInt(-speed, speed + 1);
         } else {
-            int cohX = Integer.signum((int) (sumX / count) - self.pos.xCm());
-            int cohY = Integer.signum((int) (sumY / count) - self.pos.yCm());
+            int cohX = Integer.signum((int) (sumX / count) - self.snapXCm);
+            int cohY = Integer.signum((int) (sumY / count) - self.snapYCm);
             int alnX = Integer.signum((int) headX);
             int alnY = Integer.signum((int) headY);
             dx = (sepX * 2 + cohX + alnX) * (speed / 3);

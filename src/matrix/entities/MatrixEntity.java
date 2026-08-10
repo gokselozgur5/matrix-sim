@@ -13,10 +13,15 @@ public abstract class MatrixEntity {
     public final int id;
     public Position pos;
     public boolean alive = true;
+    /** Perception snapshot (engine-set at tick start): everyone senses the world as it WAS. */
+    public int snapXCm;
+    public int snapYCm;
 
     protected MatrixEntity(int id, Position pos) {
         this.id = id;
         this.pos = pos;
+        this.snapXCm = pos.xCm();
+        this.snapYCm = pos.yCm();
     }
 
     public abstract void tick(World w);

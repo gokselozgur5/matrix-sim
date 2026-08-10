@@ -19,12 +19,12 @@ public final class SwarmMovement implements Movement {
         int dx = w.rng().nextInt(-speed, speed + 1);
         int dy = w.rng().nextInt(-speed, speed + 1);
         if (self instanceof EnvironmentProgram me) {
-            List<MatrixEntity> near = w.nearby(self.pos, Config.SWARM_RADIUS_CM);
+            List<MatrixEntity> near = w.nearby(self, Config.SWARM_RADIUS_CM);
             for (MatrixEntity n : near) {
                 if (n != self && n instanceof EnvironmentProgram other
                         && other.species.id().equals(me.species.id())) {
-                    dx += Integer.signum(n.pos.xCm() - self.pos.xCm()) * (speed / 2);
-                    dy += Integer.signum(n.pos.yCm() - self.pos.yCm()) * (speed / 2);
+                    dx += Integer.signum(n.snapXCm - self.snapXCm) * (speed / 2);
+                    dy += Integer.signum(n.snapYCm - self.snapYCm) * (speed / 2);
                     break;
                 }
             }

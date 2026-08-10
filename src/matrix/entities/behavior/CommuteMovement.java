@@ -20,8 +20,9 @@ public final class CommuteMovement implements Movement {
     public void move(MatrixEntity self, World w) {
         PlaceGraph places = w.places();
         int zones = places.zones().size();
-        Position home = places.zones().get(Math.floorMod(self.id, zones)).center();
-        Position work = places.zones().get(Math.floorMod(self.id + 3, zones)).center();
+        int homeIdx = Math.floorMod(self.id, zones);
+        Position home = places.zones().get(homeIdx).center();
+        Position work = places.nearestOtherZone(homeIdx).center();
         boolean workward = (w.tick() / Config.COMMUTE_SWITCH_TICKS) % 2 == 0;
         Position dest = workward ? work : home;
         if (self.pos.within(dest, Config.COMMUTE_ARRIVE_CM)) {

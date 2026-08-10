@@ -34,9 +34,9 @@ public final class World {
         this.places = places;
     }
 
-    /** Bucketed neighbor query (D-017) — exact-radius, canonical order. */
-    public List<MatrixEntity> nearby(Position from, int radiusCm) {
-        return hash.near(from, radiusCm);
+    /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
+    public List<MatrixEntity> nearby(MatrixEntity self, int radiusCm) {
+        return hash.near(self, radiusCm);
     }
 
     public Rng rng() {

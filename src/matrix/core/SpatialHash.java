@@ -6,11 +6,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Neighbor queries without O(n) shame (D-017). A fixed grid of buckets
- * over the fixed-point city; rebuilt once per tick in entity-list order,
- * queried cell-block by cell-block — both orders canonical, so the hash
- * can never introduce nondeterminism. Buckets are reused across ticks:
- * no per-tick allocation storm (D-027).
+ * Neighbor queries without O(n) shame (D-017), under SNAPSHOT semantics:
+ * at rebuild every entity's perception coordinates (snapXCm/snapYCm) are
+ * frozen, and BOTH sides of every query use them — the seeker's center
+ * and the sought's location. Everyone perceives the world exactly as it
+ * was when the tick began; a same-tick death may still be perceived
+ * (the news has not reached you yet). Buckets are reused across ticks:
+ * no per-tick allocation storm (D-027). Result order is cell-major
+ * canonical — never read it as proximity.
  */
 public final class SpatialHash {
     private final int cellCm;
@@ -35,22 +38,29 @@ public final class SpatialHash {
         }
         for (MatrixEntity e : entities) {
             if (e.alive) {
-                buckets[bucketIndex(e.pos)].add(e);
+                e.snapXCm = e.pos.xCm();
+                e.snapYCm = e.pos.yCm();
+                buckets[bucketIndex(e.snapXCm, e.snapYCm)].add(e);
             }
         }
     }
 
-    /** Exact-radius hits, canonical order: cells scanned y-major then x, insertion order within. */
-    public List<MatrixEntity> near(Position from, int radiusCm) {
+    /** Snapshot-exact hits around the seeker's OWN snapshot position. */
+    public List<MatrixEntity> near(MatrixEntity self, int radiusCm) {
         List<MatrixEntity> out = new ArrayList<>();
-        int minX = Math.max(0, (from.xCm() - radiusCm) / cellCm);
-        int maxX = Math.min(cellsX - 1, (from.xCm() + radiusCm) / cellCm);
-        int minY = Math.max(0, (from.yCm() - radiusCm) / cellCm);
-        int maxY = Math.min(cellsY - 1, (from.yCm() + radiusCm) / cellCm);
+        int fx = self.snapXCm;
+        int fy = self.snapYCm;
+        int minX = Math.max(0, (fx - radiusCm) / cellCm);
+        int maxX = Math.min(cellsX - 1, (fx + radiusCm) / cellCm);
+        int minY = Math.max(0, (fy - radiusCm) / cellCm);
+        int maxY = Math.min(cellsY - 1, (fy + radiusCm) / cellCm);
+        long r2 = (long) radiusCm * radiusCm;
         for (int cy = minY; cy <= maxY; cy++) {
             for (int cx = minX; cx <= maxX; cx++) {
                 for (MatrixEntity e : buckets[cy * cellsX + cx]) {
-                    if (from.within(e.pos, radiusCm)) {
+                    long dx = (long) e.snapXCm - fx;
+                    long dy = (long) e.snapYCm - fy;
+                    if (dx * dx + dy * dy <= r2) {
                         out.add(e);
                     }
                 }
@@ -59,9 +69,9 @@ public final class SpatialHash {
         return out;
     }
 
-    private int bucketIndex(Position p) {
-        int cx = Math.min(cellsX - 1, Math.max(0, p.xCm() / cellCm));
-        int cy = Math.min(cellsY - 1, Math.max(0, p.yCm() / cellCm));
+    private int bucketIndex(int xCm, int yCm) {
+        int cx = Math.min(cellsX - 1, Math.max(0, xCm / cellCm));
+        int cy = Math.min(cellsY - 1, Math.max(0, yCm / cellCm));
         return cy * cellsX + cx;
     }
 }
