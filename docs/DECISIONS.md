@@ -38,5 +38,6 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-031](adr/D-031-system-of-systems.md) | System-of-systems: SystemNode composite under the Simulation root | 🟡 | v1.0 (interface), v4.0 (Zion) | #94 |
 | [D-032](adr/D-032-pirate-broadcast.md) | Zion fleet and the pirate broadcast jack-in path | 🟡 | v4.0 | #95 |
 | [D-033](adr/D-033-self-substantiation.md) | Self-substantiation (the Kid): resistance overflow force-disconnect | 🔵 | v4.0 | #96 |
+| [D-034](adr/D-034-session-ritual.md) | The session ritual: jack in, work under gates, exit through a hardline | 🟢 | — | — |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.

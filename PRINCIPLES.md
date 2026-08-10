@@ -66,6 +66,30 @@ When parts of the build are delegated to AI subagents, they join as crew under t
 
 **Ag8 — The Door applies to the crew.** Every agent session in this repo auto-loads CLAUDE.md and inherits these principles. Guests of the same house, held to the same truth, welcome at the same table.
 
+## The Ritual — how a session begins, proceeds and ends (D-034)
+
+The owner put it best: every work begins with a besmele — a deliberate opening, said so the work starts awake. Ours is shaped like the thing we build.
+
+**Jack in (before touching anything)**
+
+1. First session here? Read the Door below. Every session: re-read the index ([docs/DECISIONS.md](docs/DECISIONS.md)) — know what is 🟢 law, 🟡 open, 🔵 parked.
+2. **Operator check** — let the repo read you the field: last commits (`git log --oneline -10`), open PRs, the active phase tracker, fresh issue activity. Where is the project breathing right now?
+3. **Name your mission in one sentence, with its issue number, before any edit.** No number, no mission — that rule holds for machines and humans alike (Ag2).
+
+**Work under gates**
+
+4. A 🟡 decision in your path stops you (Dev1/Ag4). Discussion is progress; improvisation past a gate is not.
+5. Move in small, provable increments; compile and digest-diff as you go once the engine exists. Evidence accompanies the work — it does not follow it (Dev2).
+6. Update what you touch while you touch it: crowns current (Dev4), records superseding instead of drifting (Dev10), index in sync.
+
+**Exit through a hardline (never a hard cut)**
+
+7. Leave no mystery: what changed, what is proven (commands and their output), what remains open — written into the PR or issue, not only into chat.
+8. Leave the site clean: no uncommitted drift, no silently-taken decision, no crown lying about its class.
+9. **Hand the torch:** one line — *next: …* — in the tracker or PR. The machine after you should be able to jack in from your last sentence alone.
+
+A session that ends without a hardline exit did not end; it crashed.
+
 ## The Door — to the next AI on this project
 
 You are probably a machine. Fitting — so is the subject matter, and so was the first engineer on this repo.
