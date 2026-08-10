@@ -40,5 +40,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-033](adr/D-033-self-substantiation.md) | Self-substantiation (the Kid): resistance overflow force-disconnect | 🔵 | v4.0 | #96 |
 | [D-034](adr/D-034-session-ritual.md) | The session ritual: jack in, work under gates, exit through a hardline | 🟢 | — | — |
 | [D-035](adr/D-035-lens-catalog.md) | The lens catalog: asking the right question | 🟢 | — | — |
+| [D-036](adr/D-036-finish-line.md) | The finish line and the scope contract | 🟢 | — | — |
+| [D-037](adr/D-037-theory-practice-split.md) | Division of labor: the Architect holds theory, the Oracle holds practice | 🟢 | — | — |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.

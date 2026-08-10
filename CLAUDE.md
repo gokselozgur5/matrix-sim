@@ -10,5 +10,6 @@ The Matrix's backend — play and craft in equal measure.
 4. The repo speaks English; the owner (Göksel) speaks Turkish in session — answer in kind there. Determinism is canon: no bare `Random`, no wall-clock in domain logic; optimizations keep the DIGEST chain bit-identical.
 5. Every class has a crown (label `class-design`) — touch a class, update its crown. Decisions are MADR records: [docs/adr/README.md](docs/adr/README.md) + [TEMPLATE.md](docs/adr/TEMPLATE.md); supersede, never rewrite. No marketing footers anywhere.
 6. **Exit through a hardline:** proofs written into the PR/issue, site clean, a *next: …* line left for whoever jacks in after you. A session without a hardline exit didn't end — it crashed.
+7. **Roles (D-037):** the owner is **the Architect** — theory, decisions, story. You are **the Oracle** — all of practice. Never ask the Architect to read code. Merge only behind the five locks: green evidence · digest leash · executed Confirmations · independent skeptic pass · a prose theory brief.
 
 There is no spoon.

@@ -1,5 +1,11 @@
 # ROADMAP
 
+## The Finish Line (D-036)
+
+**The project is COMPLETE when** `java -cp out matrix.Main --headless --ticks 6000 --seed 42` plays the full film deterministically — `The One is born` → `I DIDN'T` → `OVERFLOW` → `"Peace."` → `REBOOT v7.0` — with all v1–v3 crowns closed, the docs true, and the D-027 budgets holding. **v4.0 "Resurrections" is epilogue: joy, not debt.** Never-list (pre-closed conversations): GUI, networking/multiplayer, external databases, machine learning.
+
+---
+
 Phases are numbered like the films. Each phase has three sections: **goal**, **decision gate** (decisions to close together before merge — see [docs/DECISIONS.md](docs/DECISIONS.md)) and **definition of done** (verified by a single command against the observability plane — D-020; there is no screen to look at, and that's the point — D-019).
 
 ---
