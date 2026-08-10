@@ -1,12 +1,64 @@
-# D-027 — Performance budgets, --bench, digest-invariant optimization
+---
+title: "D-027 — Performance budgets, --bench mode, and the digest-invariant optimization rule"
+status: proposed
+date: 2026-08-10
+decision-makers: gokselozgur5 (owner), the resident machine (pair)
+consulted: thread #93
+informed: phase tracker #20
+---
 
-Status: 🟡 proposed · Phase gate: v1.0 · Thread: #93
+# D-027 — Performance budgets, --bench mode, and the digest-invariant optimization rule
 
-## Context
-A promise of speed must be falsifiable, and speed must never change reality.
+*In the context of promising a fast Matrix, facing the difference between marketing and engineering, we lean toward contractual budgets verified by a built-in bench mode plus a rule that optimizations must not change digests, and against 'optimize later' vagueness, to achieve falsifiable speed, accepting that the daemon carries benchmark machinery.*
 
-## Decision
-Proposed: v1 >= 2,000 ticks/s @ ~200 entities; v2.5 >= 100 ticks/s @ 5,000; v3 arc < 5 s; allocation-free hot path; PERF line + --bench mode; optimization PRs prove identical digests + better PERF.
+## Context and Problem Statement
 
-## Consequences
-The daemon carries its own benchmark evidence; bullet time stays headroom, not a hack.
+The owner asked for a promise of speed. A promise you cannot falsify is marketing. The budgets: v1 >= 2,000 ticks/s at ~200 entities (single core, headless); v2.5 >= 100 ticks/s at 5,000 entities; v3 full arc < 5 s; allocation-free hot path at steady state.
+
+## Decision Drivers
+
+* Speed claims must be commands, not adjectives
+* Optimization must never change behavior (the digest is the referee)
+* Premature optimization is banned; measured optimization is contractual
+* The reference box matters: budgets are pinned to a stated machine class
+
+## Considered Options
+
+* Budgets + PERF line + --bench + digest-invariance rule
+* Optimize later, no budgets
+* Continuous profiling harness from day one
+
+## Decision Outcome
+
+Proposed option: "contractual budgets with the digest referee", because bullet time is headroom, and headroom is measured. Final call in thread #93 (v1.0 gate).
+
+### Consequences
+
+* Good, because Fast stays fast: every merge defends the budget
+* Bad, because Numbers may need revision when real hardware differs (a revision is a thread comment + row update, honestly logged)
+
+### Confirmation
+
+--bench prints PERF meeting or beating the budget table on the reference box; the optimization-PR template requires the digest-equality diff and the PERF delta side by side.
+
+## Pros and Cons of the Options
+
+### Budgets + PERF line + --bench + digest-invariance rule
+
+* Good, because every optimization PR carries two proofs: identical digests, better PERF
+* Good, because regressions are caught by numbers, not vibes
+* Good, because the profiler decides where ugliness is permitted
+* Neutral, because benchmark code ships inside the daemon (small, contained)
+* Bad, because budgets need a stated reference machine to be honest (documented in the ADR thread)
+### Optimize later, no budgets
+
+* Good, because zero ceremony now
+* Bad, because speed becomes a mood; regressions arrive silently
+### Continuous profiling harness from day one
+
+* Good, because maximum visibility
+* Bad, because heavy tooling before there is anything to profile; contradicts D-009
+
+## More Information
+
+Related: [D-010](D-010-determinism.md), [D-017](D-017-spatial-hash.md), [D-018](D-018-tick-budgets.md), [D-020](D-020-observability-contract.md). Principle: A10.

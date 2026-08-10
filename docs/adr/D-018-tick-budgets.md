@@ -1,12 +1,65 @@
-# D-018 — Tick-rate scheduling and population caps
+---
+title: "D-018 — Tick-rate scheduling and per-species population caps"
+status: proposed
+date: 2026-08-10
+decision-makers: gokselozgur5 (owner), the resident machine (pair)
+consulted: thread #16
+informed: phase tracker #22
+---
 
-Status: 🟡 proposed · Phase gate: v2.5 · Thread: #16
+# D-018 — Tick-rate scheduling and per-species population caps
 
-## Context
-Not every process needs to think every tick; the universe must grow without the tick growing.
+*In the context of a growing universe on a fixed tick budget, facing the waste of every entity thinking every tick, we lean toward a scheduling wheel keyed by species tick-rate plus population caps and against uniform ticking, to achieve scale by scheduling, accepting due-time bookkeeping.*
 
-## Decision
-Proposed: per-species tickRate via a scheduling wheel, plus per-species population caps.
+## Context and Problem Statement
 
-## Consequences
-Flowers barely think, birds think often; first step toward attention-graded fidelity (D-024).
+A rose does not need 2,000 decisions per second. Cadence is a property of kind: flowers barely think, birds think often. Budgets per species keep the universe big while the tick stays flat — and this is the embryo of attention-graded fidelity (D-024).
+
+## Decision Drivers
+
+* The tick must stay flat as the Bestiary grows (D-027)
+* Cadence is species data (D-015), not code
+* Determinism: the wheel must be seed-independent and order-canonical
+* Caps prevent any species from eating the world by accident
+
+## Considered Options
+
+* Scheduling wheel by species tickRate + population caps
+* Uniform tick for everyone
+* Random skip probability per species
+
+## Decision Outcome
+
+Proposed option: "the wheel with caps", because scheduled laziness is how big systems stay fast — and how this one will one day stop simulating what nobody watches. Final call in thread #16 (v2.5 gate).
+
+### Consequences
+
+* Good, because The 5,000-entity budget becomes reachable with headroom
+* Bad, because The wheel is one more core structure with an order rule to document
+
+### Confirmation
+
+METRIC shows per-kingdom populations at or under caps; PERF meets budget; digest chains stable across runs (wheel order canonical by entity id).
+
+## Pros and Cons of the Options
+
+### Scheduling wheel by species tickRate + population caps
+
+* Good, because cost scales with active entities, not existing ones
+* Good, because cadence tuning is catalog tuning
+* Good, because caps make ecosystem experiments safe
+* Neutral, because due-time bookkeeping per entity (one long)
+* Bad, because two entities due the same tick need a canonical order (id order, documented)
+### Uniform tick for everyone
+
+* Good, because simplest loop
+* Bad, because ROOTED flowers burn cycles doing nothing, at scale, forever
+### Random skip probability per species
+
+* Good, because cheap approximation of cadence
+* Neutral, because consumes Rng stream per entity per tick — noisy digests on every tuning change
+* Bad, because cadence becomes stochastic; metrics get fuzzier for no gain
+
+## More Information
+
+Related: [D-015](D-015-species-as-data.md), [D-024](D-024-attention-lod.md), [D-027](D-027-performance-budgets.md). Crown: #78.
