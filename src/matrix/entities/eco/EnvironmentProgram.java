@@ -1,0 +1,44 @@
+package matrix.entities.eco;
+
+import matrix.core.Position;
+import matrix.core.Scheduler;
+import matrix.core.World;
+import matrix.entities.Program;
+import matrix.entities.behavior.CommuteMovement;
+import matrix.entities.behavior.DriftMovement;
+import matrix.entities.behavior.FlockMovement;
+import matrix.entities.behavior.RootedMovement;
+import matrix.entities.behavior.SwarmMovement;
+import matrix.entities.behavior.WanderMovement;
+
+/**
+ * THE class behind every bird, flower, insect and raindrop (D-015):
+ * one class, twelve species, zero subclasses. The gait is selected by
+ * the catalog row (D-016); the cadence by the scheduling wheel (D-018).
+ * A healthy environment program is invisible — it never logs.
+ */
+public final class EnvironmentProgram extends Program {
+    public final Species species;
+    public int headingX;
+    public int headingY;
+
+    public EnvironmentProgram(int id, Position pos, Species species) {
+        super(id, pos, species.id() + " program");
+        this.species = species;
+    }
+
+    @Override
+    public void tick(World w) {
+        if (!Scheduler.due(w.tick(), species.tickPeriod(), id)) {
+            return;
+        }
+        switch (species.movement()) {
+            case FLOCK -> FlockMovement.INSTANCE.move(this, w);
+            case SWARM -> SwarmMovement.INSTANCE.move(this, w);
+            case ROOTED -> RootedMovement.INSTANCE.move(this, w);
+            case DRIFT -> DriftMovement.INSTANCE.move(this, w);
+            case WANDER -> WanderMovement.INSTANCE.move(this, w);
+            case COMMUTE -> CommuteMovement.INSTANCE.move(this, w);
+        }
+    }
+}
