@@ -36,7 +36,7 @@ public final class Config {
     public static final int FLOCK_SEPARATION_CM = 1_500;
     public static final int FLOCK_MAX_NEIGHBORS = 6;
     public static final int SWARM_RADIUS_CM = 3_000;
-    public static final int COMMUTE_SWITCH_TICKS = 500;
+    public static final int COMMUTE_SWITCH_TICKS = 1_000;
     public static final int COMMUTE_ARRIVE_CM = 500;
     public static final int ECO_EVERY_TICKS = 100;
     public static final int GRACE_TICKS = 25;

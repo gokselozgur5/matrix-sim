@@ -220,12 +220,18 @@ public final class World {
         dc.putInt(e.pos.yCm());
         dc.putInt(e.alive ? 1 : 0);
         dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
+        if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
+            dc.putInt(p.species.id().hashCode());
+            dc.putInt(p.headingX);
+            dc.putInt(p.headingY);
+        }
         if (e instanceof SmithCopy c) {
             digestEntity(dc, c.original);
         }
     }
 
     private static int typeTag(MatrixEntity e) {
+        if (e instanceof matrix.entities.eco.EnvironmentProgram) return 8;
         if (e instanceof SmithCopy) return 7;
         if (e instanceof SmithPrime) return 6;
         if (e instanceof Oracle) return 4;

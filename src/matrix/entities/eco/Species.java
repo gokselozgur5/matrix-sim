@@ -7,4 +7,9 @@ package matrix.entities.eco;
  */
 public record Species(String id, Kingdom kingdom, MovementKind movement,
                       int tickPeriod, int populationCap, int speedCm) {
+    public Species {
+        if (tickPeriod < 1 || populationCap < 0 || speedCm < 0) {
+            throw new IllegalArgumentException("bad catalog row: " + id);
+        }
+    }
 }

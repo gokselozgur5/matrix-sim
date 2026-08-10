@@ -19,6 +19,7 @@ public final class WanderMovement implements Movement {
     }
 
     static int speedOf(MatrixEntity self) {
-        return self instanceof EnvironmentProgram e ? e.species.speedCm() : 120;
+        return self instanceof EnvironmentProgram e ? e.species.speedCm()
+                : matrix.core.Config.BLUE_SPEED_CM;
     }
 }

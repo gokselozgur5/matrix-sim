@@ -40,8 +40,24 @@ public final class MetricsCollector {
         double density = birds.size() / ((double) matrix.core.Config.WORLD_W_CM * matrix.core.Config.WORLD_H_CM);
         long baseline = Math.round(0.5 / Math.sqrt(density));
         return String.format(java.util.Locale.ROOT,
-                "ECO tick=%d birds=%d flock_mnn_cm=%d random_baseline_cm=%d",
-                tick, birds.size(), meanNn, baseline);
+                "ECO tick=%d birds=%d flock_mnn_cm=%d random_baseline_cm=%d insects=%d flora=%d mammals=%d weather=%d",
+                tick, birds.size(), meanNn, baseline,
+                kingdomCount(matrix.entities.eco.Kingdom.FAUNA_INSECT),
+                kingdomCount(matrix.entities.eco.Kingdom.FLORA),
+                kingdomCount(matrix.entities.eco.Kingdom.FAUNA_MAMMAL),
+                kingdomCount(matrix.entities.eco.Kingdom.WEATHER));
+    }
+
+    /** Per-kingdom census — the D-018 caps become checkable in the instrument stream. */
+    private int kingdomCount(matrix.entities.eco.Kingdom kingdom) {
+        int n = 0;
+        for (var e : world.entities()) {
+            if (e.alive && e instanceof matrix.entities.eco.EnvironmentProgram p
+                    && p.species.kingdom() == kingdom) {
+                n++;
+            }
+        }
+        return n;
     }
 
     public MetricSnapshot sample(long tick) {
