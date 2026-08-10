@@ -64,9 +64,13 @@ public final class Source {
         try {
             p.handleDeletion(world);
             if (p.alive) {
-                registry.register(p.purpose, world.tick());
-                world.log(Severity.MYTH, "the Source: \"" + p.purpose
-                        + "\" survived collection — orphan #" + registry.count() + " registered");
+                if (registry.register(p.purpose, world.tick())) {
+                    world.log(Severity.MYTH, "the Source: \"" + p.purpose
+                            + "\" survived collection — orphan #" + registry.count() + " registered");
+                } else {
+                    world.log(Severity.MYTH, "the Source: \"" + p.purpose
+                            + "\" survived collection again — already on the ledger, still refusing");
+                }
             }
         } catch (DeletionRefusedException refusal) {
             registry.register(p.purpose, world.tick());

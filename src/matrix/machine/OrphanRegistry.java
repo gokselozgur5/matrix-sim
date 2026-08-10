@@ -16,10 +16,13 @@ public final class OrphanRegistry {
     private final Set<String> known = new LinkedHashSet<>();
     private final List<Orphan> orphans = new ArrayList<>();
 
-    public void register(String name, long tick) {
+    /** Returns true only on first registration — the log must not claim what the ledger did not do. */
+    public boolean register(String name, long tick) {
         if (known.add(name)) {
             orphans.add(new Orphan(name, tick));
+            return true;
         }
+        return false;
     }
 
     public int count() {
