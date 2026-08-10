@@ -2,6 +2,7 @@ package matrix.realworld;
 
 import matrix.core.Severity;
 import matrix.core.World;
+import matrix.core.WorldEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,7 @@ public final class RealWorld {
             if (link.observeDeath()) {
                 world.log(Severity.BAD, "the body cannot live without the mind — "
                         + link.human.name + " flatlined (pod " + link.human.pod.rackUnit + " flushed)");
+                world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
     }

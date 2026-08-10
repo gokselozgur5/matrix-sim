@@ -107,7 +107,13 @@ public final class Main {
                     case "red" -> sim.commandRed();
                     case "agent" -> sim.commandAgent();
                     case "pause" -> paused = !paused;
-                    case "speed" -> speed = parts.length > 1 ? Math.max(1, Math.min(50, Integer.parseInt(parts[1]))) : 1;
+                    case "speed" -> {
+                        try {
+                            speed = parts.length > 1 ? Math.max(1, Math.min(50, Integer.parseInt(parts[1]))) : 1;
+                        } catch (NumberFormatException e) {
+                            System.out.print("speed wants a number, 1-50 — the universe does not crash on typos\n");
+                        }
+                    }
                     case "quit", "q" -> {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;

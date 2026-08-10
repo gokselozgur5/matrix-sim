@@ -4,6 +4,7 @@ import matrix.core.Rng;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * The datacenter of brains: racks, growth, flush. Grows Humans (D-011);
@@ -24,7 +25,7 @@ public final class PodFarm {
 
     public Human grow(Rng rng) {
         int i = pods.size();
-        String rackUnit = String.format("R%02d/U%02d", 1 + i / 24, 1 + i % 24);
+        String rackUnit = String.format(Locale.ROOT, "R%02d/U%02d", 1 + i / 24, 1 + i % 24);
         Pod pod = new Pod(rackUnit);
         pods.add(pod);
         String name = FIRST[rng.nextInt(FIRST.length)] + " " + LAST[rng.nextInt(LAST.length)];

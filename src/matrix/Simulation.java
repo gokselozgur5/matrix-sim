@@ -103,8 +103,13 @@ public final class Simulation {
         realWorld.register(new NeuralLink(h, avatar, LinkKind.HARDLINE));
     }
 
-    /** Ops console: force one awakening. */
+    /** Ops console: force one awakening. Even overrides respect the cap (skeptic finding). */
     public void commandRed() {
+        if (world.count(Pill.RED) >= Config.RED_CAP) {
+            world.log(Severity.SYS, "manual override refused: the city cannot hold more awakened (cap "
+                    + Config.RED_CAP + ")");
+            return;
+        }
         List<Avatar> blues = world.aliveAvatars(Pill.BLUE);
         if (blues.isEmpty()) {
             world.log(Severity.SYS, "manual override failed: nobody left to wake");

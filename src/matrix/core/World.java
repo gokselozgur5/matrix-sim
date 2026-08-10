@@ -143,6 +143,8 @@ public final class World {
     /** Canonical state feed for the digest chain — id order, tagged, framed (D-020). */
     public void digestInto(DigestCalculator dc) {
         dc.putLong(tick);
+        dc.putLong(rng.draws());
+        dc.putInt(nextId);
         dc.putCount(entities.size());
         for (MatrixEntity e : entities) {
             dc.putInt(e.id);

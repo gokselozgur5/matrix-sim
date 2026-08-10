@@ -16,20 +16,29 @@ import java.util.Random;
  */
 public final class Rng {
     private final Random random;
+    private long draws = 0;
 
     public Rng(long seed) {
         this.random = new Random(seed);
     }
 
+    /** Stream position: how many primitive draws fate has consumed. Fed to the digest (skeptic finding). */
+    public long draws() {
+        return draws;
+    }
+
     public boolean chance(double probability) {
+        draws++;
         return random.nextDouble() < probability;
     }
 
     public int nextInt(int bound) {
+        draws++;
         return random.nextInt(bound);
     }
 
     public int nextInt(int originInclusive, int boundExclusive) {
+        draws++;
         return originInclusive + random.nextInt(boundExclusive - originInclusive);
     }
 
@@ -40,10 +49,12 @@ public final class Rng {
         }
         long m = bound - 1;
         if ((bound & m) == 0) {
+            draws++;
             return random.nextLong() & m;
         }
         long r;
         do {
+            draws++;
             r = random.nextLong() >>> 1;
         } while (r + m - (r % bound) < 0);
         return r % bound;
@@ -52,6 +63,7 @@ public final class Rng {
     /** Fisher-Yates over the specified nextInt(bound) — independent of library shuffle internals. */
     public <T> void shuffle(List<T> list) {
         for (int i = list.size() - 1; i > 0; i--) {
+            draws++;
             int j = random.nextInt(i + 1);
             T tmp = list.get(i);
             list.set(i, list.get(j));
