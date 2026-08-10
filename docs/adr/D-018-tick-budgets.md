@@ -1,6 +1,6 @@
 ---
 title: "D-018 — Tick-rate scheduling and per-species population caps"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #16
@@ -30,7 +30,7 @@ A rose does not need 2,000 decisions per second. Cadence is a property of kind: 
 
 ## Decision Outcome
 
-Proposed option: "the wheel with caps", because scheduled laziness is how big systems stay fast — and how this one will one day stop simulating what nobody watches. Final call in thread #16 (v2.5 gate).
+Chosen option: "the wheel with caps", because scheduled laziness is how big systems stay fast — and how this one will one day stop simulating what nobody watches. Accepted by the owner's verdict, 2026-08-10 (thread #16).
 
 ### Consequences
 

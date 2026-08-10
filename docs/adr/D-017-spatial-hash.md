@@ -1,6 +1,6 @@
 ---
 title: "D-017 — Neighbor queries via a bucketed spatial hash"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #15
@@ -30,7 +30,7 @@ nearest() is a full scan today. Fine at 200 entities; fatal at 5,000 with boids 
 
 ## Decision Outcome
 
-Proposed option: "the spatial hash", because it is the boring, correct answer the grid was quietly designed for. Final call in thread #15 (v2.5 gate).
+Chosen option: "the spatial hash", because it is the boring, correct answer the grid was quietly designed for. Accepted by the owner's verdict, 2026-08-10 (thread #15).
 
 ### Consequences
 

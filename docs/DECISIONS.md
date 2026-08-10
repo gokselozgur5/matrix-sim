@@ -19,10 +19,10 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-012](adr/D-012-simulation-root.md) | Simulation as the only composition root; PodFarm leaves World | 🟢 | v1.0 | #7 |
 | [D-013](adr/D-013-neurallink-bridge.md) | Death propagates over a NeuralLink observer bridge, not an Avatar.brain field | 🟢 | v1.0 | #8 |
 | [D-014](adr/D-014-smith-lsp-violation.md) | AgentSmith stays a protected Liskov violation | 🟢 | v2.0 | #12 |
-| [D-015](adr/D-015-species-as-data.md) | Species are catalog data; classes are for behavior only | 🟡 | v2.5 | #13 |
-| [D-016](adr/D-016-movement-strategies.md) | Behavior variety via Movement strategy composition | 🟡 | v2.5 | #14 |
-| [D-017](adr/D-017-spatial-hash.md) | Neighbor queries via a bucketed spatial hash | 🟡 | v2.5 | #15 |
-| [D-018](adr/D-018-tick-budgets.md) | Tick-rate scheduling and per-species population caps | 🟡 | v2.5 | #16 |
+| [D-015](adr/D-015-species-as-data.md) | Species are catalog data; classes are for behavior only | 🟢 | v2.5 | #13 |
+| [D-016](adr/D-016-movement-strategies.md) | Behavior variety via Movement strategy composition | 🟢 | v2.5 | #14 |
+| [D-017](adr/D-017-spatial-hash.md) | Neighbor queries via a bucketed spatial hash | 🟢 | v2.5 | #15 |
+| [D-018](adr/D-018-tick-budgets.md) | Tick-rate scheduling and per-species population caps | 🟢 | v2.5 | #16 |
 | [D-019](adr/D-019-backend-only.md) | Backend only: no presentation anywhere in the domain | 🟢 | — | — |
 | [D-020](adr/D-020-observability-contract.md) | Observability contract: event log + METRIC lines + DIGEST chain | 🟢 | — | — |
 | [D-021](adr/D-021-perception-feed.md) | The perception feed is the system's true output | 🟢 | v1.0 (interface) | #9 |

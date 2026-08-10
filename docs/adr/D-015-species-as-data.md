@@ -1,6 +1,6 @@
 ---
 title: "D-015 — Species are catalog data; classes are for behavior only"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #13
@@ -30,7 +30,7 @@ Birds, roses, ants, black cats, rain: they differ in glyph-less attributes — k
 
 ## Decision Outcome
 
-Proposed option: "the catalog", because the universe should scale like data, and this repo already versions its reality. Final call in thread #13 (v2.5 gate).
+Chosen option: "the catalog", because the universe should scale like data, and this repo already versions its reality. Accepted by the owner's verdict, 2026-08-10 (thread #13).
 
 ### Consequences
 

@@ -1,6 +1,6 @@
 ---
 title: "D-016 — Behavior variety via Movement strategy composition"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #14
@@ -30,7 +30,7 @@ Flocking birds, boiling insects, rooted flowers, drifting rain, wandering cats, 
 
 ## Decision Outcome
 
-Proposed option: "the strategy seam", because six gaits shared by dozens of kinds is exactly what strategies are for, and ECS stays our documented escape hatch. Final call in thread #14 (v2.5 gate).
+Chosen option: "the strategy seam", because six gaits shared by dozens of kinds is exactly what strategies are for, and ECS stays our documented escape hatch. Accepted by the owner's verdict, 2026-08-10 (thread #14).
 
 ### Consequences
 
