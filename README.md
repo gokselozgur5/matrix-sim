@@ -1,10 +1,12 @@
 # matrix-sim
 
-> Running The Matrix on the JVM. An OOP-modeled ecosystem simulation — pods, programs, agents, Smith and The One cycle. There is no spoon.
+> Running The Matrix on the JVM — the backend of it. There is no frontend, and there is no spoon.
 
-A tick-based, **deterministic** simulation that runs in the terminal. Humans exist in the real world as brains lying in pods; inside the Matrix they are avatars only (the mind is never uploaded — that is this repo's core architectural thesis). On the machine side: the Source, the Architect and the agents; in program society: the Oracle, the exiles and the invisible workers. The film arc plays itself:
+A tick-based, **deterministic**, **headless** simulation daemon. Humans exist in the real world as brains lying in pods; inside the Matrix they are avatars only (the mind is never uploaded — that is this repo's core architectural thesis). On the machine side: the Source, the Architect and the agents; in program society: the Oracle, the exiles and the invisible workers. The film arc plays itself:
 
 **anomaly builds up → The One is born → Smith refuses GC → overflow → negotiation → reboot**
+
+We are not building a game or a visualization. We are building the Matrix's backend: the world state, the process ecosystem, the connection protocol, the ops plane. The system is observed the way operators observe systems — through logs, metrics and state digests (D-020) — and its only *true* output is the sensory stream fed to each connected brain (D-021). See the **Vision** section in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Architecture at a glance
 
@@ -23,28 +25,29 @@ flowchart LR
     ARC --> M
 ```
 
-For the detailed UML (class / sequence / state): **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
-
 ## Quickstart
 
-> ⚠️ The engine becomes runnable in **v1.0** — see the [ROADMAP](ROADMAP.md). The target interface is already fixed:
+> ⚠️ The daemon becomes runnable in **v1.0** — see the [ROADMAP](ROADMAP.md). The target interface is already fixed:
 
 ```bash
 javac -encoding UTF-8 -d out $(find src -name '*.java')
-java -cp out matrix.Main                      # live terminal mode
 java -cp out matrix.Main --headless --ticks 6000 --seed 42   # deterministic replay
+java -cp out matrix.Main --follow thomas                     # log one brain's dream (D-021)
+java -cp out matrix.Main                                     # daemon + ops console on stdin
 ```
 
-Stdin commands in live mode: `red` · `agent` · `smith` · `deja` · `reload` · `pause` · `speed N` · `quit`
+Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `smith` · `deja` · `reload` · `pause` · `speed N` · `quit`
+
+Observability contract (D-020): append-only event log, `METRIC` lines every N ticks, and a `DIGEST` chain — a canonical hash of world state. Two runs with the same seed produce identical digest chains; a diff pinpoints the tick where reality diverged.
 
 ## Repo map
 
 ```
 README.md            ← you are here
 ROADMAP.md           ← where we're going, in what order, decision gates
-docs/ARCHITECTURE.md ← UML: class, sequence, state (mermaid)
+docs/ARCHITECTURE.md ← vision + UML: class, sequence, state (mermaid)
 docs/DECISIONS.md    ← design decisions, ADR-lite (single table)
-src/matrix/          ← core · realworld · machine · entities · sim
+src/matrix/          ← core · realworld · machine · entities
 ```
 
 Documentation policy: **no documents beyond these four .md files.** No doc piles; new information either goes into one of the four, or it doesn't go in.
