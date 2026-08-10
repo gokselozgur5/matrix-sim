@@ -38,7 +38,7 @@ Chosen option: "Java 17", because the constitution (determinism) and the central
 
 ### Confirmation
 
-javac --release 17 builds the repo with no external dependencies; the v1.0 DoD digest diff passes on this box.
+javac -encoding UTF-8 --release 17 builds the repo with no external dependencies (errata 2026-08-10, skeptic N2: the encoding flag is pinned — without it the build is locale-dependent); the v1.0 DoD digest diff passes on this box.
 
 ## Pros and Cons of the Options
 
