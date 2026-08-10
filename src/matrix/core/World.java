@@ -22,6 +22,7 @@ public final class World {
     private final Rng rng;
     private final EventBus bus;
     private final PlaceGraph places;
+    private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
     private long tick = 0;
@@ -31,6 +32,11 @@ public final class World {
         this.rng = rng;
         this.bus = bus;
         this.places = places;
+    }
+
+    /** Bucketed neighbor query (D-017) — exact-radius, canonical order. */
+    public List<MatrixEntity> nearby(Position from, int radiusCm) {
+        return hash.near(from, radiusCm);
     }
 
     public Rng rng() {
@@ -59,6 +65,7 @@ public final class World {
 
     public void step() {
         tick++;
+        hash.rebuild(entities);
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {

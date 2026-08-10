@@ -115,6 +115,12 @@ public final class Simulation {
             world.queue(new WorldEvent.Spawn(
                     new ExileProgram(world.allocateId(), randomPosition(), kinds[i % kinds.length])));
         }
+        for (matrix.entities.eco.Species species : matrix.entities.eco.Bestiary.ALL) {
+            for (int i = 0; i < species.populationCap(); i++) {
+                world.queue(new WorldEvent.Spawn(new matrix.entities.eco.EnvironmentProgram(
+                        world.allocateId(), randomPosition(), species)));
+            }
+        }
         return smith;
     }
 
@@ -127,6 +133,8 @@ public final class Simulation {
         world.log(Severity.SYS, "compute model: PROCESSOR — the inmates render their own cells");
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
+        world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
+                + " species rendered — a healthy program is invisible");
         if (followName != null) {
             world.log(Severity.SYS, followed == null
                     ? "follow: no pilot matches '" + followName + "'"
@@ -195,6 +203,9 @@ public final class Simulation {
         long t = world.tick();
         if (t % Config.METRIC_EVERY_TICKS == 0) {
             emit(metrics.sample(t).format());
+        }
+        if (t % Config.ECO_EVERY_TICKS == 0) {
+            emit(metrics.ecoLine(t));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);

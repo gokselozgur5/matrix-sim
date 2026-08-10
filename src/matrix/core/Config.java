@@ -30,6 +30,15 @@ public final class Config {
 
     public static final long SMITH_FORK_TICK = 1_500;
     public static final long AGENT_DECOMMISSION_TICK = 3_000;
+
+    public static final int HASH_CELL_CM = 5_000;
+    public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;
+    public static final int FLOCK_SEPARATION_CM = 1_500;
+    public static final int FLOCK_MAX_NEIGHBORS = 6;
+    public static final int SWARM_RADIUS_CM = 3_000;
+    public static final int COMMUTE_SWITCH_TICKS = 500;
+    public static final int COMMUTE_ARRIVE_CM = 500;
+    public static final int ECO_EVERY_TICKS = 100;
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
