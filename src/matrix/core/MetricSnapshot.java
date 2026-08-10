@@ -2,9 +2,19 @@ package matrix.core;
 
 import java.util.Locale;
 
-/** Counts of everything at a tick — the METRIC line in object form (D-020). */
+/**
+ * Counts of everything at a tick — the METRIC line in object form (D-020).
+ * Non-finite doubles are rejected at construction: NaN in a stable grammar
+ * is a lie with a stack trace deferred.
+ */
 public record MetricSnapshot(long tick, int blue, int red, int agents, int total,
                              double infectedFraction, double anomaly) {
+
+    public MetricSnapshot {
+        if (!Double.isFinite(infectedFraction) || !Double.isFinite(anomaly)) {
+            throw new IllegalArgumentException("non-finite metric at tick " + tick);
+        }
+    }
 
     /** Locale.ROOT so the line is byte-identical on every machine. */
     public String format() {
