@@ -27,18 +27,27 @@ flowchart LR
 
 ## Quickstart
 
-> ⚠️ The daemon becomes runnable in **v1.0** — see the [ROADMAP](ROADMAP.md). The target interface is already fixed:
+Requires **JDK 17+**. On macOS with an older default JDK:
 
 ```bash
-javac -encoding UTF-8 -d out $(find src -name '*.java')
-java -cp out matrix.Main --headless --ticks 6000 --seed 42   # deterministic replay
-java -cp out matrix.Main --follow thomas                     # log one brain's dream (D-021)
-java -cp out matrix.Main                                     # daemon + ops console on stdin
+brew install openjdk@17
+sudo ln -sfn $(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+export JAVA_HOME=$(/usr/libexec/java_home -v 17) && export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `smith` · `deja` · `reload` · `pause` · `speed N` · `quit`
+Build and run (v1.0 lives on the phase branch until its PR merges):
 
-Observability contract (D-020): append-only event log, `METRIC` lines every N ticks, and a `DIGEST` chain — a canonical hash of world state. Two runs with the same seed produce identical digest chains; a diff pinpoints the tick where reality diverged.
+```bash
+javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
+java -cp out matrix.Main --selftest                          # in-process digest double-run (D-009)
+java -cp out matrix.Main                                     # live daemon + ops console on stdin
+java -cp out matrix.Main --headless --ticks 2000 --seed 42   # deterministic run + PERF line
+java -cp out matrix.Main --follow anderson --headless --ticks 2000 | grep '^{' | jq .   # one pilot's dream (D-021)
+```
+
+Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `pause` · `speed N` · `quit` (v2.0 adds `smith`, `deja`; v3.0 adds `reload`)
+
+Observability contract (D-020): append-only event log, `METRIC` lines every 100 ticks, and a `DIGEST` chain — a canonical hash of world state. Two runs with the same seed produce identical digest chains; a diff pinpoints the tick where reality diverged. Same seed, same fate, on every platform: a seed-42 run produces byte-identical digests on Apple-Silicon macOS and x86-64 Linux (verified 2026-08-10).
 
 ## Repo map
 
