@@ -7,9 +7,12 @@ import matrix.entities.MatrixEntity;
  * (D-023: one day the event log is the state). Queued during a tick,
  * flushed in order at tick end — never applied mid-iteration.
  */
-public sealed interface WorldEvent permits WorldEvent.Spawn, WorldEvent.Remove {
+public sealed interface WorldEvent permits WorldEvent.Spawn, WorldEvent.Remove, WorldEvent.Replace {
 
     record Spawn(MatrixEntity entity) implements WorldEvent {}
 
     record Remove(int entityId) implements WorldEvent {}
+
+    /** In-place substitution at the same registry slot — iteration order survives infection (D-001/D-010). */
+    record Replace(int entityId, MatrixEntity replacement) implements WorldEvent {}
 }

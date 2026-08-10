@@ -40,6 +40,10 @@ public final class World {
         return tick;
     }
 
+    public List<MatrixEntity> entities() {
+        return entities;
+    }
+
     public int allocateId() {
         return nextId++;
     }
@@ -66,9 +70,40 @@ public final class World {
                 entities.add(s.entity());
             } else if (ev instanceof WorldEvent.Remove r) {
                 entities.removeIf(e -> e.id == r.entityId());
+            } else if (ev instanceof WorldEvent.Replace rp) {
+                for (int i = 0; i < entities.size(); i++) {
+                    if (entities.get(i).id == rp.entityId()) {
+                        entities.set(i, rp.replacement());
+                        break;
+                    }
+                }
             }
         }
         pending.clear();
+    }
+
+    public MatrixEntity nearestNonReplicating(Position from, int selfId) {
+        MatrixEntity best = null;
+        long bestD = Long.MAX_VALUE;
+        for (MatrixEntity e : entities) {
+            if (!e.alive || e.id == selfId || e instanceof matrix.entities.SelfReplicating) {
+                continue;
+            }
+            long d = from.euclidSqCm(e.pos);
+            if (d < bestD) {
+                bestD = d;
+                best = e;
+            }
+        }
+        return best;
+    }
+
+    public int countInfected() {
+        int n = 0;
+        for (MatrixEntity e : entities) {
+            if (e.alive && e instanceof matrix.entities.SelfReplicating) n++;
+        }
+        return n;
     }
 
     public void kill(Avatar avatar, String by) {

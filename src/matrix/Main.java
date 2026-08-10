@@ -106,6 +106,8 @@ public final class Main {
                 switch (parts[0]) {
                     case "red" -> sim.commandRed();
                     case "agent" -> sim.commandAgent();
+                    case "smith" -> sim.commandSmith();
+                    case "deja" -> sim.commandDeja();
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -118,7 +120,7 @@ public final class Main {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;
                     }
-                    case "help" -> System.out.print("commands: red | agent | pause | speed N | quit\n");
+                    case "help" -> System.out.print("commands: red | agent | smith | deja | pause | speed N | quit\n");
                     default -> System.out.print("unknown command (try: help)\n");
                 }
             }
@@ -139,7 +141,7 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --selftest          in-process digest double-run; exit 0 iff chains match
-                interactive commands: red | agent | pause | speed N | quit
+                interactive commands: red | agent | smith | deja | pause | speed N | quit
                 """);
     }
 }

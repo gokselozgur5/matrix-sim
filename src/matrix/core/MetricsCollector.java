@@ -11,12 +11,14 @@ public final class MetricsCollector {
     }
 
     public MetricSnapshot sample(long tick) {
+        int alive = world.countAlive();
+        double infected = alive == 0 ? 0.0 : (double) world.countInfected() / alive;
         return new MetricSnapshot(tick,
                 world.count(Pill.BLUE),
                 world.count(Pill.RED),
                 world.countAgents(),
-                world.countAlive(),
-                0.0,
+                alive,
+                infected,
                 0.0);
     }
 }

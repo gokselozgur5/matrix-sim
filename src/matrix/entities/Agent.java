@@ -6,7 +6,7 @@ import matrix.core.Severity;
 import matrix.core.World;
 
 /** IDS daemon: hunts rogue clients. Catch outcome per accepted D-002: 90% replug, 10% terminate. */
-public final class Agent extends Program {
+public class Agent extends Program {
     public final String codename;
 
     public Agent(int id, Position pos, String codename) {
