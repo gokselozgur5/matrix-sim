@@ -64,3 +64,5 @@ Chosen option: "contractual budgets with the digest referee", because bullet tim
 Related: [D-010](D-010-determinism.md), [D-017](D-017-spatial-hash.md), [D-018](D-018-tick-budgets.md), [D-020](D-020-observability-contract.md). Principle: A10.
 
 Accepted with a spark: each phase closure stamps its PERF line into the phase tracker — speed gains a git history.
+
+**Errata (2026-08-10, skeptic):** The v2.5 row's "5,000 entities" predates D-036, which sealed the ecosystem at 500+ entities / 12 species. Measured at the sealed scope: 263-346 t/s at 663 entities with the full infection cascade — the 100 t/s floor holds. The 5,000-entity >= 100 t/s figure is retargeted to the D-024 attention-LOD era (whose design includes hash-backed hunts); it is a ceiling we owe the future, not a claim we make today.

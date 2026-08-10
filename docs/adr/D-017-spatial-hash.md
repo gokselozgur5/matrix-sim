@@ -63,3 +63,5 @@ Equivalence proof in the v2.5 PR: digest chains identical scan-vs-hash on the sa
 ## More Information
 
 Related: [D-004](D-004-field-model.md), [D-016](D-016-movement-strategies.md), [D-027](D-027-performance-budgets.md). Crown: #77.
+
+**Errata (2026-08-10, skeptic):** Equivalence is defined against the TICK-START SNAPSHOT: all entities perceive the world as it was when the tick began — simultaneous perception; a live mid-tick scan would make perception depend on iteration order, which is worse, not better. near() returns exactly the set a naive filter over that snapshot returns; result order is cell-major canonical and documented — consumers must never read order as proximity. PERF scope: the D-036-sealed ecosystem (500+ entities). The 5,000-entity figure belongs to the D-024 attention-LOD era, which also moves hunts and infection onto the hash; until then they remain honest O(n) scans.
