@@ -1,37 +1,39 @@
-# DECISIONS (ADR-lite)
+# DECISIONS (index)
 
-One table, one rule: a 🟡 decision is **never merged into code before being discussed together**. A closed decision becomes 🟢 (accepted) or ❌ (rejected) with a one-line rationale. 🔵 is an idea whose time hasn't come.
+One row per decision; the full record (context, decision, consequences) lives in its ADR file under [docs/adr/](adr/). One rule stands: a 🟡 decision is **never merged into code before being discussed together** — discussion happens in the linked thread. 🟢 accepted · ❌ rejected · 🔵 idea parked.
 
-| ID | Decision | Status | Summary / open question |
-|---|---|---|---|
-| D-000 | Process: main is docs-first, every phase a draft PR, four-document policy | 🟢 | This repo's constitution; established at the owner's request. |
-| D-001 | Smith infection = **Decorator** (`SmithCopy` keeps the original inside) | 🟡 | The restore guarantee lives in the type system. Alternatives: State pattern, an `infected` flag. v2.0 gate. |
-| D-002 | Agent catch: 90% replug / 10% terminate (→ pod flush) | 🟡 | Tune the ratio, or a different mechanic altogether? v1.0 gate. |
-| D-003 | GC refusal = `DeletionRefusedException` (exception-as-control-flow) | 🟡 | True to the lore but a classic anti-pattern. Deliberate sin or refactor? v2.0 gate. |
-| D-004 | Field: 72×20 grid + Chebyshev adjacency | 🟡 | Simple and deterministic. Alternative: continuous 2D coordinates. v1.0 gate. |
-| D-005 | World mutation: pending add/remove queues | 🟡 | Safe during iteration. Alternative: immutable snapshot / double buffer. v1.0 gate. |
-| D-006 | Tuning: overflow 62%, Smith fork +350 ticks, peace 900 ticks | 🟡 | Numbers live in `Config`; tuned together by arc feel. v3.0 gate. |
-| D-007 | Interface: terminal ANSI + stdin line commands | ❌ | Rejected by the owner (2026-08-10): there is no frontend. Superseded by D-019/D-020; stdin survives only as the ops console (an admin plane, not a UI). |
-| D-008 | Processor-mode mechanics: node loss = compute loss → the Matrix drops "fps" | 🔵 | Turns the battery-vs-processor theory from flavor into mechanics. v4.0 idea. |
-| D-009 | Build: plain `javac`, zero dependencies | 🟡 | Reopened when a Gradle/JUnit need arises (linked to the v4.0 CI idea). |
-| D-010 | Determinism: seeded `Rng`; bare `Random`/`System.time` banned | 🟢 | Same seed → same film; replay and tests build on this. |
-| D-011 | `Human` becomes a real class in `realworld` (owns `Brain`, may hold a `NeuralLink`) | 🟡 | Unplugged humans become representable; treaty opt-out = liberation, not deletion. Lean: yes. |
-| D-012 | `Simulation` root object; `PodFarm` moves out of `World` | 🟡 | The Matrix must not contain the real world — the universe contains both. Fixes an inverted ownership in the draft. |
-| D-013 | Drop `Avatar.brain`; death propagates via a NeuralLink observer bridge | 🟡 | `entities` imports nothing from `realworld`; the death rule becomes a property of the connection — which is exactly the lore. |
-| D-014 | `AgentSmith`'s contract break is a documented LSP violation | 🟡 | The crisis mechanic IS a subtype breaking its parent's contract. Smith is a walking Liskov violation; keep it, document it. |
-| D-015 | Species are **data** (`Species` catalog), never classes | 🟡 | A class is opened only for a behavioral difference. A thousand species = a thousand catalog rows, one `EnvironmentProgram` class. |
-| D-016 | Behavior = Strategy composition (`Movement`: FLOCK, SWARM, ROOTED, DRIFT, WANDER, COMMUTE) | 🟡 | New behavior = new strategy plugged into the catalog; also drives blue-pill avatar routines. No subclass explosion. |
-| D-017 | Spatial hash grid for neighbor queries | 🟡 | O(n) scans die at ecosystem scale. Bucketed lookup keeps the tick budget flat. |
-| D-018 | Tick-rate scheduling + per-species population caps | 🟡 | Flowers barely think, birds think often, nobody exceeds their budget. First step toward attention-graded fidelity. |
-| D-019 | **Backend only.** No presentation types anywhere in the domain; `glyph`/`color`/`renderPriority` purged from the entity API | 🟢 | Owner's call (2026-08-10): "we are coding the Matrix itself, just its backend." The Matrix's real output is the dream, not a screen. |
-| D-020 | Observability contract: append-only event log + `METRIC` lines + `DIGEST` chain (canonical state hash every N ticks) | 🟢 | Every DoD asserts on these. Two runs, same seed → identical digest chain; a diff pinpoints the tick where reality diverged. |
-| D-021 | Perception feed: per-brain sensory frames over NeuralLink are the system's true output | 🟡 | v1 ships the interface + `--follow <name>` (log one brain's dream); the full stream is backlog. |
-| D-022 | Acceptance loop replaces the flat anomaly counter | 🟡 | Each link: propose → accept/resist; resistance residue accrues in an anomaly ledger. The One's birth becomes bookkeeping, not a constant. v3.0 gate. |
-| D-023 | Chronos proper: event-sourced state, snapshots, reload = replay | 🔵 | Today objects are the state and the log is observability; the Vision inverts that. Revisit once v3.0's reload works the simple way. |
-| D-024 | Attention-graded fidelity: unwatched regions are not simulated | 🔵 | The lazy-reality principle as mechanics; D-018's budgets are the embryo. v4.0 idea. |
-| D-025 | Supervision tree and the deletion protocol (SIGTERM + grace period + orphan registry) | 🟡 | The Source becomes a real supervisor; exiles become tracked orphans instead of ad-hoc dodgers. v2.0 gate. |
-| D-026 | Implementation language: Java 17 | 🟡 | C++ was weighed (owner's daily driver). Lean Java: JVM semantics make the digest DoD nearly free, GC matches the Decorator-restore mechanic, sealed types fit the taxonomy. Revisit only if D-024 scale demands a native hot path. v1.0 gate. |
-| D-027 | Performance budgets + `--bench` mode + the digest-invariant optimization rule | 🟡 | v1: ≥2,000 ticks/s @ ~200 entities; v2.5: ≥100 ticks/s @ 5,000 entities; v3 full arc < 5 s; hot path allocation-free. Every optimization PR proves: identical DIGEST chain, better PERF line. v1.0 gate. |
-| D-028 | The doc canon grows to five: PRINCIPLES.md joins; CLAUDE.md exists as the auto-loaded AI pointer (a door, not a document) | 🟢 | Owner's amendment (2026-08-10): the principles needed a first-class home — for the humans and the machines to come. |
+| ID | Decision | Status | Gate | Thread |
+|---|---|---|---|---|
+| [D-000](adr/D-000-process-constitution.md) | Process: docs-first main, draft PRs, five-document canon | 🟢 | — | — |
+| [D-001](adr/D-001-smith-infection-decorator.md) | Smith infection: Decorator vs State vs flag | 🟡 | v2.0 | #10 |
+| [D-002](adr/D-002-agent-catch-mechanics.md) | Agent catch mechanics | 🟡 | v1.0 | #2 |
+| [D-003](adr/D-003-deletion-refused-exception.md) | GC refusal as DeletionRefusedException | 🟡 | v2.0 | #11 |
+| [D-004](adr/D-004-field-model.md) | Field model: grid vs continuous 2D | 🟡 | v1.0 | #3 |
+| [D-005](adr/D-005-world-mutation.md) | World mutation: pending queues vs snapshot | 🟡 | v1.0 | #4 |
+| [D-006](adr/D-006-arc-tuning.md) | Arc tuning constants | 🟡 | v3.0 | #17 |
+| [D-007](adr/D-007-terminal-ui.md) | Terminal ANSI UI | ❌ | — | — |
+| [D-008](adr/D-008-processor-mode.md) | Processor-mode mechanics | 🔵 | v4.0 | #19 |
+| [D-009](adr/D-009-build-tooling.md) | Build: plain javac vs Gradle | 🟡 | v1.0 | #5 |
+| [D-010](adr/D-010-determinism.md) | Determinism: seeded Rng only | 🟢 | — | — |
+| [D-011](adr/D-011-human-class.md) | A real Human class in realworld | 🟡 | v1.0 | #6 |
+| [D-012](adr/D-012-simulation-root.md) | Simulation root; PodFarm out of World | 🟡 | v1.0 | #7 |
+| [D-013](adr/D-013-neurallink-bridge.md) | NeuralLink observer bridge replaces Avatar.brain | 🟡 | v1.0 | #8 |
+| [D-014](adr/D-014-smith-lsp-violation.md) | AgentSmith as a documented LSP violation | 🟡 | v2.0 | #12 |
+| [D-015](adr/D-015-species-as-data.md) | Species are data, never classes | 🟡 | v2.5 | #13 |
+| [D-016](adr/D-016-movement-strategies.md) | Behavior = Movement strategy composition | 🟡 | v2.5 | #14 |
+| [D-017](adr/D-017-spatial-hash.md) | Spatial hash grid for neighbor queries | 🟡 | v2.5 | #15 |
+| [D-018](adr/D-018-tick-budgets.md) | Tick-rate scheduling and population caps | 🟡 | v2.5 | #16 |
+| [D-019](adr/D-019-backend-only.md) | Backend only — no presentation in the domain | 🟢 | — | — |
+| [D-020](adr/D-020-observability-contract.md) | Observability: event log + METRIC + DIGEST chain | 🟢 | — | — |
+| [D-021](adr/D-021-perception-feed.md) | Perception feed as the true output | 🟡 | v1.0 (interface) | #9 |
+| [D-022](adr/D-022-acceptance-loop.md) | Acceptance loop and the anomaly ledger | 🟡 | v3.0 | #18 |
+| [D-023](adr/D-023-chronos-event-sourcing.md) | Chronos proper: event-sourced state, reload = replay | 🔵 | v4.0 | #27 |
+| [D-024](adr/D-024-attention-lod.md) | Attention-graded fidelity | 🔵 | v4.0 | #28 |
+| [D-025](adr/D-025-supervision-tree.md) | Supervision tree and the deletion protocol | 🟡 | v2.0 | #26 |
+| [D-026](adr/D-026-language-java17.md) | Implementation language: Java 17 | 🟡 | v1.0 | #92 |
+| [D-027](adr/D-027-performance-budgets.md) | Performance budgets, --bench, digest-invariant optimization | 🟡 | v1.0 | #93 |
+| [D-028](adr/D-028-five-document-canon.md) | The doc canon grows to five; CLAUDE.md as the AI door | 🟢 | — | — |
+| [D-029](adr/D-029-adr-expansion.md) | ADR files: one record per decision, DECISIONS.md becomes the index | 🟢 | — | — |
+| [D-030](adr/D-030-agent-operating-model.md) | Multi-agent operating model: crews, supervision, proofs | 🟢 | — | — |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.

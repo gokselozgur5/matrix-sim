@@ -47,7 +47,8 @@ README.md            ← you are here
 ROADMAP.md           ← where we're going, in what order, decision gates
 PRINCIPLES.md        ← the why: architectural + development principles, and The Door
 docs/ARCHITECTURE.md ← vision + UML: class, sequence, state (mermaid)
-docs/DECISIONS.md    ← design decisions, ADR-lite (single table)
+docs/DECISIONS.md    ← decision index: one row per decision
+docs/adr/            ← one ADR record per decision (D-029)
 CLAUDE.md            ← auto-loaded pointer for AI sessions (a door, not a document)
 src/matrix/          ← core · realworld · machine · entities
 ```

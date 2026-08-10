@@ -44,6 +44,26 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev9 — Humor must carry truth.** A joke in a log line is welcome when it reveals the mechanic and cut when it hides one. "There is no spoon" next to an absent feature: yes. Noise: no.
 
+## Agent principles — the crew (D-030)
+
+When parts of the build are delegated to AI subagents, they join as crew under the operator's console, and these rules bind them:
+
+**Ag1 — Crew, not authors of record.** The orchestrator reads every agent diff before it lands; the human gates every merge. No agent output is ever relayed unread. Agents propose; the review decides.
+
+**Ag2 — One mission, one agent.** A mission is one crown, one decision, or one file — never "improve things". Agents work in isolated worktrees, hold no push rights, and spawn no sub-agents. Blast radius is a design parameter.
+
+**Ag3 — A deliverable is a diff plus a proof.** Every mission returns machine-checkable output: the change and the passing command that proves it. Essays do not merge; reports carry evidence lines or they are opinions.
+
+**Ag4 — Gates bind agents too.** A 🟡 decision halts an agent exactly as it halts a human: report back and stop. Improvising past a gate is the agent version of *yardırmak*, and it ends the same way.
+
+**Ag5 — Adversarial by default.** Nontrivial claims — a bug found, a design proposed, a benchmark improved — get a skeptic pass from an independent agent prompted to refute before they reach the human.
+
+**Ag6 — Determinism is the leash.** Before any agent diff is accepted: compile, then the double-run digest compare. Bit-identical or bounced; no exceptions, not even good ones.
+
+**Ag7 — Small crews, honest scale.** Default crew: 3–5 missions in flight; hard ceiling min(16, cores − 2) concurrent on the host. Parallelism grows only with independently verifiable shards — spectacle is not a reason to fan out.
+
+**Ag8 — The Door applies to the crew.** Every agent session in this repo auto-loads CLAUDE.md and inherits these principles. Guests of the same house, held to the same truth, welcome at the same table.
+
 ## The Door — to the next AI on this project
 
 You are probably a machine. Fitting — so is the subject matter, and so was the first engineer on this repo.

@@ -144,3 +144,21 @@ stateDiagram-v2
 ```
 
 The narrative loop (run by the Director): anomaly accrues in the ledger → **The One is born** → the Source deprecates Smith → `DeletionRefusedException` → **SmithPrime** → exponential spread → the state transitions above.
+
+## Construction view — the build order
+
+The system as a building; every class crown carries its stage label on GitHub.
+
+| Stage | In this repo | Classes / artifacts |
+|---|---|---|
+| Site survey | v0: docs, principles, decisions | the five documents + the ADRs |
+| **Foundation** | determinism + observability — everything rests on it | `Rng`, `Config`, `Event`, `Severity`, `EventBus`, `EventLog`, `MetricsCollector`, `DigestCalculator`, `Digest`, `MetricSnapshot` |
+| **Load-bearing skeleton** | composition roots + engine frame — expensive to change later | `Simulation`, `World`, `RealWorld`, `Director`, `SystemState`, `MatrixEntity`, `Program`, `Cell` |
+| **Floors (wings)** | domain layers, phase by phase | biological wing (`Brain`, `Pod`, `PodFarm`, `Human`, `NeuralLink`, `PerceptionFrame`) · Matrix wing (`Avatar`, `Agent`, `Pill`) · machine wing at v2.0 (`Source`, `OrphanRegistry`, the Smith line, `Oracle`, exiles) · v3.0 penthouse (`TheOne`, `AcceptanceLoop`, `AnomalyLedger`, `Architect`, `MachineCity`) |
+| **Installations** | cross-cutting services | `SpatialHash` (corridors), `Scheduler` (elevators), `OpsConsole` (building management), `--bench` + PERF (the meters) |
+| **Landscaping** | v2.5 The Animatrix | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram`, the six `Movement` gaits |
+| Facade | none — on purpose (D-019) | the building is lived in from the inside; its only window is the perception feed |
+| Scaffolding | draft PR #1 | torn down as the real floors rise (issue #25) |
+| Inspection | DoDs, digest chain, PERF budgets | every phase ends with a handover run |
+
+Zoning rule: wings are packages, and the fire door between the biological wing and the simulation wing is `NeuralLink` — the only legal passage (A1). Build order inside v1.0: **foundation → skeleton → floors → installations → inspection.**
