@@ -21,15 +21,15 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 ---
 
-## v1.0 — The Matrix
+## v1.0 — The Matrix ✅
 
 *Core engine: the world turns, agents chase — and we watch it through logs, like operators do.*
 
-- [ ] `core`: World (tick loop, pending mutation), seeded Rng, EventBus, SystemState
-- [ ] `realworld`: Brain / Pod / PodFarm / NeuralLink — if the avatar dies, the brain dies
-- [ ] `entities`: Avatar (blue/red), Agent — no presentation members anywhere (D-019)
-- [ ] daemon bootstrap (`Main`) + ops console (stdin admin plane: `red`, `agent`, `pause`, `speed`, `quit`)
-- [ ] observability: append-only event log, `METRIC` lines, `DIGEST` chain (D-020); `--follow <name>` perception sample (D-021 interface)
+- [x] `core`: World (tick loop, pending mutation), seeded Rng, EventBus, SystemState
+- [x] `realworld`: Brain / Pod / PodFarm / NeuralLink — if the avatar dies, the brain dies
+- [x] `entities`: Avatar (blue/red), Agent — no presentation members anywhere (D-019)
+- [x] daemon bootstrap (`Main`) + ops console (stdin admin plane: `red`, `agent`, `pause`, `speed`, `quit`)
+- [x] observability: append-only event log, `METRIC` lines, `DIGEST` chain (D-020); `--follow <name>` perception sample (D-021 interface)
 
 **Decision gate (11):** D-002 (agent catch), D-004 (grid), D-005 (mutation), D-009 (build), D-011/D-012/D-013 (Human, Simulation root, NeuralLink bridge), D-021 (perception interface), D-026 (language), D-027 (performance budgets), D-031 (SystemNode). The tracker issue's gate line is the live source of truth if this list ever lags. **All 11 gates closed by the owner's verdict, 2026-08-10.**
 
@@ -37,13 +37,13 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 ---
 
-## v2.0 — Reloaded
+## v2.0 — Reloaded ✅
 
 *Program society and the birth of the virus.*
 
-- [ ] Oracle (EventBus observer + cookies), ExileProgram (mythology logs)
-- [ ] `deja` command: hot patch + glitch events
-- [ ] The Smith fork: Source.collect → `DeletionRefusedException` → SmithPrime + SmithCopy spread
+- [x] Oracle (EventBus observer + cookies), ExileProgram (mythology logs)
+- [x] `deja` command: hot patch + glitch events
+- [x] The Smith fork: Source.collect → `DeletionRefusedException` → SmithPrime + SmithCopy spread
 
 **Decision gate:** D-001 (Decorator vs State — **the big debate of this phase**), D-003 (exception-as-control-flow), D-014 (the documented LSP violation)
 
