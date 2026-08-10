@@ -50,7 +50,7 @@ If you cannot write the Y-statement, the decision is not understood yet.
 1. Take the next D-number; copy [TEMPLATE.md](TEMPLATE.md) to `D-0XX-short-slug.md`.
 2. Open a `decision` issue (the thread), link it in `consulted`.
 3. Fill the record with `status: proposed`; add the row to [../DECISIONS.md](../DECISIONS.md).
-4. Discuss in the thread. On closure: flip the status and the index emoji — never merge 🟡 into code first (Dev1/Ag4).
+4. Discuss in the thread. The owner's verdict in the thread closes the gate; **the machine then performs the flip** — record status and index emoji together, citing the verdict comment. Never merge 🟡 into code first (Dev1/Ag4).
 
 ## References
 
