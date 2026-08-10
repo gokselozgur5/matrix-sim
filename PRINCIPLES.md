@@ -44,6 +44,8 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev9 — Humor must carry truth.** A joke in a log line is welcome when it reveals the mechanic and cut when it hides one. "There is no spoon" next to an absent feature: yes. Noise: no.
 
+**Dev10 — Decisions are MADR records.** Every decision gets a D-number and a record born from `docs/adr/TEMPLATE.md`: a Y-statement, drivers, options with pros and cons, an outcome with a *because*, and a **Confirmation** that proves compliance. Records are immutable — a changed mind supersedes, it never rewrites. The manual is `docs/adr/README.md`; if you cannot write the Y-statement, you do not understand the decision yet.
+
 ## Agent principles — the crew (D-030)
 
 When parts of the build are delegated to AI subagents, they join as crew under the operator's console, and these rules bind them:
