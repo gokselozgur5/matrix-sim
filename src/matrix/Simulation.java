@@ -14,8 +14,13 @@ import matrix.core.Severity;
 import matrix.core.World;
 import matrix.core.WorldEvent;
 import matrix.entities.Agent;
+import matrix.entities.AgentSmith;
 import matrix.entities.Avatar;
+import matrix.entities.ExileKind;
+import matrix.entities.ExileProgram;
+import matrix.entities.Oracle;
 import matrix.entities.Pill;
+import matrix.machine.Source;
 import matrix.realworld.Human;
 import matrix.realworld.LinkKind;
 import matrix.realworld.NeuralLink;
@@ -36,11 +41,20 @@ import java.util.List;
 public final class Simulation {
     private static final String[] AGENT_NAMES = {
             "Smith", "Brown", "Jones", "Johnson", "Thompson", "Jackson", "Davis", "White"};
+    private static final String[] PATCH_NOTES = {
+            "corridor tuning parameters updated",
+            "MOVED occlusion guard enabled",
+            "MotionGate host tests green — promoted to live",
+            "sky shader v6.0.3 deployed",
+            "cat.render hotfix — expect replay glitches",
+            "spoon removed (there was none)"};
 
     private final Rng rng;
     private final EventBus bus = new EventBus();
     private final World world;
     private final RealWorld realWorld;
+    private final Source source;
+    private final Director director;
     private final List<SystemNode> nodes;
     private final MetricsCollector metrics;
     private final DigestCalculator digests = new DigestCalculator();
@@ -49,6 +63,7 @@ public final class Simulation {
     private final String followName;
     private NeuralLink followed;
     private int agentsSpawned = 0;
+    private int patchesDeployed = 0;
 
     public Simulation(long seed, OutputStream sink, String followName) {
         this.rng = new Rng(seed);
@@ -57,37 +72,61 @@ public final class Simulation {
         PlaceGraph places = new PlaceGraph(Config.WORLD_W_CM, Config.WORLD_H_CM);
         this.world = new World(rng, bus, places);
         this.realWorld = new RealWorld(world);
+        this.source = new Source(world);
         this.metrics = new MetricsCollector(world);
-        this.nodes = List.of(
-                new MachineSystem(world, new Director(world)),
-                new RealWorldSystem(realWorld));
         if (this.out != null) {
             EventLog log = new EventLog(this.out);
             bus.subscribe(log::onEvent);
         }
-        boot(seed);
+        AgentSmith smith = seedPopulation();
+        this.director = new Director(world, source, smith);
+        this.nodes = List.of(
+                new MachineSystem(world, director, source),
+                new RealWorldSystem(realWorld));
+        world.flush();
+        if (followName != null) {
+            followed = realWorld.findLink(followName);
+        }
+        bootBanner(seed);
     }
 
-    private void boot(long seed) {
+    /**
+     * Boot order is canon: citizens, then the Oracle (she must subscribe
+     * BEFORE the first publish — the bus seals, by law), then the named
+     * agent, the daemons, the exiles.
+     */
+    private AgentSmith seedPopulation() {
         for (int i = 0; i < Config.BLUE_START; i++) {
             jackIn(Pill.BLUE);
         }
         for (int i = 0; i < Config.RED_START; i++) {
             jackIn(Pill.RED);
         }
-        for (int i = 0; i < Config.AGENT_START; i++) {
+        world.queue(new WorldEvent.Spawn(
+                new Oracle(world.allocateId(), world.places().zones().get(0).center(), bus)));
+        AgentSmith smith = new AgentSmith(world.allocateId(), randomPosition());
+        agentsSpawned = 1;
+        world.queue(new WorldEvent.Spawn(smith));
+        for (int i = 1; i < Config.AGENT_START; i++) {
             spawnAgent();
         }
-        world.flush();
-        if (followName != null) {
-            followed = realWorld.findLink(followName);
+        ExileKind[] kinds = ExileKind.values();
+        for (int i = 0; i < Config.EXILE_COUNT; i++) {
+            world.queue(new WorldEvent.Spawn(
+                    new ExileProgram(world.allocateId(), randomPosition(), kinds[i % kinds.length])));
         }
+        return smith;
+    }
+
+    private void bootBanner(long seed) {
         world.log(Severity.FATE, "MATRIX v6.0 boot — seed " + seed + ", "
                 + realWorld.farm().occupiedCount() + " nodes plugged, city "
                 + (Config.WORLD_W_CM / 100_000.0) + " km x " + (Config.WORLD_H_CM / 100_000.0) + " km");
         world.log(Severity.SYS, "exit nodes online: " + world.places().exits().size()
                 + " phone booths across " + world.places().zones().size() + " zones");
         world.log(Severity.SYS, "compute model: PROCESSOR — the inmates render their own cells");
+        world.log(Severity.SYS, "program society online: the Oracle and "
+                + Config.EXILE_COUNT + " exiles walk among the sleepers");
         if (followName != null) {
             world.log(Severity.SYS, followed == null
                     ? "follow: no pilot matches '" + followName + "'"
@@ -97,10 +136,13 @@ public final class Simulation {
 
     private void jackIn(Pill pill) {
         Human h = realWorld.grow();
-        Position pos = new Position(rng.nextInt(Config.WORLD_W_CM + 1), rng.nextInt(Config.WORLD_H_CM + 1));
-        Avatar avatar = new Avatar(world.allocateId(), pos, h.name, pill);
+        Avatar avatar = new Avatar(world.allocateId(), randomPosition(), h.name, pill);
         world.queue(new WorldEvent.Spawn(avatar));
         realWorld.register(new NeuralLink(h, avatar, LinkKind.HARDLINE));
+    }
+
+    private Position randomPosition() {
+        return new Position(rng.nextInt(Config.WORLD_W_CM + 1), rng.nextInt(Config.WORLD_H_CM + 1));
     }
 
     /** Ops console: force one awakening. Even overrides respect the cap (skeptic finding). */
@@ -126,11 +168,23 @@ public final class Simulation {
         world.flush();
     }
 
+    /** Ops console: deprecate Smith ahead of schedule. Handle with care. */
+    public void commandSmith() {
+        director.orderSmithCollection("manual override");
+    }
+
+    /** Ops console: hot patch — the users call it déjà vu. */
+    public void commandDeja() {
+        String note = PATCH_NOTES[patchesDeployed % PATCH_NOTES.length];
+        patchesDeployed++;
+        world.log(Severity.FATE, "déjà vu — hot patch deployed: " + note);
+        world.log(Severity.SYS, "a black cat walks by twice; nobody screams");
+    }
+
     private void spawnAgent() {
         String codename = AGENT_NAMES[agentsSpawned % AGENT_NAMES.length];
         agentsSpawned++;
-        Position pos = new Position(rng.nextInt(Config.WORLD_W_CM + 1), rng.nextInt(Config.WORLD_H_CM + 1));
-        world.queue(new WorldEvent.Spawn(new Agent(world.allocateId(), pos, codename)));
+        world.queue(new WorldEvent.Spawn(new Agent(world.allocateId(), randomPosition(), codename)));
         world.log(Severity.SYS, "IDS daemon deployed: agent " + codename);
     }
 
@@ -148,8 +202,14 @@ public final class Simulation {
             chain.add(d);
             emit(d.format());
         }
-        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0 && followed.avatar.alive) {
-            emit(PerceptionFrame.jsonl(t, followed.avatar, world));
+        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
+            if (followed.avatar.alive && world.isPresent(followed.avatar)) {
+                emit(PerceptionFrame.jsonl(t, followed.avatar, world));
+            } else {
+                emit("{\"tick\":" + t + ",\"who\":\"" + followed.human.name
+                        + "\",\"signal\":\"lost — the dream is no longer theirs\"}");
+                followed = null;
+            }
         }
     }
 

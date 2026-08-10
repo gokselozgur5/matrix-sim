@@ -23,5 +23,16 @@ public final class Config {
     public static final int DIGEST_EVERY_TICKS = 100;
     public static final int FOLLOW_EVERY_TICKS = 100;
 
+    public static final int EXILE_COUNT = 6;
+    public static final int EXILE_COLLECT_EVERY_TICKS = 900;
+    public static final int MYTH_EVERY_TICKS = 600;
+    public static final int COOKIES_EVERY_AWAKENINGS = 5;
+
+    public static final long SMITH_FORK_TICK = 1_500;
+    public static final long AGENT_DECOMMISSION_TICK = 3_000;
+    public static final int GRACE_TICKS = 25;
+    public static final int SMITH_SPEED_CM = 320;
+    public static final int COPY_SPEED_CM = 240;
+
     private Config() {}
 }
