@@ -23,9 +23,7 @@ public final class Avatar extends MatrixEntity implements Chooses {
     @Override
     public void tick(World w) {
         if (pill == Pill.BLUE) {
-            if (w.rng().chance(0.6)) {
-                wander(w, Config.BLUE_SPEED_CM);
-            }
+            matrix.entities.behavior.CommuteMovement.INSTANCE.move(this, w);
             return;
         }
         Agent threat = w.nearestAgent(pos);

@@ -42,6 +42,24 @@ public final class PlaceGraph {
         return exits;
     }
 
+    /** For commutes: the nearest other zone — every pair is reachable within one phase window. */
+    public Zone nearestOtherZone(int zoneIndex) {
+        Zone home = zones.get(zoneIndex);
+        Zone best = null;
+        long bestD = Long.MAX_VALUE;
+        for (int i = 0; i < zones.size(); i++) {
+            if (i == zoneIndex) {
+                continue;
+            }
+            long d = home.center().euclidSqCm(zones.get(i).center());
+            if (d < bestD) {
+                bestD = d;
+                best = zones.get(i);
+            }
+        }
+        return best;
+    }
+
     /** Nearest phone booth; ties break by list order — deterministic. */
     public Position nearestExit(Position from) {
         Position best = exits.get(0);

@@ -22,6 +22,7 @@ public final class World {
     private final Rng rng;
     private final EventBus bus;
     private final PlaceGraph places;
+    private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
     private long tick = 0;
@@ -31,6 +32,11 @@ public final class World {
         this.rng = rng;
         this.bus = bus;
         this.places = places;
+    }
+
+    /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
+    public List<MatrixEntity> nearby(MatrixEntity self, int radiusCm) {
+        return hash.near(self, radiusCm);
     }
 
     public Rng rng() {
@@ -59,6 +65,7 @@ public final class World {
 
     public void step() {
         tick++;
+        hash.rebuild(entities);
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {
@@ -213,12 +220,18 @@ public final class World {
         dc.putInt(e.pos.yCm());
         dc.putInt(e.alive ? 1 : 0);
         dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
+        if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
+            dc.putInt(p.species.id().hashCode());
+            dc.putInt(p.headingX);
+            dc.putInt(p.headingY);
+        }
         if (e instanceof SmithCopy c) {
             digestEntity(dc, c.original);
         }
     }
 
     private static int typeTag(MatrixEntity e) {
+        if (e instanceof matrix.entities.eco.EnvironmentProgram) return 8;
         if (e instanceof SmithCopy) return 7;
         if (e instanceof SmithPrime) return 6;
         if (e instanceof Oracle) return 4;

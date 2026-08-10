@@ -24,4 +24,11 @@ public record Position(int xCm, int yCm) {
         if (radiusCm < 0) return false;
         return euclidSqCm(o) <= (long) radiusCm * radiusCm;
     }
+
+    /** A step clamped to the city — the strategies' one door into motion. */
+    public Position steppedBy(int dxCm, int dyCm) {
+        int x = Math.max(0, Math.min(Config.WORLD_W_CM, xCm + dxCm));
+        int y = Math.max(0, Math.min(Config.WORLD_H_CM, yCm + dyCm));
+        return new Position(x, y);
+    }
 }
