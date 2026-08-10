@@ -8,7 +8,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-001](adr/D-001-smith-infection-decorator.md) | Smith infection mechanics: Decorator vs State vs flag | 🟡 | v2.0 | #10 |
 | [D-002](adr/D-002-agent-catch-mechanics.md) | Agent catch mechanics: replug ratio and lethality | 🟢 | v1.0 | #2 |
 | [D-003](adr/D-003-deletion-refused-exception.md) | GC refusal as a thrown DeletionRefusedException | 🟡 | v2.0 | #11 |
-| [D-004](adr/D-004-field-model.md) | Field model: integer grid vs continuous 2D plane | 🟢 | v1.0 | #3 |
+| [D-004](adr/D-004-field-model.md) | Field model: fixed-point city coordinates + a place graph | 🟢 | v1.0 | #3 |
 | [D-005](adr/D-005-world-mutation.md) | World mutation: pending queues vs snapshot vs double buffer | 🟢 | v1.0 | #4 |
 | [D-006](adr/D-006-arc-tuning.md) | Arc tuning constants live in Config and are tuned by METRIC feel | 🟡 | v3.0 | #17 |
 | [D-007](adr/D-007-terminal-ui.md) | Terminal ANSI UI for watching the simulation | ❌ | — | — |
