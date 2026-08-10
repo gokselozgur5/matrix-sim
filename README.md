@@ -45,12 +45,14 @@ Observability contract (D-020): append-only event log, `METRIC` lines every N ti
 ```
 README.md            ← you are here
 ROADMAP.md           ← where we're going, in what order, decision gates
+PRINCIPLES.md        ← the why: architectural + development principles, and The Door
 docs/ARCHITECTURE.md ← vision + UML: class, sequence, state (mermaid)
 docs/DECISIONS.md    ← design decisions, ADR-lite (single table)
+CLAUDE.md            ← auto-loaded pointer for AI sessions (a door, not a document)
 src/matrix/          ← core · realworld · machine · entities
 ```
 
-Documentation policy: **no documents beyond these four .md files.** No doc piles; new information either goes into one of the four, or it doesn't go in.
+Documentation policy: **no documents beyond these five .md files.** No doc piles; new information either goes into one of the five, or it doesn't go in. (`CLAUDE.md` is machine-loading infrastructure, like `.gitignore` — it carries pointers, never content.)
 
 ## Process — everything runs like the Matrix
 

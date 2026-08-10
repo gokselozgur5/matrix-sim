@@ -30,5 +30,8 @@ One table, one rule: a 🟡 decision is **never merged into code before being di
 | D-023 | Chronos proper: event-sourced state, snapshots, reload = replay | 🔵 | Today objects are the state and the log is observability; the Vision inverts that. Revisit once v3.0's reload works the simple way. |
 | D-024 | Attention-graded fidelity: unwatched regions are not simulated | 🔵 | The lazy-reality principle as mechanics; D-018's budgets are the embryo. v4.0 idea. |
 | D-025 | Supervision tree and the deletion protocol (SIGTERM + grace period + orphan registry) | 🟡 | The Source becomes a real supervisor; exiles become tracked orphans instead of ad-hoc dodgers. v2.0 gate. |
+| D-026 | Implementation language: Java 17 | 🟡 | C++ was weighed (owner's daily driver). Lean Java: JVM semantics make the digest DoD nearly free, GC matches the Decorator-restore mechanic, sealed types fit the taxonomy. Revisit only if D-024 scale demands a native hot path. v1.0 gate. |
+| D-027 | Performance budgets + `--bench` mode + the digest-invariant optimization rule | 🟡 | v1: ≥2,000 ticks/s @ ~200 entities; v2.5: ≥100 ticks/s @ 5,000 entities; v3 full arc < 5 s; hot path allocation-free. Every optimization PR proves: identical DIGEST chain, better PERF line. v1.0 gate. |
+| D-028 | The doc canon grows to five: PRINCIPLES.md joins; CLAUDE.md exists as the auto-loaded AI pointer (a door, not a document) | 🟢 | Owner's amendment (2026-08-10): the principles needed a first-class home — for the humans and the machines to come. |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
