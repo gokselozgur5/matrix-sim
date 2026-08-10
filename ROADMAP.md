@@ -51,14 +51,14 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 ---
 
-## v2.5 — The Animatrix
+## v2.5 — The Animatrix ✅
 
 *The side stories: birds, flowers, insects, weather — the ecosystem. Everything is a program.*
 
-- [ ] `Species` catalog + single `EnvironmentProgram` class (D-015)
-- [ ] `Movement` strategies: FLOCK (boids), SWARM, ROOTED, DRIFT, WANDER (+ COMMUTE for blue-pill routines) (D-016)
-- [ ] Spatial hash grid (D-017), tick-rate scheduling + population caps (D-018)
-- [ ] Invisibility rule: healthy environment programs stay out of event noise; glitching ones surface
+- [x] `Species` catalog + single `EnvironmentProgram` class (D-015)
+- [x] `Movement` strategies: FLOCK (boids), SWARM, ROOTED, DRIFT, WANDER (+ COMMUTE for blue-pill routines) (D-016)
+- [x] Spatial hash grid (D-017), tick-rate scheduling + population caps (D-018)
+- [x] Invisibility rule: healthy environment programs stay out of event noise; glitching ones surface
 
 **Decision gate:** D-015, D-016, D-017, D-018
 
