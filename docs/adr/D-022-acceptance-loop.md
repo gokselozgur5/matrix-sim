@@ -58,4 +58,6 @@ In a v3.0 run the birth event cites the ledger total crossing its bound; deletin
 
 Related: [D-021](D-021-perception-feed.md), [D-006](D-006-arc-tuning.md). Crowns: #52, #53. Principle: Vision L4.
 
+**Errata (2026-08-11, deferred skeptic LOW made law):** Post-birth accrual is intentional, and the record now says so. The One's existence does not forgive residue — it only answers the bound crossing that already happened; the ledger keeps counting through the war years. Measured shape at seed 42: birth at 30,227 → ~125k by overflow t=4284 (unbounded by design) → treaty reset to 0 → 30,297 rebuilds by t=5249 → the second birth. The cycle's period is an emergent property of the population mix (seed 7 runs the same loop at 3334/4299), not a constant anywhere in Config. Explicit non-goal, recorded to close the question: **no cap on the ledger** — a capped debt would make overflow timing depend on the cap instead of the city, and the whole point of D-022 is that the city, not a constant, decides when the system owes the world an anomaly. The déjà-vu spike (`DEJA_RESIDUE_SPIKE=250`, ops console only) is the record's "patches gain mechanical meaning" promise, kept in the v3 fix round. Verification: `probes/LedgerMirror` holds every delta to the open-link residue mirror — `LEDGER_ANOMALIES=0` at seeds 42 and 7.
+
 Referenced by: [D-033](D-033-self-substantiation.md).
