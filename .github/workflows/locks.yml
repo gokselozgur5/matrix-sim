@@ -1,0 +1,70 @@
+# .github/workflows/locks.yml — CI as a runner, not a framework (D-040, gate #137).
+#
+# Every PR to main carries the light-lock litany the operator used to run by
+# hand: the same zero-dependency commands, with exit codes and greppable
+# verdict lines as the only judges. No plugins, no build tool — the daemon
+# still builds with javac alone (Dev7 / D-009). Rollback is deleting this file.
+
+name: locks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  locks:
+    runs-on: ubuntu-latest
+    # WHY: backstop only — the litany finishes in minutes; a hung JVM must not eat the meter.
+    timeout-minutes: 15
+    steps:
+      # WHY: the litany judges the tree as pushed — no caches, no artifacts from elsewhere.
+      - name: check out the tree
+        uses: actions/checkout@v4
+
+      # WHY: Temurin 17 is the JDK the locks are calibrated on; setup-java only puts javac/java on PATH.
+      - name: put JDK 17 on PATH
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # WHY: lock 1 — the tree compiles from nothing, the same line release.sh runs at cut time.
+      - name: compile src
+        run: javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
+
+      # WHY: lock 2 — digest double-run at the standard budget; exit code is the verdict.
+      - name: selftest (2,000 ticks)
+        run: java -cp out matrix.Main --selftest
+
+      # WHY: lock 3 — the finale gate; hardcoded 2,000 ticks once left the finale untested (skeptic finding).
+      - name: selftest (6,000 ticks — full arc)
+        run: java -cp out matrix.Main --selftest --ticks 6000
+
+      # WHY: lock 4 — the D-027 budget table verdicts by exit code; the generous timeout is a
+      # hang-guard, not the bound — the bound is bench's own 30 s full-arc row.
+      - name: bench
+        timeout-minutes: 10
+        run: java -cp out matrix.Main --bench
+
+      # WHY: lock 5 — the skeptic's bench must compile against the daemon it dissects (probes stay outside the build).
+      - name: compile probes
+        run: javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
+
+      # WHY: lock 6 — probes always exit 0, so the verdict line itself is the contract:
+      # exact-line grep (-x), so =0 can never match =01 and a missing line fails the job.
+      - name: probe sweep (6,000 ticks each)
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe() { # probe <Class> <exact verdict line the run must print>
+            local cls="$1" want="$2" out
+            out="$(java -cp out:probes/out "$cls" 6000)" || { echo "FATAL $cls crashed" >&2; return 1; }
+            printf '%s\n' "$out"
+            printf '%s\n' "$out" | grep -qxF "$want" || { echo "FATAL $cls missing verdict: $want" >&2; return 1; }
+          }
+          probe LedgerMirror 'LEDGER_ANOMALIES=0'
+          probe OneTrace     'VERDICT CONTRACT_HELD'
+          probe CapSentinel  'CAP_BREACHES=0'
+          probe ArcBeats     'VERDICT BEATS_IN_ORDER'
