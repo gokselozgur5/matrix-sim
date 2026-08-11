@@ -31,7 +31,7 @@ public final class MetricsCollector {
             long best = Long.MAX_VALUE;
             for (var o : birds) {
                 if (o != b) {
-                    best = Math.min(best, b.pos.euclidSqCm(o.pos));
+                    best = Math.min(best, Geo.distSqCm(b.xCm(), b.yCm(), o.xCm(), o.yCm()));
                 }
             }
             sum += Math.round(Math.sqrt((double) best));

@@ -1,7 +1,6 @@
 package matrix.entities.behavior;
 
 import matrix.core.Config;
-import matrix.core.Position;
 import matrix.core.World;
 import matrix.entities.MatrixEntity;
 
@@ -20,6 +19,6 @@ public final class DriftMovement implements Movement {
         if (y > Config.WORLD_H_CM) {
             y = 0;
         }
-        self.pos = new Position(x, y);
+        self.placeAt(x, y);
     }
 }

@@ -86,7 +86,7 @@ public final class Source {
     private void fork(AgentSmith smith) {
         world.log(Severity.BAD, "Smith: \"I knew what I was supposed to do. I DIDN'T.\"");
         world.log(Severity.BAD, "DeletionRefusedException reached the Source — the recorded assumption just aged badly");
-        world.queue(new WorldEvent.Replace(smith.id, new SmithPrime(world.allocateId(), smith.pos)));
+        world.queue(new WorldEvent.Replace(smith.id, new SmithPrime(world.allocateId(), smith.pos())));
         world.log(Severity.BAD, "SmithPrime online — interface Chooses attached at runtime; nobody reviewed it");
     }
 }

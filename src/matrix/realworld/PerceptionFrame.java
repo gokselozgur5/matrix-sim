@@ -1,5 +1,7 @@
 package matrix.realworld;
 
+import matrix.core.Geo;
+import matrix.core.Position;
 import matrix.core.World;
 import matrix.entities.Agent;
 import matrix.entities.Avatar;
@@ -19,12 +21,13 @@ public final class PerceptionFrame {
           .append(",\"who\":\"").append(escape(self.pilotName))
           .append("\",\"pill\":\"").append(self.pill)
           .append("\",\"pos\":[").append(self.xCm()).append(',').append(self.yCm()).append(']');
-        Agent agent = world.nearestAgent(self.pos);
+        Agent agent = world.nearestAgent(self.xCm(), self.yCm());
         if (agent != null) {
-            sb.append(",\"nearestAgentCm\":").append(self.pos.chebyshevCm(agent.pos));
+            sb.append(",\"nearestAgentCm\":").append(Geo.chebyshevCm(self.xCm(), self.yCm(), agent.xCm(), agent.yCm()));
         }
+        Position exit = world.places().nearestExit(self.xCm(), self.yCm());
         sb.append(",\"nearestExitCm\":")
-          .append(self.pos.chebyshevCm(world.places().nearestExit(self.pos)))
+          .append(Geo.chebyshevCm(self.xCm(), self.yCm(), exit.xCm(), exit.yCm()))
           .append('}');
         return sb.toString();
     }
