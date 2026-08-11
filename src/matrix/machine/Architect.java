@@ -28,6 +28,7 @@ public enum Architect {
             } else if (e instanceof SmithPrime p) {
                 w.queue(new WorldEvent.Remove(p.id));
             } else if (e instanceof TheOne one) {
+                one.alive = false;
                 w.queue(new WorldEvent.Remove(one.id));
             }
         }

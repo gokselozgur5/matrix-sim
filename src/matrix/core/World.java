@@ -203,6 +203,23 @@ public final class World {
         return aliveAvatars(pill).size();
     }
 
+    /** The cap counts LATENT reds too: a wrapped mind is still awake underneath (D-001; skeptic finding). */
+    public int countRedIncludingWrapped() {
+        int n = 0;
+        for (MatrixEntity e : entities) {
+            if (!e.alive) {
+                continue;
+            }
+            if (e instanceof Avatar a && a.pill == Pill.RED) {
+                n++;
+            } else if (e instanceof SmithCopy c
+                    && c.original instanceof Avatar wrapped && wrapped.pill == Pill.RED) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     public int countAgents() {
         int n = 0;
         for (MatrixEntity e : entities) {
@@ -266,6 +283,7 @@ public final class World {
     }
 
     private static int typeTag(MatrixEntity e) {
+        if (e instanceof matrix.entities.TheOne) return 9;
         if (e instanceof matrix.entities.eco.EnvironmentProgram) return 8;
         if (e instanceof SmithCopy) return 7;
         if (e instanceof SmithPrime) return 6;

@@ -66,6 +66,7 @@ public final class Director {
         }
         world.setState(SystemState.NEGOTIATION);
         negoTimer = Config.NEGO_TICKS;
+        one.alive = false;
         world.queue(new matrix.core.WorldEvent.Remove(one.id));
         world.flush();
         world.log(Severity.BAD, "SMITH OVERFLOW — " + Math.round(infected * 100)
@@ -76,13 +77,13 @@ public final class Director {
     /** The frozen negotiation: only these lines advance while the world holds its breath. */
     public void negotiationTick() {
         negoTimer--;
-        if (negoTimer == 30) {
+        if (negoTimer == (Config.NEGO_TICKS * 3) / 4) {
             world.log(Severity.BAD, "Deus Ex Machina: \"WHAT DO YOU WANT?\"");
         }
-        if (negoTimer == 20) {
+        if (negoTimer == Config.NEGO_TICKS / 2) {
             world.log(Severity.FATE, "The One: \"Peace.\"");
         }
-        if (negoTimer == 10) {
+        if (negoTimer == Config.NEGO_TICKS / 4) {
             world.log(Severity.SYS, "the machines accept — delete broadcast staging through the anomaly");
         }
         if (negoTimer <= 0) {
@@ -113,7 +114,8 @@ public final class Director {
     }
 
     private void awaken(long t) {
-        if (t % Config.AWAKEN_EVERY_TICKS != 0 || world.count(Pill.RED) >= Config.RED_CAP) {
+        if (t % Config.AWAKEN_EVERY_TICKS != 0
+                || world.countRedIncludingWrapped() >= Config.RED_CAP) {
             return;
         }
         List<Avatar> blues = world.aliveAvatars(Pill.BLUE);
