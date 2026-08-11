@@ -44,5 +44,6 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-037](adr/D-037-theory-practice-split.md) | Division of labor: the Architect holds theory, the Oracle holds practice | 🟢 | — | — |
 | [D-038](adr/D-038-season-two.md) | Season Two: the epilogue graduates, the project goes public | 🟢 | — | — |
 | [D-039](adr/D-039-unit-pr-granularity.md) | Delivery granularity: unit PRs, proportional locks | 🟢 | — | — |
+| [D-040](adr/D-040-ci-and-junit.md) | CI as a runner now, JUnit deferred with a named trigger | 🟡 | v4.5 | #137 |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
