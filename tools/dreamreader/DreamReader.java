@@ -233,7 +233,11 @@ public final class DreamReader {
                 StringBuilder s = new StringBuilder("Tick ").append(tick).append(", ")
                         .append(sevLead(sev)).append(": ").append(sentence(msg));
                 String clause = switch (beat) {
-                    case "one_born", "fork", "overflow", "emergency", "reboot" -> "";
+                    case "one_born" -> "an anomaly's birth does not render on a sleeper's glass";
+                    case "fork" -> "a prime coming online looks, from a pod, like nothing at all";
+                    case "overflow" -> "the feed keeps its three numbers; panic is not one of them";
+                    case "emergency" -> "the old playbook plays; the glass never flickers";
+                    case "reboot" -> "peace, from inside a pod, is the same three numbers";
                     default -> null;
                 };
                 if (clause != null) {
@@ -343,7 +347,14 @@ public final class DreamReader {
         }
 
         static String sevLead(String sev) {
-            return sev;
+            return switch (sev) {
+                case "FATE" -> "fate on the wire";
+                case "BAD" -> "bad news on the wire";
+                case "SYS" -> "the system notes";
+                case "OK" -> "for the record";
+                case "MYTH" -> "the myth desk files";
+                default -> "the wire carries";
+            };
         }
 
         void count(String msg) {
@@ -421,7 +432,7 @@ public final class DreamReader {
                     : "no agent on the glass";
             return "The window at tick " + f.tick() + ": nearest "
                     + zoneName(nearestZone(f.x(), f.y())) + ", " + agent + ", a way out "
-                    + m(f.exitCm()) + " m" + (clause.isEmpty() ? "." : " — " + clause + ".");
+                    + m(f.exitCm()) + " m — " + clause + ".";
         }
 
         // ---------------------------------------------------------- render
@@ -455,7 +466,8 @@ public final class DreamReader {
             sectionIV(out);
 
             out.append(RULE_LIGHT).append('\n');
-            para(out, "END OF DAY — one mind, folded from the record.");
+            para(out, "END OF DAY — one mind, folded from the record. Same seed, same day, "
+                    + "byte for byte; there is no spoon.");
             return out.toString();
         }
 
@@ -507,17 +519,18 @@ public final class DreamReader {
             para(out, "The feed finds " + resolvedName + " at tick " + f.tick()
                     + ": nearest " + zoneName(nearestZone(f.x(), f.y())) + ", on the "
                     + f.pill().toLowerCase(Locale.ROOT) + " pill, " + agent
-                    + ", the closest way out " + m(f.exitCm()) + " m."
+                    + ", the closest way out " + m(f.exitCm()) + " m"
+                    + ("BLUE".equals(f.pill()) ? " — a door nobody is looking for." : ".")
                     + " From here the wire hands this page a frame every "
                     + Config.FOLLOW_EVERY_TICKS + " ticks: a position, two distances, a "
-                    + "pill.");
+                    + "pill. The page folds them and invents nothing.");
         }
 
         void sectionII(StringBuilder out) {
             out.append("II. THE WARS SEEN FROM A WINDOW\n\n");
             if (story.isEmpty()) {
                 para(out, "The wire carried no beats and the window no news: a day with "
-                        + "no war in it.");
+                        + "no war in it. The record allows those too.");
             } else {
                 StringBuilder p = new StringBuilder();
                 for (Item it : story) {
@@ -586,7 +599,8 @@ public final class DreamReader {
             }
             if (ownDay.isEmpty() && ownDoor.isEmpty() && ownDark.isEmpty()) {
                 p.append(p.length() > 0 ? " " : "").append("The log never names ")
-                        .append(resolvedName).append('.');
+                        .append(resolvedName)
+                        .append(" — a quiet file is a life the agents never opened.");
             }
             if (p.length() > 0) {
                 para(out, p.toString());
@@ -621,7 +635,9 @@ public final class DreamReader {
                             .append(" with the feed still live: nearest ")
                             .append(zoneName(nearestZone(last.x(), last.y())))
                             .append(", the pill still ")
-                            .append(last.pill().toLowerCase(Locale.ROOT)).append('.');
+                            .append(last.pill().toLowerCase(Locale.ROOT))
+                            .append(". The record does not say why anyone stays; it only "
+                                    + "says who did.");
                 }
                 para(out, p.toString());
                 return;
@@ -652,9 +668,16 @@ public final class DreamReader {
             if (ended != null) {
                 para(out, "Tick " + ended.tick() + ", the wire's last word under this name:");
                 quote(out, ended.text());
+                boolean selfsub = !ownDoor.isEmpty()
+                        && ownDoor.get(0).msg().startsWith("self-substantiation");
                 para(out, "The feed goes quiet there. The record holds no dreams for "
                         + resolvedName + " between tick " + ended.tick()
-                        + " and the end of the run at tick " + ticks + ".");
+                        + " and the end of the run at tick " + ticks + " — and needs none: "
+                        + (selfsub
+                                ? "a pod stands open where a sleeper was, and the door did "
+                                        + "not ask which pill they were on."
+                                : "the door was open, and the record shows them on the far "
+                                        + "side of it."));
             }
         }
 
@@ -680,9 +703,10 @@ public final class DreamReader {
                         d.add(nHijacks + plural(" session", nHijacks) + " hijacked mid-dream");
                     }
                     p.append(" The dark this day belonged to others — ")
-                            .append(String.join(", ", d)).append('.');
+                            .append(String.join(", ", d))
+                            .append(". Their names are in the log; this page is not theirs.");
                 } else {
-                    p.append(" Nobody's wire cut this day.");
+                    p.append(" Nobody's wire cut this day. The city had quieter business.");
                 }
                 para(out, p.toString());
                 return;
@@ -704,11 +728,13 @@ public final class DreamReader {
                     break;
                 }
             }
-            para(out, resumed >= 0
+            para(out, (resumed >= 0
                     ? "The feed under the name resumes at tick " + resumed
                             + "; section II tells that part."
                     : "After tick " + from + " the feed holds nothing under the name for "
-                            + "the rest of the run.");
+                            + "the rest of the run.")
+                    + " The record measures distance, not fear; what the dark felt like "
+                    + "is the one line it cannot print.");
         }
 
         long lastFollowTick() {
