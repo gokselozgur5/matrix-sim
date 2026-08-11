@@ -38,8 +38,8 @@ public final class SpatialHash {
         }
         for (MatrixEntity e : entities) {
             if (e.alive) {
-                e.snapXCm = e.pos.xCm();
-                e.snapYCm = e.pos.yCm();
+                e.snapXCm = e.xCm();
+                e.snapYCm = e.yCm();
                 buckets[bucketIndex(e.snapXCm, e.snapYCm)].add(e);
             }
         }
@@ -81,5 +81,24 @@ public final class SpatialHash {
         int cx = Math.min(cellsX - 1, Math.max(0, xCm / cellCm));
         int cy = Math.min(cellsY - 1, Math.max(0, yCm / cellCm));
         return cy * cellsX + cx;
+    }
+
+    // Cell-geometry views for the RegionMap (D-024): one clamp law rules
+    // both maps — a coordinate lands in the same cell here and there.
+
+    int cellCount() {
+        return buckets.length;
+    }
+
+    int cellIndexOf(int xCm, int yCm) {
+        return bucketIndex(xCm, yCm);
+    }
+
+    int cellCenterXCm(int cellIndex) {
+        return (cellIndex % cellsX) * cellCm + cellCm / 2;
+    }
+
+    int cellCenterYCm(int cellIndex) {
+        return (cellIndex / cellsX) * cellCm + cellCm / 2;
     }
 }

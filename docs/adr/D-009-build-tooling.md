@@ -64,4 +64,4 @@ Related: [D-026](D-026-language-java17.md), [D-027](D-027-performance-budgets.md
 
 Accepted with a spark: the daemon carries a --selftest flag (an in-process digest double-run) — the kernel of CI without a build tool.
 
-Referenced by: [D-006](D-006-arc-tuning.md), [D-026](D-026-language-java17.md).
+Referenced by: [D-006](D-006-arc-tuning.md), [D-026](D-026-language-java17.md), [D-040](D-040-ci-and-junit.md).

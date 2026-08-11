@@ -26,6 +26,7 @@ public final class Main {
         boolean selftest = false;
         boolean bench = false;
         String follow = null;
+        long sinkAt = -1;
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
@@ -39,6 +40,7 @@ public final class Main {
                 case "--selftest" -> selftest = true;
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
+                case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
@@ -85,7 +87,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath, snapshotAt);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt, snapshotAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -154,18 +156,20 @@ public final class Main {
         return steadyOk && arcOk ? 0 : 1;
     }
 
+    /**
+     * Headless is the scenario runner: {@code --sink-at T} files the #119
+     * loss right before tick T; {@code --chronos} records the run (D-023
+     * stage 1); {@code --snapshot-at T} pauses after tick T, retains the
+     * walk, and lets the emitted DIGEST judge its own preimage (stage 3;
+     * the split changes nothing — run(a) + run(b) is run(a + b)). Snapshot
+     * mode and sink mode are separate scenarios by design.
+     */
     private static void runHeadless(long seed, long ticks, String follow, String chronosPath,
-            Long snapshotAt) throws Exception {
+            long sinkAt, Long snapshotAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
-            if (snapshotAt == null) {
-                sim.run(ticks);
-            } else {
-                // D-023 stage 3: pause the loop after tick T, retain the walk,
-                // and let the emitted DIGEST line judge its own preimage. The
-                // split changes nothing — run(a) + run(b) is run(a + b) — and
-                // the snapshot only reads; with the flag off this path is gone.
+            if (snapshotAt != null) {
                 List<Digest> chain = sim.run(snapshotAt);
                 Snapshot snap = sim.snapshotNow();
                 System.out.print(snap.format() + "\n");
@@ -176,6 +180,14 @@ public final class Main {
                     }
                 }
                 sim.run(ticks - snapshotAt);
+            } else {
+                for (long t = 1; t <= ticks; t++) {
+                    if (t == sinkAt) {
+                        sim.recordCommand("sink");
+                        sim.commandSink();
+                    }
+                    sim.tickOnce();
+                }
             }
             long elapsedNs = System.nanoTime() - start;
             long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
@@ -214,7 +226,7 @@ public final class Main {
             while ((cmd = commands.poll()) != null) {
                 String[] parts = cmd.split("\\s+");
                 switch (parts[0]) {
-                    // The five commands that touch the universe enter the chronos
+                    // The six commands that touch the universe enter the chronos
                     // record before dispatch, refusals included (D-023 stage 1).
                     // Pacing (pause, speed) steers the console, not the universe.
                     case "red" -> { sim.recordCommand(cmd); sim.commandRed(); }
@@ -222,6 +234,7 @@ public final class Main {
                     case "smith" -> { sim.recordCommand(cmd); sim.commandSmith(); }
                     case "deja" -> { sim.recordCommand(cmd); sim.commandDeja(); }
                     case "reload" -> { sim.recordCommand(cmd); sim.commandReload(); }
+                    case "sink" -> { sim.recordCommand(cmd); sim.commandSink(); }
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -234,7 +247,7 @@ public final class Main {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;
                     }
-                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | pause | speed N | quit\n");
+                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | sink | pause | speed N | quit\n");
                     default -> System.out.print("unknown command (try: help)\n");
                 }
             }
@@ -254,6 +267,7 @@ public final class Main {
                   --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
+                  --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
                   --snapshot-at T     with --headless: after tick T, retain the digest walk and print
                                       SNAPSHOT tick/sha/bytes (D-023 stage 3); when T is a digest tick,
@@ -266,7 +280,7 @@ public final class Main {
                                       exits 0 match / 1 divergence / 2 refused
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
-                interactive commands: red | agent | smith | deja | reload | pause | speed N | quit
+                interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit
                 """);
     }
 }

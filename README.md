@@ -12,11 +12,12 @@ We are not building a game or a visualization. We are building the Matrix's back
 
 | Release | Phase | The arc it shipped |
 |---|---|---|
-| `v1.0.0` | **The Matrix** | The city wakes: 200 minds in pods, agents on patrol, red pills dropping off the cluster; death crosses the NeuralLink bridge, and two boxes (Apple-Silicon macOS, x86-64 Linux) produce the same universe byte for byte. |
+| `v1.0.0` | **The Matrix** | The city wakes: 196 minds in pods (192 blue, 4 red), agents on patrol, red pills dropping off the cluster; death crosses the NeuralLink bridge, and two boxes (Apple-Silicon macOS, x86-64 Linux) produce the same universe byte for byte. |
 | `v2.0.0` | **Reloaded** | Program society: the Source offers deletion with grace, one program refuses (`I DIDN'T`), and the infection Decorator begins eating the city. |
 | `v2.5.0` | **The Animatrix** | The rendered ecosystem: 12 species, 660+ entities, fixed-point flocks over the spatial hash; blue pills commute; a healthy program is invisible. |
+| `v3.0.0` | **Revolutions** | Season One's finale: the ledger owes the world an anomaly, The One is born for a debt, Smith overflows, Neo's body does not survive Machine City — treaty, open door, reboot, and a second Thomas because the cycle is the point. Two adversarial rounds signed it off. |
 
-Each release's notes carry its lock report — the evidence produced at cut time. The finale (`v3.0.0`, **Revolutions**: the ledger, The One, the overflow, the treaty, the reboot) cuts when its verification round returns green.
+Each release's notes carry its lock report — the evidence produced at cut time. Season One is complete (D-036's line crossed 2026-08-11); the seasons beyond it are gated in [ROADMAP.md](ROADMAP.md).
 
 ## Architecture at a glance
 
@@ -80,7 +81,7 @@ probes/              ← the skeptic's bench: read-only diagnostic instruments (
 tools/               ← process jigs: the release cutter and kin (never daemon code)
 ```
 
-Documentation policy: **no documents beyond these five .md files.** No doc piles; new information either goes into one of the five, or it doesn't go in. (`CLAUDE.md` is machine-loading infrastructure, like `.gitignore` — it carries pointers, never content.)
+Documentation policy: **five canon documents, no more** — new knowledge goes into one of the five or it doesn't go in. Outside the canon, only three kinds of .md exist, none of them knowledge-piles: machine-loading infrastructure (`CLAUDE.md`, `.github/` templates — pointers and forms, never content), MADR records under `docs/adr/` (D-029's law), and shop manuals that document a tool in the tool's own directory (`probes/README.md`, `tools/README.md`). A document that is not one of these four kinds does not get created.
 
 ## Process — everything runs like the Matrix
 

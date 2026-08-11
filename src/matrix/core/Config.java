@@ -22,6 +22,7 @@ public final class Config {
     public static final int METRIC_EVERY_TICKS = 100;
     public static final int DIGEST_EVERY_TICKS = 100;
     public static final int FOLLOW_EVERY_TICKS = 100;
+    public static final int ZION_EVERY_TICKS = 100;
 
     public static final int EXILE_COUNT = 6;
     public static final int EXILE_COLLECT_EVERY_TICKS = 900;
@@ -53,6 +54,17 @@ public final class Config {
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
+
+    public static final int RIG_CAPACITY = 3;
+    public static final int RIG_STATION_TICKS = 400;
+    public static final int TRANSIT_TICKS = 150;
+    public static final long SHIP_LOSS_TICK = -1; // #119 scenario knob: -1 = off, the canonical fate
+    public static final int FLEET_MAX = 2;
+    public static final int EXIT_REACH_CM = 300;
+    public static final int RECALL_TIMEOUT_TICKS = 200;
+    public static final int LOD_LINGER_TICKS = 200;
+    public static final int LOD_COLD_STRETCH = 4;
+    public static final int ATTN_EVERY_TICKS = 100;
 
     private Config() {}
 }

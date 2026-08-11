@@ -1,6 +1,8 @@
 package matrix.entities.eco;
 
+import matrix.core.Config;
 import matrix.core.Position;
+import matrix.core.RegionMap;
 import matrix.core.Scheduler;
 import matrix.core.World;
 import matrix.entities.Program;
@@ -14,8 +16,11 @@ import matrix.entities.behavior.WanderMovement;
 /**
  * THE class behind every bird, flower, insect and raindrop (D-015):
  * one class, twelve species, zero subclasses. The gait is selected by
- * the catalog row (D-016); the cadence by the scheduling wheel (D-018).
- * A healthy environment program is invisible — it never logs.
+ * the catalog row (D-016); the cadence by the scheduling wheel (D-018)
+ * — stretched by LOD_COLD_STRETCH while the snapshot lies in a COLD
+ * region (D-024 P1, #131): the cold city dreams slower, and a skipped
+ * tick skips its rng draws too. A healthy environment program is
+ * invisible — it never logs.
  */
 public final class EnvironmentProgram extends Program {
     public final Species species;
@@ -30,6 +35,13 @@ public final class EnvironmentProgram extends Program {
     @Override
     public void tick(World w) {
         if (!Scheduler.due(w.tick(), species.tickPeriod(), id)) {
+            return;
+        }
+        RegionMap regions = w.regions();
+        if (!regions.isHot(regions.regionAt(snapXCm, snapYCm))
+                && !Scheduler.due(w.tick(), species.tickPeriod() * Config.LOD_COLD_STRETCH, id)) {
+            // COLD: only every LOD_COLD_STRETCH-th due tick survives — and the
+            // skipped tick draws nothing, so the degraded film is its own film.
             return;
         }
         switch (species.movement()) {

@@ -28,6 +28,7 @@ import matrix.realworld.LinkKind;
 import matrix.realworld.NeuralLink;
 import matrix.realworld.PerceptionFrame;
 import matrix.realworld.RealWorld;
+import matrix.zion.Zion;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -55,6 +56,7 @@ public final class Simulation {
     private final EventBus bus = new EventBus();
     private final World world;
     private final RealWorld realWorld;
+    private final Zion zion;
     private final Source source;
     private final Director director;
     private final List<SystemNode> nodes;
@@ -82,6 +84,7 @@ public final class Simulation {
         PlaceGraph places = new PlaceGraph(Config.WORLD_W_CM, Config.WORLD_H_CM);
         this.world = new World(rng, bus, places);
         this.realWorld = new RealWorld(world);
+        this.zion = new Zion(world);
         this.source = new Source(world);
         this.metrics = new MetricsCollector(world);
         if (this.out != null) {
@@ -97,9 +100,13 @@ public final class Simulation {
         }
         AgentSmith smith = seedPopulation();
         this.director = new Director(world, source, smith);
+        // Canonical node order (D-031, crown #122): machine, realworld, zion —
+        // zion LAST, so liberations queued this tick are absorbed this tick.
+        // The third node is the fence event: nodes.add, addition not refactor.
         this.nodes = List.of(
                 new MachineSystem(world, director, source),
-                new RealWorldSystem(realWorld));
+                new RealWorldSystem(realWorld),
+                new ZionSystem(zion));
         world.flush();
         if (followName != null) {
             followed = realWorld.findLink(followName);
@@ -231,6 +238,16 @@ public final class Simulation {
         }
     }
 
+    /**
+     * Ops console: scuttle the active ship (#119). Operator-driven and
+     * deterministic exactly like reload — except the loss executes in the
+     * NEXT zion tick's canonical slot, so the cascade lands in tick order,
+     * never between batches.
+     */
+    public void commandSink() {
+        zion.orderSink();
+    }
+
     private boolean oneExists() {
         for (var e : world.entities()) {
             if (e.alive && e instanceof matrix.entities.TheOne) {
@@ -269,6 +286,12 @@ public final class Simulation {
             world.flush();
             world.log(Severity.OK, "open door tally: " + freed + " walked out; the census keeps them");
         }
+        // The handoff (crown #84): only the root holds both banks (D-012), so
+        // only the root carries freed Humans across — every tick, in link
+        // registration order. Today every pending liberation is the treaty's.
+        for (Human freed : realWorld.drainLiberations()) {
+            zion.absorb(freed, "treaty");
+        }
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
             matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
@@ -282,6 +305,14 @@ public final class Simulation {
         }
         if (t % Config.ECO_EVERY_TICKS == 0) {
             emit(metrics.ecoLine(t));
+        }
+        if (t % Config.ATTN_EVERY_TICKS == 0) {
+            emit(metrics.attnLine(t));
+        }
+        if (t % Config.ZION_EVERY_TICKS == 0) {
+            // #118: the root hands zion's open links to the collector (D-012) and
+            // the trace suffix rides the ZION line — present exactly when links>0.
+            emit(zion.zionLine(t) + metrics.traceSuffix(zion.openPirateAvatars()));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
