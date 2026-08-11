@@ -123,6 +123,21 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ---
 
+## The Year (D-054, proposed) — six seasons, five programs
+
+*The Architect's horizon, 2026-08-11: a full year at 200+ daily contributions — "1 yılda saatlerce çalışıp dolduracak kadar büyük düşün." The year is filled by shape, not pace:*
+
+| Season | Window | Theme |
+|---|---|---|
+| **S3** The Heart of the City → The Truce | now–Oct | the four beats below: characters, the door, the detective city, the era |
+| **S4** The Six Iterations | Oct–Dec | the failed heavens: Paradise v1, the Nightmare v2, the cycles — prior Matrices as config-eras |
+| **S5** The Real World | Dec–Feb | Zion the settlement · machine city 01 · sentinel ecology · the surface |
+| **S6** The Crop | Feb–Apr | the scale ladder: 5k → 100k → 1,000,000 minds; metropolis science |
+| **S7** The Analyst | Apr–Jun | the D-036 pocket: fear/desire A/B, the sheeple loop, modal worlds |
+| **S8** The Sixty Years | Jun–Aug 2027 | the decades resolved; the anniversary; the Parity Ledger closes |
+
+*Continuous programs, all year: the Chronicle (authored canon most days) · the Census (atlas science) · the Bench (instruments) · the Archaeology (MxO, Animatrix, comics, the games) · the Spec (data survives; closed math dies). Pacing law: gates open progressively; v1 then deepen; every season ends with its skeptic, its release, its brief.*
+
 ## Season Three (D-041, proposed) — the character layer
 
 *The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
