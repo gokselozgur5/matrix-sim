@@ -63,13 +63,18 @@ public final class Hovercraft {
 
     /**
      * One tick of the mission clock. The rig's wire watches first,
-     * whatever the state — a death inside does not wait for the ship.
-     * Arrival opens the session and jacks the crew in, capacity-capped;
-     * budget exhaustion turns the ship for home and the recall executes;
-     * docking releases the crew to the census rotation.
+     * whatever the state — a death inside does not wait for the ship, and
+     * neither does the sprint. Arrival opens the session and jacks the
+     * crew in, capacity-capped. Budget exhaustion issues the recall
+     * order — since #117 an order, not a lift: the ship HOLDS STATION
+     * while the crew sprint for booths, and turns for home only when
+     * every channel has closed, clean or cut (the rig's timeout bounds
+     * the hold at {@code RECALL_TIMEOUT_TICKS} watches, so the clock
+     * stays arithmetic). Docking releases the crew to the census
+     * rotation.
      */
     public void tick(World world) {
-        rig.observeDeaths(world);
+        rig.watch(world);
         switch (state) {
             case DOCKED, LOST -> { }
             case TRANSIT -> {
@@ -85,11 +90,14 @@ public final class Hovercraft {
                 }
             }
             case ON_STATION -> {
-                if (rig.spendBudgetTick()) {
-                    rig.recall(world);
+                if (!rig.recallIssued()) {
+                    if (rig.spendBudgetTick()) {
+                        rig.recall(world);
+                    }
+                } else if (rig.openLinks() == 0) {
                     state = MissionState.RETURNING;
                     ticksInState = 0;
-                    world.log(Severity.SYS, name + " turns for home — the station budget is spent");
+                    world.log(Severity.SYS, name + " turns for home — every channel closed, one way or the other");
                 }
             }
             case RETURNING -> {
