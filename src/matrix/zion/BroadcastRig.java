@@ -49,6 +49,8 @@ public final class BroadcastRig {
     private boolean recallIssued = false;
     /** Watches since the recall order — the sprint clock the timeout cut is measured on. */
     private int sprintTicks = 0;
+    /** The world version this session's wires were opened against — a reboot invalidates every one (#206). */
+    private int sessionVersion = -1;
 
     /**
      * A new session: take the insertion zone Zion assigned at launch
@@ -63,6 +65,7 @@ public final class BroadcastRig {
         budgetRemaining = Config.RIG_STATION_TICKS;
         recallIssued = false;
         sprintTicks = 0;
+        sessionVersion = world.version();
         world.log(Severity.SYS, "broadcast rig live: insertion zone " + insertionZone.name()
                 + ", " + Config.RIG_CAPACITY + " channels, station budget "
                 + Config.RIG_STATION_TICKS + " ticks");
@@ -114,6 +117,33 @@ public final class BroadcastRig {
      * watch itself: a mind AT the booth on the last tick goes home.
      */
     public void watch(World world) {
+        // Session integrity first (#206, the pill-flip audit): the Matrix may
+        // believe whatever it likes about a catch or a reboot — the RIG knows
+        // its own wire. A session whose avatar is no longer RED was traced
+        // (the agent's catch completed the trace); a session opened against a
+        // world that no longer exists (version bump — the reboot) is dead
+        // air. Both cut immediately, the hard way, counted. The presence
+        // gate defers every cut and every exit while Smith wears the mind
+        // (M3): an absent avatar's wire holds until restore — the same rule
+        // the Kid's door got.
+        for (NeuralLink link : links) {
+            if (link.closed() || !link.avatar.alive || !world.isPresent(link.avatar)) {
+                continue;
+            }
+            if (world.version() != sessionVersion) {
+                link.severUnclean();
+                traced++;
+                world.log(Severity.BAD, "the reboot cut the wire — " + link.human.name
+                        + "'s session belonged to a world that no longer exists");
+                world.queue(new WorldEvent.Remove(link.avatar.id));
+            } else if (link.avatar.pill != Pill.RED) {
+                link.severUnclean();
+                traced++;
+                world.log(Severity.BAD, "the trace completes — " + link.human.name
+                        + "'s catch was the trap closing; the rig cuts the wire");
+                world.queue(new WorldEvent.Remove(link.avatar.id));
+            }
+        }
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
                 traced++;
@@ -129,7 +159,7 @@ public final class BroadcastRig {
         for (NeuralLink link : links) {
             matrix.core.Position booth = world.places()
                     .nearestExit(link.avatar.xCm(), link.avatar.yCm());
-            if (!link.closed() && matrix.core.Geo.within(
+            if (!link.closed() && world.isPresent(link.avatar) && matrix.core.Geo.within(
                     link.avatar.xCm(), link.avatar.yCm(),
                     booth.xCm(), booth.yCm(), Config.EXIT_REACH_CM)) {
                 link.closeClean();
@@ -140,7 +170,7 @@ public final class BroadcastRig {
         }
         if (sprintTicks > Config.RECALL_TIMEOUT_TICKS) {
             for (NeuralLink link : links) {
-                if (!link.closed()) {
+                if (!link.closed() && world.isPresent(link.avatar)) {
                     link.severUnclean();
                     traced++;
                     world.log(Severity.BAD, "the rig cuts the wire — " + link.human.name
