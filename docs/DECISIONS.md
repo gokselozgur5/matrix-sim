@@ -55,5 +55,8 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-048](adr/D-048-districts-with-identity.md) | Districts with identity: the city's quarters mean something | 🟡 | v6.0 | #223 |
 | [D-049](adr/D-049-truce-regime.md) | The Truce as a regime: the untold sixty years, playable | 🟡 | v6.0 | #224 |
 | [D-050](adr/D-050-live-events.md) | Live events as signed chronos entries: authored history | 🟡 | v6.0 | #225 |
+| [D-051](adr/D-051-allegiance-influence.md) | Allegiance as data; the influence ledger as political weather | 🟡 | v6.0 | #227 |
+| [D-052](adr/D-052-missions.md) | Missions: template rows, one executor, a dream with a plot | 🟡 | v6.0 | #228 |
+| [D-053](adr/D-053-favor-economy.md) | The favor economy: orphan insurance, conservation by construction | 🟡 | v6.0 | #229 |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.

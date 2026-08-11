@@ -143,6 +143,9 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Districts with identity (the city wing) | D-048 | 🟡 awaiting verdict | #223 |
 | The Truce as a regime (the untold sixty years) | D-049 | 🟡 awaiting verdict | #224 |
 | Live events: authored, signed, foldable | D-050 | 🟡 awaiting verdict | #225 |
+| Allegiance + influence (the political weather) | D-051 | 🟡 awaiting verdict | #227 |
+| Missions (a dream with a plot) | D-052 | 🟡 awaiting verdict | #228 |
+| The favor economy (orphan insurance) | D-053 | 🟡 awaiting verdict | #229 |
 
 Build units are cut AFTER verdicts (gates before units — the D-039 law). **DoD sketch:** a stat contest decides a scene the flat world could not produce; the Architect acts in-world through the console and the log names his character; a bonded death is paid back once, priced, and LinkAudit calls it CLAUSE not GHOST; a petition re-inserts a mind the chronos record still remembers; and one command renders one mind's whole day as deterministic prose the Architect actually reads.
 
