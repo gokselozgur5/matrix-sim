@@ -61,3 +61,5 @@ grep finds no banned APIs in src; the v1.0 DoD runs the engine twice with seed 4
 ## More Information
 
 Related: [D-020](D-020-observability-contract.md), [D-023](D-023-chronos-event-sourcing.md), [D-027](D-027-performance-budgets.md). Principle: A3. Crown: #46.
+
+Referenced by: [D-004](D-004-field-model.md), [D-005](D-005-world-mutation.md), [D-020](D-020-observability-contract.md), [D-023](D-023-chronos-event-sourcing.md), [D-026](D-026-language-java17.md), [D-027](D-027-performance-budgets.md).

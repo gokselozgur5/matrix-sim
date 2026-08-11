@@ -69,3 +69,5 @@ grep finds no float/double in domain position math; world dimensions in Config a
 ## More Information
 
 Supersedes the grid-vs-plane framing of the original thread. Credit: the owner's Space-lens catch ("where does 72x20 come from?") and the owner's rejection of both drafted options — the lens catalog's founding receipt (D-035). Affects crowns #36 (Cell becomes fixed-point Position), #47 (Config dimensions), #77 (SpatialHash buckets over coordinates). Related: [D-010](D-010-determinism.md), [D-017](D-017-spatial-hash.md), [D-024](D-024-attention-lod.md), [D-002](D-002-agent-catch-mechanics.md).
+
+Referenced by: [D-017](D-017-spatial-hash.md).

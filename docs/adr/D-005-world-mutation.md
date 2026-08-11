@@ -66,3 +66,5 @@ A dedicated flush-order test: same seed, entities spawning/dying in one tick, di
 Related: [D-001](D-001-smith-infection-decorator.md), [D-010](D-010-determinism.md). Crown: #86.
 
 Accepted with a naming spark: pending mutations are named WorldEvent from day one, so the Chronos migration (D-023) begins as a rename-free evolution.
+
+Referenced by: [D-001](D-001-smith-infection-decorator.md), [D-013](D-013-neurallink-bridge.md).

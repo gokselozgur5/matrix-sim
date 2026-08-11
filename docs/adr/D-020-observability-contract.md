@@ -62,3 +62,5 @@ v1.0 ships EventLog, MetricsCollector, DigestCalculator; the DoD commands in ROA
 ## More Information
 
 Related: [D-010](D-010-determinism.md), [D-019](D-019-backend-only.md), [D-027](D-027-performance-budgets.md), [D-023](D-023-chronos-event-sourcing.md). Principle: A4. Crowns: #79-#82.
+
+Referenced by: [D-007](D-007-terminal-ui.md), [D-010](D-010-determinism.md), [D-019](D-019-backend-only.md), [D-023](D-023-chronos-event-sourcing.md), [D-027](D-027-performance-budgets.md), [D-030](D-030-agent-operating-model.md).

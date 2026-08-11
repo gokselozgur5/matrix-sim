@@ -55,3 +55,5 @@ grep -rE 'glyph|renderPriority|Ansi' over src returns nothing (the #25 cleanup c
 ## More Information
 
 Supersedes: [D-007](D-007-terminal-ui.md). Related: [D-020](D-020-observability-contract.md), [D-021](D-021-perception-feed.md). Principle: A2.
+
+Referenced by: [D-007](D-007-terminal-ui.md), [D-020](D-020-observability-contract.md), [D-021](D-021-perception-feed.md).
