@@ -27,11 +27,12 @@ public final class CapSentinel {
 
         Simulation sim = new Simulation(seed, null, null);
         var world = Probes.world(sim);
+        var links = Probes.links(Probes.realWorld(sim));
 
         long breaches = 0;
         for (long t = 0; t < ticks; t++) {
             sim.tickOnce();
-            int present = 0, wrapped = 0, fated = 0;
+            int present = 0, wrapped = 0, fated = 0, visitors = 0;
             for (var e : world.entities()) {
                 if (!e.alive) {
                     continue;
@@ -39,7 +40,16 @@ public final class CapSentinel {
                 if (e instanceof TheOne) {
                     fated++;
                 } else if (e instanceof Avatar a && a.pill == Pill.RED) {
-                    present++;
+                    // The visitor rule (D-032 era): the cap is the RESIDENT
+                    // awakening economy. A pirate's link lives rig-side, so a
+                    // red with no RealWorld link is a visitor — outside the
+                    // invariant, exactly as the Matrix (A1-blind to links)
+                    // pays for their presence by under-awakening instead.
+                    if (hasResidentLink(links, a)) {
+                        present++;
+                    } else {
+                        visitors++;
+                    }
                 } else if (e instanceof SmithCopy c
                         && c.original instanceof Avatar w && w.pill == Pill.RED
                         && !(c.original instanceof TheOne)) {
@@ -49,11 +59,22 @@ public final class CapSentinel {
             if (present + wrapped > Config.RED_CAP) {
                 breaches++;
                 System.out.println("BREACH t=" + world.tick() + " present=" + present
-                        + " wrapped=" + wrapped + " fated=" + fated + " cap=" + Config.RED_CAP);
+                        + " wrapped=" + wrapped + " visitors=" + visitors
+                        + " fated=" + fated + " cap=" + Config.RED_CAP);
             }
         }
         System.out.println("SENTINEL seed=" + seed + " ticks=" + ticks + " cap=" + Config.RED_CAP);
         System.out.println("CAP_BREACHES=" + breaches);
+    }
+
+    private static boolean hasResidentLink(
+            java.util.List<matrix.realworld.NeuralLink> links, Avatar a) {
+        for (var l : links) {
+            if (l.avatar == a) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private CapSentinel() {}

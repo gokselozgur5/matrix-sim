@@ -67,4 +67,6 @@ A v4.0 run shows: broadcast mission opens N PIRATE links; agent convergence pres
 
 Depends on [D-031](D-031-system-of-systems.md), [D-011](D-011-human-class.md), [D-013](D-013-neurallink-bridge.md). Related: [D-033](D-033-self-substantiation.md), [D-008](D-008-processor-mode.md). Crowns: #83 (Hovercraft), #84 (Zion); BroadcastRig to be crowned at v4.0 design.
 
+**Errata (2026-08-11, the visitor-cap ruling — Oracle practice call under the blanket verdict, flagged for veto):** Pirate drops push the Matrix-visible red count past `RED_CAP` transiently (measured: peak present=26, ~1,100 breach-ticks per arc with the fleet flying). The coherent resolution preserves A1 twice over. The Matrix stays blind to link kinds, so the Director's awakening gate keeps counting every red it can see — during a sortie the city genuinely under-awakens, and that emergent suppression is the pirates' cost of doing business, not a bug. The CAP invariant, meanwhile, is the RESIDENT awakening economy: `CapSentinel` (a real-side instrument, allowed to see links) counts only reds with a RealWorld link — a red with no resident link is a visitor, outside the cap. Residents-only breaches measured after the ruling: zero.
+
 Referenced by: [D-031](D-031-system-of-systems.md), [D-033](D-033-self-substantiation.md), [D-036](D-036-finish-line.md), [D-038](D-038-season-two.md).
