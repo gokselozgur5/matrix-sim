@@ -163,7 +163,7 @@ public final class MetricsCollector {
             java.util.List<? extends matrix.entities.MatrixEntity> targets) {
         long best = Long.MAX_VALUE;
         for (var t : targets) {
-            best = Math.min(best, from.pos.euclidSqCm(t.pos));
+            best = Math.min(best, Geo.distSqCm(from.xCm(), from.yCm(), t.xCm(), t.yCm()));
         }
         return Math.round(Math.sqrt((double) best));
     }
