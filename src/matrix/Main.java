@@ -3,7 +3,9 @@ package matrix;
 import matrix.core.Digest;
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +25,7 @@ public final class Main {
         boolean selftest = false;
         boolean bench = false;
         String follow = null;
+        String chronosPath = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -32,6 +35,7 @@ public final class Main {
                 case "--selftest" -> selftest = true;
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
+                case "--chronos" -> chronosPath = args[++i];
                 case "--help" -> {
                     usage();
                     return;
@@ -51,10 +55,19 @@ public final class Main {
             System.exit(bench(seed));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow);
+            runHeadless(seed, ticks, follow, chronosPath);
             return;
         }
-        runInteractive(seed, follow);
+        runInteractive(seed, follow, chronosPath);
+    }
+
+    /**
+     * D-023 stage 1: the black box. Truncates — one file, one run, the
+     * genesis line marks the start. Live runs only; selftest and bench
+     * are in-process double-runs and stay quiet by canon.
+     */
+    private static OutputStream openChronos(String path) throws Exception {
+        return path == null ? null : new FileOutputStream(path);
     }
 
     /**
@@ -111,19 +124,27 @@ public final class Main {
         return steadyOk && arcOk ? 0 : 1;
     }
 
-    private static void runHeadless(long seed, long ticks, String follow) {
-        Simulation sim = new Simulation(seed, System.out, follow);
-        long start = System.nanoTime();
-        sim.run(ticks);
-        long elapsedNs = System.nanoTime() - start;
-        long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
-        long ticksPerSecond = 1_000_000_000L / perTickNs;
-        System.out.print(String.format(Locale.ROOT,
-                "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
+    private static void runHeadless(long seed, long ticks, String follow, String chronosPath) throws Exception {
+        try (OutputStream chronosSink = openChronos(chronosPath)) {
+            Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
+            long start = System.nanoTime();
+            sim.run(ticks);
+            long elapsedNs = System.nanoTime() - start;
+            long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
+            long ticksPerSecond = 1_000_000_000L / perTickNs;
+            System.out.print(String.format(Locale.ROOT,
+                    "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
+        }
     }
 
-    private static void runInteractive(long seed, String follow) throws Exception {
-        Simulation sim = new Simulation(seed, System.out, follow);
+    private static void runInteractive(long seed, String follow, String chronosPath) throws Exception {
+        try (OutputStream chronosSink = openChronos(chronosPath)) {
+            runConsole(seed, follow, chronosSink);
+        }
+    }
+
+    private static void runConsole(long seed, String follow, OutputStream chronosSink) throws Exception {
+        Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
         ConcurrentLinkedQueue<String> commands = new ConcurrentLinkedQueue<>();
         Thread reader = new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
@@ -145,11 +166,14 @@ public final class Main {
             while ((cmd = commands.poll()) != null) {
                 String[] parts = cmd.split("\\s+");
                 switch (parts[0]) {
-                    case "red" -> sim.commandRed();
-                    case "agent" -> sim.commandAgent();
-                    case "smith" -> sim.commandSmith();
-                    case "deja" -> sim.commandDeja();
-                    case "reload" -> sim.commandReload();
+                    // The five commands that touch the universe enter the chronos
+                    // record before dispatch, refusals included (D-023 stage 1).
+                    // Pacing (pause, speed) steers the console, not the universe.
+                    case "red" -> { sim.recordCommand(cmd); sim.commandRed(); }
+                    case "agent" -> { sim.recordCommand(cmd); sim.commandAgent(); }
+                    case "smith" -> { sim.recordCommand(cmd); sim.commandSmith(); }
+                    case "deja" -> { sim.recordCommand(cmd); sim.commandDeja(); }
+                    case "reload" -> { sim.recordCommand(cmd); sim.commandReload(); }
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -182,6 +206,7 @@ public final class Main {
                   --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
+                  --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
                 interactive commands: red | agent | smith | deja | reload | pause | speed N | quit

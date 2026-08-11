@@ -94,8 +94,8 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Zion fleet + pirate broadcast jack-in | D-032 | 🟡 awaiting verdict | #95 |
-| Self-substantiation (the Kid) | D-033 | 🔵 awaiting verdict | #96 |
+| Zion fleet + pirate broadcast jack-in | D-032 | 🟢 accepted 2026-08-11 | #95 |
+| Self-substantiation (the Kid) | D-033 | 🟢 accepted 2026-08-11 | #96 |
 
 Build units: #110–#124 (fleet lifecycle, PIRATE links, trace pressure, rig-death sever, Kid thresholds, ZionSystem/BroadcastRig crowns). **DoD:** a pirate crew jacks in through a rig, runs a mission under trace pressure, and exits — or doesn't — with the ZION instrument line telling it; the Kid disconnects himself without a rig, once, at his seeded threshold.
 
@@ -105,8 +105,8 @@ Build units: #110–#124 (fleet lifecycle, PIRATE links, trace pressure, rig-dea
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Chronos: event-sourced state, reload = replay | D-023 | 🔵 awaiting verdict | #27 |
-| CI as a runner now, JUnit deferred (reopens D-009) | D-040 | 🟡 proposed, awaiting verdict | #137 |
+| Chronos: event-sourced state, reload = replay | D-023 | 🟢 accepted 2026-08-11 | #27 |
+| CI as a runner now, JUnit deferred (reopens D-009) | D-040 | 🟢 accepted 2026-08-11 | #137 |
 
 Build units: #125–#129 (CHRONOS record log → replay harness → snapshot format with hash-equals-DIGEST proof → reload as snapshot-boot + replay → authority inversion), #137, #138 ✅ (release automation shipped). **DoD:** a full arc replayed from the record log produces the same DIGEST chain as the live run.
 
@@ -116,8 +116,8 @@ Build units: #125–#129 (CHRONOS record log → replay harness → snapshot for
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Attention-graded fidelity (LOD) | D-024 | 🔵 awaiting verdict | #28 |
-| Processor-mode substrate (pods as compute) | D-008 | 🔵 awaiting verdict | #19 |
+| Attention-graded fidelity (LOD) | D-024 | 🟢 accepted 2026-08-11 | #28 |
+| Processor-mode substrate (pods as compute) | D-008 | 🟢 accepted 2026-08-11 | #19 |
 
 Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true parking with aggregate digest segment, déjà vu on unpark, SUBSTRATE budget coupling pods to HOT slots, hash-backed hunts, the 5,000-entity homecoming run). **DoD:** 5,000 entities inside the D-027 budgets with the digest chain still bit-stable across a park/unpark cycle.
 

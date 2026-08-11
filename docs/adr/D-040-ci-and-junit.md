@@ -1,6 +1,6 @@
 ---
 title: "D-040 — CI and JUnit: reopening D-009 now that the question is forced"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #137
@@ -32,6 +32,8 @@ The build-unit issue (#137) says "JUnit + CI". This record deliberately splits t
 * **Status quo:** the operator runs locks by hand, forever.
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Proposed: **CI as a runner** now; JUnit deferred to its own future record with a named trigger — the day a probe needs assertion granularity that greppable verdict lines cannot express, that probe's PR carries the JUnit proposal. This is D-009's own pattern reapplied: adopt the machine when the question is forced, not before.
 
