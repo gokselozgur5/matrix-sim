@@ -45,17 +45,23 @@ sudo ln -sfn $(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/J
 export JAVA_HOME=$(/usr/libexec/java_home -v 17) && export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-Build and run (v1.0 lives on the phase branch until its PR merges):
+Build and run:
 
 ```bash
 javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
-java -cp out matrix.Main --selftest                          # in-process digest double-run (D-009)
+java -cp out matrix.Main --selftest                          # fast gate: digest double-run at 2,000 ticks
+java -cp out matrix.Main --selftest --ticks 6000             # the finale gate: 60-link chain, birth to second birth
+java -cp out matrix.Main --bench                             # the D-027 budget table, exit code = verdict
 java -cp out matrix.Main                                     # live daemon + ops console on stdin
-java -cp out matrix.Main --headless --ticks 2000 --seed 42   # deterministic run + PERF line
-java -cp out matrix.Main --follow anderson --headless --ticks 2000 | grep '^{' | jq .   # one pilot's dream (D-021)
+java -cp out matrix.Main --headless --ticks 6000 --seed 42   # the whole film, deterministically
+java -cp out matrix.Main --follow "Thomas A." --headless --ticks 6000 | grep '^{' | jq .   # the One's dream (D-021)
 ```
 
-Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `pause` · `speed N` · `quit` (v2.0 adds `smith`, `deja`; v3.0 adds `reload`)
+What the 6,000-tick run plays, in order (seed 42): **The One is born** (t=1289, for a debt of 30,227) → Smith's `I DIDN'T` (1525) → **SMITH OVERFLOW** and Neo's flatline at Machine City (4284) → `"Peace."` (4304) → the treaty — 417 originals restored in one flush, six sleepers walk out the open door, **REBOOT v7.0** (4324) → and at 5249, a second Thomas A. Anderson, because the ledger never stopped counting.
+
+A followed dream has two possible endings, and the stream tells them apart: `"ended — they walked out the open door"` (liberation) vs `"lost — the dream is no longer theirs"` (death — or a mind currently worn by Smith). One pilot's stream went dark twice and came back in between; the investigation that explained her is the field manual's case study in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (*the case of Nadia Petrov*).
+
+Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `smith` · `deja` · `reload` · `pause` · `speed N` · `quit`
 
 Observability contract (D-020): append-only event log, `METRIC` lines every 100 ticks, and a `DIGEST` chain — a canonical hash of world state. Two runs with the same seed produce identical digest chains; a diff pinpoints the tick where reality diverged. Same seed, same fate, on every platform: a seed-42 run produces byte-identical digests on Apple-Silicon macOS and x86-64 Linux (verified 2026-08-10).
 
