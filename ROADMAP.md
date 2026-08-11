@@ -4,6 +4,8 @@
 
 **The project is COMPLETE when** `java -cp out matrix.Main --headless --ticks 6000 --seed 42` plays the full film deterministically — `The One is born` → `I DIDN'T` → `OVERFLOW` → `"Peace."` → `REBOOT v7.0` — with all v1–v3 crowns closed, the docs true, and the D-027 budgets holding. **v4.0 "Resurrections" is epilogue: joy, not debt.** Never-list (pre-closed conversations): GUI, networking/multiplayer, external databases, machine learning.
 
+> **THE LINE WAS CROSSED — 2026-08-11.** The command above plays the film; every v1–v3 crown is closed by a merged PR; `--selftest --ticks 6000` and `--bench` are green (`SELFTEST OK ... chain_length=60`, `BENCH VERDICT PASS`); the docs in this repo describe the system that exists. Season One is complete per D-036. Everything below the seasons heading is what D-036 promised it would be: joy, scheduled like debt.
+
 ---
 
 Phases are numbered like the films. Each phase has three sections: **goal**, **decision gate** (decisions to close together before merge — see [docs/DECISIONS.md](docs/DECISIONS.md)) and **definition of done** (verified by a single command against the observability plane — D-020; there is no screen to look at, and that's the point — D-019).
@@ -66,18 +68,19 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 ---
 
-## v3.0 — Revolutions
+## v3.0 — Revolutions ✅
 
 *The One cycle closes.*
 
-- [ ] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in)
-- [ ] Overflow threshold → NEGOTIATION (world freezes, dialogue events) → treaty: mass restore, opt-out, Sati, PEACE
-- [ ] Overflow without Neo → Architect emergency reload (alternate branch)
-- [ ] `reload` command: manual Zion purge
+- [x] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in; "The One is OWED" — born at t=1289 for a debt of 30,227)
+- [x] Overflow threshold → NEGOTIATION (world freezes, dialogue events) → treaty: mass restore (417 originals in one flush), opt-out (six walk free), Sati, PEACE
+- [x] Overflow without Neo → Architect emergency reload (alternate branch; verified via ops console by the verification skeptic)
+- [x] `reload` command: manual Zion purge
+- [x] The One DIES at Machine City — his link closes, the ledger stops billing a dead man (fix round; canon and correctness turned out to be the same edit)
 
-**Decision gate:** D-006 (tuning constants), D-022 (acceptance loop bookkeeping)
+**Decision gate:** D-006 (tuning constants) ✅, D-022 (acceptance loop bookkeeping) ✅
 
-**DoD:** `--headless --ticks 6000 --seed 42` output contains the full arc, in this order: `The One is born` → `I DIDN'T` → `OVERFLOW` → `"Peace."` → `REBOOT v7.0`.
+**DoD (verified):** `--headless --ticks 6000 --seed 42` plays the full arc in order — `The One is born` (1289) → `I DIDN'T` (1525) → `OVERFLOW` (4284) → `"Peace."` (4304) → `REBOOT v7.0` (4324) — then keeps going: the second Thomas at 5249, because the cycle is the point. Two adversarial rounds (MERGE-READY + verification MERGE-READY, seeds 42 and 7): 0 ghosts, 0 ledger anomalies, 0 cap violations.
 
 ---
 
