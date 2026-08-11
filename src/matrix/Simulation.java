@@ -256,6 +256,10 @@ public final class Simulation {
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
+            // The D-033 addendum's framed segment rides AFTER the entity walk:
+            // only the root holds both banks (D-012), so only the root can
+            // feed both worlds to one referee.
+            realWorld.digestInto(digests);
             Digest d = new Digest(t, digests.finishHex());
             chain.add(d);
             emit(d.format());

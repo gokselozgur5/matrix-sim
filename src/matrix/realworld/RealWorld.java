@@ -92,6 +92,21 @@ public final class RealWorld {
         return out;
     }
 
+    /**
+     * The realworld feed of the digest chain (D-033 addendum): the first
+     * real-side state to enter it — a framed segment the root appends after
+     * the entity walk. Registration order, one tuple per link. What the
+     * digest sees here, the v4.5 Snapshot must retain (#179). The census
+     * stays outside the chain per the #187 precedent; whether more real-side
+     * state gets blessed in is open at the gate (#96, point a).
+     */
+    public void digestInto(matrix.core.DigestCalculator dc) {
+        dc.putCount(links.size());
+        for (NeuralLink link : links) {
+            dc.putLong(link.human.threshold);
+        }
+    }
+
     /** The One is grown, not converted: a real pod, a fated name, a hardline. */
     public matrix.entities.TheOne birthTheOne(String name) {
         Human h = farm.growNamed(name);

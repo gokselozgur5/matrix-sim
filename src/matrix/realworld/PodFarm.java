@@ -1,5 +1,6 @@
 package matrix.realworld;
 
+import matrix.core.Config;
 import matrix.core.Rng;
 
 import java.util.ArrayList;
@@ -25,16 +26,27 @@ public final class PodFarm {
 
     public Human grow(Rng rng) {
         String name = FIRST[rng.nextInt(FIRST.length)] + " " + LAST[rng.nextInt(LAST.length)];
-        return growNamed(name);
+        // Fate is drawn at the pod, in order: name first, then the breaking
+        // point (D-033). One extra draw per grown human — a declared digest
+        // break, absorbed at the v4.0 phase boundary per the D-039 lock rule.
+        long threshold = Config.KID_BASE + rng.nextInt(Config.KID_JITTER);
+        return grow(name, threshold);
     }
 
-    /** For the fated: the ledger does not roll dice on the anomaly's name. */
+    /**
+     * For the fated: the ledger does not roll dice on the anomaly's name,
+     * and no jitter on the bound — The One never self-substantiates (D-033).
+     */
     public Human growNamed(String name) {
+        return grow(name, Long.MAX_VALUE);
+    }
+
+    private Human grow(String name, long threshold) {
         int i = pods.size();
         String rackUnit = String.format(Locale.ROOT, "R%02d/U%02d", 1 + i / 24, 1 + i % 24);
         Pod pod = new Pod(rackUnit);
         pods.add(pod);
-        return new Human(name, new Brain(name), pod);
+        return new Human(name, new Brain(name), pod, threshold);
     }
 
     public int occupiedCount() {
