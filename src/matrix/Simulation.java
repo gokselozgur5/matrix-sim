@@ -154,7 +154,8 @@ public final class Simulation {
                 + (Config.WORLD_W_CM / 100_000.0) + " km x " + (Config.WORLD_H_CM / 100_000.0) + " km");
         world.log(Severity.SYS, "exit nodes online: " + world.places().exits().size()
                 + " phone booths across " + world.places().zones().size() + " zones");
-        world.log(Severity.SYS, "compute model: PROCESSOR — the inmates render their own cells");
+        world.log(Severity.SYS, "compute model: " + Config.COMPUTE_MODEL.name()
+                + " — " + Config.COMPUTE_MODEL.desc());
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
         world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
