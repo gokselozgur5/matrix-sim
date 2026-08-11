@@ -12,6 +12,7 @@ import matrix.core.PlaceGraph;
 import matrix.core.Position;
 import matrix.core.Rng;
 import matrix.core.Severity;
+import matrix.core.Snapshot;
 import matrix.core.World;
 import matrix.core.WorldEvent;
 import matrix.entities.Agent;
@@ -319,6 +320,15 @@ public final class Simulation {
 
     public long tick() {
         return world.tick();
+    }
+
+    /**
+     * D-023 stage 3: the retained walk of the state as it stands — the
+     * same digestInto walk the chain hashes, bytes kept (crown #179).
+     * Reads only; taking a snapshot moves nothing and draws nothing.
+     */
+    public Snapshot snapshotNow() {
+        return Snapshot.of(world);
     }
 
     public int aliveEntities() {

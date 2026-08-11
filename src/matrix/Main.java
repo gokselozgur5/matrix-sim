@@ -1,6 +1,7 @@
 package matrix;
 
 import matrix.core.Digest;
+import matrix.core.Snapshot;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
@@ -28,6 +29,7 @@ public final class Main {
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
+        Long snapshotAt = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -40,6 +42,7 @@ public final class Main {
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
+                case "--snapshot-at" -> snapshotAt = Long.parseLong(args[++i]);
                 case "--help" -> {
                     usage();
                     return;
@@ -61,6 +64,15 @@ public final class Main {
             System.err.println("--chronos records live runs; the fold replays with the recorder off");
             System.exit(2);
         }
+        if (snapshotAt != null && (replayPath != null || !headless)) {
+            System.err.println("--snapshot-at rides with --headless — a live run, not the fold");
+            usage();
+            System.exit(2);
+        }
+        if (snapshotAt != null && (snapshotAt < 0 || snapshotAt > ticks)) {
+            System.err.println("--snapshot-at " + snapshotAt + " lies outside the run (0.." + ticks + ")");
+            System.exit(2);
+        }
         if (selftest) {
             System.exit(selftest(seed, ticks));
         }
@@ -73,7 +85,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath);
+            runHeadless(seed, ticks, follow, chronosPath, snapshotAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -142,11 +154,29 @@ public final class Main {
         return steadyOk && arcOk ? 0 : 1;
     }
 
-    private static void runHeadless(long seed, long ticks, String follow, String chronosPath) throws Exception {
+    private static void runHeadless(long seed, long ticks, String follow, String chronosPath,
+            Long snapshotAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
-            sim.run(ticks);
+            if (snapshotAt == null) {
+                sim.run(ticks);
+            } else {
+                // D-023 stage 3: pause the loop after tick T, retain the walk,
+                // and let the emitted DIGEST line judge its own preimage. The
+                // split changes nothing — run(a) + run(b) is run(a + b) — and
+                // the snapshot only reads; with the flag off this path is gone.
+                List<Digest> chain = sim.run(snapshotAt);
+                Snapshot snap = sim.snapshotNow();
+                System.out.print(snap.format() + "\n");
+                for (Digest d : chain) {
+                    if (d.tick() == snap.tick()) {
+                        System.out.print("SNAPSHOT_MATCHES_DIGEST="
+                                + d.sha256().equals(snap.sha256Hex()) + "\n");
+                    }
+                }
+                sim.run(ticks - snapshotAt);
+            }
             long elapsedNs = System.nanoTime() - start;
             long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
             long ticksPerSecond = 1_000_000_000L / perTickNs;
@@ -225,6 +255,9 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
+                  --snapshot-at T     with --headless: after tick T, retain the digest walk and print
+                                      SNAPSHOT tick/sha/bytes (D-023 stage 3); when T is a digest tick,
+                                      also verify SNAPSHOT_MATCHES_DIGEST against that tick's DIGEST line
                   --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
                                       with recorded commands at their ticks, print the DIGEST chain
                                       in ChainDump format (seed from the recording; honors --ticks)
