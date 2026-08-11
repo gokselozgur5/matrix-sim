@@ -17,7 +17,8 @@ import java.util.List;
 /**
  * One hovercraft's pirate uplink (crown #123, D-032): channel capacity, a
  * per-session station budget in ticks, and the channel board itself. A
- * session begins with a seeded insertion-zone draw; {@link #open} spawns a
+ * session begins at the insertion zone Zion assigned at launch (#116's
+ * rotation — the rig spends no fate on it); {@link #open} spawns a
  * RED {@link Avatar} at that zone and jacks a crew Human in over a
  * {@code NeuralLink(PIRATE)} — the D-013 bridge, zero new Matrix code, and
  * inside, an avatar is an avatar (A1). The rig OWNS its links: pirate wires
@@ -28,13 +29,15 @@ import java.util.List;
  * Refuses: mission strategy (the ship's), the census (Zion's), and any
  * Matrix-side special-casing.
  *
- * <p>Recall, pre-#117: the clean exit at this unit is the operator's lift —
- * {@code closeClean()} plus the avatar's {@code Remove}, in registration
- * order. The booth sprint within {@code EXIT_REACH_CM} arrives with #117;
- * until then the phone lines stay quiet and the lift is honest about being
- * a simplification. {@link #destroy} is the other ending: every open link
- * severed unclean through the bridge — flatline, {@code Remove}, nothing
- * to flush (#119 scripts the scenario that triggers it).
+ * <p>Recall, since #117: the booths have teeth, and the clean exit is
+ * EARNED. The recall order lifts nobody — it sends every open channel's
+ * avatar sprinting for the nearest booth, and only within
+ * {@code EXIT_REACH_CM} of one does the wire {@code closeClean}: the
+ * jackOut. A sprint still on the wire past {@code RECALL_TIMEOUT_TICKS}
+ * gets cut — {@code severUnclean}, flatline, the cost of a slow exit.
+ * {@link #destroy} is the other unclean ending: every open link severed
+ * through the bridge — flatline, {@code Remove}, nothing to flush (#119
+ * scripts the scenario that triggers it).
  */
 public final class BroadcastRig {
     /** The channel board, registration order. Closed wires stay on it until the next session clears the board. */
@@ -42,18 +45,24 @@ public final class BroadcastRig {
     private PlaceGraph.Zone insertionZone;
     private int budgetRemaining = 0;
     private int traced = 0;
+    /** True from the recall order until the next session arms — the ship holds station on it while wires stay open. */
+    private boolean recallIssued = false;
+    /** Watches since the recall order — the sprint clock the timeout cut is measured on. */
+    private int sprintTicks = 0;
 
     /**
-     * A new session: draw the insertion zone (one {@code world.rng()} draw,
-     * zion tick slot), arm the station budget, clear the board — the recall
-     * that ended the last session closed every channel, so nothing open is
-     * ever dropped here.
+     * A new session: take the insertion zone Zion assigned at launch
+     * (#116 — zone choice is the scheduler's strategy now, rotated per
+     * sortie; the rig draws nothing), arm the station budget, clear the
+     * board — the recall that ended the last session closed every
+     * channel, so nothing open is ever dropped here.
      */
-    public void beginSession(World world) {
+    public void beginSession(World world, PlaceGraph.Zone zone) {
         links.clear();
-        List<PlaceGraph.Zone> zones = world.places().zones();
-        insertionZone = zones.get(world.rng().nextInt(zones.size()));
+        insertionZone = zone;
         budgetRemaining = Config.RIG_STATION_TICKS;
+        recallIssued = false;
+        sprintTicks = 0;
         world.log(Severity.SYS, "broadcast rig live: insertion zone " + insertionZone.name()
                 + ", " + Config.RIG_CAPACITY + " channels, station budget "
                 + Config.RIG_STATION_TICKS + " ticks");
@@ -89,13 +98,22 @@ public final class BroadcastRig {
     }
 
     /**
-     * The wire watches, whatever the mission clock says: walk the board in
-     * registration order and let each link observe its avatar — the
-     * mind-body rule for pirates runs HERE, because these links are Zion's
-     * book, not RealWorld's. A death inside is a session ended the hard
-     * way: the tally the ZION line reports as {@code traced=}.
+     * The wire watches, whatever the mission clock says — deaths first,
+     * then the sprint. Walk the board in registration order and let each
+     * link observe its avatar: the mind-body rule for pirates runs HERE,
+     * because these links are Zion's book, not RealWorld's, and an agent
+     * kill during the sprint stays the hard way, exactly as before. Then,
+     * recall pending, the sprint clock advances (#117): a recalled avatar
+     * within {@code EXIT_REACH_CM} of a booth jacks out CLEAN —
+     * {@code closeClean}, {@code Remove}, the Human lives, and the tally
+     * never counts it — and on the first watch past
+     * {@code RECALL_TIMEOUT_TICKS} the rig cuts every wire still open:
+     * {@code severUnclean}, counted as {@code traced=} alongside deaths
+     * inside — the ZION line's hard endings, and nothing else changes on
+     * the instruments. Mercy is checked before the knife on the timeout
+     * watch itself: a mind AT the booth on the last tick goes home.
      */
-    public void observeDeaths(World world) {
+    public void watch(World world) {
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
                 traced++;
@@ -104,25 +122,62 @@ public final class BroadcastRig {
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
+        if (!recallIssued || openLinks() == 0) {
+            return;
+        }
+        sprintTicks++;
+        for (NeuralLink link : links) {
+            matrix.core.Position booth = world.places()
+                    .nearestExit(link.avatar.xCm(), link.avatar.yCm());
+            if (!link.closed() && matrix.core.Geo.within(
+                    link.avatar.xCm(), link.avatar.yCm(),
+                    booth.xCm(), booth.yCm(), Config.EXIT_REACH_CM)) {
+                link.closeClean();
+                world.queue(new WorldEvent.Remove(link.avatar.id));
+                world.log(Severity.OK, "booth exit: " + link.human.name
+                        + " reaches a phone line — jacked out clean");
+            }
+        }
+        if (sprintTicks > Config.RECALL_TIMEOUT_TICKS) {
+            for (NeuralLink link : links) {
+                if (!link.closed()) {
+                    link.severUnclean();
+                    traced++;
+                    world.log(Severity.BAD, "the rig cuts the wire — " + link.human.name
+                            + " never reached a phone line (flatline; the cost of a slow exit)");
+                    world.queue(new WorldEvent.Remove(link.avatar.id));
+                }
+            }
+        }
     }
 
     /**
-     * The recall order, pre-#117: every open link closes CLEAN in
-     * registration order — the operator lifts the mind out, the avatar
-     * leaves the world, the Human lives. When the booth sprint lands
-     * (#117), reaching a phone line becomes the price of this mercy.
+     * The recall order (#117 — this replaces #114's simplified instant
+     * lift, on purpose and out loud): nobody is lifted. Each open
+     * channel's avatar hears the order and sprints for the nearest exit
+     * booth; {@link #watch} settles every wire from here — the booth
+     * jackOut or the timeout cut. The order itself closes nothing.
      */
     public void recall(World world) {
-        int lifted = 0;
+        recallIssued = true;
+        sprintTicks = 0;
+        int ordered = 0;
         for (NeuralLink link : links) {
             if (!link.closed()) {
-                link.closeClean();
-                world.queue(new WorldEvent.Remove(link.avatar.id));
-                lifted++;
+                link.avatar.recalled = true;
+                ordered++;
             }
         }
-        world.log(Severity.OK, "recall order: " + lifted
-                + " minds lifted out clean — the broadcast ends");
+        world.log(Severity.OK, ordered == 0
+                ? "recall order: the board is already silent — nobody left on the wire"
+                : "recall order: " + ordered + " minds sprint for the phone lines — a booth within "
+                        + Config.EXIT_REACH_CM + " cm jacks out clean, "
+                        + Config.RECALL_TIMEOUT_TICKS + " ticks or the wire is cut");
+    }
+
+    /** True from the recall order until the next session arms — the ship reads it to hold station for the exit. */
+    public boolean recallIssued() {
+        return recallIssued;
     }
 
     /**
@@ -174,7 +229,7 @@ public final class BroadcastRig {
         return n;
     }
 
-    /** Sessions ended the hard way, cumulative — death inside or an unclean sever; the lift never counts. */
+    /** Sessions ended the hard way, cumulative — death inside, a timeout cut, or a rig death; the booth exit never counts. */
     public int traced() {
         return traced;
     }

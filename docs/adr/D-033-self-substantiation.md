@@ -1,6 +1,6 @@
 ---
 title: "D-033 — Self-substantiation (the Kid): resistance overflow force-disconnect"
-status: proposed (parked)
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #96
@@ -29,6 +29,8 @@ Kid's Story (The Animatrix): a boy dies in the Matrix through sheer disbelief an
 * Leave the Kid out entirely
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Parked until v4.0, leaning to "the personal threshold", because it is the acceptance loop's natural second theorem and costs one comparison per link tick once the ledger exists. Design resumes in thread #96 when D-022 and D-032 are real.
 

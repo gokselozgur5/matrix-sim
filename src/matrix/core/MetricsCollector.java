@@ -7,6 +7,8 @@ import matrix.entities.Pill;
  * line (additive grammar, v2.5): flock cohesion as mean nearest-neighbor
  * distance among birds versus the analytic random-uniform baseline
  * (0.5/sqrt(density)) — flocking proven by numbers, no eyes needed.
+ * And the ATTN line (additive grammar, D-024 P0): the RegionMap's
+ * attention census — where the connected minds are, spoken in numbers.
  */
 public final class MetricsCollector {
     private final World world;
@@ -31,7 +33,7 @@ public final class MetricsCollector {
             long best = Long.MAX_VALUE;
             for (var o : birds) {
                 if (o != b) {
-                    best = Math.min(best, b.pos.euclidSqCm(o.pos));
+                    best = Math.min(best, Geo.distSqCm(b.xCm(), b.yCm(), o.xCm(), o.yCm()));
                 }
             }
             sum += Math.round(Math.sqrt((double) best));
@@ -46,6 +48,36 @@ public final class MetricsCollector {
                 kingdomCount(matrix.entities.eco.Kingdom.FLORA),
                 kingdomCount(matrix.entities.eco.Kingdom.FAUNA_MAMMAL),
                 kingdomCount(matrix.entities.eco.Kingdom.WEATHER));
+    }
+
+    /**
+     * The attention instrument (D-024 P0): region census plus the three
+     * most-watched zones, ranked by avatar count with region-index
+     * tiebreak. Region index is zone index, so the names are PlaceGraph's
+     * own. Byte-stable: integers, fixed names, Locale.ROOT.
+     */
+    public String attnLine(long tick) {
+        RegionMap regions = world.regions();
+        java.util.List<PlaceGraph.Zone> zones = world.places().zones();
+        int n = regions.regionCount();
+        int hot = regions.hotCount();
+        StringBuilder top = new StringBuilder();
+        boolean[] taken = new boolean[n];
+        for (int k = 0; k < 3 && k < n; k++) {
+            int best = -1;
+            for (int r = 0; r < n; r++) {
+                if (!taken[r] && (best == -1 || regions.avatarCount(r) > regions.avatarCount(best))) {
+                    best = r;
+                }
+            }
+            taken[best] = true;
+            if (k > 0) {
+                top.append(',');
+            }
+            top.append(zones.get(best).name()).append(':').append(regions.avatarCount(best));
+        }
+        return String.format(java.util.Locale.ROOT,
+                "ATTN tick=%d regions=%d hot=%d cold=%d top=\"%s\"", tick, n, hot, n - hot, top);
     }
 
     /** Per-kingdom census — the D-018 caps become checkable in the instrument stream. */

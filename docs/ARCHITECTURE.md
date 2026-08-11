@@ -284,15 +284,16 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 
 The instruments got good enough to ask a bigger question: across the multiverse, how common is the film? `probes/SeedAtlas` sweeps seeds and verdicts each universe; one command regenerates this table after any mechanics change (`java -cp out:probes/out SeedAtlas 1 20 6000`).
 
-First 20 universes, 6,000 ticks each (2026-08-11, v3.0):
+The first century — 100 universes, 6,000 ticks each (2026-08-11, v3.0):
 
 | Fate | Universes | Meaning |
 |---|---|---|
-| `FULL_ARC` | **16 / 20** | birth → war → overflow → treaty → reboot → second birth |
-| `QUIET` | **4 / 20** (seeds 2, 5, 6, 8) | the One is born, Smith forks — and the cascade never reaches the 0.62 overflow line in 6,000 ticks. Smith can lose the race. |
-| `WAR` / `TREATY`-stall | 0 | no universe overflowed without resolving, none froze mid-treaty |
-| `OLD_PLAYBOOK` | **0** | the Architect's emergency reload — overflow with no One alive — has never once occurred in the wild. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; nature refuses it, because the ledger births the One (~1300) long before any cascade can overflow (~3200+). A dead branch that is also a proof: the film's ORDER is an emergent property, not a scripted one. |
+| `FULL_ARC` | **80 / 100** | birth → war → overflow → treaty → reboot → second birth: the film, complete |
+| `TREATY` | **3 / 100** (seeds 51, 68, 82) | peace reached, second birth still pending at tick 6,000 — the cycle runs, just slower than the window |
+| `QUIET` | **17 / 100** (seeds 2, 5, 6, 8, 21, 24, 32, 33, 34, 61, 63, 72, 80, 83, 91, 95, 99) | the One is born, Smith forks — and the cascade never reaches the 0.62 overflow line. **Smith loses the race about one universe in six.** |
+| `WAR` | 0 | no universe overflowed without resolving |
+| `OLD_PLAYBOOK` | **0 / 100** | the Architect's emergency reload — overflow with no One alive — has never once occurred in nature. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; a hundred universes refuse it, because the ledger births the One (median 1289) long before any cascade can overflow (earliest ever seen: 2872). A dead branch that is also a proof: the film's ORDER is emergent law, not script. |
 
-Birth tick across all 20: min 1179, max 1379 — a 200-tick band. The ledger is a metronome: whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ (overflow 3215–4519), because the cascade rides population geometry, not the ledger.
+The distributions, at n=100: birth in a **220-tick band** (min 1159 · median 1289 · max 1379) — the ledger is a metronome; whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ wildly (overflow min 2872 · median 3686 · max 5728), because the cascade rides population geometry, not the ledger. Second births, where they arrive, land at median 4674 (min 3889 · max 5739).
 
-The census is falsifiable the same way everything here is: rerun the command, diff the table.
+The census is falsifiable the same way everything here is: rerun the command (`SeedAtlas 1 100 6000`), diff the table. The rng-stream instrumentation rides the same bench: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.

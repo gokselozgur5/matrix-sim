@@ -1,6 +1,7 @@
 package matrix.zion;
 
 import matrix.core.Config;
+import matrix.core.PlaceGraph;
 import matrix.core.Severity;
 import matrix.core.World;
 import matrix.realworld.Human;
@@ -22,6 +23,13 @@ import java.util.Locale;
  * printing — it returns its {@code ZION} line; only the root emits.
  */
 public final class Zion {
+    /**
+     * The hull roster (#116): names in boot order, a fixed array — the
+     * Nth hull ever laid down bears the Nth name, never a draw. The
+     * Hammer waits past {@code FLEET_MAX} for a later floor.
+     */
+    private static final String[] ROSTER = {"the Nebuchadnezzar", "the Logos", "the Hammer"};
+
     private final List<Human> census = new ArrayList<>();
     /** Index-aligned with the census: where each citizen came from ("treaty" today; #121 adds the Kid's own tag). */
     private final List<String> origins = new ArrayList<>();
@@ -31,6 +39,8 @@ public final class Zion {
     private boolean sinkOrdered = false;
     /** Hard endings that went down with a hull — the city keeps the count a sunk rig can no longer report. */
     private int tracedFallen = 0;
+    /** Insertion-zone rotation (#116): -1 until the first sortie draws the seeded start. */
+    private int zoneCursor = -1;
     private final World world;
 
     public Zion(World world) {
@@ -45,12 +55,15 @@ public final class Zion {
 
     /**
      * The canonical zion slot, per crown #84: absorb (the root's drain,
-     * already landed) → fleet tick → sortie scheduling. The scheduler is
-     * the minimal one this floor needs: ONE ship, laid down the first time
-     * the census can man a full channel board, launched whenever it is
-     * docked and {@code RIG_CAPACITY} citizens are free — alive, wearing
-     * no wire. Draws happen only when a launch actually happens; an idle
-     * wing consumes no fate.
+     * already landed) → fleet tick → sortie scheduling. #116's scheduler:
+     * hulls come off the fixed roster in boot order, one laid down each
+     * time the census can man one more full board — the Nebuchadnezzar at
+     * {@code RIG_CAPACITY} citizens, the Logos at twice that — up to
+     * {@code FLEET_MAX}. Sorties are STAGGERED: at most one ship casts off
+     * per tick, walked in fleet list order, so two docked hulls never
+     * launch on the same tick and every draw has one possible owner.
+     * Draws happen only when a launch actually happens; an idle wing
+     * consumes no fate.
      */
     public void tick(long tick) {
         // #119: a loss lands before the fleet flies its tick — the filed sink
@@ -60,10 +73,13 @@ public final class Zion {
             sinkOrdered = false;
             sinkActiveShip();
         }
-        if (fleet.isEmpty() && census.size() >= Config.RIG_CAPACITY) {
-            fleet.add(new Hovercraft("the Nebuchadnezzar"));
-            world.log(Severity.FATE,
-                    "the first hull: the Nebuchadnezzar joins the fleet — the census learns to fly");
+        while (fleet.size() < Config.FLEET_MAX
+                && census.size() >= Config.RIG_CAPACITY * (fleet.size() + 1)) {
+            Hovercraft hull = new Hovercraft(ROSTER[fleet.size()]);
+            fleet.add(hull);
+            world.log(Severity.FATE, fleet.size() == 1
+                    ? "the first hull: " + hull.name + " joins the fleet — the census learns to fly"
+                    : "a second hull: " + hull.name + " joins the fleet — the census can man two boards");
         }
         for (Hovercraft ship : fleet) {
             ship.tick(world);
@@ -72,8 +88,11 @@ public final class Zion {
             if (ship.state() == Hovercraft.MissionState.DOCKED) {
                 List<Human> drawn = drawCrew();
                 if (!drawn.isEmpty()) {
-                    ship.launch(drawn, world);
+                    ship.launch(drawn, nextZone(), world);
                 }
+                // One launch per tick, and the free pool is shared — if this
+                // hull could not be manned, no hull behind it can be either.
+                break;
             }
         }
     }
@@ -107,17 +126,46 @@ public final class Zion {
     }
 
     /**
+     * The insertion-zone strategy (#116): zone choice stops being a
+     * per-session draw and becomes rotation. The first sortie ever flown
+     * draws the seeded start — one {@code world.rng()} draw in the zion
+     * slot, AFTER that launch's crew draws, and the only fate this
+     * strategy ever spends — then every later sortie takes the next zone
+     * in {@code PlaceGraph} list order, round-robin, fleet-wide. Launches
+     * are staggered one per tick, so the cursor's walk is a total order:
+     * same seed, same zone for every sortie ever flown. Which booths a
+     * zone can reach is the operational price of the rotation — #117
+     * collects it.
+     */
+    private PlaceGraph.Zone nextZone() {
+        List<PlaceGraph.Zone> zones = world.places().zones();
+        zoneCursor = zoneCursor < 0
+                ? world.rng().nextInt(zones.size())
+                : (zoneCursor + 1) % zones.size();
+        return zones.get(zoneCursor);
+    }
+
+    /**
      * The seeded crew draw (crown #84): the free pool is walked in census
      * order — alive, no wire — and each of the {@code RIG_CAPACITY} berths
      * is filled by one {@code world.rng()} draw from what remains; crew
-     * order is draw order. The minimal scheduler mans every channel, so
-     * crew size equals rig capacity — #116 makes staffing a real decision.
-     * Fewer than a full crew free: nobody flies, and nothing is drawn.
+     * order is draw order. A board flies fully manned or not at all:
+     * fewer than a full crew free and nobody flies, nothing is drawn —
+     * which is how losses ground hulls (#116's staffing decision, made by
+     * the census itself: six citizens fly two boards; the fallen ground
+     * them one board at a time).
+     *
+     * <p>Free means alive, wireless, AND ashore. Wireless alone was the
+     * one-ship floor's definition and it lied the moment a second hull
+     * existed: a crew in TRANSIT wears no wire yet (links open on
+     * arrival), so the Logos drew the Nebuchadnezzar's crew right off her
+     * deck — witnessed at seed 42, ticks 4325/4326, before this check.
+     * One mind, one berth: the fleet's boards are consulted too.
      */
     private List<Human> drawCrew() {
         List<Human> free = new ArrayList<>();
         for (Human h : census) {
-            if (h.alive() && h.link() == null) {
+            if (h.alive() && h.link() == null && !aboard(h)) {
                 free.add(h);
             }
         }
@@ -129,6 +177,18 @@ public final class Zion {
             crew.add(free.remove(world.rng().nextInt(free.size())));
         }
         return crew;
+    }
+
+    /** Identity membership across every hull's berth list — a citizen mid-mission is not free, wire or no wire. */
+    private boolean aboard(Human h) {
+        for (Hovercraft ship : fleet) {
+            for (Human c : ship.crew()) {
+                if (c == h) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

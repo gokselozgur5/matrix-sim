@@ -3,7 +3,9 @@ package matrix;
 import matrix.core.Digest;
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
@@ -24,6 +26,9 @@ public final class Main {
         boolean bench = false;
         String follow = null;
         long sinkAt = -1;
+        String chronosPath = null;
+        String replayPath = null;
+        String expectPath = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -34,6 +39,9 @@ public final class Main {
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
+                case "--chronos" -> chronosPath = args[++i];
+                case "--replay" -> replayPath = args[++i];
+                case "--expect" -> expectPath = args[++i];
                 case "--help" -> {
                     usage();
                     return;
@@ -46,17 +54,40 @@ public final class Main {
             }
         }
 
+        if (expectPath != null && replayPath == null) {
+            System.err.println("--expect rides with --replay");
+            usage();
+            System.exit(2);
+        }
+        if (replayPath != null && chronosPath != null) {
+            System.err.println("--chronos records live runs; the fold replays with the recorder off");
+            System.exit(2);
+        }
         if (selftest) {
             System.exit(selftest(seed, ticks));
         }
         if (bench) {
             System.exit(bench(seed));
         }
+        if (replayPath != null) {
+            // D-023 stage 2: no PERF line here — the fold is judged by the
+            // chain, never the wall clock; seed comes from the genesis line.
+            System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
+        }
         if (headless) {
-            runHeadless(seed, ticks, follow, sinkAt);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt);
             return;
         }
-        runInteractive(seed, follow);
+        runInteractive(seed, follow, chronosPath);
+    }
+
+    /**
+     * D-023 stage 1: the black box. Truncates — one file, one run, the
+     * genesis line marks the start. Live runs only; selftest and bench
+     * are in-process double-runs and stay quiet by canon.
+     */
+    private static OutputStream openChronos(String path) throws Exception {
+        return path == null ? null : new FileOutputStream(path);
     }
 
     /**
@@ -114,29 +145,40 @@ public final class Main {
     }
 
     /**
-     * The headless replay, now a scenario runner too: {@code --sink-at T}
-     * files the #119 sink order right before tick T, so the loss executes
-     * in tick T's zion slot — same seed, same T, same fate. Default -1
-     * files nothing and the loop IS the canonical run.
+     * Headless is a scenario runner too: {@code --sink-at T} files the
+     * #119 sink order right before tick T (zion-slot execution — same
+     * seed, same T, same fate; default -1 files nothing), and
+     * {@code --chronos} records the run as it happens (D-023 stage 1).
+     * A sink fired here enters the record like any console command.
      */
-    private static void runHeadless(long seed, long ticks, String follow, long sinkAt) {
-        Simulation sim = new Simulation(seed, System.out, follow);
-        long start = System.nanoTime();
-        for (long t = 1; t <= ticks; t++) {
-            if (t == sinkAt) {
-                sim.commandSink();
+    private static void runHeadless(long seed, long ticks, String follow, String chronosPath, long sinkAt) throws Exception {
+        try (OutputStream chronosSink = openChronos(chronosPath)) {
+            Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
+            long start = System.nanoTime();
+            for (long t = 1; t <= ticks; t++) {
+                if (t == sinkAt) {
+                    sim.recordCommand("sink");
+                    sim.commandSink();
+                }
+                sim.tickOnce();
             }
-            sim.tickOnce();
+            long elapsedNs = System.nanoTime() - start;
+            long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
+            long ticksPerSecond = 1_000_000_000L / perTickNs;
+            System.out.print(String.format(Locale.ROOT,
+                    "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
         }
-        long elapsedNs = System.nanoTime() - start;
-        long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
-        long ticksPerSecond = 1_000_000_000L / perTickNs;
-        System.out.print(String.format(Locale.ROOT,
-                "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
+    }
     }
 
-    private static void runInteractive(long seed, String follow) throws Exception {
-        Simulation sim = new Simulation(seed, System.out, follow);
+    private static void runInteractive(long seed, String follow, String chronosPath) throws Exception {
+        try (OutputStream chronosSink = openChronos(chronosPath)) {
+            runConsole(seed, follow, chronosSink);
+        }
+    }
+
+    private static void runConsole(long seed, String follow, OutputStream chronosSink) throws Exception {
+        Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
         ConcurrentLinkedQueue<String> commands = new ConcurrentLinkedQueue<>();
         Thread reader = new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
@@ -158,12 +200,15 @@ public final class Main {
             while ((cmd = commands.poll()) != null) {
                 String[] parts = cmd.split("\\s+");
                 switch (parts[0]) {
-                    case "red" -> sim.commandRed();
-                    case "agent" -> sim.commandAgent();
-                    case "smith" -> sim.commandSmith();
-                    case "deja" -> sim.commandDeja();
-                    case "reload" -> sim.commandReload();
-                    case "sink" -> sim.commandSink();
+                    // The six commands that touch the universe enter the chronos
+                    // record before dispatch, refusals included (D-023 stage 1).
+                    // Pacing (pause, speed) steers the console, not the universe.
+                    case "red" -> { sim.recordCommand(cmd); sim.commandRed(); }
+                    case "agent" -> { sim.recordCommand(cmd); sim.commandAgent(); }
+                    case "smith" -> { sim.recordCommand(cmd); sim.commandSmith(); }
+                    case "deja" -> { sim.recordCommand(cmd); sim.commandDeja(); }
+                    case "reload" -> { sim.recordCommand(cmd); sim.commandReload(); }
+                    case "sink" -> { sim.recordCommand(cmd); sim.commandSink(); }
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -197,6 +242,13 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
+                  --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
+                  --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
+                                      with recorded commands at their ticks, print the DIGEST chain
+                                      in ChainDump format (seed from the recording; honors --ticks)
+                  --expect PATH       with --replay: verify against a ChainDump-format digest file;
+                                      run length = the dump's last tick; prints REPLAY OK/FAIL and
+                                      exits 0 match / 1 divergence / 2 refused
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
                 interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit

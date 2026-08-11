@@ -1,5 +1,6 @@
 package matrix;
 
+import matrix.core.ChronosLog;
 import matrix.core.Config;
 import matrix.core.Digest;
 import matrix.core.DigestCalculator;
@@ -62,13 +63,20 @@ public final class Simulation {
     private final DigestCalculator digests = new DigestCalculator();
     private final List<Digest> chain = new ArrayList<>();
     private final PrintStream out;
+    private final ChronosLog chronos;
     private final String followName;
     private NeuralLink followed;
+    private int chronosVersionSeen;
     private int agentsSpawned = 0;
     private int patchesDeployed = 0;
     private boolean optOutDone = false;
 
     public Simulation(long seed, OutputStream sink, String followName) {
+        this(seed, sink, followName, null);
+    }
+
+    /** The four-arg root: a non-null chronosSink turns the D-023 stage-1 recorder on. */
+    public Simulation(long seed, OutputStream sink, String followName, OutputStream chronosSink) {
         this.rng = new Rng(seed);
         this.out = sink == null ? null : new PrintStream(sink, true, StandardCharsets.UTF_8);
         this.followName = followName;
@@ -81,6 +89,13 @@ public final class Simulation {
         if (this.out != null) {
             EventLog log = new EventLog(this.out);
             bus.subscribe(log::onEvent);
+        }
+        this.chronos = chronosSink == null ? null : new ChronosLog(chronosSink);
+        this.chronosVersionSeen = world.version();
+        if (chronos != null) {
+            // genesis first — before the boot flush, before tick 1 (crown #177)
+            chronos.genesis(seed, world.version());
+            world.installChronosTap(chronos);
         }
         AgentSmith smith = seedPopulation();
         this.director = new Director(world, source, smith);
@@ -193,6 +208,33 @@ public final class Simulation {
     public void commandReload() {
         matrix.machine.Architect.INSTANCE.reload(world, false);
         world.ledger().reset();
+        chronosBoundary();
+    }
+
+    /** Chronos: an operator command enters the record at the tick it lands on. */
+    public void recordCommand(String cmd) {
+        if (chronos != null) {
+            chronos.command(world.tick(), cmd);
+        }
+    }
+
+    /**
+     * Chronos boundary detection lives root-side: bumpVersion() has exactly
+     * two callers — the Architect's reload (leaves the world NORMAL) and
+     * the treaty (leaves it PEACE) — so a version crossing plus the
+     * resulting state names the boundary without instrumenting the
+     * machine package. Reads only; with chronos off it is a no-op.
+     */
+    private void chronosBoundary() {
+        if (chronos == null) {
+            return;
+        }
+        int v = world.version();
+        if (v != chronosVersionSeen) {
+            chronosVersionSeen = v;
+            chronos.boundary(world.tick(),
+                    world.state() == matrix.core.SystemState.PEACE ? "treaty" : "reload");
+        }
     }
 
     /**
@@ -235,6 +277,7 @@ public final class Simulation {
         for (SystemNode node : nodes) {
             node.tick(world.tick() + 1);
         }
+        chronosBoundary();
         long t = world.tick();
         if (world.state() == matrix.core.SystemState.PEACE && !optOutDone) {
             optOutDone = true;
@@ -261,6 +304,9 @@ public final class Simulation {
         }
         if (t % Config.ECO_EVERY_TICKS == 0) {
             emit(metrics.ecoLine(t));
+        }
+        if (t % Config.ATTN_EVERY_TICKS == 0) {
+            emit(metrics.attnLine(t));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
             // #118: the root hands zion's open links to the collector (D-012) and
