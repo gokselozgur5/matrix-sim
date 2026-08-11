@@ -31,6 +31,7 @@ public final class World {
     private int version = 6;
     private long tick = 0;
     private int nextId = 1;
+    private long unparks = 0;
     private ChronosLog chronosTap;
 
     public World(Rng rng, EventBus bus, PlaceGraph places) {
@@ -212,12 +213,24 @@ public final class World {
      * crowd — the stored ids — different faces: positions re-drawn inside
      * the region, headings fresh, and the residents re-enter the walk at
      * the back exactly like any spawn (D-010 order is list order, and both
-     * films append identically).
+     * films append identically). Every unpark IS a déjà vu (#133): the
+     * FATE line names the zone and the count, and cache invalidation gets
+     * priced exactly as the ops-console patch does — the D-022 mechanical-
+     * meaning precedent — with DEJA_RESIDUE_SPIKE landing on the ledger.
      */
     private int unpark(int regionId) {
         List<matrix.entities.eco.EnvironmentProgram> back = regions.materialize(regionId, rng);
         entities.addAll(back);
+        unparks++;
+        ledger.accrue(Config.DEJA_RESIDUE_SPIKE);
+        log(Severity.FATE, "déjà vu in " + places.zones().get(regionId).name()
+                + " — " + back.size() + " residents re-materialize");
         return back.size();
+    }
+
+    /** Cumulative Unpark count — the ledger's second mechanical déjà-vu source, read by the probe bench (#133). */
+    public long unparks() {
+        return unparks;
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
