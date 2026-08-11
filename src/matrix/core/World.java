@@ -23,6 +23,7 @@ public final class World {
     private final EventBus bus;
     private final PlaceGraph places;
     private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
+    private final RegionMap regions;
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
     private final AnomalyLedger ledger = new AnomalyLedger();
@@ -35,6 +36,7 @@ public final class World {
         this.rng = rng;
         this.bus = bus;
         this.places = places;
+        this.regions = new RegionMap(hash, places);
     }
 
     /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
@@ -48,6 +50,10 @@ public final class World {
 
     public PlaceGraph places() {
         return places;
+    }
+
+    public RegionMap regions() {
+        return regions;
     }
 
     public long tick() {
@@ -94,6 +100,7 @@ public final class World {
     public void step() {
         tick++;
         hash.rebuild(entities);
+        regions.refresh(tick, entities); // attention reads the snapshots the rebuild just froze (D-024 P0)
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {
