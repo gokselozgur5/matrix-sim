@@ -64,6 +64,7 @@ public final class Simulation {
     private NeuralLink followed;
     private int agentsSpawned = 0;
     private int patchesDeployed = 0;
+    private boolean optOutDone = false;
 
     public Simulation(long seed, OutputStream sink, String followName) {
         this.rng = new Rng(seed);
@@ -181,12 +182,29 @@ public final class Simulation {
         director.orderSmithCollection("manual override");
     }
 
-    /** Ops console: hot patch — the users call it déjà vu. */
+    /** Ops console: the Architect's old answer, on demand. */
+    public void commandReload() {
+        matrix.machine.Architect.INSTANCE.reload(world, false);
+        world.ledger().reset();
+    }
+
+    private boolean oneExists() {
+        for (var e : world.entities()) {
+            if (e.alive && e instanceof matrix.entities.TheOne) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Ops console: hot patch — the users call it déjà vu, and the ledger notices (D-022). */
     public void commandDeja() {
         String note = PATCH_NOTES[patchesDeployed % PATCH_NOTES.length];
         patchesDeployed++;
+        world.ledger().accrue(Config.DEJA_RESIDUE_SPIKE);
         world.log(Severity.FATE, "déjà vu — hot patch deployed: " + note);
-        world.log(Severity.SYS, "a black cat walks by twice; nobody screams");
+        world.log(Severity.SYS, "a black cat walks by twice; nobody screams — but "
+                + Config.DEJA_RESIDUE_SPIKE + " residue lands on the ledger");
     }
 
     private void spawnAgent() {
@@ -201,6 +219,20 @@ public final class Simulation {
             node.tick(world.tick() + 1);
         }
         long t = world.tick();
+        if (world.state() == matrix.core.SystemState.PEACE && !optOutDone) {
+            optOutDone = true;
+            int freed = realWorld.optOut(Config.OPTOUT_COUNT);
+            world.flush();
+            world.log(Severity.OK, "open door tally: " + freed + " walked out; the census keeps them");
+        }
+        if (world.state() == matrix.core.SystemState.NORMAL
+                && world.ledger().overflowed() && !oneExists()) {
+            matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
+            world.flush();
+            world.log(Severity.FATE, "The One is born — " + one.pilotName
+                    + ", grown for a debt of " + world.ledger().balance()
+                    + " (the ledger does not forgive; it balances)");
+        }
         if (t % Config.METRIC_EVERY_TICKS == 0) {
             emit(metrics.sample(t).format());
         }
@@ -213,12 +245,23 @@ public final class Simulation {
             chain.add(d);
             emit(d.format());
         }
-        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
-            if (followed.avatar.alive && world.isPresent(followed.avatar)) {
+        if (followName != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
+            // One rule, no special cases: a dark stream re-taps any LIVE link matching
+            // the name — a reborn Thomas resumes, a walked-out or eaten pilot does not.
+            if (followed == null) {
+                followed = realWorld.findLink(followName);
+            }
+            if (followed == null) {
+                // still dark; nothing to say
+            } else if (followed.avatar.alive && world.isPresent(followed.avatar)) {
                 emit(PerceptionFrame.jsonl(t, followed.avatar, world));
             } else {
+                // The LINK tells liberation from loss: only closeClean leaves it closed with
+                // a living avatar. A hijacked mind is "lost" — the dream is Smith's now.
                 emit("{\"tick\":" + t + ",\"who\":\"" + followed.human.name
-                        + "\",\"signal\":\"lost — the dream is no longer theirs\"}");
+                        + (followed.closed() && followed.avatar.alive
+                                ? "\",\"signal\":\"ended — they walked out the open door\"}"
+                                : "\",\"signal\":\"lost — the dream is no longer theirs\"}"));
                 followed = null;
             }
         }

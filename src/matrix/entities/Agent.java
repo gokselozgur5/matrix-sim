@@ -16,6 +16,12 @@ public class Agent extends Program {
 
     @Override
     public void tick(World w) {
+        if (w.state() == matrix.core.SystemState.PEACE) {
+            if (w.rng().chance(0.3)) {
+                wander(w, Config.BLUE_SPEED_CM);
+            }
+            return;
+        }
         Avatar prey = w.nearestRed(pos);
         if (prey == null) {
             if (w.rng().chance(0.5)) {

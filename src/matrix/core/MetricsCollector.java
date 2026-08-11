@@ -69,6 +69,6 @@ public final class MetricsCollector {
                 world.countAgents(),
                 alive,
                 infected,
-                0.0);
+                (double) world.ledger().balance());
     }
 }

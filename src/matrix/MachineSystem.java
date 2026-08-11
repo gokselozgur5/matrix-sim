@@ -23,6 +23,11 @@ public final class MachineSystem implements SystemNode {
 
     @Override
     public void tick(long tick) {
+        if (world.state() == matrix.core.SystemState.NEGOTIATION) {
+            world.advanceFrozen();
+            director.negotiationTick();
+            return;
+        }
         world.step();
         director.tick(world.tick());
         source.tick(world.tick());

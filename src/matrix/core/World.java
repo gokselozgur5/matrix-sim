@@ -25,6 +25,9 @@ public final class World {
     private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
+    private final AnomalyLedger ledger = new AnomalyLedger();
+    private SystemState state = SystemState.NORMAL;
+    private int version = 6;
     private long tick = 0;
     private int nextId = 1;
 
@@ -55,12 +58,37 @@ public final class World {
         return entities;
     }
 
+    public AnomalyLedger ledger() {
+        return ledger;
+    }
+
+    public SystemState state() {
+        return state;
+    }
+
+    public void setState(SystemState s) {
+        state = s;
+    }
+
+    public int version() {
+        return version;
+    }
+
+    public void bumpVersion() {
+        version++;
+    }
+
     public int allocateId() {
         return nextId++;
     }
 
     public void queue(WorldEvent event) {
         pending.add(event);
+    }
+
+    /** During a negotiation the world holds its breath but the clock does not — instruments stay honest. */
+    public void advanceFrozen() {
+        tick++;
     }
 
     public void step() {
@@ -94,11 +122,13 @@ public final class World {
         pending.clear();
     }
 
+    /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
     public MatrixEntity nearestNonReplicating(Position from, int selfId) {
         MatrixEntity best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
-            if (!e.alive || e.id == selfId || e instanceof matrix.entities.SelfReplicating) {
+            if (!e.alive || e.id == selfId || e instanceof matrix.entities.SelfReplicating
+                    || e instanceof matrix.entities.TheOne) {
                 continue;
             }
             long d = from.euclidSqCm(e.pos);
@@ -142,11 +172,13 @@ public final class World {
         return best;
     }
 
+    /** Agents hunt reds — but not The One: they tried that in three films. */
     public Avatar nearestRed(Position from) {
         Avatar best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
-            if (e.alive && e instanceof Avatar a && a.pill == Pill.RED) {
+            if (e.alive && e instanceof Avatar a && a.pill == Pill.RED
+                    && !(e instanceof matrix.entities.TheOne)) {
                 long d = from.euclidSqCm(a.pos);
                 if (d < bestD) {
                     bestD = d;
@@ -169,6 +201,23 @@ public final class World {
 
     public int count(Pill pill) {
         return aliveAvatars(pill).size();
+    }
+
+    /** The cap counts LATENT reds too: a wrapped mind is still awake underneath (D-001; skeptic finding). */
+    public int countRedIncludingWrapped() {
+        int n = 0;
+        for (MatrixEntity e : entities) {
+            if (!e.alive) {
+                continue;
+            }
+            if (e instanceof Avatar a && a.pill == Pill.RED) {
+                n++;
+            } else if (e instanceof SmithCopy c
+                    && c.original instanceof Avatar wrapped && wrapped.pill == Pill.RED) {
+                n++;
+            }
+        }
+        return n;
     }
 
     public int countAgents() {
@@ -207,6 +256,9 @@ public final class World {
         dc.putLong(tick);
         dc.putLong(rng.draws());
         dc.putInt(nextId);
+        dc.putInt(state.ordinal());
+        dc.putInt(version);
+        dc.putLong(ledger.balance());
         dc.putCount(entities.size());
         for (MatrixEntity e : entities) {
             digestEntity(dc, e);
@@ -231,6 +283,7 @@ public final class World {
     }
 
     private static int typeTag(MatrixEntity e) {
+        if (e instanceof matrix.entities.TheOne) return 9;
         if (e instanceof matrix.entities.eco.EnvironmentProgram) return 8;
         if (e instanceof SmithCopy) return 7;
         if (e instanceof SmithPrime) return 6;
