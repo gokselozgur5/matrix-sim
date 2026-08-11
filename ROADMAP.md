@@ -47,7 +47,7 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 - [x] `deja` command: hot patch + glitch events
 - [x] The Smith fork: Source.collect → `DeletionRefusedException` → SmithPrime + SmithCopy spread
 
-**Decision gate:** D-001 (Decorator vs State — **the big debate of this phase**), D-003 (exception-as-control-flow), D-014 (the documented LSP violation)
+**Decision gate:** D-001 (Decorator vs State — **the big debate of this phase**), D-003 (exception-as-control-flow), D-014 (the documented LSP violation), D-025 (supervisor-lite: grace and orphans — the index always assigned it here; the roadmap finally agrees)
 
 **DoD:** A headless run shows, in order: the `"I DIDN'T"` log → `METRIC` infection fraction passing 0.50.
 
@@ -106,7 +106,7 @@ Build units: #110–#124 (fleet lifecycle, PIRATE links, trace pressure, rig-dea
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
 | Chronos: event-sourced state, reload = replay | D-023 | 🔵 awaiting verdict | #27 |
-| JUnit + CI (reopens D-009) | — | 🟡 needs its own record | #137 |
+| CI as a runner now, JUnit deferred (reopens D-009) | D-040 | 🟡 proposed, awaiting verdict | #137 |
 
 Build units: #125–#129 (CHRONOS record log → replay harness → snapshot format with hash-equals-DIGEST proof → reload as snapshot-boot + replay → authority inversion), #137, #138 ✅ (release automation shipped). **DoD:** a full arc replayed from the record log produces the same DIGEST chain as the live run.
 
