@@ -169,7 +169,6 @@ public final class Main {
                     "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
         }
     }
-    }
 
     private static void runInteractive(long seed, String follow, String chronosPath) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
