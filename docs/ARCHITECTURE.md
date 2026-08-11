@@ -47,7 +47,7 @@ Outside the build, two shop directories: `probes/` (read-only diagnostic instrum
 
 Package boundary = deployment boundary: `realworld` knows no entity behavior, `entities` knows no pod details. The only bridge is `NeuralLink`. Per D-019 there is no presentation layer anywhere: the entity API carries no glyphs, colors or render priorities; the system is observed through the event log, `METRIC` lines and the `DIGEST` chain (D-020), and — eventually — through the perception feed itself (D-021).
 
-## Class relationships — as built (v1.0 merged; v2.0 shapes included)
+## Class relationships — as built (Season One complete: v1.0 → v3.0)
 
 Edge semantics carry the meaning: `*--` **composition** (owns, same fate) · `o--` **aggregation** (holds, separate life) · `-->` **association** (knows) · `..>` **dependency** (uses, never stores) · `<|--`/`<|..` inheritance/realization. Inheritance appears only for true is-a; capabilities are interfaces; one Liskov break stands under protection (D-014).
 
@@ -103,9 +103,29 @@ classDiagram
     SelfReplicating <|.. SmithCopy
     SmithCopy *-- MatrixEntity : original kept inside (D-001)
     Oracle ..> EventBus : counts awakenings
+
+    %% v2.5 — the landscaping (D-015/D-016/D-017)
+    class Movement { <<interface>> }
+    Program <|-- EnvironmentProgram
+    EnvironmentProgram --> Species : catalog datum, never a subclass (D-015)
+    Bestiary ..> Species : ships the rows
+    EnvironmentProgram o-- Movement : gait composed (D-016)
+    World *-- SpatialHash : snapshot neighbors (D-017)
+    World *-- Scheduler : cadence + caps (D-018)
+
+    %% v3.0 — the penthouse (D-022, the finale)
+    Avatar <|-- TheOne : fated, hunt-excluded
+    World *-- AnomalyLedger : the debt (D-022)
+    RealWorld ..> AcceptanceLoop : every accrual window
+    AcceptanceLoop ..> NeuralLink : reads open+alive
+    AcceptanceLoop ..> AnomalyLedger : residue in
+    Director ..> MachineCity : treaty at negotiation end
+    Director ..> Architect : emergency reload (no One)
+    MachineCity ..> World : executeTreaty — mass Replace + the door
+    Architect ..> World : purge, restore, version++
 ```
 
-Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. v2.5 will add `EnvironmentProgram` under `Program` with species as data (D-015) and gaits as strategies (D-016); v3.0 adds `TheOne` under `Avatar`.
+Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
 
 ## Sequence — jack-in and the death rule
 
