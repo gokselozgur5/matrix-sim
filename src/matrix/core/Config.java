@@ -59,6 +59,7 @@ public final class Config {
     public static final int RIG_STATION_TICKS = 400;
     public static final int TRANSIT_TICKS = 150;
     public static final int LOD_LINGER_TICKS = 200;
+    public static final int LOD_COLD_STRETCH = 4;
     public static final int ATTN_EVERY_TICKS = 100;
 
     private Config() {}
