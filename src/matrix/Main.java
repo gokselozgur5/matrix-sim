@@ -79,6 +79,16 @@ public final class Main {
             usage();
             System.exit(2);
         }
+        if (sinkAt >= 0 && snapshotAt != null) {
+            System.err.println("--sink-at and --snapshot-at are separate scenarios — run them separately");
+            usage();
+            System.exit(2);
+        }
+        if (sinkAt >= 0 && !headless) {
+            System.err.println("--sink-at is a headless scenario flag — add --headless");
+            usage();
+            System.exit(2);
+        }
         if (snapshotAt != null && (snapshotAt < 0 || snapshotAt > ticks)) {
             System.err.println("--snapshot-at " + snapshotAt + " lies outside the run (0.." + ticks + ")");
             System.exit(2);
