@@ -30,8 +30,8 @@ public final class CommuteMovement implements Movement {
         }
         int speed = WanderMovement.speedOf(self);
         self.pos = self.pos.steppedBy(
-                clampStep(dest.xCm() - self.pos.xCm(), speed),
-                clampStep(dest.yCm() - self.pos.yCm(), speed));
+                clampStep(dest.xCm() - self.xCm(), speed),
+                clampStep(dest.yCm() - self.yCm(), speed));
     }
 
     private static int clampStep(int delta, int speed) {

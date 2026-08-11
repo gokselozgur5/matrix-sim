@@ -26,6 +26,16 @@ public abstract class MatrixEntity {
 
     public abstract void tick(World w);
 
+    /** Live x, centimeters. THE way to read a coordinate — see #176: storage is the entity's business. */
+    public final int xCm() {
+        return pos.xCm();
+    }
+
+    /** Live y, centimeters. */
+    public final int yCm() {
+        return pos.yCm();
+    }
+
     /** Chebyshev step: each axis moves at most speedCm toward the target, clamped to the city. */
     protected final void stepToward(Position target, int speedCm) {
         int dx = clampStep(target.xCm() - pos.xCm(), speedCm);

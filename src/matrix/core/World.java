@@ -268,8 +268,8 @@ public final class World {
     private void digestEntity(DigestCalculator dc, MatrixEntity e) {
         dc.putInt(typeTag(e));
         dc.putInt(e.id);
-        dc.putInt(e.pos.xCm());
-        dc.putInt(e.pos.yCm());
+        dc.putInt(e.xCm());
+        dc.putInt(e.yCm());
         dc.putInt(e.alive ? 1 : 0);
         dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
         if (e instanceof matrix.entities.eco.EnvironmentProgram p) {

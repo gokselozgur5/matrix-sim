@@ -18,7 +18,7 @@ public final class PerceptionFrame {
         sb.append("{\"tick\":").append(tick)
           .append(",\"who\":\"").append(escape(self.pilotName))
           .append("\",\"pill\":\"").append(self.pill)
-          .append("\",\"pos\":[").append(self.pos.xCm()).append(',').append(self.pos.yCm()).append(']');
+          .append("\",\"pos\":[").append(self.xCm()).append(',').append(self.yCm()).append(']');
         Agent agent = world.nearestAgent(self.pos);
         if (agent != null) {
             sb.append(",\"nearestAgentCm\":").append(self.pos.chebyshevCm(agent.pos));

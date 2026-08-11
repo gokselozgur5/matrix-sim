@@ -15,8 +15,8 @@ public final class DriftMovement implements Movement {
     public void move(MatrixEntity self, World w) {
         int speed = WanderMovement.speedOf(self);
         int jitter = w.rng().nextInt(-speed / 4, speed / 4 + 1);
-        int x = Math.floorMod(self.pos.xCm() + jitter, Config.WORLD_W_CM + 1);
-        int y = self.pos.yCm() + speed;
+        int x = Math.floorMod(self.xCm() + jitter, Config.WORLD_W_CM + 1);
+        int y = self.yCm() + speed;
         if (y > Config.WORLD_H_CM) {
             y = 0;
         }

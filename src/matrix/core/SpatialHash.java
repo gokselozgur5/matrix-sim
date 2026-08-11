@@ -38,8 +38,8 @@ public final class SpatialHash {
         }
         for (MatrixEntity e : entities) {
             if (e.alive) {
-                e.snapXCm = e.pos.xCm();
-                e.snapYCm = e.pos.yCm();
+                e.snapXCm = e.xCm();
+                e.snapYCm = e.yCm();
                 buckets[bucketIndex(e.snapXCm, e.snapYCm)].add(e);
             }
         }
