@@ -18,12 +18,19 @@ import java.lang.management.ManagementFactory;
  * mandatory FIRST HALF of any allocation work: the fix PR must quote
  * this baseline and beat it with byte-identical digests.
  *
- * Usage: java -cp out:probes/out AllocMeter [seed]
+ * Usage: java -cp out:probes/out AllocMeter [seed] [scale]
+ *
+ * The optional scale multiplies Bestiary populations exactly as the
+ * daemon's --scale does (#136) — the 5,000-entity row gets its own
+ * allocation profile on the same instrument.
  */
 public final class AllocMeter {
 
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
+        if (args.length > 1) {
+            matrix.core.Config.ECO_SCALE = Integer.parseInt(args[1]);
+        }
         com.sun.management.ThreadMXBean threads =
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         long self = Thread.currentThread().getId();
@@ -51,7 +58,11 @@ public final class AllocMeter {
                 + " steady_bytes_per_tick=" + (a1 - a0) / 500
                 + " cascade_bytes_per_tick=" + (a3 - a2) / 500
                 + " full_run_mb=" + (a4 - a0) / (1024 * 1024)
-                + " gc_collections=" + gcCount);
+                + " gc_collections=" + gcCount
+                // scaled runs declare themselves; the canonical line keeps its bytes
+                + (matrix.core.Config.ECO_SCALE == 1 ? ""
+                        : " scale=" + matrix.core.Config.ECO_SCALE
+                                + " entities=" + sim.aliveEntities()));
         System.out.println("ALLOC_NOTE window_steady=500-1000 window_cascade=3500-4000 ticks_total=6000");
     }
 
