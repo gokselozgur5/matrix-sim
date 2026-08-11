@@ -112,6 +112,20 @@ public final class Zion {
                 tick, census.size(), fleet.size(), links, traced);
     }
 
+    /**
+     * Every open pirate avatar across the fleet — ship order, then the
+     * board's registration order. The root carries this to the collector
+     * for the #118 trace metric (D-012: only the root holds both banks);
+     * nothing here computes, and an empty list is the quiet answer.
+     */
+    public List<matrix.entities.Avatar> openPirateAvatars() {
+        List<matrix.entities.Avatar> out = new ArrayList<>();
+        for (Hovercraft ship : fleet) {
+            ship.rig().openAvatarsInto(out);
+        }
+        return out;
+    }
+
     public List<Human> census() {
         return census;
     }

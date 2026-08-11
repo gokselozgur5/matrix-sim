@@ -253,7 +253,9 @@ public final class Simulation {
             emit(metrics.ecoLine(t));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
-            emit(zion.zionLine(t));
+            // #118: the root hands zion's open links to the collector (D-012) and
+            // the trace suffix rides the ZION line — present exactly when links>0.
+            emit(zion.zionLine(t) + metrics.traceSuffix(zion.openPirateAvatars()));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);

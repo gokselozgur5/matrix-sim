@@ -143,6 +143,20 @@ public final class BroadcastRig {
         }
     }
 
+    /**
+     * The open channels' avatars, registration order — the root hands these
+     * to the collector for the trace-pressure metric (#118, the #95 fold
+     * ruling). A read of the board, nothing more: the rig neither computes
+     * nor prints, and the Matrix never learns what a pirate is.
+     */
+    public void openAvatarsInto(List<Avatar> out) {
+        for (NeuralLink link : links) {
+            if (!link.closed()) {
+                out.add(link.avatar);
+            }
+        }
+    }
+
     /** Open channels right now — the ZION line's {@code links=} share of this rig. */
     public int openLinks() {
         int n = 0;
