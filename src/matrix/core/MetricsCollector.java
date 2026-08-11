@@ -54,7 +54,11 @@ public final class MetricsCollector {
      * The attention instrument (D-024 P0): region census plus the three
      * most-watched zones, ranked by avatar count with region-index
      * tiebreak. Region index is zone index, so the names are PlaceGraph's
-     * own. Byte-stable: integers, fixed names, Locale.ROOT.
+     * own. Byte-stable: integers, fixed names, Locale.ROOT. Since P3
+     * (#134) hot= is the EFFECTIVE count — attention capped by the
+     * substrate budget's slots — while top= stays raw attention; read
+     * beside the SUBSTRATE line, the gap between demand and capacity
+     * is the story.
      */
     public String attnLine(long tick) {
         RegionMap regions = world.regions();

@@ -58,6 +58,7 @@ public final class Simulation {
     private final RealWorld realWorld;
     private final Zion zion;
     private final Source source;
+    private final matrix.machine.SubstrateBudget substrate;
     private final Director director;
     private final List<SystemNode> nodes;
     private final MetricsCollector metrics;
@@ -100,11 +101,19 @@ public final class Simulation {
         }
         AgentSmith smith = seedPopulation();
         this.director = new Director(world, source, smith);
+        // D-008 (crowns #32/#124): under PROCESSOR the machine wing gets a
+        // budget, fed through a NAMED port — one scalar, wired here because
+        // only the root holds both banks (D-012); under BATTERY it is absent
+        // and the whole substrate costs nothing.
+        this.substrate = Config.COMPUTE_MODEL.coupled()
+                ? new matrix.machine.SubstrateBudget(places.zones().size())
+                : null;
+        java.util.function.IntSupplier pluggedPods = realWorld.farm()::occupiedCount;
         // Canonical node order (D-031, crown #122): machine, realworld, zion —
         // zion LAST, so liberations queued this tick are absorbed this tick.
         // The third node is the fence event: nodes.add, addition not refactor.
         this.nodes = List.of(
-                new MachineSystem(world, director, source),
+                new MachineSystem(world, director, source, substrate, pluggedPods),
                 new RealWorldSystem(realWorld),
                 new ZionSystem(zion));
         world.flush();
@@ -154,7 +163,8 @@ public final class Simulation {
                 + (Config.WORLD_W_CM / 100_000.0) + " km x " + (Config.WORLD_H_CM / 100_000.0) + " km");
         world.log(Severity.SYS, "exit nodes online: " + world.places().exits().size()
                 + " phone booths across " + world.places().zones().size() + " zones");
-        world.log(Severity.SYS, "compute model: PROCESSOR — the inmates render their own cells");
+        world.log(Severity.SYS, "compute model: " + Config.COMPUTE_MODEL.name()
+                + " — " + Config.COMPUTE_MODEL.desc());
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
         world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
@@ -335,6 +345,12 @@ public final class Simulation {
         }
         if (t % Config.ATTN_EVERY_TICKS == 0) {
             emit(metrics.attnLine(t));
+        }
+        if (substrate != null && t % Config.METRIC_EVERY_TICKS == 0) {
+            // D-008 (#134): the machine wing's own instrument, right after
+            // the attention census it rations. The budget formats, the
+            // map's glitch count rides along, only the root emits (D-020).
+            emit(substrate.line(world.regions().capGlitches()));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
             // #118: the root hands zion's open links to the collector (D-012) and
