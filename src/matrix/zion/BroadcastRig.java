@@ -127,8 +127,11 @@ public final class BroadcastRig {
         }
         sprintTicks++;
         for (NeuralLink link : links) {
-            if (!link.closed() && link.avatar.pos.within(
-                    world.places().nearestExit(link.avatar.pos), Config.EXIT_REACH_CM)) {
+            matrix.core.Position booth = world.places()
+                    .nearestExit(link.avatar.xCm(), link.avatar.yCm());
+            if (!link.closed() && matrix.core.Geo.within(
+                    link.avatar.xCm(), link.avatar.yCm(),
+                    booth.xCm(), booth.yCm(), Config.EXIT_REACH_CM)) {
                 link.closeClean();
                 world.queue(new WorldEvent.Remove(link.avatar.id));
                 world.log(Severity.OK, "booth exit: " + link.human.name
