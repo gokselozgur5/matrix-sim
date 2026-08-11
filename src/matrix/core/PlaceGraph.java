@@ -60,12 +60,12 @@ public final class PlaceGraph {
         return best;
     }
 
-    /** Nearest phone booth; ties break by list order — deterministic. */
-    public Position nearestExit(Position from) {
+    /** Nearest phone booth; ties break by list order — deterministic. Returns the STORED value: free to read. */
+    public Position nearestExit(int fromXCm, int fromYCm) {
         Position best = exits.get(0);
-        long bestD = from.euclidSqCm(best);
+        long bestD = Geo.distSqCm(fromXCm, fromYCm, best.xCm(), best.yCm());
         for (int i = 1; i < exits.size(); i++) {
-            long d = from.euclidSqCm(exits.get(i));
+            long d = Geo.distSqCm(fromXCm, fromYCm, exits.get(i).xCm(), exits.get(i).yCm());
             if (d < bestD) {
                 bestD = d;
                 best = exits.get(i);
