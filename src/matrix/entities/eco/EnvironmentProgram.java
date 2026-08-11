@@ -19,8 +19,11 @@ import matrix.entities.behavior.WanderMovement;
  * the catalog row (D-016); the cadence by the scheduling wheel (D-018)
  * — stretched by LOD_COLD_STRETCH while the snapshot lies in a COLD
  * region (D-024 P1, #131): the cold city dreams slower, and a skipped
- * tick skips its rng draws too. A healthy environment program is
- * invisible — it never logs.
+ * tick skips its rng draws too. After LOD_PARK_AFTER_TICKS of nobody
+ * watching, the region parks outright (P2, #132): catalog residents fold
+ * into the RegionMap aggregate and leave the walk until attention brings
+ * them back — same ids, freshly drawn faces. A healthy environment
+ * program is invisible — it never logs.
  */
 public final class EnvironmentProgram extends Program {
     public final Species species;

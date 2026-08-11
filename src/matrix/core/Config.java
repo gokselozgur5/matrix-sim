@@ -76,6 +76,17 @@ public final class Config {
     public static final int LOD_LINGER_TICKS = 200;
     public static final int LOD_COLD_STRETCH = 4;
     public static final int ATTN_EVERY_TICKS = 100;
+    // D-024 P2, the parking family (#132): a region un-HOT for this many
+    // CONSECUTIVE ticks parks its catalog residents into the aggregate.
+    public static final int LOD_PARK_AFTER_TICKS = 600;
+    // Parked life at ECO cadence: the event draw fires a birth on 0 and a
+    // death on 1 — 1/8 each, a power of two so the compare is bit-exact
+    // everywhere (the KID_SPIKE_DENOM precedent).
+    public static final int LOD_AGG_EVENT_DENOM = 8;
+    // The species draw's bound is lcm(1..12): modulo ANY candidate count a
+    // parked region can offer (1..12 catalog rows) divides evenly, so the
+    // pick is unbiased as well as bit-stable.
+    public static final int LOD_AGG_SPECIES_BOUND = 27_720;
 
     private Config() {}
 }
