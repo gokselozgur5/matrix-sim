@@ -81,17 +81,45 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 ---
 
-## v4.0 — Resurrections (backlog)
+## Season Two (D-038) — the epilogue graduates
 
-*Out-of-band ideas; discussed when their time comes.*
+*Season One ends at the D-036 finish line above. What follows is joy scheduled like debt: three named phases, each behind decision gates that close ONLY by the Architect's verdict in their thread. Crew dossiers are posted in the gate threads; a dossier is an argument, never a permission.*
 
-- [ ] **Processor-mode mechanics:** node loss = compute loss → the Matrix drops "fps", glitches increase (D-008)
-- [ ] Full perception feed: per-brain sensory frames streamed over the NeuralLink protocol; an external client can jack in as a real connection (D-021)
-- [ ] JUnit: determinism + arc tests in CI
-- [ ] The Zion side: hovercrafts, a pirate jack-in economy
+## v4.0 — Resurrections
+
+*The war from the other side: Zion's fleet on the mirror, and a boy who wakes himself.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Zion fleet + pirate broadcast jack-in | D-032 | 🟡 awaiting verdict | #95 |
+| Self-substantiation (the Kid) | D-033 | 🔵 awaiting verdict | #96 |
+
+Build units: #110–#124 (fleet lifecycle, PIRATE links, trace pressure, rig-death sever, Kid thresholds, ZionSystem/BroadcastRig crowns). **DoD:** a pirate crew jacks in through a rig, runs a mission under trace pressure, and exits — or doesn't — with the ZION instrument line telling it; the Kid disconnects himself without a rig, once, at his seeded threshold.
+
+## v4.5 — The Second Renaissance
+
+*The past becomes replayable: history as a record log, reload as replay.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Chronos: event-sourced state, reload = replay | D-023 | 🔵 awaiting verdict | #27 |
+| JUnit + CI (reopens D-009) | — | 🟡 needs its own record | #137 |
+
+Build units: #125–#129 (CHRONOS record log → replay harness → snapshot format with hash-equals-DIGEST proof → reload as snapshot-boot + replay → authority inversion), #137, #138 ✅ (release automation shipped). **DoD:** a full arc replayed from the record log produces the same DIGEST chain as the live run.
+
+## v5.0 — The Matrix Online
+
+*The city at scale: attention decides what is real enough.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Attention-graded fidelity (LOD) | D-024 | 🔵 awaiting verdict | #28 |
+| Processor-mode substrate (pods as compute) | D-008 | 🔵 awaiting verdict | #19 |
+
+Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true parking with aggregate digest segment, déjà vu on unpark, SUBSTRATE budget coupling pods to HOT slots, hash-backed hunts, the 5,000-entity homecoming run). **DoD:** 5,000 entities inside the D-027 budgets with the digest chain still bit-stable across a park/unpark cycle.
 
 ---
 
 ### Process note
 
-Every phase opens as a **draft PR** → file-by-file joint review → decisions closed in DECISIONS.md → the proof command is pasted into the PR description → merge. No phase skipping; even the Architect respects the cycle.
+Delivery runs on the D-039 law: one **build-unit issue = one small PR** that closes it with keywords — atomic commits carrying finding, fix, and evidence; light locks per PR (compile · `--selftest` · digest, `--bench` where speed is touched); the **full adversarial skeptic pass at phase boundaries**. Gates before units: a phase's build units start only after its gate verdicts land. No phase skipping; even the Architect respects the cycle.
