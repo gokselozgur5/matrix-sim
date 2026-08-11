@@ -25,8 +25,12 @@ public final class Zion {
     private final List<Human> census = new ArrayList<>();
     /** Index-aligned with the census: where each citizen came from ("treaty" today; #121 adds the Kid's own tag). */
     private final List<String> origins = new ArrayList<>();
-    /** The fleet: ships built and lost here (composition — crown #84). */
+    /** The fleet: ships built and lost here (composition — crown #84). LOST hulls stay listed: nobody deleted, not even ships. */
     private final List<Hovercraft> fleet = new ArrayList<>();
+    /** A filed sink order (#119): executes at the top of the next zion tick, then clears. */
+    private boolean sinkOrdered = false;
+    /** Hard endings that went down with a hull — the city keeps the count a sunk rig can no longer report. */
+    private int tracedFallen = 0;
     private final World world;
 
     public Zion(World world) {
@@ -49,6 +53,13 @@ public final class Zion {
      * wing consumes no fate.
      */
     public void tick(long tick) {
+        // #119: a loss lands before the fleet flies its tick — the filed sink
+        // order (ops console / --sink-at) or the SHIP_LOSS_TICK knob, one
+        // trigger, one slot, deterministic either way.
+        if (sinkOrdered || tick == Config.SHIP_LOSS_TICK) {
+            sinkOrdered = false;
+            sinkActiveShip();
+        }
         if (fleet.isEmpty() && census.size() >= Config.RIG_CAPACITY) {
             fleet.add(new Hovercraft("the Nebuchadnezzar"));
             world.log(Severity.FATE,
@@ -65,6 +76,34 @@ public final class Zion {
                 }
             }
         }
+    }
+
+    /**
+     * The sink order (#119): operator-driven loss, filed by the root —
+     * exactly like reload, except the execution waits for the canonical
+     * zion slot so the cascade always lands deterministically. Natural
+     * loss causes (sentinels, squiddies, sabotage) arrive with later
+     * units; today the operator IS fate.
+     */
+    public void orderSink() {
+        sinkOrdered = true;
+    }
+
+    /**
+     * The active ship goes down: first hull in fleet order still afloat.
+     * The rig severs every open wire through the bridge (one BAD line per
+     * wire), the ship closes with its FATE line, and the city absorbs the
+     * fallen rig's hard-ending tally — a count must not sink with a hull.
+     */
+    private void sinkActiveShip() {
+        for (Hovercraft ship : fleet) {
+            if (ship.state() != Hovercraft.MissionState.LOST) {
+                ship.destroy(world);
+                tracedFallen += ship.rig().traced();
+                return;
+            }
+        }
+        world.log(Severity.SYS, "sink order refused: no hull afloat");
     }
 
     /**
@@ -96,14 +135,19 @@ public final class Zion {
      * The ZION instrument line (D-020, additive grammar), now with real
      * counts: fleet size, open pirate links across the fleet's rigs, and
      * sessions ended the hard way. {@code Locale.ROOT}, byte-stable across
-     * locales; the caller prints, never this class. (When #119 lets a ship
-     * be lost, the traced tally must move up to the city so a sunk rig's
-     * count is not forgotten with it.)
+     * locales; the caller prints, never this class. The #197 note is
+     * cashed (#119): a lost hull's tally moved up to the city the moment
+     * it went down, so the sum walks only ships still afloat and no count
+     * is forgotten. {@code fleet=} keeps counting every hull ever built —
+     * the fallen stay on the registry, ships included (D-011's spirit).
      */
     public String zionLine(long tick) {
         int links = 0;
-        int traced = 0;
+        int traced = tracedFallen;
         for (Hovercraft ship : fleet) {
+            if (ship.state() == Hovercraft.MissionState.LOST) {
+                continue;
+            }
             links += ship.rig().openLinks();
             traced += ship.rig().traced();
         }

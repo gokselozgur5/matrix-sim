@@ -58,6 +58,7 @@ public final class Config {
     public static final int RIG_CAPACITY = 3;
     public static final int RIG_STATION_TICKS = 400;
     public static final int TRANSIT_TICKS = 150;
+    public static final long SHIP_LOSS_TICK = -1; // #119 scenario knob: -1 = off, the canonical fate
 
     private Config() {}
 }

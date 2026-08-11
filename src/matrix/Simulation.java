@@ -195,6 +195,16 @@ public final class Simulation {
         world.ledger().reset();
     }
 
+    /**
+     * Ops console: scuttle the active ship (#119). Operator-driven and
+     * deterministic exactly like reload — except the loss executes in the
+     * NEXT zion tick's canonical slot, so the cascade lands in tick order,
+     * never between batches.
+     */
+    public void commandSink() {
+        zion.orderSink();
+    }
+
     private boolean oneExists() {
         for (var e : world.entities()) {
             if (e.alive && e instanceof matrix.entities.TheOne) {

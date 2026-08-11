@@ -23,6 +23,7 @@ public final class Main {
         boolean selftest = false;
         boolean bench = false;
         String follow = null;
+        long sinkAt = -1;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -32,6 +33,7 @@ public final class Main {
                 case "--selftest" -> selftest = true;
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
+                case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
                 case "--help" -> {
                     usage();
                     return;
@@ -51,7 +53,7 @@ public final class Main {
             System.exit(bench(seed));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow);
+            runHeadless(seed, ticks, follow, sinkAt);
             return;
         }
         runInteractive(seed, follow);
@@ -111,10 +113,21 @@ public final class Main {
         return steadyOk && arcOk ? 0 : 1;
     }
 
-    private static void runHeadless(long seed, long ticks, String follow) {
+    /**
+     * The headless replay, now a scenario runner too: {@code --sink-at T}
+     * files the #119 sink order right before tick T, so the loss executes
+     * in tick T's zion slot — same seed, same T, same fate. Default -1
+     * files nothing and the loop IS the canonical run.
+     */
+    private static void runHeadless(long seed, long ticks, String follow, long sinkAt) {
         Simulation sim = new Simulation(seed, System.out, follow);
         long start = System.nanoTime();
-        sim.run(ticks);
+        for (long t = 1; t <= ticks; t++) {
+            if (t == sinkAt) {
+                sim.commandSink();
+            }
+            sim.tickOnce();
+        }
         long elapsedNs = System.nanoTime() - start;
         long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
         long ticksPerSecond = 1_000_000_000L / perTickNs;
@@ -150,6 +163,7 @@ public final class Main {
                     case "smith" -> sim.commandSmith();
                     case "deja" -> sim.commandDeja();
                     case "reload" -> sim.commandReload();
+                    case "sink" -> sim.commandSink();
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -162,7 +176,7 @@ public final class Main {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;
                     }
-                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | pause | speed N | quit\n");
+                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | sink | pause | speed N | quit\n");
                     default -> System.out.print("unknown command (try: help)\n");
                 }
             }
@@ -182,9 +196,10 @@ public final class Main {
                   --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
+                  --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
-                interactive commands: red | agent | smith | deja | reload | pause | speed N | quit
+                interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit
                 """);
     }
 }

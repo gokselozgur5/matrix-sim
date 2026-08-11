@@ -128,19 +128,25 @@ public final class BroadcastRig {
     /**
      * The rig dies mid-session: every open link severs UNCLEAN in
      * registration order through the same bridge — brain flatlined, link
-     * closed, {@code Remove} queued, nothing to flush (D-032 confirmation;
-     * #119 scripts the loss that calls this).
+     * closed, {@code Remove} queued, nothing to flush (the D-032
+     * confirmation, #119's DoD). One BAD line per cut wire; the count goes
+     * back to the ship, whose FATE line carries it. Zion's sink order is
+     * the only caller — operator-driven loss; natural causes arrive with
+     * later units.
      */
-    public void destroy(World world) {
+    public int destroy(World world) {
+        int cut = 0;
         for (NeuralLink link : links) {
             if (!link.closed()) {
                 link.severUnclean();
                 traced++;
+                cut++;
                 world.log(Severity.BAD, "the rig dies with " + link.human.name
                         + " still under — severed, flatlined, nothing to flush");
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
+        return cut;
     }
 
     /**
