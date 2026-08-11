@@ -127,6 +127,8 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 *The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
 
+*The season's second wing (the second origin text: "adı MxO ama içi engine"): the CITY itself. Old MxO's breadth was never crowd — it was districts with character, the Truce as a lived era, and live events that became canon. Our advantage over the original: their world died with its servers in 2009; ours is seed + log — unkillable, replayable, canon by construction. The character wing gives the city its people; the city wing gives the people their world.*
+
 ## v6.0 — The Heart of the City
 
 | Gate | Decision | Status | Thread |
@@ -138,6 +140,9 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Bonds, and the kiss (Room 303 clause) | D-045 | 🟡 awaiting verdict | #215 |
 | The Cypher protocol | D-046 | 🟡 awaiting verdict | #216 |
 | The dream reader | D-047 | 🟡 awaiting verdict | #217 |
+| Districts with identity (the city wing) | D-048 | 🟡 awaiting verdict | #223 |
+| The Truce as a regime (the untold sixty years) | D-049 | 🟡 awaiting verdict | #224 |
+| Live events: authored, signed, foldable | D-050 | 🟡 awaiting verdict | #225 |
 
 Build units are cut AFTER verdicts (gates before units — the D-039 law). **DoD sketch:** a stat contest decides a scene the flat world could not produce; the Architect acts in-world through the console and the log names his character; a bonded death is paid back once, priced, and LinkAudit calls it CLAUSE not GHOST; a petition re-inserts a mind the chronos record still remembers; and one command renders one mind's whole day as deterministic prose the Architect actually reads.
 

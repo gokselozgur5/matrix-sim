@@ -52,5 +52,8 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-045](adr/D-045-bonds-and-the-kiss.md) | Bonds, and the Room 303 clause — love as bookkeeping | 🟡 | v6.0 | #215 |
 | [D-046](adr/D-046-cypher-protocol.md) | The Cypher protocol: the door's inward direction | 🟡 | v6.0 | #216 |
 | [D-047](adr/D-047-dream-reader.md) | The dream reader: a teleprinter for one mind's day | 🟡 | v6.0 | #217 |
+| [D-048](adr/D-048-districts-with-identity.md) | Districts with identity: the city's quarters mean something | 🟡 | v6.0 | #223 |
+| [D-049](adr/D-049-truce-regime.md) | The Truce as a regime: the untold sixty years, playable | 🟡 | v6.0 | #224 |
+| [D-050](adr/D-050-live-events.md) | Live events as signed chronos entries: authored history | 🟡 | v6.0 | #225 |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
