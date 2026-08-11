@@ -55,5 +55,8 @@ public final class Config {
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
 
+    public static final int RIG_CAPACITY = 3;
+    public static final int RIG_STATION_TICKS = 400;
+
     private Config() {}
 }
