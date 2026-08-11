@@ -69,3 +69,5 @@ Milestones exist for v4.0/v4.5/v5.0 with gates re-homed; releases v1.0.0+ exist 
 ## More Information
 
 Amends [D-036](D-036-finish-line.md) (the finish line becomes the season boundary; the never-list stands untouched). Season-two gates still open by dossier + verdict: the crew dossiers land in the threads first. Related: [D-032](D-032-pirate-broadcast.md), [D-033](D-033-self-substantiation.md), [D-023](D-023-chronos-event-sourcing.md), [D-024](D-024-attention-lod.md), [D-008](D-008-processor-mode.md).
+
+Referenced by: [D-039](D-039-unit-pr-granularity.md).

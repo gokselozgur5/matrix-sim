@@ -59,3 +59,5 @@ AgentSmith's javadoc links this ADR; PRINCIPLES A6 contains the fence sentence; 
 ## More Information
 
 Related: [D-003](D-003-deletion-refused-exception.md). Principle: A6. Crown: #66.
+
+Referenced by: [D-001](D-001-smith-infection-decorator.md), [D-003](D-003-deletion-refused-exception.md), [D-025](D-025-supervision-tree.md).

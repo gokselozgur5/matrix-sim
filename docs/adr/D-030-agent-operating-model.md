@@ -63,3 +63,5 @@ Every agent-produced PR carries a proof block (compile + double-run digest diff 
 ## More Information
 
 Related: [D-028](D-028-five-document-canon.md), [D-020](D-020-observability-contract.md). Principles: Ag1-Ag8.
+
+Referenced by: [D-028](D-028-five-document-canon.md), [D-034](D-034-session-ritual.md), [D-039](D-039-unit-pr-granularity.md).

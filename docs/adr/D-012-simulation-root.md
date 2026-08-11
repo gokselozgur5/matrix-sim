@@ -60,3 +60,5 @@ World has no realworld imports or fields (grep clean); Main constructs exactly o
 ## More Information
 
 Related: [D-011](D-011-human-class.md), [D-013](D-013-neurallink-bridge.md). Principle: A7. Crowns: #86, #87, #88.
+
+Referenced by: [D-011](D-011-human-class.md), [D-031](D-031-system-of-systems.md).

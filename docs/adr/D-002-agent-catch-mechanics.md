@@ -69,3 +69,5 @@ A 2,000-tick v1 run shows: red count oscillating in METRIC lines, at least one p
 Related: [D-006](D-006-arc-tuning.md), [D-013](D-013-neurallink-bridge.md). Crown: #65.
 
 Accepted with an evolution path: once the D-004 place graph matures, the flat ratio is intended to evolve into the emergent exit-race mechanic (capture decided by route geometry, not dice); a future decision will formalize it.
+
+Referenced by: [D-004](D-004-field-model.md).

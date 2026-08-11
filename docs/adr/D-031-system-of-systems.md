@@ -65,3 +65,5 @@ Simulation contains no direct World or PodFarm field access outside its SystemNo
 ## More Information
 
 Extends [D-012](D-012-simulation-root.md). Related: [D-032](D-032-pirate-broadcast.md), [D-013](D-013-neurallink-bridge.md). Principle: A7. New crown: SystemNode.
+
+Referenced by: [D-032](D-032-pirate-broadcast.md).

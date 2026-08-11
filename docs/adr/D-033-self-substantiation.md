@@ -63,3 +63,5 @@ Not applicable while parked. On unparking: a long seeded run shows zero-or-rare 
 ## More Information
 
 Depends on [D-022](D-022-acceptance-loop.md), [D-032](D-032-pirate-broadcast.md). Related: [D-021](D-021-perception-feed.md). Lore: The Animatrix, "Kid's Story"; Reloaded/Revolutions (the Kid at the gate).
+
+Referenced by: [D-032](D-032-pirate-broadcast.md), [D-036](D-036-finish-line.md), [D-038](D-038-season-two.md).

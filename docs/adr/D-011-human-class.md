@@ -60,3 +60,5 @@ After the treaty in a v3.0 run, opted-out humans appear in the RealWorld registr
 Related: [D-012](D-012-simulation-root.md), [D-013](D-013-neurallink-bridge.md). Crown: #50.
 
 Accepted with a spark: human names are generated deterministically from the seed — same seed, same Thomas. Determinism doubles as fate.
+
+Referenced by: [D-012](D-012-simulation-root.md), [D-013](D-013-neurallink-bridge.md), [D-032](D-032-pirate-broadcast.md).
