@@ -8,6 +8,8 @@ part of the shop.
 | Tool | What it does |
 |---|---|
 | `release.sh` | Cuts a phase release from `main` — refuses unless compile, `--selftest`, and `--bench` are green at cut time, then stamps their live output into the notes under your prose. Usage: `tools/release.sh vX.Y.Z "Title" notes.md` with notes written from `RELEASE_NOTES_TEMPLATE.md`. |
+| `subissue.sh` | Cuts a child issue and hangs it on its parent in one motion — inherits the parent's milestone, refuses a closed parent (a tree does not grow from a closed branch). Usage: `tools/subissue.sh <parent> "<title>" body.md [--label L] [--milestone M]`. |
+| `issuetree.sh` | Prints an issue's tree root to leaves: parents carry their child count, leaves carry a dot. Usage: `tools/issuetree.sh <issue> [max-depth]`. |
 
 House rules:
 
