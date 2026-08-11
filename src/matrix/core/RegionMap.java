@@ -17,11 +17,17 @@ import java.util.List;
  * does not flicker). Avatars only: connected minds hold attention;
  * programs are the dream.
  *
- * P0 is measure-only. Nothing downstream reads this map, no entity is
- * parked, no digested state is added — the fingerprint of the world is
- * byte-identical with the map or without it. Zero rng draws ever; the
- * state walk runs in region-index order. Parking, aggregates, and the
- * digest segment arrive only if and as the D-024 verdict rules.
+ * P0 was measure-only: the map watched and nothing read it. P1 (#131)
+ * opens the ledger for its first reader — EnvironmentProgram stretches
+ * its Scheduler period by LOD_COLD_STRETCH while its snapshot lies in
+ * a COLD region. Eco only: Avatars, agents and every other program
+ * keep their cadence; connected minds are never degraded. A skipped
+ * tick skips its rng draws too, so the DIGEST chain moves by design —
+ * the reframe is law: determinism means the DEGRADED film replays
+ * bit-identically, not that it matches the unstretched one. Zero rng
+ * draws in the map itself; the state walk runs in region-index order.
+ * Parking, aggregates, and the digest segment arrive only if and as
+ * the D-024 verdict rules.
  */
 public final class RegionMap {
     private final SpatialHash hash;
@@ -85,6 +91,11 @@ public final class RegionMap {
 
     public int regionCount() {
         return hot.length;
+    }
+
+    /** Region owning the given snapshot coordinates — the cell's zone, pure index math, zero draws. */
+    public int regionAt(int xCm, int yCm) {
+        return regionOfCell[hash.cellIndexOf(xCm, yCm)];
     }
 
     /** Live Avatars whose snapshot lay in the region at the last refresh. */
