@@ -64,4 +64,6 @@ Every agent-produced PR carries a proof block (compile + double-run digest diff 
 
 Related: [D-028](D-028-five-document-canon.md), [D-020](D-020-observability-contract.md). Principles: Ag1-Ag8.
 
-Referenced by: [D-028](D-028-five-document-canon.md), [D-034](D-034-session-ritual.md), [D-039](D-039-unit-pr-granularity.md).
+**Errata (2026-08-11, doc-truth skeptic):** Five documents cited this record for rules it never contained; the rules are real and now they live here. Adopted practice, recorded: (1) **the shared bench** — crew diagnostic instruments follow the probe contract (`probes/README.md`: read-only, own-universe, greppable verdicts) and are LEFT ON THE BENCH when an investigation ends; the next skeptic starts from the bench, not from zero. (2) **Ag9 joins the crew principles** (PRINCIPLES.md carries its text): the bench is shared, and a probe that dies with its scratchpad is evidence thrown away. (3) **Pin-to-SHA** — verifiers work from `git archive <sha>` copies, never from a shared working tree that can move under them; adopted the day it happened mid-verification and the round survived only because the skeptic had pinned. Shop tooling (`tools/`) rides the same rule: the crew's instruments are part of the shop.
+
+Referenced by: [D-028](D-028-five-document-canon.md), [D-034](D-034-session-ritual.md), [D-039](D-039-unit-pr-granularity.md), [D-040](D-040-ci-and-junit.md).

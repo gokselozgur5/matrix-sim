@@ -29,6 +29,6 @@ public final class SwarmMovement implements Movement {
                 }
             }
         }
-        self.pos = self.pos.steppedBy(dx, dy);
+        self.moveBy(dx, dy);
     }
 }

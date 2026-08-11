@@ -22,6 +22,7 @@ public final class Config {
     public static final int METRIC_EVERY_TICKS = 100;
     public static final int DIGEST_EVERY_TICKS = 100;
     public static final int FOLLOW_EVERY_TICKS = 100;
+    public static final int ZION_EVERY_TICKS = 100;
 
     public static final int EXILE_COUNT = 6;
     public static final int EXILE_COLLECT_EVERY_TICKS = 900;

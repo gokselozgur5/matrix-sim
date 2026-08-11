@@ -1,0 +1,30 @@
+package matrix.core;
+
+/**
+ * Fixed-point distance math over raw int coordinates (D-004), for hot
+ * paths where no Position value exists to ask (#176). Every method
+ * mirrors Position's arithmetic exactly — widen to long BEFORE the
+ * subtraction, so no intermediate overflow exists at any input.
+ */
+public final class Geo {
+
+    public static long distSqCm(int axCm, int ayCm, int bxCm, int byCm) {
+        long dx = (long) axCm - bxCm;
+        long dy = (long) ayCm - byCm;
+        return dx * dx + dy * dy;
+    }
+
+    /** Negative radius means nothing is within — never accidental containment (Position.within's law). */
+    public static boolean within(int axCm, int ayCm, int bxCm, int byCm, int radiusCm) {
+        if (radiusCm < 0) return false;
+        return distSqCm(axCm, ayCm, bxCm, byCm) <= (long) radiusCm * radiusCm;
+    }
+
+    public static int chebyshevCm(int axCm, int ayCm, int bxCm, int byCm) {
+        long dx = Math.abs((long) axCm - bxCm);
+        long dy = Math.abs((long) ayCm - byCm);
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(dx, dy));
+    }
+
+    private Geo() {}
+}
