@@ -55,6 +55,23 @@ public final class Config {
     public static final long KID_SPIKE = 24;
 
     public static final int HASH_CELL_CM = 5_000;
+    // The ring hunt's displacement law (#135): the largest legal single-tick
+    // gait displacement is the sparrow's flock heading (±400, ±400) — 566 cm
+    // euclid; SWARM tops out at 1.5x bee speed = 225, stepToward at ONE_SPEED
+    // 350 -> 495. The bound rounds up with headroom; anything past it (rain's
+    // ground recycle, an exile gone to ground) rides the far-mover ledger
+    // instead. Correctness never depends on this number — only ring width does.
+    public static final int HUNT_DISP_BOUND_CM = 640;
+    public static final long HUNT_DISP_BOUND_SQ_CM2 =
+            (long) HUNT_DISP_BOUND_CM * HUNT_DISP_BOUND_CM;
+    /**
+     * The hunt referee (#135): with {@code -Dmatrix.huntVerify=true} every
+     * ring hunt replays the linear scan it replaced and throws on the first
+     * divergence — object identity, not equals. Ships false; equivalence
+     * evidence runs flip it. Results never depend on it: the ring is exact,
+     * the referee only proves it.
+     */
+    public static final boolean HUNT_VERIFY = Boolean.getBoolean("matrix.huntVerify");
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;
     public static final int FLOCK_SEPARATION_CM = 1_500;
     public static final int FLOCK_MAX_NEIGHBORS = 6;

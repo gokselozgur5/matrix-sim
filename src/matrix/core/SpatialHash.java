@@ -36,13 +36,43 @@ public final class SpatialHash {
         for (List<MatrixEntity> bucket : buckets) {
             bucket.clear();
         }
-        for (MatrixEntity e : entities) {
+        farMovers.clear();
+        for (int i = 0; i < entities.size(); i++) {
+            MatrixEntity e = entities.get(i);
+            e.seq = i; // the linear scan's tie-break, frozen while the list is (#135)
+            e.grid = this;
+            e.farMover = false;
             if (e.alive) {
                 e.snapXCm = e.xCm();
                 e.snapYCm = e.yCm();
                 buckets[bucketIndex(e.snapXCm, e.snapYCm)].add(e);
+                if (e.snapXCm < 0 || e.snapXCm > (cellsX - 1) * cellCm + cellCm
+                        || e.snapYCm < 0 || e.snapYCm > (cellsY - 1) * cellCm + cellCm) {
+                    // A snapshot outside the grid was clamped into an edge cell it
+                    // does not lie in — the ring bound cannot reason about it, so
+                    // it rides the ledger from birth. No mover does this today
+                    // (moveBy clamps, drift and exiles stay in-world); the guard
+                    // costs two compares and outlives that assumption.
+                    noteFarMover(e);
+                }
             }
         }
+    }
+
+    /**
+     * The far-mover ledger (#135): every entity whose live position has left
+     * the displacement law's reach of its snapshot, appended once, cleared at
+     * rebuild. The ring search sweeps this list linearly after the rings —
+     * snapshot cells index the sedate; the ledger indexes the teleports.
+     */
+    private final List<MatrixEntity> farMovers = new ArrayList<>();
+
+    public void noteFarMover(MatrixEntity e) {
+        if (e.farMover) {
+            return;
+        }
+        e.farMover = true;
+        farMovers.add(e);
     }
 
     private final List<MatrixEntity> scratch = new ArrayList<>();
@@ -83,11 +113,34 @@ public final class SpatialHash {
         return cy * cellsX + cx;
     }
 
-    // Cell-geometry views for the RegionMap (D-024): one clamp law rules
-    // both maps — a coordinate lands in the same cell here and there.
+    // Cell-geometry views for the RegionMap (D-024) and the ring hunts
+    // (#135): one clamp law rules every map — a coordinate lands in the
+    // same cell here, there, and in the hunt's anchor.
 
     int cellCount() {
         return buckets.length;
+    }
+
+    int cellsXCount() {
+        return cellsX;
+    }
+
+    int cellsYCount() {
+        return cellsY;
+    }
+
+    int cellSizeCm() {
+        return cellCm;
+    }
+
+    /** Bucket at grid coordinates — the ring search's read window; never mutate. */
+    List<MatrixEntity> bucketAt(int cx, int cy) {
+        return buckets[cy * cellsX + cx];
+    }
+
+    /** The current tick's far movers — sweep after the rings; never mutate. */
+    List<MatrixEntity> farMovers() {
+        return farMovers;
     }
 
     int cellIndexOf(int xCm, int yCm) {
