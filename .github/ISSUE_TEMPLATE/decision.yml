@@ -1,0 +1,38 @@
+name: Decision gate
+description: The discussion thread for one D-number — closes ONLY by the Architect's verdict here
+labels: ["decision"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A 🟡 decision never merges into code undiscussed (D-000). Crew dossiers are arguments;
+        the verdict in this thread is the permission. After the verdict, the machine performs
+        the flip: record status + index emoji together, citing the verdict comment.
+  - type: input
+    id: dnumber
+    attributes:
+      label: D-number and title
+      placeholder: "D-040: JUnit and CI — reopening D-009"
+    validations:
+      required: true
+  - type: textarea
+    id: ystatement
+    attributes:
+      label: Y-statement seed
+      description: "In the context of ..., facing ..., we lean toward ..., and against ..., to achieve ..., accepting that ..."
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options on the table
+      description: Each option one line — the record (docs/adr/) carries the full pros and cons.
+    validations:
+      required: true
+  - type: textarea
+    id: verdict
+    attributes:
+      label: What closes this gate
+      value: "The Architect's verdict as a comment in this thread. One word suffices; the record quotes it."
+    validations:
+      required: false

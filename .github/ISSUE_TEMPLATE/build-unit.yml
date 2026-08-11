@@ -1,0 +1,43 @@
+name: Build unit
+description: One unit of buildable work — becomes exactly one PR that closes this issue (D-039)
+labels: ["build-unit"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One unit = one small PR + `Closes #N` + atomic commits carrying finding, fix, and evidence.
+        Gates before units: if this unit executes a 🟡/🔵 decision, the verdict must land in the gate thread first.
+  - type: textarea
+    id: statement
+    attributes:
+      label: Unit statement
+      description: What exists when this unit is done that does not exist now — mechanism, not file list.
+      placeholder: "A `probes/LedgerMirror` instrument holds every ledger delta to the open-link residue mirror..."
+    validations:
+      required: true
+  - type: input
+    id: decisions
+    attributes:
+      label: Decisions executed
+      description: The 🟢 records this unit executes (IDs), or the gate thread it waits on.
+      placeholder: "D-022, D-030 — no open gates"
+    validations:
+      required: true
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: Machine-checkable — a command and the line it must print.
+      placeholder: "java -cp out:probes/out LedgerMirror 6000 prints LEDGER_ANOMALIES=0"
+    validations:
+      required: true
+  - type: dropdown
+    id: locks
+    attributes:
+      label: Lock tier expected
+      options:
+        - "light — compile · --selftest · digest (docs-only: n/a)"
+        - "light + bench — speed-adjacent work"
+        - "full — phase boundary, adversarial skeptic pass"
+    validations:
+      required: true

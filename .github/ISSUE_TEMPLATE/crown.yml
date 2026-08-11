@@ -1,0 +1,44 @@
+name: Class crown
+description: The design record of one class — smallest to biggest, every class wears one
+labels: ["class-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A crown closes by the merged PR that ships its class (D-039). Touch a class later,
+        update its crown — an outdated crown is a lie wearing jewelry (Dev4).
+  - type: input
+    id: classname
+    attributes:
+      label: Class and package
+      placeholder: "matrix.machine.BroadcastRig"
+    validations:
+      required: true
+  - type: textarea
+    id: responsibility
+    attributes:
+      label: Responsibility
+      description: One paragraph — what this class owns and refuses to own.
+    validations:
+      required: true
+  - type: textarea
+    id: collaborators
+    attributes:
+      label: Collaborators and edges
+      description: "Who it talks to, with UML edge semantics: composition owns, aggregation holds, association knows, dependency uses."
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Invariants
+      description: What must stay true — determinism obligations (draws, iteration order, digest visibility) included.
+    validations:
+      required: true
+  - type: input
+    id: stage
+    attributes:
+      label: Construction stage
+      placeholder: "floors — v4.0 wing"
+    validations:
+      required: true
