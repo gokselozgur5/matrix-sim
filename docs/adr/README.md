@@ -37,6 +37,8 @@ If you cannot write the Y-statement, the decision is not understood yet.
 
 **Records are immutable.** A changed mind creates a *superseding* record; both link each other in More Information. History is an audit trail, not a draft. (Live example: [D-007](D-007-terminal-ui.md) → superseded by [D-019](D-019-backend-only.md)/[D-020](D-020-observability-contract.md).)
 
+**Back edges.** Every record may end with one `Referenced by:` line — the inbound half of the decision web, generated from actual link targets (never from memory) by an idempotent pass that refuses to touch an existing line. Forward links say *what this leans on*; the back edge says *what leans on this* — read it before you flip, supersede, or park a record. Backlinks are navigation, not content: they are the one part of a record that may be regenerated.
+
 ## A decision is done when (adapted from adr.github.io/ad-practices)
 
 1. **Evidence** exists for the claims made,
