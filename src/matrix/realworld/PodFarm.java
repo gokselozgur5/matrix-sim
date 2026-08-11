@@ -25,11 +25,17 @@ public final class PodFarm {
 
     public Human grow(Rng rng) {
         String name = FIRST[rng.nextInt(FIRST.length)] + " " + LAST[rng.nextInt(LAST.length)];
-        return growNamed(name);
+        // D-033 draws nothing here: the breaking point is a pure function
+        // of the name — fate was always in the name, and the rng stream
+        // never hears about it (AcceptanceLoop owns the derivation).
+        return grow(name);
     }
 
-    /** For the fated: the ledger does not roll dice on the anomaly's name. */
     public Human growNamed(String name) {
+        return grow(name);
+    }
+
+    private Human grow(String name) {
         int i = pods.size();
         String rackUnit = String.format(Locale.ROOT, "R%02d/U%02d", 1 + i / 24, 1 + i % 24);
         Pod pod = new Pod(rackUnit);

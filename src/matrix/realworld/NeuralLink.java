@@ -16,6 +16,18 @@ public final class NeuralLink {
     public final Avatar avatar;
     public final LinkKind kind;
     private boolean closed = false;
+    /**
+     * The personal account of D-033 — spike-only disbelief, link-local per
+     * the crown-smith ruling (open point a: it dies with the link). Written
+     * by AcceptanceLoop in registration order, read by RealWorld for the
+     * door, the FATE line and the digest. {@code windows} counts the spike
+     * draws taken (live BLUE accrual windows), {@code spikes} the ones that
+     * landed — the FATE line cites both; only the residue itself enters the
+     * digest, exactly the addendum's framing.
+     */
+    long personalResidue = 0;
+    int spikes = 0;
+    int windows = 0;
 
     public NeuralLink(Human human, Avatar avatar, LinkKind kind) {
         this.human = human;

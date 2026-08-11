@@ -168,7 +168,7 @@ public final class MetricsCollector {
         return Math.round(Math.sqrt((double) best));
     }
 
-    public MetricSnapshot sample(long tick) {
+    public MetricSnapshot sample(long tick, long selfsub) {
         int alive = world.countAlive();
         double infected = alive == 0 ? 0.0 : (double) world.countInfected() / alive;
         return new MetricSnapshot(tick,
@@ -177,6 +177,7 @@ public final class MetricsCollector {
                 world.countAgents(),
                 alive,
                 infected,
-                (double) world.ledger().balance());
+                (double) world.ledger().balance(),
+                selfsub);
     }
 }

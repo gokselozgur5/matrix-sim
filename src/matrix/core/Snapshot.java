@@ -65,8 +65,19 @@ public record Snapshot(long tick, int version, String sha256Hex, byte[] bytes) {
      * nothing, draws nothing.
      */
     public static Snapshot of(World world) {
+        return of(world, w -> { });
+    }
+
+    /**
+     * The full preimage: the world walk plus whatever segments the root
+     * appends after it (the D-033 realworld segment, and every future one)
+     * — the snapshot must retain exactly what the digest hashes, or
+     * hash-equals-DIGEST breaks the day a segment lands.
+     */
+    public static Snapshot of(World world, java.util.function.Consumer<StateSink> extraSegments) {
         Writer writer = new Writer();
         world.digestInto(writer);
+        extraSegments.accept(writer);
         byte[] bytes = writer.toBytes();
         return new Snapshot(world.tick(), world.version(), sha256Hex(bytes), bytes);
     }

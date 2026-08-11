@@ -4,7 +4,9 @@ package matrix.realworld;
  * The person (D-011). Exists whether plugged or not — opt-out is liberation,
  * not deletion. Owns the Brain (composition: same fate); may be hosted by a
  * Pod (aggregation: may leave, or never have entered); holds at most one
- * NeuralLink while dreaming.
+ * NeuralLink while dreaming. Since D-033 the breaking point is not stored:
+ * disbelief is a pure function of the name (see AcceptanceLoop) — fate was
+ * always in the name, and the rng stream never hears about it.
  */
 public final class Human {
     public final String name;
