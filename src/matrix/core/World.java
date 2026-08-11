@@ -30,6 +30,7 @@ public final class World {
     private int version = 6;
     private long tick = 0;
     private int nextId = 1;
+    private ChronosLog chronosTap;
 
     public World(Rng rng, EventBus bus, PlaceGraph places) {
         this.rng = rng;
@@ -86,6 +87,11 @@ public final class World {
         pending.add(event);
     }
 
+    /** D-023 stage 1: installed at boot, the tap observes every flushed batch; it never steers one. */
+    public void installChronosTap(ChronosLog tap) {
+        this.chronosTap = tap;
+    }
+
     /** During a negotiation the world holds its breath but the clock does not — instruments stay honest. */
     public void advanceFrozen() {
         tick++;
@@ -105,11 +111,16 @@ public final class World {
 
     /** Boot-time flush so tick 1 already sees the seeded population. */
     public void flush() {
+        int spawns = 0;
+        int removes = 0;
+        int replaces = 0;
         for (WorldEvent ev : pending) {
             if (ev instanceof WorldEvent.Spawn s) {
                 entities.add(s.entity());
+                spawns++;
             } else if (ev instanceof WorldEvent.Remove r) {
                 entities.removeIf(e -> e.id == r.entityId());
+                removes++;
             } else if (ev instanceof WorldEvent.Replace rp) {
                 for (int i = 0; i < entities.size(); i++) {
                     if (entities.get(i).id == rp.entityId()) {
@@ -117,9 +128,13 @@ public final class World {
                         break;
                     }
                 }
+                replaces++;
             }
         }
         pending.clear();
+        if (chronosTap != null) {
+            chronosTap.onFlush(tick, spawns, removes, replaces);
+        }
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
