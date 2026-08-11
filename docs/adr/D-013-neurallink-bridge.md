@@ -65,3 +65,5 @@ The grep above is empty; a v1.0 run shows agent-kill → flush events with corre
 Related: [D-011](D-011-human-class.md), [D-005](D-005-world-mutation.md), [D-021](D-021-perception-feed.md). Principle: A1. Crown: #51.
 
 Accepted with a spark: LinkKind is born today with a single value (HARDLINE), so D-032's PIRATE arrives as one enum constant.
+
+Referenced by: [D-002](D-002-agent-catch-mechanics.md), [D-011](D-011-human-class.md), [D-012](D-012-simulation-root.md), [D-021](D-021-perception-feed.md), [D-031](D-031-system-of-systems.md), [D-032](D-032-pirate-broadcast.md).
