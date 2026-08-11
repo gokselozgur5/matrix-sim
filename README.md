@@ -8,6 +8,16 @@ A tick-based, **deterministic**, **headless** simulation daemon. Humans exist in
 
 We are not building a game or a visualization. We are building the Matrix's backend: the world state, the process ecosystem, the connection protocol, the ops plane. The system is observed the way operators observe systems — through logs, metrics and state digests (D-020) — and its only *true* output is the sensory stream fed to each connected brain (D-021). See the **Vision** section in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Released phases
+
+| Release | Phase | The arc it shipped |
+|---|---|---|
+| `v1.0.0` | **The Matrix** | The city wakes: 200 minds in pods, agents on patrol, red pills dropping off the cluster; death crosses the NeuralLink bridge, and two boxes (Apple-Silicon macOS, x86-64 Linux) produce the same universe byte for byte. |
+| `v2.0.0` | **Reloaded** | Program society: the Source offers deletion with grace, one program refuses (`I DIDN'T`), and the infection Decorator begins eating the city. |
+| `v2.5.0` | **The Animatrix** | The rendered ecosystem: 12 species, 660+ entities, fixed-point flocks over the spatial hash; blue pills commute; a healthy program is invisible. |
+
+Each release's notes carry its lock report — the evidence produced at cut time. The finale (`v3.0.0`, **Revolutions**: the ledger, The One, the overflow, the treaty, the reboot) cuts when its verification round returns green.
+
 ## Architecture at a glance
 
 ```mermaid
@@ -60,13 +70,17 @@ docs/DECISIONS.md    ← decision index: one row per decision
 docs/adr/            ← one ADR record per decision (D-029)
 CLAUDE.md            ← auto-loaded pointer for AI sessions (a door, not a document)
 src/matrix/          ← core · realworld · machine · entities
+probes/              ← the skeptic's bench: read-only diagnostic instruments (D-030)
+tools/               ← process jigs: the release cutter and kin (never daemon code)
 ```
 
 Documentation policy: **no documents beyond these five .md files.** No doc piles; new information either goes into one of the five, or it doesn't go in. (`CLAUDE.md` is machine-loading infrastructure, like `.gitignore` — it carries pointers, never content.)
 
 ## Process — everything runs like the Matrix
 
-- **main = the Source.** Everything that becomes code is born there and returns there. Nothing merges without review.
-- **Every phase is born as a draft PR**, reviewed together, merged with evidence (one commit per finding, one-line proof).
-- **Determinism is law:** same seed → same film. Every phase's definition of done is a single machine-verifiable command.
-- **Déjà vu = hotfix.** If a patch lands on main, the changelog gets a "black cat" note.
+- **main = the Source.** Everything that becomes code is born there and returns there. Nothing merges without evidence.
+- **Roles are law (D-037):** the owner is the Architect — theory, decisions, story. The resident machine is the Oracle — all of practice. Trust is engineered, not assumed: merges happen behind five locks — green evidence · digest leash · executed ADR Confirmations · an independent adversarial skeptic pass · a prose theory brief.
+- **Decisions gate code (D-000):** every consequential choice is a MADR record with a status light (🟢 law · 🟡 open · 🔵 parked); a 🟡 record never merges into code undiscussed, and season gates close only by the Architect's verdict in their thread.
+- **Delivery is unit PRs (D-039):** one build-unit issue = one small PR that closes it, atomic commits carrying finding + fix + evidence, light locks per PR (compile · `--selftest` · digest), the full skeptic pass at phase boundaries.
+- **Determinism is law (D-010):** same seed → same film, byte for byte, across operating systems and CPU architectures. Every phase's definition of done is a single machine-verifiable command, and `--bench` measures the speed promises (D-027).
+- **Déjà vu = hotfix.** If a patch lands on main, the changelog gets a "black cat" note — and since v3, the anomaly ledger notices.
