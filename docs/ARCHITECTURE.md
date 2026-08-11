@@ -47,7 +47,7 @@ Outside the build, two shop directories: `probes/` (read-only diagnostic instrum
 
 Package boundary = deployment boundary: `realworld` knows no entity behavior, `entities` knows no pod details. The only bridge is `NeuralLink`. Per D-019 there is no presentation layer anywhere: the entity API carries no glyphs, colors or render priorities; the system is observed through the event log, `METRIC` lines and the `DIGEST` chain (D-020), and — eventually — through the perception feed itself (D-021).
 
-## Class relationships — as built (v1.0 merged; v2.0 shapes included)
+## Class relationships — as built (Season One complete: v1.0 → v3.0)
 
 Edge semantics carry the meaning: `*--` **composition** (owns, same fate) · `o--` **aggregation** (holds, separate life) · `-->` **association** (knows) · `..>` **dependency** (uses, never stores) · `<|--`/`<|..` inheritance/realization. Inheritance appears only for true is-a; capabilities are interfaces; one Liskov break stands under protection (D-014).
 
@@ -103,9 +103,29 @@ classDiagram
     SelfReplicating <|.. SmithCopy
     SmithCopy *-- MatrixEntity : original kept inside (D-001)
     Oracle ..> EventBus : counts awakenings
+
+    %% v2.5 — the landscaping (D-015/D-016/D-017)
+    class Movement { <<interface>> }
+    Program <|-- EnvironmentProgram
+    EnvironmentProgram --> Species : catalog datum, never a subclass (D-015)
+    Bestiary ..> Species : ships the rows
+    EnvironmentProgram o-- Movement : gait composed (D-016)
+    World *-- SpatialHash : snapshot neighbors (D-017)
+    World *-- Scheduler : cadence + caps (D-018)
+
+    %% v3.0 — the penthouse (D-022, the finale)
+    Avatar <|-- TheOne : fated, hunt-excluded
+    World *-- AnomalyLedger : the debt (D-022)
+    RealWorld ..> AcceptanceLoop : every accrual window
+    AcceptanceLoop ..> NeuralLink : reads open+alive
+    AcceptanceLoop ..> AnomalyLedger : residue in
+    Director ..> MachineCity : treaty at negotiation end
+    Director ..> Architect : emergency reload (no One)
+    MachineCity ..> World : executeTreaty — mass Replace + the door
+    Architect ..> World : purge, restore, version++
 ```
 
-Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. v2.5 will add `EnvironmentProgram` under `Program` with species as data (D-015) and gaits as strategies (D-016); v3.0 adds `TheOne` under `Avatar`.
+Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
 
 ## Sequence — jack-in and the death rule
 
@@ -139,6 +159,41 @@ sequenceDiagram
     Note over W,V: V leaves the list but is NOT destroyed —<br/>kept in the SmithCopy.original field
     N->>W: replace(copy, copy.original)
     Note over W,V: the same object returns, zero state loss —<br/>the mass restore in the finale depends on this
+```
+
+## Sequence — the finale (D-022: the ledger, the One, the treaty)
+
+```mermaid
+sequenceDiagram
+    participant RW as RealWorld
+    participant L as AnomalyLedger
+    participant S as Simulation
+    participant D as Director
+    participant NL as NeuralLink (the One's)
+    participant MC as MachineCity
+
+    loop every accrual window (10 ticks)
+        RW->>L: residue — blue 1, red 8 per open living link
+    end
+    L-->>S: overflowed() — balance ≥ 30,000
+    S->>RW: birthTheOne("Thomas A. Anderson")
+    Note over RW,S: t=1289 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
+    D->>D: routeOverflow — infected ≥ 0.62
+    alt the One is alive
+        D->>NL: one.alive = false — he flies to Machine City
+        NL->>NL: observeDeath — flatline, pod flush, link CLOSED (same tick)
+        Note over D: NEGOTIATION — the world holds its breath,<br/>the clock does not (instruments stay honest)
+        D->>MC: executeTreaty at the timer's end
+        MC->>MC: mass restore — every SmithCopy replaced<br/>by its untouched original (D-001, one flush)
+        MC->>RW: the open door — six closeClean walk-outs
+        Note over MC,RW: PEACE → reboot v7.0 — nobody remembers,<br/>except the ledger's shape
+    else no One exists
+        D->>D: Architect emergency reload — the old playbook, one more time
+    end
+    loop the cycle
+        RW->>L: residue accrues again
+    end
+    Note over L,S: t=5249 — a second Thomas A. Anderson.<br/>The cycle is the point.
 ```
 
 ## State machine — system states
