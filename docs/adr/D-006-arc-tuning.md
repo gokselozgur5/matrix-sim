@@ -59,3 +59,5 @@ Config is the only file containing these numbers (grep for the literals elsewher
 ## More Information
 
 Related: [D-009](D-009-build-tooling.md), [D-027](D-027-performance-budgets.md). Crown: #47.
+
+Referenced by: [D-002](D-002-agent-catch-mechanics.md), [D-022](D-022-acceptance-loop.md).

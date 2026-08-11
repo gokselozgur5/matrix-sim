@@ -65,3 +65,5 @@ METRIC shows per-kingdom populations at or under caps; PERF meets budget; digest
 Related: [D-015](D-015-species-as-data.md), [D-024](D-024-attention-lod.md), [D-027](D-027-performance-budgets.md). Crown: #78.
 
 **Errata (2026-08-10, skeptic):** The per-kingdom census lives in the additive ECO instrument line (insects/flora/mammals/weather columns), not in METRIC whose grammar is frozen. PERF scope is the D-036-sealed 500+ ecosystem; the 5,000-entity budget line moves to the D-024 era together with D-017's hash-backed hunts.
+
+Referenced by: [D-015](D-015-species-as-data.md), [D-024](D-024-attention-lod.md), [D-027](D-027-performance-budgets.md).

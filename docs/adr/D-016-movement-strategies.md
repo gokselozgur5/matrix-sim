@@ -63,3 +63,5 @@ Each gait class has an isolated test; swapping a species' gait is a catalog-only
 ## More Information
 
 Related: [D-015](D-015-species-as-data.md), [D-017](D-017-spatial-hash.md). Crowns: #44, #54-#59.
+
+Referenced by: [D-015](D-015-species-as-data.md), [D-017](D-017-spatial-hash.md).

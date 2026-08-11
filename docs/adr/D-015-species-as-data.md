@@ -64,3 +64,5 @@ Adding a test species is demonstrated as a one-line diff in the v2.5 PR; Environ
 ## More Information
 
 Related: [D-016](D-016-movement-strategies.md), [D-018](D-018-tick-budgets.md). Principle: A5. Crowns: #38, #64, #76.
+
+Referenced by: [D-016](D-016-movement-strategies.md), [D-018](D-018-tick-budgets.md).

@@ -64,3 +64,5 @@ v2.0 DoD run: infect N entities, delete all Smiths, assert every original return
 ## More Information
 
 Related: [D-005](D-005-world-mutation.md), [D-014](D-014-smith-lsp-violation.md), [D-025](D-025-supervision-tree.md). Crown: #67.
+
+Referenced by: [D-005](D-005-world-mutation.md), [D-026](D-026-language-java17.md).

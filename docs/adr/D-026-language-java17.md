@@ -62,3 +62,5 @@ javac -encoding UTF-8 --release 17 builds the repo with no external dependencies
 ## More Information
 
 Related: [D-009](D-009-build-tooling.md), [D-010](D-010-determinism.md), [D-001](D-001-smith-infection-decorator.md), [D-024](D-024-attention-lod.md).
+
+Referenced by: [D-009](D-009-build-tooling.md).

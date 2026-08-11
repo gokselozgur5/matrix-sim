@@ -55,3 +55,5 @@ Absence is the confirmation: no presentation types or members anywhere in src (e
 ## More Information
 
 Superseded by: [D-019](D-019-backend-only.md), [D-020](D-020-observability-contract.md). Cleanup: issue #25.
+
+Referenced by: [D-019](D-019-backend-only.md).

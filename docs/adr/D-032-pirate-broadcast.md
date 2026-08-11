@@ -64,3 +64,5 @@ A v4.0 run shows: broadcast mission opens N PIRATE links; agent convergence pres
 ## More Information
 
 Depends on [D-031](D-031-system-of-systems.md), [D-011](D-011-human-class.md), [D-013](D-013-neurallink-bridge.md). Related: [D-033](D-033-self-substantiation.md), [D-008](D-008-processor-mode.md). Crowns: #83 (Hovercraft), #84 (Zion); BroadcastRig to be crowned at v4.0 design.
+
+Referenced by: [D-031](D-031-system-of-systems.md), [D-033](D-033-self-substantiation.md), [D-036](D-036-finish-line.md), [D-038](D-038-season-two.md).

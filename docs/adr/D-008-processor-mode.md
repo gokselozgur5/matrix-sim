@@ -54,3 +54,5 @@ Not applicable until unparked; the revisit trigger is D-024 entering design.
 ## More Information
 
 Related: [D-024](D-024-attention-lod.md). Crown: #32.
+
+Referenced by: [D-024](D-024-attention-lod.md), [D-032](D-032-pirate-broadcast.md), [D-038](D-038-season-two.md).

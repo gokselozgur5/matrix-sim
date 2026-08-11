@@ -63,3 +63,5 @@ Chosen option: "minimal frame now, streaming later", because sockets are cheap o
 Related: [D-013](D-013-neurallink-bridge.md), [D-019](D-019-backend-only.md). Crowns: #41, #51. Full streaming: tracker #24.
 
 Accepted with a spark: perception frames stream as JSONL, so a dream is one jq away.
+
+Referenced by: [D-013](D-013-neurallink-bridge.md), [D-019](D-019-backend-only.md), [D-022](D-022-acceptance-loop.md), [D-033](D-033-self-substantiation.md).
