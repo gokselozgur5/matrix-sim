@@ -50,8 +50,11 @@ public final class RealWorld {
         }
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
+                Human h = link.human;
                 world.log(Severity.BAD, "the body cannot live without the mind — "
-                        + link.human.name + " flatlined (pod " + link.human.pod.rackUnit + " flushed)");
+                        + h.name + " flatlined" + (h.pod != null
+                        ? " (pod " + h.pod.rackUnit + " flushed)"
+                        : " (no pod to flush — they died free)"));
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }

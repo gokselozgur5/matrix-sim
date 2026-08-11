@@ -1,6 +1,6 @@
 ---
 title: "D-008 — Processor-mode mechanics: pods as the Matrix's compute substrate"
-status: proposed (parked)
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #19
@@ -27,6 +27,8 @@ The original film concept had humans as processing substrate, not batteries. If 
 * Flavor only (status quo)
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Parked until v4.0, to be designed together with [D-024](D-024-attention-lod.md). Thread #19 holds the idea.
 
