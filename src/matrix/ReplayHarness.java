@@ -35,6 +35,17 @@ import java.util.List;
  * in the coarse+seeded model, re-execution regenerates the events and
  * the chain judges the outcome.
  *
+ * Stage 5 lands as its honest slice (#129): {@code --audit} walks a
+ * recording and verdicts internal consistency without booting anything
+ * — the log answers for itself. The full inversion's letter — booting
+ * objects FROM a snapshot — stays refused on principle: a snapshot is
+ * an equality certificate, not a save-game (crown #179); in the
+ * coarse+seeded model reconstruction IS re-execution from genesis under
+ * recorded inputs. The log's truth-authority is delivered as the sum of
+ * three facts: it is written before the purge it describes, its seals
+ * are re-taken and re-verified at every fold, and it answers for itself
+ * under audit — while objects remain the cache the engine regenerates.
+ *
  * Exit grammar: 0 the chains agree (or a chain was printed), 1 the chains
  * diverge (a broken seal included), 2 the fold refused (unreadable
  * record, foreign physics, unknown command).
@@ -42,14 +53,17 @@ import java.util.List;
 public final class ReplayHarness {
 
     /** A recorded operator command, to be re-applied when the replay reaches its tick. */
-    private record Command(long tick, String cmd) {}
+    private record Command(long tick, String cmd, int line) {}
 
     /** An epoch-boundary marker (#128): the closing epoch's certificate, to be re-taken and compared. */
-    private record Marker(long tick, int epoch, String sha, long bytes) {}
+    private record Marker(long tick, int epoch, String sha, long bytes, int line) {}
 
-    /** What a recording declares before its first tick. */
-    private record Recording(long seed, String configFingerprint,
-            List<Command> commands, List<Marker> markers) {}
+    /** An epoch boundary as recorded — reload or treaty; the audit pairs reloads with their seals (#129). */
+    private record Boundary(long tick, String kind, int line) {}
+
+    /** What a recording declares before its first tick — and everything the audit answers for (#129). */
+    private record Recording(long seed, int version, String configFingerprint, List<Command> commands,
+            List<Marker> markers, List<Boundary> boundaries, int records, int flushes) {}
 
     /**
      * The whole stage-2 surface: fold {@code chronosPath}; with
@@ -80,6 +94,140 @@ public final class ReplayHarness {
             System.out.print("REPLAY REFUSED " + e.getMessage() + "\n");
             return 2;
         }
+    }
+
+    /**
+     * Stage 5, the honest slice (#129): the log answers for itself. The
+     * audit walks one recording and verdicts INTERNAL consistency — no
+     * universe is booted, nothing is folded. The laws: genesis present
+     * and single, tick stamps monotone, every kind known (the strict
+     * reader enforces these), every seal paired with its reload boundary
+     * and its console command in write-before-purge order, epoch
+     * arithmetic exact (genesis version plus boundaries crossed), and
+     * the config fingerprint against this build — where drift is NAMED,
+     * not failed: whether the record is coherent is the audit's
+     * jurisdiction; whether this build may fold it is the fold's, which
+     * would refuse. An unsealed console reload IS a fail — the stage-4
+     * recorder seals before the purge, so a record that says otherwise
+     * contradicts its own writer. Mid-tick boundaries (emergency reload,
+     * treaty) legally stand alone: no console command, no seal.
+     *
+     * Exit grammar: 0 internally consistent, 1 inconsistent (the first
+     * offense named), 2 unreadable.
+     */
+    public static int audit(String chronosPath) {
+        Recording rec;
+        try {
+            rec = parse(Path.of(chronosPath));
+        } catch (IOException e) {
+            System.out.print("AUDIT REFUSED unreadable: " + e.getMessage() + "\n");
+            return 2;
+        } catch (IllegalStateException e) {
+            System.out.print("AUDIT FAIL " + e.getMessage() + "\n");
+            return 1;
+        }
+        boolean drift = !rec.configFingerprint().equals(ChronosLog.configFingerprint());
+        StringBuilder out = new StringBuilder();
+        out.append("AUDIT genesis seed=").append(rec.seed()).append(" version=").append(rec.version())
+                .append(" config=").append(drift ? "drift" : "match").append('\n');
+        out.append("AUDIT records=").append(rec.records()).append(" commands=").append(rec.commands().size())
+                .append(" flushes=").append(rec.flushes()).append(" boundaries=").append(rec.boundaries().size())
+                .append(" seals=").append(rec.markers().size()).append('\n');
+        String offense = firstOffense(rec);
+        if (offense != null) {
+            System.out.print(out);
+            System.out.print("AUDIT FAIL " + offense + "\n");
+            return 1;
+        }
+        for (Marker m : rec.markers()) {
+            out.append("AUDIT seal tick=").append(m.tick()).append(" epoch=").append(m.epoch())
+                    .append(" sha=").append(m.sha()).append(" paired\n");
+        }
+        if (drift) {
+            out.append("AUDIT NOTE config_drift recorded=").append(rec.configFingerprint())
+                    .append(" build=").append(ChronosLog.configFingerprint())
+                    .append(" — internally consistent, but the fold on this build will refuse it\n");
+        }
+        out.append("AUDIT OK records=").append(rec.records())
+                .append(" seals_paired=").append(rec.markers().size()).append('\n');
+        System.out.print(out);
+        return 0;
+    }
+
+    /** The pairing and arithmetic laws, walked in record order; the first broken one is the verdict. */
+    private static String firstOffense(Recording rec) {
+        // every seal: its reload boundary follows at the same tick, no second
+        // seal stacked before it, and its console command precedes it — the
+        // write-before-purge invariant, visible in the record's own ordering
+        for (int i = 0; i < rec.markers().size(); i++) {
+            Marker m = rec.markers().get(i);
+            Boundary b = null;
+            for (Boundary cand : rec.boundaries()) {
+                if (cand.line() > m.line()) {
+                    b = cand;
+                    break;
+                }
+            }
+            if (b == null || b.tick() != m.tick() || !b.kind().equals("reload")) {
+                return "seal_without_boundary tick=" + m.tick() + " line=" + m.line()
+                        + " — a sealed epoch that never closed";
+            }
+            if (i + 1 < rec.markers().size() && rec.markers().get(i + 1).line() < b.line()) {
+                return "stacked_seals tick=" + rec.markers().get(i + 1).tick()
+                        + " line=" + rec.markers().get(i + 1).line() + " — two seals, one boundary";
+            }
+            boolean commanded = false;
+            for (Command c : rec.commands()) {
+                if (c.tick() == m.tick() && c.line() < m.line()
+                        && c.cmd().split("\\s+")[0].equals("reload")) {
+                    commanded = true;
+                    break;
+                }
+            }
+            if (!commanded) {
+                return "seal_without_command tick=" + m.tick() + " line=" + m.line()
+                        + " — only the console path can seal; mid-tick reloads cannot";
+            }
+            int crossed = 0;
+            for (Boundary cand : rec.boundaries()) {
+                if (cand.line() < m.line()) {
+                    crossed++;
+                }
+            }
+            if (m.epoch() != rec.version() + crossed) {
+                return "epoch_drift tick=" + m.tick() + " recorded=" + m.epoch()
+                        + " expected=" + (rec.version() + crossed) + " — the version arithmetic disagrees";
+            }
+        }
+        // every console reload boundary: a seal stands between the command and
+        // the boundary, or the record contradicts its own stage-4 writer
+        for (Boundary b : rec.boundaries()) {
+            if (!b.kind().equals("reload")) {
+                continue;
+            }
+            Command cmd = null;
+            for (Command c : rec.commands()) {
+                if (c.tick() == b.tick() && c.line() < b.line()
+                        && c.cmd().split("\\s+")[0].equals("reload")) {
+                    cmd = c;
+                }
+            }
+            if (cmd == null) {
+                continue; // emergency reload: mid-tick, unsealed by design
+            }
+            boolean sealed = false;
+            for (Marker m : rec.markers()) {
+                if (m.tick() == b.tick() && m.line() > cmd.line() && m.line() < b.line()) {
+                    sealed = true;
+                    break;
+                }
+            }
+            if (!sealed) {
+                return "unsealed_reload tick=" + b.tick() + " line=" + b.line()
+                        + " — the stage-4 recorder seals before the purge; this record did not";
+            }
+        }
+        return null;
     }
 
     /**
@@ -182,23 +330,29 @@ public final class ReplayHarness {
 
     /**
      * Reads a chronos JSONL recording: genesis first (exactly one), then
-     * commands, boundaries and flush fingerprints with monotone tick
-     * stamps. This is a reader for our own recorder's grammar (crown
-     * #177), not a general JSON parser — anything off-grammar is refused,
-     * because a fold over a misread record would be a quiet lie.
+     * commands, epoch seals (snapshot markers, #128), boundaries and
+     * flush fingerprints with monotone tick stamps. This is a reader for
+     * our own recorder's grammar (crown #177), not a general JSON parser
+     * — anything off-grammar is refused, because a fold over a misread
+     * record would be a quiet lie.
      */
     private static Recording parse(Path file) throws IOException {
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         Long seed = null;
+        int version = 0;
         String config = null;
         List<Command> commands = new ArrayList<>();
         List<Marker> markers = new ArrayList<>();
+        List<Boundary> boundaries = new ArrayList<>();
+        int records = 0;
+        int flushes = 0;
         long lastTick = 0;
         for (int n = 0; n < lines.size(); n++) {
             String line = lines.get(n).trim();
             if (line.isEmpty()) {
                 continue;
             }
+            records++;
             String kind = stringField(line, "chronos");
             if (kind == null) {
                 refuse("line " + (n + 1) + " is not a chronos record");
@@ -212,6 +366,7 @@ public final class ReplayHarness {
                         refuse("second genesis at line " + (n + 1) + " — one universe per recording");
                     }
                     seed = longField(line, "seed", n + 1);
+                    version = (int) longField(line, "version", n + 1);
                     config = stringField(line, "config");
                     if (config == null) {
                         refuse("genesis without a config fingerprint at line " + (n + 1));
@@ -224,7 +379,7 @@ public final class ReplayHarness {
                     if (cmd == null) {
                         refuse("command without a cmd at line " + (n + 1));
                     }
-                    commands.add(new Command(tick, cmd));
+                    commands.add(new Command(tick, cmd, n + 1));
                 }
                 case "snapshot" -> {
                     long tick = tickField(line, n + 1, lastTick);
@@ -235,16 +390,28 @@ public final class ReplayHarness {
                                 + " — a seal that names no certificate seals nothing");
                     }
                     markers.add(new Marker(tick, (int) longField(line, "epoch", n + 1),
-                            sha, longField(line, "bytes", n + 1)));
+                            sha, longField(line, "bytes", n + 1), n + 1));
                 }
-                case "boundary", "flush" -> lastTick = tickField(line, n + 1, lastTick);
+                case "boundary" -> {
+                    long tick = tickField(line, n + 1, lastTick);
+                    lastTick = tick;
+                    String bKind = stringField(line, "kind");
+                    if (bKind == null) {
+                        refuse("boundary without a kind at line " + (n + 1));
+                    }
+                    boundaries.add(new Boundary(tick, bKind, n + 1));
+                }
+                case "flush" -> {
+                    lastTick = tickField(line, n + 1, lastTick);
+                    flushes++;
+                }
                 default -> refuse("unknown record kind '" + kind + "' at line " + (n + 1));
             }
         }
         if (seed == null) {
             refuse("no genesis — there is nothing to replay");
         }
-        return new Recording(seed, config, commands, markers);
+        return new Recording(seed, version, config, commands, markers, boundaries, records, flushes);
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */

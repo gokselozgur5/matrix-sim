@@ -31,6 +31,7 @@ public final class Main {
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
+        String auditPath = null;
         Long snapshotAt = null;
 
         for (int i = 0; i < args.length; i++) {
@@ -46,6 +47,7 @@ public final class Main {
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
+                case "--audit" -> auditPath = args[++i];
                 case "--snapshot-at" -> snapshotAt = Long.parseLong(args[++i]);
                 case "--help" -> {
                     usage();
@@ -68,6 +70,10 @@ public final class Main {
             System.err.println("--chronos records live runs; the fold replays with the recorder off");
             System.exit(2);
         }
+        if (auditPath != null && (replayPath != null || expectPath != null || chronosPath != null || headless)) {
+            System.err.println("--audit walks the record alone — it boots no universe and folds nothing");
+            System.exit(2);
+        }
         if (snapshotAt != null && (replayPath != null || !headless)) {
             System.err.println("--snapshot-at rides with --headless — a live run, not the fold");
             usage();
@@ -82,6 +88,11 @@ public final class Main {
         }
         if (bench) {
             System.exit(bench(seed));
+        }
+        if (auditPath != null) {
+            // D-023 stage 5 slice: the log answers for itself — no universe
+            // booted, no wall clock, the exit code is the verdict.
+            System.exit(ReplayHarness.audit(auditPath));
         }
         if (replayPath != null) {
             // D-023 stage 2: no PERF line here — the fold is judged by the
@@ -288,6 +299,12 @@ public final class Main {
                   --expect PATH       with --replay: verify against a ChainDump-format digest file;
                                       run length = the dump's last tick; prints REPLAY OK/FAIL and
                                       exits 0 match / 1 divergence / 2 refused
+                  --audit PATH        verdict a chronos recording's internal consistency without
+                                      booting a universe (D-023 stage 5 slice, #129): genesis,
+                                      monotone ticks, seals paired with boundaries in
+                                      write-before-purge order, epoch arithmetic, config
+                                      fingerprint vs this build (drift named, not failed);
+                                      exits 0 consistent / 1 inconsistent / 2 unreadable
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
                 interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit
