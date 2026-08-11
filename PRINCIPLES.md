@@ -50,6 +50,8 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev12 — Units ship whole (D-039).** One `build-unit` issue = one small PR that closes it with keywords; atomic commits carrying the finding, the fix, and the evidence; light locks per PR (compile · `--selftest` · digest leash, `--bench` where speed is touched) and the full adversarial pass at phase boundaries. The commit–issue–PR trio stays balanced by the owner's order: no hundred-commit PRs, no empty issues — detail is the deliverable, volume is its shadow.
 
+**Dev13 — Work branches; leaves are PRs (D-059).** A node splits until every leaf is exactly one PR — one mechanism, one machine-checkable done-when, one lock tier. Children exactly cover their parent (no gaps, no overlap), so a parent's done-when is the conjunction of its children's, stated in its `## Decomposition` section and never rewritten over the original body. Depth is earned, not performed: two is normal, three for the core's core, four only where the core has one. Closure flows upward — a parent closes when its children close and its conjunction verifies. `tools/subissue.sh` cuts and links in one motion; `tools/issuetree.sh` prints the shape.
+
 ## Agent principles — the crew (D-030)
 
 When parts of the build are delegated to AI subagents, they join as crew under the operator's console, and these rules bind them:

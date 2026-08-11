@@ -59,5 +59,6 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-052](adr/D-052-missions.md) | Missions: template rows, one executor, a dream with a plot | 🟡 | v6.0 | #228 |
 | [D-053](adr/D-053-favor-economy.md) | The favor economy: orphan insurance, conservation by construction | 🟡 | v7.0 | #229 |
 | [D-054](adr/D-054-the-year.md) | The Year: six seasons, five programs, scale to 365 | 🟡 | all | #232 |
+| [D-059](adr/D-059-issue-tree.md) | The issue tree: work branches until a leaf is one PR | 🟡 | all | #358 |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
