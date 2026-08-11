@@ -63,3 +63,5 @@ README commands compile the repo on a clean JDK-17 box (verified in v1.0 DoD); n
 Related: [D-026](D-026-language-java17.md), [D-027](D-027-performance-budgets.md). Reopens at: v4.0 CI (tracker #24).
 
 Accepted with a spark: the daemon carries a --selftest flag (an in-process digest double-run) — the kernel of CI without a build tool.
+
+Referenced by: [D-006](D-006-arc-tuning.md), [D-026](D-026-language-java17.md).
