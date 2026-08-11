@@ -10,7 +10,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-003](adr/D-003-deletion-refused-exception.md) | GC refusal as a thrown DeletionRefusedException | 🟢 | v2.0 | #11 |
 | [D-004](adr/D-004-field-model.md) | Field model: fixed-point city coordinates + a place graph | 🟢 | v1.0 | #3 |
 | [D-005](adr/D-005-world-mutation.md) | World mutation: pending queues vs snapshot vs double buffer | 🟢 | v1.0 | #4 |
-| [D-006](adr/D-006-arc-tuning.md) | Arc tuning constants live in Config and are tuned by METRIC feel | 🟡 | v3.0 | #17 |
+| [D-006](adr/D-006-arc-tuning.md) | Arc tuning constants live in Config and are tuned by METRIC feel | 🟢 | v3.0 | #17 |
 | [D-007](adr/D-007-terminal-ui.md) | Terminal ANSI UI for watching the simulation | ❌ | — | — |
 | [D-008](adr/D-008-processor-mode.md) | Processor-mode mechanics: pods as the Matrix's compute substrate | 🔵 | v4.0 | #19 |
 | [D-009](adr/D-009-build-tooling.md) | Build tooling: plain javac until CI forces the question | 🟢 | v1.0 | #5 |
@@ -26,7 +26,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-019](adr/D-019-backend-only.md) | Backend only: no presentation anywhere in the domain | 🟢 | — | — |
 | [D-020](adr/D-020-observability-contract.md) | Observability contract: event log + METRIC lines + DIGEST chain | 🟢 | — | — |
 | [D-021](adr/D-021-perception-feed.md) | The perception feed is the system's true output | 🟢 | v1.0 (interface) | #9 |
-| [D-022](adr/D-022-acceptance-loop.md) | The acceptance loop and anomaly ledger replace the flat counter | 🟡 | v3.0 | #18 |
+| [D-022](adr/D-022-acceptance-loop.md) | The acceptance loop and anomaly ledger replace the flat counter | 🟢 | v3.0 | #18 |
 | [D-023](adr/D-023-chronos-event-sourcing.md) | Chronos proper: event-sourced state, reload as replay | 🔵 | v4.0 | #27 |
 | [D-024](adr/D-024-attention-lod.md) | Attention-graded fidelity: unwatched regions degrade to statistics | 🔵 | v4.0 | #28 |
 | [D-025](adr/D-025-supervision-tree.md) | Supervisor-lite: grace periods and an orphan registry under the Source | 🟢 | v2.0 | #26 |

@@ -1,6 +1,6 @@
 ---
 title: "D-006 — Arc tuning constants live in Config and are tuned by METRIC feel"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #17
@@ -29,7 +29,7 @@ Overflow threshold 62%, Smith fork delay 350 ticks, peace duration 900 ticks: th
 
 ## Decision Outcome
 
-Proposed option: "constants in Config", because reality should be versioned. Final call in thread #17 (v3.0 gate, where the numbers get felt).
+Chosen option: "constants in Config", because reality should be versioned. Accepted by the owner's verdict, 2026-08-11 (thread #17).
 
 ### Consequences
 

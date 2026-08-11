@@ -1,6 +1,6 @@
 ---
 title: "D-022 — The acceptance loop and anomaly ledger replace the flat counter"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #18
@@ -29,7 +29,7 @@ The Vision's second principle: the dream is negotiated. Every link proposes fram
 
 ## Decision Outcome
 
-Proposed option: "the ledger", because the repo's thesis is that the plot falls out of the architecture — this is the decision where that either becomes true or stays a slogan. Final call in thread #18 (v3.0 gate).
+Chosen option: "the ledger", because the repo's thesis is that the plot falls out of the architecture — this is the decision where that either becomes true or stays a slogan. Accepted by the owner's verdict, 2026-08-11 (thread #18).
 
 ### Consequences
 
