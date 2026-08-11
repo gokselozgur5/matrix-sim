@@ -123,6 +123,26 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ---
 
+## Season Three (D-041, proposed) — the character layer
+
+*The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
+
+## v6.0 — The Heart of the City
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Season charter: the character layer | D-041 | 🟡 awaiting verdict | #211 |
+| Stat system: one grammar, four vocabularies | D-042 | 🟡 awaiting verdict | #212 |
+| The named cast, and the two of us | D-043 | 🟡 awaiting verdict | #213 |
+| The crew becomes programs | D-044 | 🟡 awaiting verdict | #214 |
+| Bonds, and the kiss (Room 303 clause) | D-045 | 🟡 awaiting verdict | #215 |
+| The Cypher protocol | D-046 | 🟡 awaiting verdict | #216 |
+| The dream reader | D-047 | 🟡 awaiting verdict | #217 |
+
+Build units are cut AFTER verdicts (gates before units — the D-039 law). **DoD sketch:** a stat contest decides a scene the flat world could not produce; the Architect acts in-world through the console and the log names his character; a bonded death is paid back once, priced, and LinkAudit calls it CLAUSE not GHOST; a petition re-inserts a mind the chronos record still remembers; and one command renders one mind's whole day as deterministic prose the Architect actually reads.
+
+---
+
 ### Process note
 
 Delivery runs on the D-039 law: one **build-unit issue = one small PR** that closes it with keywords — atomic commits carrying finding, fix, and evidence; light locks per PR (compile · `--selftest` · digest, `--bench` where speed is touched); the **full adversarial skeptic pass at phase boundaries**. Gates before units: a phase's build units start only after its gate verdicts land. No phase skipping; even the Architect respects the cycle.
