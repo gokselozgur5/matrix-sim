@@ -14,11 +14,16 @@ import matrix.realworld.NeuralLink;
  * this probe on the bench it can never return unnoticed.
  *
  * Negative movements are resets (treaty, reload) and print as RESET
- * lines; déjà-vu spikes exist only on the ops console, never in a
- * headless replay, so an unexplained positive residual is always a bug.
+ * lines. Déjà-vu spikes had one door — the ops console, never a headless
+ * run — until #133 gave them a second, mechanical one: every Unpark
+ * accrues DEJA_RESIDUE_SPIKE (the D-022 precedent). The mirror models it
+ * from the world's own unpark count, read through the public accessor
+ * before and after each tick — a legitimate source accounted, so an
+ * unexplained positive residual stays what it always was: a bug.
  *
  * Verdict: LEDGER_ANOMALIES=0 at seeds 42 and 7 over the full arc
- * (verification round, 2026-08-11).
+ * (verification round, 2026-08-11; re-verified with the unpark source
+ * modeled for the P2 parking film).
  *
  * Usage: java -cp out:probes/out LedgerMirror [ticks] [seed]
  */
@@ -41,6 +46,7 @@ public final class LedgerMirror {
             // explainable line remains: a walker whose clean exit lands exactly
             // on an accrual window closes after contributing.
             NeuralLink[] members = links.toArray(new NeuralLink[0]);
+            long unparksBefore = world.unparks();
             sim.tickOnce();
             long now = world.ledger().balance();
             long delta = now - prev;
@@ -53,11 +59,21 @@ public final class LedgerMirror {
                 continue;
             }
             long mirror = 0;
-            for (NeuralLink l : members) {
-                if (!l.closed() && l.avatar.alive) {
-                    mirror += l.avatar.pill == Pill.RED ? Config.RESIDUE_RED : Config.RESIDUE_BLUE;
+            // Link residue accrues only on the wheel's window — nodes run at
+            // world.tick()+1, so the window is (t+1) % ACCRUE == 0 as the
+            // probe reads t post-tick. Off-window, links owe nothing, and
+            // crediting them anyway would hide an off-window accrual bug —
+            // the unpark spike (#133) made off-window deltas real and
+            // exposed the unconditional credit.
+            if ((world.tick() + 1) % Config.ACCRUE_EVERY_TICKS == 0) {
+                for (NeuralLink l : members) {
+                    if (!l.closed() && l.avatar.alive) {
+                        mirror += l.avatar.pill == Pill.RED ? Config.RESIDUE_RED : Config.RESIDUE_BLUE;
+                    }
                 }
             }
+            // The second legitimate source (#133): each unpark this tick spiked the ledger.
+            mirror += (world.unparks() - unparksBefore) * Config.DEJA_RESIDUE_SPIKE;
             if (delta != mirror) {
                 anomalies++;
                 System.out.println("ANOMALY t=" + world.tick()
@@ -65,7 +81,8 @@ public final class LedgerMirror {
             }
         }
         System.out.println("MIRROR seed=" + seed + " ticks=" + ticks
-                + " final_balance=" + world.ledger().balance());
+                + " final_balance=" + world.ledger().balance()
+                + " unparks=" + world.unparks());
         System.out.println("LEDGER_ANOMALIES=" + anomalies);
     }
 
