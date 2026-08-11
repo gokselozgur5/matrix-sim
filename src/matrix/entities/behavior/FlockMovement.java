@@ -69,7 +69,7 @@ public final class FlockMovement implements Movement {
         }
         me.headingX = clampStep(dx, speed);
         me.headingY = clampStep(dy, speed);
-        self.pos = self.pos.steppedBy(me.headingX, me.headingY);
+        self.moveBy(me.headingX, me.headingY);
     }
 
     private static int clampStep(int delta, int speed) {

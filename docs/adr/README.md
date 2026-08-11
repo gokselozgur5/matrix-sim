@@ -33,7 +33,7 @@ If you cannot write the Y-statement, the decision is not understood yet.
 
 ## Lifecycle
 
-`proposed → accepted | rejected` · parked ideas carry `proposed (parked)` · a replaced decision becomes `superseded by D-0XX`.
+`proposed → accepted | rejected` · parked ideas carry `proposed (parked)` · a replaced decision keeps its terminal status and gains a pointer — the supersession lives in More Information on BOTH records (no separate `superseded` status exists in the index legend; the practice is rejected-or-accepted-with-pointer).
 
 **Records are immutable.** A changed mind creates a *superseding* record; both link each other in More Information. History is an audit trail, not a draft. (Live example: [D-007](D-007-terminal-ui.md) → superseded by [D-019](D-019-backend-only.md)/[D-020](D-020-observability-contract.md).)
 

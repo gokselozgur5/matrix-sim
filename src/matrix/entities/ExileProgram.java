@@ -28,7 +28,7 @@ public final class ExileProgram extends Program {
 
     @Override
     public void handleDeletion(World w) {
-        pos = new Position(w.rng().nextInt(Config.WORLD_W_CM + 1), w.rng().nextInt(Config.WORLD_H_CM + 1));
+        placeAt(w.rng().nextInt(Config.WORLD_W_CM + 1), w.rng().nextInt(Config.WORLD_H_CM + 1));
         w.log(Severity.MYTH, "exile " + kind.label + " swallowed the SIGTERM — gone to ground");
     }
 }

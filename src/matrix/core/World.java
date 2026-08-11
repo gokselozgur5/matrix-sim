@@ -23,6 +23,7 @@ public final class World {
     private final EventBus bus;
     private final PlaceGraph places;
     private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
+    private final RegionMap regions;
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
     private final AnomalyLedger ledger = new AnomalyLedger();
@@ -36,6 +37,7 @@ public final class World {
         this.rng = rng;
         this.bus = bus;
         this.places = places;
+        this.regions = new RegionMap(hash, places);
     }
 
     /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
@@ -49,6 +51,10 @@ public final class World {
 
     public PlaceGraph places() {
         return places;
+    }
+
+    public RegionMap regions() {
+        return regions;
     }
 
     public long tick() {
@@ -100,6 +106,7 @@ public final class World {
     public void step() {
         tick++;
         hash.rebuild(entities);
+        regions.refresh(tick, entities); // attention reads the snapshots the rebuild just froze (D-024 P0)
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {
@@ -138,7 +145,7 @@ public final class World {
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
-    public MatrixEntity nearestNonReplicating(Position from, int selfId) {
+    public MatrixEntity nearestNonReplicating(int fromXCm, int fromYCm, int selfId) {
         MatrixEntity best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
@@ -146,7 +153,7 @@ public final class World {
                     || e instanceof matrix.entities.TheOne) {
                 continue;
             }
-            long d = from.euclidSqCm(e.pos);
+            long d = Geo.distSqCm(fromXCm, fromYCm, e.xCm(), e.yCm());
             if (d < bestD) {
                 bestD = d;
                 best = e;
@@ -172,12 +179,12 @@ public final class World {
         bus.publish(new Event(tick, sev, msg));
     }
 
-    public Agent nearestAgent(Position from) {
+    public Agent nearestAgent(int fromXCm, int fromYCm) {
         Agent best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
             if (e.alive && e instanceof Agent a) {
-                long d = from.euclidSqCm(a.pos);
+                long d = Geo.distSqCm(fromXCm, fromYCm, a.xCm(), a.yCm());
                 if (d < bestD) {
                     bestD = d;
                     best = a;
@@ -188,13 +195,13 @@ public final class World {
     }
 
     /** Agents hunt reds — but not The One: they tried that in three films. */
-    public Avatar nearestRed(Position from) {
+    public Avatar nearestRed(int fromXCm, int fromYCm) {
         Avatar best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
             if (e.alive && e instanceof Avatar a && a.pill == Pill.RED
                     && !(e instanceof matrix.entities.TheOne)) {
-                long d = from.euclidSqCm(a.pos);
+                long d = Geo.distSqCm(fromXCm, fromYCm, a.xCm(), a.yCm());
                 if (d < bestD) {
                     bestD = d;
                     best = a;
@@ -283,8 +290,8 @@ public final class World {
     private void digestEntity(DigestCalculator dc, MatrixEntity e) {
         dc.putInt(typeTag(e));
         dc.putInt(e.id);
-        dc.putInt(e.pos.xCm());
-        dc.putInt(e.pos.yCm());
+        dc.putInt(e.xCm());
+        dc.putInt(e.yCm());
         dc.putInt(e.alive ? 1 : 0);
         dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
         if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
