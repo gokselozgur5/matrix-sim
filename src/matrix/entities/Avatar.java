@@ -38,12 +38,12 @@ public class Avatar extends MatrixEntity implements Chooses {
             return;
         }
         if (recalled) {
-            stepToward(w.places().nearestExit(pos), Config.RED_SPEED_CM);
+            stepToward(w.places().nearestExit(xCm(), yCm()), Config.RED_SPEED_CM);
             return;
         }
-        Agent threat = w.nearestAgent(pos);
-        if (threat != null && pos.within(threat.pos, Config.FLEE_TRIGGER_CM)) {
-            stepToward(w.places().nearestExit(pos), Config.RED_SPEED_CM);
+        Agent threat = w.nearestAgent(xCm(), yCm());
+        if (threat != null && within(threat, Config.FLEE_TRIGGER_CM)) {
+            stepToward(w.places().nearestExit(xCm(), yCm()), Config.RED_SPEED_CM);
         } else if (w.rng().chance(0.9)) {
             wander(w, Config.RED_SPEED_CM);
         }

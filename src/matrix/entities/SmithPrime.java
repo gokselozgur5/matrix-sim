@@ -15,15 +15,15 @@ public final class SmithPrime extends Program implements SelfReplicating, Choose
 
     @Override
     public void tick(World w) {
-        MatrixEntity victim = w.nearestNonReplicating(pos, id);
+        MatrixEntity victim = w.nearestNonReplicating(xCm(), yCm(), id);
         if (victim == null) {
             if (w.rng().chance(0.5)) {
                 wander(w, Config.SMITH_SPEED_CM);
             }
             return;
         }
-        stepToward(victim.pos, Config.SMITH_SPEED_CM);
-        if (pos.within(victim.pos, Config.CONTACT_RADIUS_CM)) {
+        stepToward(victim, Config.SMITH_SPEED_CM);
+        if (within(victim, Config.CONTACT_RADIUS_CM)) {
             infect(w, victim);
         }
     }

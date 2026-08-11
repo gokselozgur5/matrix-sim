@@ -61,6 +61,9 @@ public final class Config {
     public static final int FLEET_MAX = 2;
     public static final int EXIT_REACH_CM = 300;
     public static final int RECALL_TIMEOUT_TICKS = 200;
+    public static final int LOD_LINGER_TICKS = 200;
+    public static final int LOD_COLD_STRETCH = 4;
+    public static final int ATTN_EVERY_TICKS = 100;
 
     private Config() {}
 }

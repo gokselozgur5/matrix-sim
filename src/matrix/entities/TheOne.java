@@ -27,8 +27,8 @@ public final class TheOne extends Avatar {
             }
             return;
         }
-        stepToward(target.pos, Config.ONE_SPEED_CM);
-        if (pos.within(target.pos, Config.CONTACT_RADIUS_CM) && target instanceof SmithCopy copy) {
+        stepToward(target, Config.ONE_SPEED_CM);
+        if (within(target, Config.CONTACT_RADIUS_CM) && target instanceof SmithCopy copy) {
             w.queue(new WorldEvent.Replace(copy.id, copy.original));
             if (w.rng().chance(0.25)) {
                 w.log(Severity.FATE, "The One: a copy deleted, an original restored");
@@ -39,9 +39,11 @@ public final class TheOne extends Avatar {
     private MatrixEntity nearestReplicating(World w) {
         MatrixEntity best = null;
         long bestD = Long.MAX_VALUE;
+        int fx = xCm();
+        int fy = yCm();
         for (MatrixEntity e : w.entities()) {
             if (e.alive && e instanceof SelfReplicating) {
-                long d = pos.euclidSqCm(e.pos);
+                long d = matrix.core.Geo.distSqCm(fx, fy, e.xCm(), e.yCm());
                 if (d < bestD) {
                     bestD = d;
                     best = e;
