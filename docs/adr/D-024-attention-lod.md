@@ -55,3 +55,5 @@ Not applicable while parked; on unparking, the first milestone is a two-region w
 ## More Information
 
 Related: [D-008](D-008-processor-mode.md), [D-018](D-018-tick-budgets.md), [D-023](D-023-chronos-event-sourcing.md). Vision: L2.
+
+Referenced by: [D-004](D-004-field-model.md), [D-008](D-008-processor-mode.md), [D-018](D-018-tick-budgets.md), [D-026](D-026-language-java17.md), [D-038](D-038-season-two.md).

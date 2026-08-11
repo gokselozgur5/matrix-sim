@@ -55,3 +55,5 @@ Not applicable while parked; on unparking, the first milestone is replaying a re
 ## More Information
 
 Related: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md). Vision: L1 Chronos.
+
+Referenced by: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md), [D-024](D-024-attention-lod.md), [D-038](D-038-season-two.md).
