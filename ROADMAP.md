@@ -72,7 +72,7 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 *The One cycle closes.*
 
-- [x] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in; "The One is OWED" — born at t=1289 for a debt of 30,227)
+- [x] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in; born at t=1289 for a debt of 30,227 — "the ledger does not forgive; it balances", and the source's own comment says the rest: the One is OWED)
 - [x] Overflow threshold → NEGOTIATION (world freezes, dialogue events) → treaty: mass restore (417 originals in one flush), opt-out (six walk free), Sati, PEACE
 - [x] Overflow without Neo → Architect emergency reload (alternate branch; verified via ops console by the verification skeptic)
 - [x] `reload` command: manual Zion purge
