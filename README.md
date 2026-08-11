@@ -58,7 +58,12 @@ java -cp out matrix.Main --headless --ticks 6000 --seed 42   # the whole film, d
 java -cp out matrix.Main --follow "Thomas A." --headless --ticks 6000 | grep '^{' | jq .   # the One's dream (D-021)
 ```
 
-What the 6,000-tick run plays, in order (seed 42): **The One is born** (t=1289, for a debt of 30,227) → Smith's `I DIDN'T` (1525) → **SMITH OVERFLOW** and Neo's flatline at Machine City (4284) → `"Peace."` (4304) → the treaty — 417 originals restored in one flush, six sleepers walk out the open door, **REBOOT v7.0** (4324) → and at 5249, a second Thomas A. Anderson, because the ledger never stopped counting.
+What the 6,000-tick run plays, in order (seed 42) — **two truthful answers, pick your checkout**:
+
+- **As of the `v3.0.0` tag** (the sealed Season One film): **The One is born** (t=1289, debt 30,227) → `I DIDN'T` (1525) → **SMITH OVERFLOW** + Neo's flatline at Machine City (4284) → `"Peace."` (4304) → treaty, six walk free, **REBOOT v7.0** (4324) → a second Thomas at 5249.
+- **On current `main`** (Season Two's world — LOD, substrate, the fleet, the audit): birth **1299** (debt 30,107) → `I DIDN'T` (1525) → overflow + flatline **4714** → `"Peace."` (4734) → reboot + the door **4754** → the second Thomas at **5689**.
+
+*Black cat note:* the drift between those two columns is not nondeterminism — every Season Two mechanic that shifted the world's dynamics declared its digest move in its own PR, and each checkout replays ITS film byte-for-byte, forever. Same seed, same fate, on every platform: seed-42 digests verified byte-identical across **Apple-Silicon macOS, x86-64 Debian, and an x86-64 Ubuntu container** (third platform 2026-08-11, against the `v3.0.0` tag and current main both).
 
 A followed dream has two possible endings, and the stream tells them apart: `"ended — they walked out the open door"` (liberation) vs `"lost — the dream is no longer theirs"` (death — or a mind currently worn by Smith). One pilot's stream went dark twice and came back in between; the investigation that explained her is the field manual's case study in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (*the case of Nadia Petrov*).
 
