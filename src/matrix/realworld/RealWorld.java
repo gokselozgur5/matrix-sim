@@ -50,7 +50,7 @@ public final class RealWorld {
     public void tick(long t) {
         if (t % matrix.core.Config.ACCRUE_EVERY_TICKS == 0) {
             for (NeuralLink link : links) {
-                if (AcceptanceLoop.accrue(link, world.ledger(), world.rng())
+                if (AcceptanceLoop.accrue(link, world.ledger())
                         && world.isPresent(link.avatar)) {
                     selfSubstantiate(link);
                 }
@@ -58,8 +58,11 @@ public final class RealWorld {
         }
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
+                Human h = link.human;
                 world.log(Severity.BAD, "the body cannot live without the mind — "
-                        + link.human.name + " flatlined (pod " + link.human.pod.rackUnit + " flushed)");
+                        + h.name + " flatlined" + (h.pod != null
+                        ? " (pod " + h.pod.rackUnit + " flushed)"
+                        : " (no pod to flush — they died free)"));
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
@@ -80,7 +83,7 @@ public final class RealWorld {
         selfsubCount++;
         world.log(Severity.FATE, "self-substantiation: " + link.human.name
                 + " walked out of the dream — residue " + link.personalResidue
-                + " >= threshold " + link.human.threshold + ", " + link.spikes
+                + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
                 + " spikes in " + link.windows + " windows; no red pill was given (pod "
                 + link.human.pod.rackUnit + " opens)");
         pendingLiberations.add(new Liberation(link.human, "selfsub"));
@@ -135,11 +138,11 @@ public final class RealWorld {
      * stays outside the chain per the #187 precedent; whether more real-side
      * state gets blessed in is open at the gate (#96, point a).
      */
-    public void digestInto(matrix.core.DigestCalculator dc) {
-        dc.putCount(links.size());
+    public void digestInto(matrix.core.StateSink sink) {
+        sink.putCount(links.size());
         for (NeuralLink link : links) {
-            dc.putLong(link.human.threshold);
-            dc.putLong(link.personalResidue);
+            sink.putLong(AcceptanceLoop.threshold(link.human.name));
+            sink.putLong(link.personalResidue);
         }
     }
 

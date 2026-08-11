@@ -26,6 +26,20 @@ final class Probes {
         return (List<NeuralLink>) open(RealWorld.class, "links").get(rw);
     }
 
+    static matrix.zion.Zion zion(Simulation sim) throws ReflectiveOperationException {
+        return (matrix.zion.Zion) open(Simulation.class, "zion").get(sim);
+    }
+
+    @SuppressWarnings("unchecked")
+    static List<matrix.zion.Hovercraft> fleet(matrix.zion.Zion zion) throws ReflectiveOperationException {
+        return (List<matrix.zion.Hovercraft>) open(matrix.zion.Zion.class, "fleet").get(zion);
+    }
+
+    @SuppressWarnings("unchecked")
+    static List<NeuralLink> rigLinks(matrix.zion.BroadcastRig rig) throws ReflectiveOperationException {
+        return (List<NeuralLink>) open(matrix.zion.BroadcastRig.class, "links").get(rig);
+    }
+
     private static Field open(Class<?> type, String name) throws NoSuchFieldException {
         Field f = type.getDeclaredField(name);
         f.setAccessible(true);

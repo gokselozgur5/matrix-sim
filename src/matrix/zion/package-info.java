@@ -24,9 +24,14 @@
  *       flush, nobody deleted (D-011: liberation, not deletion).</li>
  *   <li>Absorb order is liberation order: the root drains pending
  *       liberations in link registration order, every tick.</li>
- *   <li>At this stage (floors) the wing draws NOTHING from the rng — the
- *       fleet and its seeded crew draws arrive behind the D-032 verdict,
- *       through {@code world.rng()} in the zion tick slot, never before.</li>
+ *   <li>Every draw the wing makes — the crew draw at a launch, the
+ *       insertion zone at a session — goes through {@code world.rng()}
+ *       inside the zion tick slot, and only when the fleet actually acts:
+ *       an idle wing consumes no fate.</li>
+ *   <li>Pirate links are Zion's book: the rig registers, observes, and
+ *       ends them in registration order — {@code RealWorld}'s walk never
+ *       sees them, and the acceptance loop never accrues them (a pirate
+ *       rides in lucid; flagged for the gate).</li>
  *   <li>Nothing here prints. Zion RETURNS its {@code ZION} line
  *       ({@code Locale.ROOT}, byte-stable); only the root emits.</li>
  * </ul>

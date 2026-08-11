@@ -49,9 +49,9 @@ public final class Config {
     // family tried (140/40, 4e-4, 8) needed 18+ spikes and could never
     // fire; lowered once, per the sweep, to the dossier's own numbers.
     // 1/512 is a power of two: the chance compare is bit-exact everywhere.
-    public static final long KID_BASE = 120;
+    public static final long KID_BASE = 144;
     public static final int KID_JITTER = 48;
-    public static final double KID_SPIKE_CHANCE = 1.0 / 512;
+    public static final int KID_SPIKE_DENOM = 512;
     public static final long KID_SPIKE = 24;
 
     public static final int HASH_CELL_CM = 5_000;
@@ -65,6 +65,17 @@ public final class Config {
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
+
+    public static final int RIG_CAPACITY = 3;
+    public static final int RIG_STATION_TICKS = 400;
+    public static final int TRANSIT_TICKS = 150;
+    public static final long SHIP_LOSS_TICK = -1; // #119 scenario knob: -1 = off, the canonical fate
+    public static final int FLEET_MAX = 2;
+    public static final int EXIT_REACH_CM = 300;
+    public static final int RECALL_TIMEOUT_TICKS = 200;
+    public static final int LOD_LINGER_TICKS = 200;
+    public static final int LOD_COLD_STRETCH = 4;
+    public static final int ATTN_EVERY_TICKS = 100;
 
     private Config() {}
 }

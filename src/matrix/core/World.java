@@ -23,6 +23,7 @@ public final class World {
     private final EventBus bus;
     private final PlaceGraph places;
     private final SpatialHash hash = new SpatialHash(Config.WORLD_W_CM, Config.WORLD_H_CM, Config.HASH_CELL_CM);
+    private final RegionMap regions;
     private final List<MatrixEntity> entities = new ArrayList<>();
     private final List<WorldEvent> pending = new ArrayList<>();
     private final AnomalyLedger ledger = new AnomalyLedger();
@@ -30,11 +31,13 @@ public final class World {
     private int version = 6;
     private long tick = 0;
     private int nextId = 1;
+    private ChronosLog chronosTap;
 
     public World(Rng rng, EventBus bus, PlaceGraph places) {
         this.rng = rng;
         this.bus = bus;
         this.places = places;
+        this.regions = new RegionMap(hash, places);
     }
 
     /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
@@ -48,6 +51,10 @@ public final class World {
 
     public PlaceGraph places() {
         return places;
+    }
+
+    public RegionMap regions() {
+        return regions;
     }
 
     public long tick() {
@@ -86,6 +93,11 @@ public final class World {
         pending.add(event);
     }
 
+    /** D-023 stage 1: installed at boot, the tap observes every flushed batch; it never steers one. */
+    public void installChronosTap(ChronosLog tap) {
+        this.chronosTap = tap;
+    }
+
     /** During a negotiation the world holds its breath but the clock does not — instruments stay honest. */
     public void advanceFrozen() {
         tick++;
@@ -94,6 +106,7 @@ public final class World {
     public void step() {
         tick++;
         hash.rebuild(entities);
+        regions.refresh(tick, entities); // attention reads the snapshots the rebuild just froze (D-024 P0)
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {
@@ -105,11 +118,16 @@ public final class World {
 
     /** Boot-time flush so tick 1 already sees the seeded population. */
     public void flush() {
+        int spawns = 0;
+        int removes = 0;
+        int replaces = 0;
         for (WorldEvent ev : pending) {
             if (ev instanceof WorldEvent.Spawn s) {
                 entities.add(s.entity());
+                spawns++;
             } else if (ev instanceof WorldEvent.Remove r) {
                 entities.removeIf(e -> e.id == r.entityId());
+                removes++;
             } else if (ev instanceof WorldEvent.Replace rp) {
                 for (int i = 0; i < entities.size(); i++) {
                     if (entities.get(i).id == rp.entityId()) {
@@ -117,13 +135,17 @@ public final class World {
                         break;
                     }
                 }
+                replaces++;
             }
         }
         pending.clear();
+        if (chronosTap != null) {
+            chronosTap.onFlush(tick, spawns, removes, replaces);
+        }
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
-    public MatrixEntity nearestNonReplicating(Position from, int selfId) {
+    public MatrixEntity nearestNonReplicating(int fromXCm, int fromYCm, int selfId) {
         MatrixEntity best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
@@ -131,7 +153,7 @@ public final class World {
                     || e instanceof matrix.entities.TheOne) {
                 continue;
             }
-            long d = from.euclidSqCm(e.pos);
+            long d = Geo.distSqCm(fromXCm, fromYCm, e.xCm(), e.yCm());
             if (d < bestD) {
                 bestD = d;
                 best = e;
@@ -157,12 +179,12 @@ public final class World {
         bus.publish(new Event(tick, sev, msg));
     }
 
-    public Agent nearestAgent(Position from) {
+    public Agent nearestAgent(int fromXCm, int fromYCm) {
         Agent best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
             if (e.alive && e instanceof Agent a) {
-                long d = from.euclidSqCm(a.pos);
+                long d = Geo.distSqCm(fromXCm, fromYCm, a.xCm(), a.yCm());
                 if (d < bestD) {
                     bestD = d;
                     best = a;
@@ -173,13 +195,13 @@ public final class World {
     }
 
     /** Agents hunt reds — but not The One: they tried that in three films. */
-    public Avatar nearestRed(Position from) {
+    public Avatar nearestRed(int fromXCm, int fromYCm) {
         Avatar best = null;
         long bestD = Long.MAX_VALUE;
         for (MatrixEntity e : entities) {
             if (e.alive && e instanceof Avatar a && a.pill == Pill.RED
                     && !(e instanceof matrix.entities.TheOne)) {
-                long d = from.euclidSqCm(a.pos);
+                long d = Geo.distSqCm(fromXCm, fromYCm, a.xCm(), a.yCm());
                 if (d < bestD) {
                     bestD = d;
                     best = a;
@@ -251,34 +273,38 @@ public final class World {
      * framed (D-020). SmithCopy recurses into its wrapped original, so
      * restore-relevant state is visible to the referee (skeptic finding:
      * two realities differing only inside a copy must not hash equal).
+     * One walk, any sink (D-023 stage 3): the hashing sink turns it into
+     * a DIGEST line, the retaining sink into a Snapshot — same order,
+     * same frames, so the two can never tell different stories. Reads
+     * only; the walk draws nothing and moves nothing.
      */
-    public void digestInto(DigestCalculator dc) {
-        dc.putLong(tick);
-        dc.putLong(rng.draws());
-        dc.putInt(nextId);
-        dc.putInt(state.ordinal());
-        dc.putInt(version);
-        dc.putLong(ledger.balance());
-        dc.putCount(entities.size());
+    public void digestInto(StateSink sink) {
+        sink.putLong(tick);
+        sink.putLong(rng.draws());
+        sink.putInt(nextId);
+        sink.putInt(state.ordinal());
+        sink.putInt(version);
+        sink.putLong(ledger.balance());
+        sink.putCount(entities.size());
         for (MatrixEntity e : entities) {
-            digestEntity(dc, e);
+            digestEntity(sink, e);
         }
     }
 
-    private void digestEntity(DigestCalculator dc, MatrixEntity e) {
-        dc.putInt(typeTag(e));
-        dc.putInt(e.id);
-        dc.putInt(e.pos.xCm());
-        dc.putInt(e.pos.yCm());
-        dc.putInt(e.alive ? 1 : 0);
-        dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
+    private void digestEntity(StateSink sink, MatrixEntity e) {
+        sink.putInt(typeTag(e));
+        sink.putInt(e.id);
+        sink.putInt(e.xCm());
+        sink.putInt(e.yCm());
+        sink.putInt(e.alive ? 1 : 0);
+        sink.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
         if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
-            dc.putInt(p.species.id().hashCode());
-            dc.putInt(p.headingX);
-            dc.putInt(p.headingY);
+            sink.putInt(p.species.id().hashCode());
+            sink.putInt(p.headingX);
+            sink.putInt(p.headingY);
         }
         if (e instanceof SmithCopy c) {
-            digestEntity(dc, c.original);
+            digestEntity(sink, c.original);
         }
     }
 
