@@ -7,7 +7,9 @@
  * ({@link matrix.Main} — the one class allowed to touch the wall clock, and only
  * for the PERF/BENCH harness, never for domain logic) or system plumbing
  * (the {@code SystemNode} composite of D-031, ticked in canonical order:
- * machine side first, then the real world).
+ * machine, realworld, zion — the free city LAST, so liberations queued
+ * this tick are absorbed this tick; the order fixes draw order, so
+ * changing it is a declared digest break, never a silent one).
  *
  * <p>Invariants you must not break here:
  * <ul>
