@@ -21,6 +21,7 @@ public final class Main {
         long ticks = 2_000;
         boolean headless = false;
         boolean selftest = false;
+        boolean bench = false;
         String follow = null;
 
         for (int i = 0; i < args.length; i++) {
@@ -29,6 +30,7 @@ public final class Main {
                 case "--ticks" -> ticks = Long.parseLong(args[++i]);
                 case "--headless" -> headless = true;
                 case "--selftest" -> selftest = true;
+                case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--help" -> {
                     usage();
@@ -43,7 +45,10 @@ public final class Main {
         }
 
         if (selftest) {
-            System.exit(selftest(seed));
+            System.exit(selftest(seed, ticks));
+        }
+        if (bench) {
+            System.exit(bench(seed));
         }
         if (headless) {
             runHeadless(seed, ticks, follow);
@@ -52,10 +57,15 @@ public final class Main {
         runInteractive(seed, follow);
     }
 
-    /** The kernel of CI without a build tool (accepted D-009 spark): two runs, one verdict. */
-    private static int selftest(long seed) {
-        List<Digest> a = new Simulation(seed, null, null).run(2_000);
-        List<Digest> b = new Simulation(seed, null, null).run(2_000);
+    /**
+     * The kernel of CI without a build tool (accepted D-009 spark): two runs,
+     * one verdict. Honors --ticks so the gate can cover the full v3 arc
+     * (skeptic finding: 2,000 hardcoded ticks left the finale untested);
+     * the default stays 2,000 for the fast pre-push check.
+     */
+    private static int selftest(long seed, long ticks) {
+        List<Digest> a = new Simulation(seed, null, null).run(ticks);
+        List<Digest> b = new Simulation(seed, null, null).run(ticks);
         if (a.size() != b.size()) {
             System.out.println("SELFTEST FAIL chain_length " + a.size() + " vs " + b.size());
             return 1;
@@ -66,8 +76,39 @@ public final class Main {
                 return 1;
             }
         }
-        System.out.println("SELFTEST OK seed=" + seed + " ticks=2000 chain_length=" + a.size());
+        System.out.println("SELFTEST OK seed=" + seed + " ticks=" + ticks + " chain_length=" + a.size());
         return 0;
+    }
+
+    /**
+     * D-027's Confirmation, executable at last: measure the budget table on
+     * this box and print a verdict per row. Budgets per the ADR erratas —
+     * steady state >= 100 ticks/s at ecosystem scale; the full v3 arc
+     * (6,000 ticks, birth to reboot to second birth) under 30 s.
+     */
+    private static int bench(long seed) {
+        long t0 = System.nanoTime();
+        Simulation steady = new Simulation(seed, null, null);
+        steady.run(2_000);
+        double steadyS = (System.nanoTime() - t0) / 1e9;
+        long tps = Math.round(2_000 / Math.max(steadyS, 1e-9));
+        boolean steadyOk = tps >= 100;
+        System.out.print(String.format(Locale.ROOT,
+                "BENCH steady seed=%d ticks=2000 entities=%d wall_s=%.2f ticks_per_s=%d floor=100 %s\n",
+                seed, steady.aliveEntities(), steadyS, tps, steadyOk ? "PASS" : "FAIL"));
+
+        long t1 = System.nanoTime();
+        Simulation arc = new Simulation(seed, null, null);
+        arc.run(6_000);
+        double arcS = (System.nanoTime() - t1) / 1e9;
+        boolean arcOk = arcS < 30.0;
+        System.out.print(String.format(Locale.ROOT,
+                "BENCH full_arc seed=%d ticks=6000 entities=%d wall_s=%.2f bound_s=30 %s\n",
+                seed, arc.aliveEntities(), arcS, arcOk ? "PASS" : "FAIL"));
+
+        System.out.print("BENCH VERDICT " + (steadyOk && arcOk ? "PASS" : "FAIL")
+                + " (budgets: D-027 + erratas; digests untouched — bench runs quiet)\n");
+        return steadyOk && arcOk ? 0 : 1;
     }
 
     private static void runHeadless(long seed, long ticks, String follow) {
@@ -121,7 +162,7 @@ public final class Main {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;
                     }
-                    case "help" -> System.out.print("commands: red | agent | smith | deja | pause | speed N | quit\n");
+                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | pause | speed N | quit\n");
                     default -> System.out.print("unknown command (try: help)\n");
                 }
             }
@@ -136,13 +177,14 @@ public final class Main {
 
     private static void usage() {
         System.out.print("""
-                matrix-sim daemon (v2.0)
+                matrix-sim daemon (v3.0)
                   --headless          run without the ops console, then print PERF
-                  --ticks N           tick budget for headless runs (default 2000)
+                  --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --selftest          in-process digest double-run; exit 0 iff chains match
-                interactive commands: red | agent | smith | deja | pause | speed N | quit
+                  --bench             measure the D-027 budget table; exit 0 iff all rows pass
+                interactive commands: red | agent | smith | deja | reload | pause | speed N | quit
                 """);
     }
 }
