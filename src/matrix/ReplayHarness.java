@@ -2,6 +2,7 @@ package matrix;
 
 import matrix.core.ChronosLog;
 import matrix.core.Digest;
+import matrix.core.Snapshot;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -24,22 +25,31 @@ import java.util.List;
  * replayed universe draws), touches no wall clock (that allowance stays
  * with Main's PERF harness), and issues no "close enough" verdicts.
  *
- * Stage 2 is the offline milestone only — verification, not yet the
- * reload path (that is stage 4, #128). Flush fingerprint lines are read
- * as evidence of shape but not folded: in the coarse+seeded model,
- * re-execution regenerates the events and the chain judges the outcome.
+ * Since stage 4 (#128) the fold also holds the reload to its seal: a
+ * recorded console reload arrives with an epoch marker — the closing
+ * epoch's boundary {@link Snapshot}, sha and sizes, never a payload —
+ * and the fold re-takes the same walk at the same between-ticks point
+ * before re-dispatching, then compares. Recorder and reader learned the
+ * marker grammar in the same breath, as the stage-3 note demanded.
+ * Flush fingerprint lines are read as evidence of shape but not folded:
+ * in the coarse+seeded model, re-execution regenerates the events and
+ * the chain judges the outcome.
  *
  * Exit grammar: 0 the chains agree (or a chain was printed), 1 the chains
- * diverge, 2 the fold refused (unreadable record, foreign physics,
- * unknown command).
+ * diverge (a broken seal included), 2 the fold refused (unreadable
+ * record, foreign physics, unknown command).
  */
 public final class ReplayHarness {
 
     /** A recorded operator command, to be re-applied when the replay reaches its tick. */
     private record Command(long tick, String cmd) {}
 
+    /** An epoch-boundary marker (#128): the closing epoch's certificate, to be re-taken and compared. */
+    private record Marker(long tick, int epoch, String sha, long bytes) {}
+
     /** What a recording declares before its first tick. */
-    private record Recording(long seed, String configFingerprint, List<Command> commands) {}
+    private record Recording(long seed, String configFingerprint,
+            List<Command> commands, List<Marker> markers) {}
 
     /**
      * The whole stage-2 surface: fold {@code chronosPath}; with
@@ -79,15 +89,41 @@ public final class ReplayHarness {
      * where the console once stood: between ticks, after {@code tick}
      * completed ticks. Commands recorded past the horizon stay unapplied;
      * they could not touch a compared link.
+     *
+     * Seals (#128): when the next recorded reload carries a marker at its
+     * tick, the fold re-takes {@link Simulation#snapshotNow()} at the
+     * dispatch point — the exact walk the recorder sealed pre-purge — and
+     * compares sha, epoch and size before re-applying the command. A
+     * marker no reload claims is not folded (the audit's jurisdiction,
+     * not the chain's); re-taking a walk draws nothing, so seals leave
+     * the replayed chain untouched.
      */
     private static int fold(Recording rec, long ticks, List<String> expected) {
         Simulation sim = new Simulation(rec.seed(), null, null);
         int next = 0;
         int applied = 0;
+        int nextMarker = 0;
+        int sealsVerified = 0;
         long done = 0;
         while (done < ticks) {
             while (next < rec.commands().size() && rec.commands().get(next).tick() == done) {
-                dispatch(sim, rec.commands().get(next));
+                Command c = rec.commands().get(next);
+                if (c.cmd().split("\\s+")[0].equals("reload")
+                        && nextMarker < rec.markers().size()
+                        && rec.markers().get(nextMarker).tick() == done) {
+                    Marker m = rec.markers().get(nextMarker);
+                    Snapshot live = sim.snapshotNow();
+                    if (!live.sha256Hex().equals(m.sha()) || live.version() != m.epoch()
+                            || live.bytes().length != m.bytes()) {
+                        System.out.print("REPLAY FAIL boundary_seal tick=" + done
+                                + " recorded=" + m.sha() + " epoch=" + m.epoch()
+                                + " got=" + live.sha256Hex() + " epoch=" + live.version() + "\n");
+                        return 1;
+                    }
+                    nextMarker++;
+                    sealsVerified++;
+                }
+                dispatch(sim, c);
                 next++;
                 applied++;
             }
@@ -125,6 +161,7 @@ public final class ReplayHarness {
         }
         System.out.print("REPLAY OK seed=" + rec.seed() + " ticks=" + ticks
                 + " links=" + chain.size() + " commands_applied=" + applied
+                + (sealsVerified > 0 ? " seals_verified=" + sealsVerified : "")
                 + (afterHorizon > 0 ? " commands_after_horizon=" + afterHorizon : "") + "\n");
         return 0;
     }
@@ -155,6 +192,7 @@ public final class ReplayHarness {
         Long seed = null;
         String config = null;
         List<Command> commands = new ArrayList<>();
+        List<Marker> markers = new ArrayList<>();
         long lastTick = 0;
         for (int n = 0; n < lines.size(); n++) {
             String line = lines.get(n).trim();
@@ -188,6 +226,17 @@ public final class ReplayHarness {
                     }
                     commands.add(new Command(tick, cmd));
                 }
+                case "snapshot" -> {
+                    long tick = tickField(line, n + 1, lastTick);
+                    lastTick = tick;
+                    String sha = stringField(line, "sha");
+                    if (sha == null || !sha.matches("[0-9a-f]{64}")) {
+                        refuse("snapshot marker without a sha256 at line " + (n + 1)
+                                + " — a seal that names no certificate seals nothing");
+                    }
+                    markers.add(new Marker(tick, (int) longField(line, "epoch", n + 1),
+                            sha, longField(line, "bytes", n + 1)));
+                }
                 case "boundary", "flush" -> lastTick = tickField(line, n + 1, lastTick);
                 default -> refuse("unknown record kind '" + kind + "' at line " + (n + 1));
             }
@@ -195,7 +244,7 @@ public final class ReplayHarness {
         if (seed == null) {
             refuse("no genesis — there is nothing to replay");
         }
-        return new Recording(seed, config, commands);
+        return new Recording(seed, config, commands, markers);
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */

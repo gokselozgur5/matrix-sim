@@ -52,6 +52,23 @@ public final class ChronosLog {
     }
 
     /**
+     * The epoch-boundary marker — the crown's deferred {@code ChronosLog
+     * o-- Snapshot} edge, landed at stage 4 (#128). The certificate of
+     * the closing epoch enters the record: tick, the epoch it seals
+     * (the pre-bump version), the sha over the retained walk, and the
+     * byte count — never the payload. A seal, not a save-game (crown
+     * #179): the fold re-takes the same walk at the same point and must
+     * find the same sha. Written BEFORE the boundary line and BEFORE
+     * the purge touches the world — the record leads, the world follows.
+     */
+    public void snapshot(Snapshot boundary) {
+        out.print("{\"chronos\":\"snapshot\",\"tick\":" + boundary.tick()
+                + ",\"epoch\":" + boundary.version()
+                + ",\"sha\":\"" + boundary.sha256Hex()
+                + "\",\"bytes\":" + boundary.bytes().length + "}\n");
+    }
+
+    /**
      * One flushed batch, counts only. All-zero batches are skipped: flush
      * runs every tick and most ticks move nothing — the file stays
      * proportionate to what actually happened.

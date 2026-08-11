@@ -205,11 +205,31 @@ public final class Simulation {
         director.orderSmithCollection("manual override");
     }
 
-    /** Ops console: the Architect's old answer, on demand. */
+    /**
+     * Ops console: the Architect's old answer, on demand — replay-shaped
+     * since stage 4 (#128). The epoch closes on the record BEFORE the
+     * purge touches the world: seal first (the boundary Snapshot, written
+     * as an epoch marker — the crown's {@code ChronosLog o-- Snapshot}
+     * edge), then the boundary line, then the Architect's surgery.
+     *
+     * Stage-5 invariant (#129), held by construction, not discipline:
+     * the seal is {@link #snapshotNow()} taken at the dispatch point —
+     * between ticks, exactly where the fold stands when it re-applies
+     * the recorded command — so recorder and fold walk the SAME state
+     * through the SAME sink grammar, and the post-purge digest is the
+     * first link of the new epoch. The record leads, the world follows;
+     * agreement is structural, and divergence is a chain verdict.
+     */
     public void commandReload() {
+        if (chronos != null) {
+            chronos.snapshot(snapshotNow());
+            chronos.boundary(world.tick(), "reload");
+        }
         matrix.machine.Architect.INSTANCE.reload(world, false);
         world.ledger().reset();
-        chronosBoundary();
+        // the boundary is already on the record — sync the version so the
+        // mid-tick detector stays quiet; it still owns emergency and treaty
+        chronosVersionSeen = world.version();
     }
 
     /** Chronos: an operator command enters the record at the tick it lands on. */
@@ -220,11 +240,17 @@ public final class Simulation {
     }
 
     /**
-     * Chronos boundary detection lives root-side: bumpVersion() has exactly
-     * two callers — the Architect's reload (leaves the world NORMAL) and
-     * the treaty (leaves it PEACE) — so a version crossing plus the
-     * resulting state names the boundary without instrumenting the
-     * machine package. Reads only; with chronos off it is a no-op.
+     * Chronos boundary detection for MID-TICK crossings: the emergency
+     * reload (the Director's overflow playbook) and the treaty bump the
+     * version inside a node's tick, where only this post-tick sweep can
+     * see them — a version crossing plus the resulting state names the
+     * boundary without instrumenting the machine package. The console
+     * reload no longer reaches here: it seals and writes its own boundary
+     * BEFORE the purge (stage 4, #128) and syncs the version seen.
+     * Mid-tick boundaries stand alone on the record — unsealed by design:
+     * the root cannot stand inside a tick, and in the coarse+seeded model
+     * re-execution regenerates them; the chain referees. Reads only; with
+     * chronos off it is a no-op.
      */
     private void chronosBoundary() {
         if (chronos == null) {

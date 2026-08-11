@@ -27,6 +27,7 @@ public final class Main {
         boolean bench = false;
         String follow = null;
         long sinkAt = -1;
+        long reloadAt = -1;
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
@@ -41,6 +42,7 @@ public final class Main {
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
+                case "--reload-at" -> reloadAt = Long.parseLong(args[++i]);
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
@@ -87,7 +89,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath, sinkAt, snapshotAt);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt, reloadAt, snapshotAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -165,7 +167,7 @@ public final class Main {
      * mode and sink mode are separate scenarios by design.
      */
     private static void runHeadless(long seed, long ticks, String follow, String chronosPath,
-            long sinkAt, Long snapshotAt) throws Exception {
+            long sinkAt, long reloadAt, Long snapshotAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
@@ -185,6 +187,10 @@ public final class Main {
                     if (t == sinkAt) {
                         sim.recordCommand("sink");
                         sim.commandSink();
+                    }
+                    if (t == reloadAt) {
+                        sim.recordCommand("reload");
+                        sim.commandReload();
                     }
                     sim.tickOnce();
                 }
@@ -268,13 +274,17 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
+                  --reload-at T       fire the Architect's reload right before tick T (headless scenario,
+                                      #128); with --chronos the epoch seals onto the record first:
+                                      snapshot marker + boundary, written BEFORE the purge
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
                   --snapshot-at T     with --headless: after tick T, retain the digest walk and print
                                       SNAPSHOT tick/sha/bytes (D-023 stage 3); when T is a digest tick,
                                       also verify SNAPSHOT_MATCHES_DIGEST against that tick's DIGEST line
                   --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
                                       with recorded commands at their ticks, print the DIGEST chain
-                                      in ChainDump format (seed from the recording; honors --ticks)
+                                      in ChainDump format (seed from the recording; honors --ticks);
+                                      epoch seals are re-taken at their boundaries and verified (#128)
                   --expect PATH       with --replay: verify against a ChainDump-format digest file;
                                       run length = the dump's last tick; prints REPLAY OK/FAIL and
                                       exits 0 match / 1 divergence / 2 refused
