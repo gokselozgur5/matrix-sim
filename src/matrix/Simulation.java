@@ -55,7 +55,7 @@ public final class Simulation {
     private final EventBus bus = new EventBus();
     private final World world;
     private final RealWorld realWorld;
-    private final Zion zion = new Zion();
+    private final Zion zion;
     private final Source source;
     private final Director director;
     private final List<SystemNode> nodes;
@@ -83,6 +83,7 @@ public final class Simulation {
         PlaceGraph places = new PlaceGraph(Config.WORLD_W_CM, Config.WORLD_H_CM);
         this.world = new World(rng, bus, places);
         this.realWorld = new RealWorld(world);
+        this.zion = new Zion(world);
         this.source = new Source(world);
         this.metrics = new MetricsCollector(world);
         if (this.out != null) {
