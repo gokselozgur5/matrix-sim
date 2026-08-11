@@ -239,6 +239,9 @@ public final class Simulation {
         if (t % Config.ECO_EVERY_TICKS == 0) {
             emit(metrics.ecoLine(t));
         }
+        if (t % Config.ATTN_EVERY_TICKS == 0) {
+            emit(metrics.attnLine(t));
+        }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
             Digest d = new Digest(t, digests.finishHex());
