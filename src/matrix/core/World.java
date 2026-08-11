@@ -104,6 +104,21 @@ public final class World {
         return nextId++;
     }
 
+    /**
+     * Is a Replace already pending for this id? Four Smiths can touch one
+     * victim in one tick; only the first landing is real — the rest were
+     * phantom copies, phantom log lines, and wasted ids (nextId is
+     * digested: the waste was state). One victim, one landing (#220).
+     */
+    public boolean hasPendingReplace(int entityId) {
+        for (WorldEvent ev : pending) {
+            if (ev instanceof WorldEvent.Replace r && r.entityId() == entityId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void queue(WorldEvent event) {
         pending.add(event);
     }

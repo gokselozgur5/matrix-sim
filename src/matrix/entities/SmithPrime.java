@@ -30,8 +30,8 @@ public final class SmithPrime extends Program implements SelfReplicating, Choose
 
     /** The Decorator move (D-001): the victim's object survives inside the copy, untouched. */
     static void infect(World w, MatrixEntity victim) {
-        if (!victim.alive) {
-            return;
+        if (!victim.alive || w.hasPendingReplace(victim.id)) {
+            return; // already claimed this tick — one victim, one landing (#220)
         }
         if (victim instanceof Oracle) {
             w.log(Severity.FATE, "Smith consumed the Oracle — the eyes are his now");
