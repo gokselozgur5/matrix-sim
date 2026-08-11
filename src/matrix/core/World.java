@@ -266,34 +266,38 @@ public final class World {
      * framed (D-020). SmithCopy recurses into its wrapped original, so
      * restore-relevant state is visible to the referee (skeptic finding:
      * two realities differing only inside a copy must not hash equal).
+     * One walk, any sink (D-023 stage 3): the hashing sink turns it into
+     * a DIGEST line, the retaining sink into a Snapshot — same order,
+     * same frames, so the two can never tell different stories. Reads
+     * only; the walk draws nothing and moves nothing.
      */
-    public void digestInto(DigestCalculator dc) {
-        dc.putLong(tick);
-        dc.putLong(rng.draws());
-        dc.putInt(nextId);
-        dc.putInt(state.ordinal());
-        dc.putInt(version);
-        dc.putLong(ledger.balance());
-        dc.putCount(entities.size());
+    public void digestInto(StateSink sink) {
+        sink.putLong(tick);
+        sink.putLong(rng.draws());
+        sink.putInt(nextId);
+        sink.putInt(state.ordinal());
+        sink.putInt(version);
+        sink.putLong(ledger.balance());
+        sink.putCount(entities.size());
         for (MatrixEntity e : entities) {
-            digestEntity(dc, e);
+            digestEntity(sink, e);
         }
     }
 
-    private void digestEntity(DigestCalculator dc, MatrixEntity e) {
-        dc.putInt(typeTag(e));
-        dc.putInt(e.id);
-        dc.putInt(e.pos.xCm());
-        dc.putInt(e.pos.yCm());
-        dc.putInt(e.alive ? 1 : 0);
-        dc.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
+    private void digestEntity(StateSink sink, MatrixEntity e) {
+        sink.putInt(typeTag(e));
+        sink.putInt(e.id);
+        sink.putInt(e.pos.xCm());
+        sink.putInt(e.pos.yCm());
+        sink.putInt(e.alive ? 1 : 0);
+        sink.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
         if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
-            dc.putInt(p.species.id().hashCode());
-            dc.putInt(p.headingX);
-            dc.putInt(p.headingY);
+            sink.putInt(p.species.id().hashCode());
+            sink.putInt(p.headingX);
+            sink.putInt(p.headingY);
         }
         if (e instanceof SmithCopy c) {
-            digestEntity(dc, c.original);
+            digestEntity(sink, c.original);
         }
     }
 
