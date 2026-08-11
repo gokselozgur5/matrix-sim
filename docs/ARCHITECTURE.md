@@ -269,3 +269,20 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 | *Are two universes the same universe?* | DIGEST chain (`--selftest`, `probes/ChainDump`) |
 | *What does one mind experience?* | the follow stream (JSONL perception frames, D-021) |
 | *What state did an object pass through?* | a probe on the bench (`probes/`) |
+
+### The multiverse census
+
+The instruments got good enough to ask a bigger question: across the multiverse, how common is the film? `probes/SeedAtlas` sweeps seeds and verdicts each universe; one command regenerates this table after any mechanics change (`java -cp out:probes/out SeedAtlas 1 20 6000`).
+
+First 20 universes, 6,000 ticks each (2026-08-11, v3.0):
+
+| Fate | Universes | Meaning |
+|---|---|---|
+| `FULL_ARC` | **16 / 20** | birth → war → overflow → treaty → reboot → second birth |
+| `QUIET` | **4 / 20** (seeds 2, 5, 6, 8) | the One is born, Smith forks — and the cascade never reaches the 0.62 overflow line in 6,000 ticks. Smith can lose the race. |
+| `WAR` / `TREATY`-stall | 0 | no universe overflowed without resolving, none froze mid-treaty |
+| `OLD_PLAYBOOK` | **0** | the Architect's emergency reload — overflow with no One alive — has never once occurred in the wild. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; nature refuses it, because the ledger births the One (~1300) long before any cascade can overflow (~3200+). A dead branch that is also a proof: the film's ORDER is an emergent property, not a scripted one. |
+
+Birth tick across all 20: min 1179, max 1379 — a 200-tick band. The ledger is a metronome: whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ (overflow 3215–4519), because the cascade rides population geometry, not the ledger.
+
+The census is falsifiable the same way everything here is: rerun the command, diff the table.
