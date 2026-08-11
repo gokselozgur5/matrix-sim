@@ -58,6 +58,7 @@ public final class Simulation {
     private final RealWorld realWorld;
     private final Zion zion;
     private final Source source;
+    private final matrix.machine.SubstrateBudget substrate;
     private final Director director;
     private final List<SystemNode> nodes;
     private final MetricsCollector metrics;
@@ -100,11 +101,19 @@ public final class Simulation {
         }
         AgentSmith smith = seedPopulation();
         this.director = new Director(world, source, smith);
+        // D-008 (crowns #32/#124): under PROCESSOR the machine wing gets a
+        // budget, fed through a NAMED port — one scalar, wired here because
+        // only the root holds both banks (D-012); under BATTERY it is absent
+        // and the whole substrate costs nothing.
+        this.substrate = Config.COMPUTE_MODEL.coupled()
+                ? new matrix.machine.SubstrateBudget(places.zones().size())
+                : null;
+        java.util.function.IntSupplier pluggedPods = realWorld.farm()::occupiedCount;
         // Canonical node order (D-031, crown #122): machine, realworld, zion —
         // zion LAST, so liberations queued this tick are absorbed this tick.
         // The third node is the fence event: nodes.add, addition not refactor.
         this.nodes = List.of(
-                new MachineSystem(world, director, source),
+                new MachineSystem(world, director, source, substrate, pluggedPods),
                 new RealWorldSystem(realWorld),
                 new ZionSystem(zion));
         world.flush();
@@ -154,7 +163,8 @@ public final class Simulation {
                 + (Config.WORLD_W_CM / 100_000.0) + " km x " + (Config.WORLD_H_CM / 100_000.0) + " km");
         world.log(Severity.SYS, "exit nodes online: " + world.places().exits().size()
                 + " phone booths across " + world.places().zones().size() + " zones");
-        world.log(Severity.SYS, "compute model: PROCESSOR — the inmates render their own cells");
+        world.log(Severity.SYS, "compute model: " + Config.COMPUTE_MODEL.name()
+                + " — " + Config.COMPUTE_MODEL.desc());
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
         world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
@@ -177,9 +187,14 @@ public final class Simulation {
         return new Position(rng.nextInt(Config.WORLD_W_CM + 1), rng.nextInt(Config.WORLD_H_CM + 1));
     }
 
-    /** Ops console: force one awakening. Even overrides respect the cap (skeptic finding). */
+    /**
+     * Ops console: force one awakening. Even overrides respect the cap —
+     * and count it the way the Director does since the v3 fix: latent
+     * (wrapped) reds included, or wrapped minds convert into grantable
+     * slots and the treaty restores the surplus (#206, H2).
+     */
     public void commandRed() {
-        if (world.count(Pill.RED) >= Config.RED_CAP) {
+        if (world.countRedIncludingWrapped() >= Config.RED_CAP) {
             world.log(Severity.SYS, "manual override refused: the city cannot hold more awakened (cap "
                     + Config.RED_CAP + ")");
             return;
@@ -205,11 +220,32 @@ public final class Simulation {
         director.orderSmithCollection("manual override");
     }
 
-    /** Ops console: the Architect's old answer, on demand. */
+    /**
+     * Ops console: the Architect's old answer, on demand — replay-shaped
+     * since stage 4 (#128). The epoch closes on the record BEFORE the
+     * purge touches the world: seal first (the boundary Snapshot, written
+     * as an epoch marker — the crown's {@code ChronosLog o-- Snapshot}
+     * edge), then the boundary line, then the Architect's surgery.
+     *
+     * Stage-5 invariant (#129), held by construction, not discipline:
+     * the seal is {@link #snapshotNow()} taken at the dispatch point —
+     * between ticks, exactly where the fold stands when it re-applies
+     * the recorded command — so recorder and fold walk the SAME state
+     * through the SAME sink grammar, and the post-purge digest is the
+     * first link of the new epoch. The record leads, the world follows;
+     * agreement is structural, and divergence is a chain verdict.
+     */
     public void commandReload() {
+        if (chronos != null) {
+            chronos.snapshot(snapshotNow());
+            chronos.boundary(world.tick(), "reload");
+        }
         matrix.machine.Architect.INSTANCE.reload(world, false);
         world.ledger().reset();
-        chronosBoundary();
+        director.abortPeace();
+        // the boundary is already on the record — sync the version so the
+        // mid-tick detector stays quiet; it still owns emergency and treaty
+        chronosVersionSeen = world.version();
     }
 
     /** Chronos: an operator command enters the record at the tick it lands on. */
@@ -220,11 +256,17 @@ public final class Simulation {
     }
 
     /**
-     * Chronos boundary detection lives root-side: bumpVersion() has exactly
-     * two callers — the Architect's reload (leaves the world NORMAL) and
-     * the treaty (leaves it PEACE) — so a version crossing plus the
-     * resulting state names the boundary without instrumenting the
-     * machine package. Reads only; with chronos off it is a no-op.
+     * Chronos boundary detection for MID-TICK crossings: the emergency
+     * reload (the Director's overflow playbook) and the treaty bump the
+     * version inside a node's tick, where only this post-tick sweep can
+     * see them — a version crossing plus the resulting state names the
+     * boundary without instrumenting the machine package. The console
+     * reload no longer reaches here: it seals and writes its own boundary
+     * BEFORE the purge (stage 4, #128) and syncs the version seen.
+     * Mid-tick boundaries stand alone on the record — unsealed by design:
+     * the root cannot stand inside a tick, and in the coarse+seeded model
+     * re-execution regenerates them; the chain referees. Reads only; with
+     * chronos off it is a no-op.
      */
     private void chronosBoundary() {
         if (chronos == null) {
@@ -309,6 +351,12 @@ public final class Simulation {
         }
         if (t % Config.ATTN_EVERY_TICKS == 0) {
             emit(metrics.attnLine(t));
+        }
+        if (substrate != null && t % Config.METRIC_EVERY_TICKS == 0) {
+            // D-008 (#134): the machine wing's own instrument, right after
+            // the attention census it rations. The budget formats, the
+            // map's glitch count rides along, only the root emits (D-020).
+            emit(substrate.line(world.regions().capGlitches()));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
             // #118: the root hands zion's open links to the collector (D-012) and

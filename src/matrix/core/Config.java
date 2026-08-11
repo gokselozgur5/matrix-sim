@@ -66,6 +66,18 @@ public final class Config {
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
 
+    // D-008 substrate (crowns #32, #124): which compute story runs, and its
+    // knobs. PROCESSOR is canon per the #19 verdict; BATTERY keeps the
+    // zero-cost flavor path — flip here for the A/B, digest family unchanged.
+    public static final matrix.machine.ComputeModel COMPUTE_MODEL =
+            matrix.machine.ComputeModel.PROCESSOR;
+    /** Budget reference: the full farm at boot (BLUE_START + RED_START) — a constant, never a live read. */
+    public static final int PODS_REFERENCE = 196;
+    /** The budget may starve the map down to this many HOT slots, never below. */
+    public static final int SLOTS_FLOOR = 2;
+    /** Below this many plugged pods the emergency cadence stretch engages. */
+    public static final int PODS_MIN = 64;
+
     public static final int RIG_CAPACITY = 3;
     public static final int RIG_STATION_TICKS = 400;
     public static final int TRANSIT_TICKS = 150;

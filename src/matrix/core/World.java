@@ -33,6 +33,11 @@ public final class World {
     private int nextId = 1;
     private long unparks = 0;
     private ChronosLog chronosTap;
+    // D-008 substrate scalars (#134): uncapped and unstretched until a
+    // budget commands otherwise — under BATTERY nothing ever does, and
+    // these defaults ARE the pre-D-008 world, bit for bit.
+    private int hotSlotCap = Integer.MAX_VALUE;
+    private int cadenceStretch = 1;
 
     public World(Rng rng, EventBus bus, PlaceGraph places) {
         this.rng = rng;
@@ -99,6 +104,23 @@ public final class World {
         this.chronosTap = tap;
     }
 
+    /**
+     * The D-008 command seam (#134): MachineSystem sets the tick's substrate
+     * scalars before the step — the HOT-slot cap the RegionMap must respect
+     * and the emergency cadence stretch the eco path must obey. Only
+     * scalars cross here (D-031's command chain: the machine wing commands,
+     * the World relays to its own ledger at refresh time).
+     */
+    public void setSubstrate(int hotSlotCap, int cadenceStretch) {
+        this.hotSlotCap = hotSlotCap;
+        this.cadenceStretch = cadenceStretch;
+    }
+
+    /** 1 outside an emergency: the D-008 floor multiplies eco periods only while the farm is dying. */
+    public int cadenceStretch() {
+        return cadenceStretch;
+    }
+
     /** During a negotiation the world holds its breath but the clock does not — instruments stay honest. */
     public void advanceFrozen() {
         tick++;
@@ -107,7 +129,9 @@ public final class World {
     public void step() {
         tick++;
         hash.rebuild(entities);
-        regions.refresh(tick, entities); // attention reads the snapshots the rebuild just froze (D-024 P0)
+        // attention reads the snapshots the rebuild just froze (D-024 P0);
+        // the substrate cap rides along as a scalar (D-008, #134)
+        regions.refresh(tick, entities, hotSlotCap);
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {

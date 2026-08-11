@@ -73,8 +73,8 @@ public final class Zion {
             sinkOrdered = false;
             sinkActiveShip();
         }
-        while (fleet.size() < Config.FLEET_MAX
-                && census.size() >= Config.RIG_CAPACITY * (fleet.size() + 1)) {
+        while (afloat() < Config.FLEET_MAX
+                && livingCensus() >= Config.RIG_CAPACITY * (afloat() + 1)) {
             Hovercraft hull = new Hovercraft(ROSTER[fleet.size()]);
             fleet.add(hull);
             world.log(Severity.FATE, fleet.size() == 1
@@ -137,6 +137,28 @@ public final class Zion {
      * zone can reach is the operational price of the rotation — #117
      * collects it.
      */
+    /** Hulls still in the fight — the fallen stay on the registry but hold no slot (#206, M1). */
+    private int afloat() {
+        int n = 0;
+        for (Hovercraft ship : fleet) {
+            if (ship.state() != Hovercraft.MissionState.LOST) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** Citizens still breathing — a census that counts its dead cannot crew a ship. */
+    private int livingCensus() {
+        int n = 0;
+        for (matrix.realworld.Human h : census) {
+            if (h.alive()) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     private PlaceGraph.Zone nextZone() {
         List<PlaceGraph.Zone> zones = world.places().zones();
         zoneCursor = zoneCursor < 0

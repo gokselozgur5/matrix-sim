@@ -123,7 +123,17 @@ public final class Hovercraft {
     public void destroy(World world) {
         state = MissionState.LOST;
         int cut = rig.destroy(world);
-        world.log(Severity.FATE, name + " goes down — " + cut + " wires cut");
+        int drowned = 0;
+        for (matrix.realworld.Human h : crew) {
+            if (h.alive()) {
+                h.brain.flatline();
+                drowned++;
+                world.log(Severity.BAD, h.name + " goes down with the ship — no wire, no booth, no way home");
+            }
+        }
+        crew.clear();
+        world.log(Severity.FATE, name + " goes down — " + cut + " wires cut, "
+                + drowned + " souls lost with the hull");
     }
 
     public MissionState state() {

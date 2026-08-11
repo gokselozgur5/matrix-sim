@@ -23,9 +23,11 @@ import java.util.Locale;
  * reference semantics for arrays — certificates are compared, not
  * interchanged. The byte array is owned by the certificate: callers
  * read, never write. The ChronosLog edge of the crown ({@code ChronosLog
- * o-- Snapshot}, epoch-boundary markers in the record) lands with stage
- * 4's reload flip, where the fold's reader learns the marker grammar in
- * the same breath.
+ * o-- Snapshot}, epoch-boundary markers in the record) landed with stage
+ * 4's reload flip (#128): the console reload seals the closing epoch
+ * onto the record BEFORE the purge, and the fold re-takes the walk at
+ * the same point and verifies the seal — recorder and reader learned
+ * the marker grammar in the same breath.
  */
 public record Snapshot(long tick, int version, String sha256Hex, byte[] bytes) {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
