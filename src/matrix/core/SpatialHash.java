@@ -45,9 +45,17 @@ public final class SpatialHash {
         }
     }
 
-    /** Snapshot-exact hits around the seeker's OWN snapshot position. */
+    private final List<MatrixEntity> scratch = new ArrayList<>();
+
+    /**
+     * Snapshot-exact hits around the seeker's OWN snapshot position.
+     * Returns a REUSED buffer, valid only until the next query: consume
+     * it inside your own tick, never store it (caller audit: the two
+     * gaits do exactly that; AllocMeter said this was the hot list).
+     */
     public List<MatrixEntity> near(MatrixEntity self, int radiusCm) {
-        List<MatrixEntity> out = new ArrayList<>();
+        List<MatrixEntity> out = scratch;
+        out.clear();
         int fx = self.snapXCm;
         int fy = self.snapYCm;
         int minX = Math.max(0, (fx - radiusCm) / cellCm);

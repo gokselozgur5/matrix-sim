@@ -42,6 +42,9 @@ public abstract class MatrixEntity {
     private void moveBy(int dx, int dy) {
         int x = Math.max(0, Math.min(Config.WORLD_W_CM, pos.xCm() + dx));
         int y = Math.max(0, Math.min(Config.WORLD_H_CM, pos.yCm() + dy));
+        if (x == pos.xCm() && y == pos.yCm()) {
+            return; // blocked or idle: same place, no fresh Position (AllocMeter)
+        }
         pos = new Position(x, y);
     }
 
