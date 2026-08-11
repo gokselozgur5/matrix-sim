@@ -195,7 +195,7 @@ sequenceDiagram
         Note over D: NEGOTIATION — the world holds its breath,<br/>the clock does not (instruments stay honest)
         D->>MC: executeTreaty at the timer's end
         MC->>MC: mass restore — every SmithCopy replaced<br/>by its untouched original (D-001, one flush)
-        MC->>RW: the open door — six closeClean walk-outs
+        S->>RW: on PEACE, the root honors the door — six closeClean walk-outs
         Note over MC,RW: PEACE → reboot v7.0 — nobody remembers,<br/>except the ledger's shape
     else no One exists
         D->>D: Architect emergency reload — the old playbook, one more time
@@ -228,9 +228,9 @@ The system as a building; every class crown carries its stage label on GitHub.
 |---|---|---|
 | Site survey | v0: docs, principles, decisions | the five documents + the ADRs |
 | **Foundation** | determinism + observability — everything rests on it | `Rng`, `Config`, `Event`, `Severity`, `EventBus`, `EventLog`, `MetricsCollector`, `DigestCalculator`, `Digest`, `MetricSnapshot` |
-| **Load-bearing skeleton** | composition roots + engine frame — expensive to change later | `Simulation`, `World`, `RealWorld`, `Director`, `SystemState`, `MatrixEntity`, `Program`, `Cell` |
+| **Load-bearing skeleton** | composition roots + engine frame — expensive to change later | `Simulation`, `World`, `RealWorld`, `Director`, `SystemState`, `MatrixEntity`, `Program`, `Position` (né Cell — crown #36) |
 | **Floors (wings)** | domain layers, phase by phase | biological wing (`Brain`, `Pod`, `PodFarm`, `Human`, `NeuralLink`, `PerceptionFrame`) · Matrix wing (`Avatar`, `Agent`, `Pill`) · machine wing at v2.0 (`Source`, `OrphanRegistry`, the Smith line, `Oracle`, exiles) · v3.0 penthouse (`TheOne`, `AcceptanceLoop`, `AnomalyLedger`, `Architect`, `MachineCity`) |
-| **Installations** | cross-cutting services | `SpatialHash` (corridors), `Scheduler` (elevators), `OpsConsole` (building management), `--bench` + PERF (the meters) |
+| **Installations** | cross-cutting services | `SpatialHash` (corridors), `Scheduler` (elevators), the ops console (building management — inline in `Main`, a plane not a class), `--bench` + PERF (the meters) |
 | **Landscaping** | v2.5 The Animatrix | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram`, the six `Movement` gaits |
 | Facade | none — on purpose (D-019) | the building is lived in from the inside; its only window is the perception feed |
 | Scaffolding | draft PR #1 | torn down as the real floors rise (issue #25) |
@@ -249,10 +249,10 @@ The owner's standing order: this system must be worked so well that *we never ge
 **Localize (a probe narrows it).** `probes/LinkTrace.java` replays the identical universe (determinism is what makes the coroner's job possible — same seed, same corpse) and prints every change in her link's `(alive, present, closed, pill)` tuple:
 
 ```
-t=0     alive=true present=true  closed=false avatarId=8
-t=1717  alive=true present=false closed=false avatarId=8
-t=1846  alive=true present=true  closed=false avatarId=8
-t=2477  alive=true present=false closed=false avatarId=8
+t=0 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
+t=1717 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
+t=1846 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
+t=2477 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
 ```
 
 Same avatar object throughout. Never dead, never closed — but *leaving the world and coming back*. That tuple rules out death, clean exit, and the follow engine itself in one screen.
@@ -263,7 +263,7 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 [001846] FATE  The One: a copy deleted, an original restored
 ```
 
-**Mechanism (name it or you haven't finished).** Worn by Smith at 1717 (a `Replace` swaps her for a `SmithCopy` holding her object — D-001), freed by The One at 1846 (his power deletes the copy and restores the original), worn again at 2477, treaty-restored at 4324, and out the open door — free. The hijacks logged nothing because hijack logging is *sampled* at 15% for cascade-throughput reasons; the rng draw is unconditional, so the silence costs no determinism. The double-`lost` was two true losses. The system was never wrong — it was telling a story nobody had scripted, and every instrument agreed once they were read together.
+**Mechanism (name it or you haven't finished).** Worn by Smith at 1717 (a `Replace` swaps her for a `SmithCopy` holding her object — D-001), freed by The One at 1846 (his power deletes the copy and restores the original), worn again at 2477, treaty-restored at 4324, and out the open door — free. The hijacks logged nothing because hijack logging is *sampled* at 15% for cascade-throughput reasons; the sampling draw sits behind a deterministic type-check (Avatars only — the Oracle's consumption logs unsampled), so the silence costs no determinism: same universe, same silences. The double-`lost` was two true losses. The system was never wrong — it was telling a story nobody had scripted, and every instrument agreed once they were read together.
 
 ### The general method
 
