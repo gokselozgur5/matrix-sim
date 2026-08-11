@@ -85,10 +85,18 @@ public final class RealWorld {
         return one;
     }
 
-    /** Case-insensitive pilot lookup for --follow. */
+    /**
+     * Case-insensitive pilot lookup for --follow. Only STREAMABLE links match —
+     * open, avatar alive and present in the world. A dead Thomas must not
+     * shadow the newborn one, and a mind currently worn by Smith must not
+     * re-tap into an endless "lost" loop (skeptic finding + its regression).
+     */
     public NeuralLink findLink(String nameFragment) {
         String needle = nameFragment.toLowerCase(java.util.Locale.ROOT);
         for (NeuralLink link : links) {
+            if (link.closed() || !link.avatar.alive || !world.isPresent(link.avatar)) {
+                continue;
+            }
             if (link.human.name.toLowerCase(java.util.Locale.ROOT).contains(needle)) {
                 return link;
             }

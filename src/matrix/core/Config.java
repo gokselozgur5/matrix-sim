@@ -40,6 +40,7 @@ public final class Config {
     public static final int NEGO_TICKS = 40;
     public static final int PEACE_TICKS = 900;
     public static final int OPTOUT_COUNT = 6;
+    public static final long DEJA_RESIDUE_SPIKE = 250;
 
     public static final int HASH_CELL_CM = 5_000;
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;

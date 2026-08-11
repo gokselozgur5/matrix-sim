@@ -197,12 +197,14 @@ public final class Simulation {
         return false;
     }
 
-    /** Ops console: hot patch — the users call it déjà vu. */
+    /** Ops console: hot patch — the users call it déjà vu, and the ledger notices (D-022). */
     public void commandDeja() {
         String note = PATCH_NOTES[patchesDeployed % PATCH_NOTES.length];
         patchesDeployed++;
+        world.ledger().accrue(Config.DEJA_RESIDUE_SPIKE);
         world.log(Severity.FATE, "déjà vu — hot patch deployed: " + note);
-        world.log(Severity.SYS, "a black cat walks by twice; nobody screams");
+        world.log(Severity.SYS, "a black cat walks by twice; nobody screams — but "
+                + Config.DEJA_RESIDUE_SPIKE + " residue lands on the ledger");
     }
 
     private void spawnAgent() {
@@ -230,9 +232,6 @@ public final class Simulation {
             world.log(Severity.FATE, "The One is born — " + one.pilotName
                     + ", grown for a debt of " + world.ledger().balance()
                     + " (the ledger does not forgive; it balances)");
-            if (followName != null && followed == null) {
-                followed = realWorld.findLink(followName);
-            }
         }
         if (t % Config.METRIC_EVERY_TICKS == 0) {
             emit(metrics.sample(t).format());
@@ -246,12 +245,23 @@ public final class Simulation {
             chain.add(d);
             emit(d.format());
         }
-        if (followed != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
-            if (followed.avatar.alive && world.isPresent(followed.avatar)) {
+        if (followName != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
+            // One rule, no special cases: a dark stream re-taps any LIVE link matching
+            // the name — a reborn Thomas resumes, a walked-out or eaten pilot does not.
+            if (followed == null) {
+                followed = realWorld.findLink(followName);
+            }
+            if (followed == null) {
+                // still dark; nothing to say
+            } else if (followed.avatar.alive && world.isPresent(followed.avatar)) {
                 emit(PerceptionFrame.jsonl(t, followed.avatar, world));
             } else {
+                // The LINK tells liberation from loss: only closeClean leaves it closed with
+                // a living avatar. A hijacked mind is "lost" — the dream is Smith's now.
                 emit("{\"tick\":" + t + ",\"who\":\"" + followed.human.name
-                        + "\",\"signal\":\"lost — the dream is no longer theirs\"}");
+                        + (followed.closed() && followed.avatar.alive
+                                ? "\",\"signal\":\"ended — they walked out the open door\"}"
+                                : "\",\"signal\":\"lost — the dream is no longer theirs\"}"));
                 followed = null;
             }
         }
