@@ -31,6 +31,16 @@ public final class Config {
     public static final long SMITH_FORK_TICK = 1_500;
     public static final long AGENT_DECOMMISSION_TICK = 3_000;
 
+    public static final int ONE_SPEED_CM = 350;
+    public static final double OVERFLOW_FRACTION = 0.62;
+    public static final long LEDGER_BOUND = 30_000;
+    public static final int ACCRUE_EVERY_TICKS = 10;
+    public static final long RESIDUE_BLUE = 1;
+    public static final long RESIDUE_RED = 8;
+    public static final int NEGO_TICKS = 40;
+    public static final int PEACE_TICKS = 900;
+    public static final int OPTOUT_COUNT = 6;
+
     public static final int HASH_CELL_CM = 5_000;
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;
     public static final int FLOCK_SEPARATION_CM = 1_500;

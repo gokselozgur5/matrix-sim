@@ -64,6 +64,7 @@ public final class Simulation {
     private NeuralLink followed;
     private int agentsSpawned = 0;
     private int patchesDeployed = 0;
+    private boolean optOutDone = false;
 
     public Simulation(long seed, OutputStream sink, String followName) {
         this.rng = new Rng(seed);
@@ -181,6 +182,21 @@ public final class Simulation {
         director.orderSmithCollection("manual override");
     }
 
+    /** Ops console: the Architect's old answer, on demand. */
+    public void commandReload() {
+        matrix.machine.Architect.INSTANCE.reload(world, false);
+        world.ledger().reset();
+    }
+
+    private boolean oneExists() {
+        for (var e : world.entities()) {
+            if (e.alive && e instanceof matrix.entities.TheOne) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Ops console: hot patch — the users call it déjà vu. */
     public void commandDeja() {
         String note = PATCH_NOTES[patchesDeployed % PATCH_NOTES.length];
@@ -201,6 +217,23 @@ public final class Simulation {
             node.tick(world.tick() + 1);
         }
         long t = world.tick();
+        if (world.state() == matrix.core.SystemState.PEACE && !optOutDone) {
+            optOutDone = true;
+            int freed = realWorld.optOut(Config.OPTOUT_COUNT);
+            world.flush();
+            world.log(Severity.OK, "open door tally: " + freed + " walked out; the census keeps them");
+        }
+        if (world.state() == matrix.core.SystemState.NORMAL
+                && world.ledger().overflowed() && !oneExists()) {
+            matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
+            world.flush();
+            world.log(Severity.FATE, "The One is born — " + one.pilotName
+                    + ", grown for a debt of " + world.ledger().balance()
+                    + " (the ledger does not forgive; it balances)");
+            if (followName != null && followed == null) {
+                followed = realWorld.findLink(followName);
+            }
+        }
         if (t % Config.METRIC_EVERY_TICKS == 0) {
             emit(metrics.sample(t).format());
         }

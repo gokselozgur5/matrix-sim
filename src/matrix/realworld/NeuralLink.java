@@ -25,6 +25,12 @@ public final class NeuralLink {
         return closed;
     }
 
+    /** The treaty's door: a clean exit — the link closes, the brain LIVES, the avatar leaves the world. */
+    public void closeClean() {
+        closed = true;
+        human.link = null;
+    }
+
     /** Returns true exactly once — when it observes the avatar's death and executes the rule. */
     public boolean observeDeath() {
         if (closed || avatar.alive) {

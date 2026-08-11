@@ -10,7 +10,7 @@ import matrix.core.World;
  * name, for the narrative. Death is observed by the NeuralLink from the
  * other side of the boundary; the avatar just stops.
  */
-public final class Avatar extends MatrixEntity implements Chooses {
+public class Avatar extends MatrixEntity implements Chooses {
     public final String pilotName;
     public Pill pill;
 

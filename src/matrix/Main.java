@@ -108,6 +108,7 @@ public final class Main {
                     case "agent" -> sim.commandAgent();
                     case "smith" -> sim.commandSmith();
                     case "deja" -> sim.commandDeja();
+                    case "reload" -> sim.commandReload();
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {

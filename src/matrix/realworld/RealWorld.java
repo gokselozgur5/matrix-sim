@@ -42,6 +42,11 @@ public final class RealWorld {
     }
 
     public void tick(long t) {
+        if (t % matrix.core.Config.ACCRUE_EVERY_TICKS == 0) {
+            for (NeuralLink link : links) {
+                AcceptanceLoop.accrue(link, world.ledger());
+            }
+        }
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
                 world.log(Severity.BAD, "the body cannot live without the mind — "
@@ -49,6 +54,35 @@ public final class RealWorld {
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
+    }
+
+    /** The treaty's open door: n sleepers walk out — links close CLEAN, brains live, the census keeps them. */
+    public int optOut(int n) {
+        int freed = 0;
+        for (NeuralLink link : links) {
+            if (freed >= n) {
+                break;
+            }
+            if (!link.closed() && link.avatar.alive
+                    && link.avatar.pill == matrix.entities.Pill.BLUE) {
+                link.closeClean();
+                world.queue(new WorldEvent.Remove(link.avatar.id));
+                world.log(Severity.OK, "the door: " + link.human.name + " walked out — free");
+                freed++;
+            }
+        }
+        return freed;
+    }
+
+    /** The One is grown, not converted: a real pod, a fated name, a hardline. */
+    public matrix.entities.TheOne birthTheOne(String name) {
+        Human h = farm.growNamed(name);
+        humans.add(h);
+        matrix.entities.TheOne one = new matrix.entities.TheOne(
+                world.allocateId(), world.places().zones().get(0).center(), h.name);
+        world.queue(new WorldEvent.Spawn(one));
+        register(new NeuralLink(h, one, LinkKind.HARDLINE));
+        return one;
     }
 
     /** Case-insensitive pilot lookup for --follow. */
