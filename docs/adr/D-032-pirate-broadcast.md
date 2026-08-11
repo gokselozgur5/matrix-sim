@@ -1,6 +1,6 @@
 ---
 title: "D-032 — Zion fleet and the pirate broadcast jack-in path"
-status: proposed
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #95
@@ -29,6 +29,8 @@ Today every link is a pod hardline. In the fiction, Zion crews jack in over pira
 * Zion as pure log flavor (status quo of the draft)
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Proposed option: "full mechanics", because a rig with a budget and a trace risk produces missions, retreats and losses out of arithmetic — the drama arrives free, exactly the repo's thesis. Final call in thread #95 (v4.0 gate).
 
