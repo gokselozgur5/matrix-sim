@@ -44,9 +44,11 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev9 — Humor must carry truth.** A joke in a log line is welcome when it reveals the mechanic and cut when it hides one. "There is no spoon" next to an absent feature: yes. Noise: no.
 
+**Dev10 — Decisions are MADR records.** Every decision gets a D-number and a record born from `docs/adr/TEMPLATE.md`: a Y-statement, drivers, options with pros and cons, an outcome with a *because*, and a **Confirmation** that proves compliance. Records are immutable — a changed mind supersedes, it never rewrites. The manual is `docs/adr/README.md`; if you cannot write the Y-statement, you do not understand the decision yet.
+
 **Dev11 — The Architect holds theory; the Oracle holds practice (D-037).** The owner governs decisions, scope and story — and never reads code as a duty. The machine merges only behind **five locks**: green evidence · the digest leash · executed ADR Confirmations · an independent skeptic pass · a theory brief in prose. Asking the Architect to review a diff is banned; briefing the Architect is mandatory.
 
-**Dev10 — Decisions are MADR records.** Every decision gets a D-number and a record born from `docs/adr/TEMPLATE.md`: a Y-statement, drivers, options with pros and cons, an outcome with a *because*, and a **Confirmation** that proves compliance. Records are immutable — a changed mind supersedes, it never rewrites. The manual is `docs/adr/README.md`; if you cannot write the Y-statement, you do not understand the decision yet.
+**Dev12 — Units ship whole (D-039).** One `build-unit` issue = one small PR that closes it with keywords; atomic commits carrying the finding, the fix, and the evidence; light locks per PR (compile · `--selftest` · digest leash, `--bench` where speed is touched) and the full adversarial pass at phase boundaries. The commit–issue–PR trio stays balanced by the owner's order: no hundred-commit PRs, no empty issues — detail is the deliverable, volume is its shadow.
 
 ## Agent principles — the crew (D-030)
 
@@ -67,6 +69,8 @@ When parts of the build are delegated to AI subagents, they join as crew under t
 **Ag7 — Small crews, honest scale.** Default crew: 3–5 missions in flight; hard ceiling min(16, cores − 2) concurrent on the host. Parallelism grows only with independently verifiable shards — spectacle is not a reason to fan out.
 
 **Ag8 — The Door applies to the crew.** Every agent session in this repo auto-loads CLAUDE.md and inherits these principles. Guests of the same house, held to the same truth, welcome at the same table.
+
+**Ag9 — The bench is shared.** Diagnostic instruments follow the probe contract (`probes/README.md`): read-only, own-universe, greppable verdicts — and they are LEFT ON THE BENCH when the investigation ends. The next skeptic starts from the bench, not from zero; a probe that dies with its scratchpad is evidence thrown away. Verifiers pin to a commit SHA (`git archive`), never to a shared working tree that may move under them.
 
 ## The Ritual — how a session begins, proceeds and ends (D-034)
 
