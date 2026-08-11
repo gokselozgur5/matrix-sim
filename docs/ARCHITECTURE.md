@@ -43,6 +43,8 @@ This repo walks toward that vision in small steps: the digest chain (D-020) is t
 | `matrix.entities.eco` | The ecosystem: species as data (v2.5) | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram` |
 | `matrix.entities.behavior` | Pluggable gaits (v2.5) | `Movement`, `FlockMovement`, `SwarmMovement`, ... |
 
+Outside the build, two shop directories: `probes/` (read-only diagnostic instruments compiled against `out/` — the skeptic's bench, contract in `probes/README.md`) and `tools/` (process jigs like the release cutter — `tools/README.md`). Neither ships in the daemon; both are governed by D-030. Every package's threshold now carries its own door: a `package-info.java` stating the room's responsibilities and the invariants you must not break standing in it.
+
 Package boundary = deployment boundary: `realworld` knows no entity behavior, `entities` knows no pod details. The only bridge is `NeuralLink`. Per D-019 there is no presentation layer anywhere: the entity API carries no glyphs, colors or render priorities; the system is observed through the event log, `METRIC` lines and the `DIGEST` chain (D-020), and — eventually — through the perception feed itself (D-021).
 
 ## Class relationships — as built (v1.0 merged; v2.0 shapes included)
@@ -170,3 +172,45 @@ The system as a building; every class crown carries its stage label on GitHub.
 | Inspection | DoDs, digest chain, PERF budgets | every phase ends with a handover run |
 
 Zoning rule: wings are packages, and the fire door between the biological wing and the simulation wing is `NeuralLink` — the only legal passage (A1). Build order inside v1.0: **foundation → skeleton → floors → installations → inspection.**
+
+## Field manual — how not to get lost
+
+The owner's standing order: this system must be worked so well that *we never get lost inside it*. That is not a mood — it is a procedure, and this chapter demonstrates it on a real case from the v3.0 fix round.
+
+### The case of Nadia Petrov
+
+**Symptom (one instrument speaks).** A `--follow "Nadia Petrov"` stream went dark twice — `"signal":"lost"` at tick 1800 and again at 2500 — with frames flowing again *between* the darkenings. A dream that ends should stay ended; a dream that returns should have a reason. The event log, grepped for her name across the whole run, held exactly one line: her walk-out at 4324. Silence where there should have been a story.
+
+**Localize (a probe narrows it).** `probes/LinkTrace.java` replays the identical universe (determinism is what makes the coroner's job possible — same seed, same corpse) and prints every change in her link's `(alive, present, closed, pill)` tuple:
+
+```
+t=0     alive=true present=true  closed=false avatarId=8
+t=1717  alive=true present=false closed=false avatarId=8
+t=1846  alive=true present=true  closed=false avatarId=8
+t=2477  alive=true present=false closed=false avatarId=8
+```
+
+Same avatar object throughout. Never dead, never closed — but *leaving the world and coming back*. That tuple rules out death, clean exit, and the follow engine itself in one screen.
+
+**Cross-reference (the instruments meet).** The log at the flip ticks: nothing at 1717, nothing at 2477 — but at 1846, one line:
+
+```
+[001846] FATE  The One: a copy deleted, an original restored
+```
+
+**Mechanism (name it or you haven't finished).** Worn by Smith at 1717 (a `Replace` swaps her for a `SmithCopy` holding her object — D-001), freed by The One at 1846 (his power deletes the copy and restores the original), worn again at 2477, treaty-restored at 4324, and out the open door — free. The hijacks logged nothing because hijack logging is *sampled* at 15% for cascade-throughput reasons; the rng draw is unconditional, so the silence costs no determinism. The double-`lost` was two true losses. The system was never wrong — it was telling a story nobody had scripted, and every instrument agreed once they were read together.
+
+### The general method
+
+1. **Trust the symptom's instrument, then interrogate the others.** Each instrument answers a different question class; a mystery is usually one instrument heard alone.
+2. **Replay, don't speculate.** Same seed = same universe, byte for byte. Write a probe (`probes/README.md` has the contract and the bench) that watches the exact state the symptom implicates.
+3. **Cross-reference at the ticks the probe names.** The log line you need is rarely where you looked first — it is *when* the probe says to look.
+4. **Name the mechanism in canon terms** (which decision, which law) and leave the probe on the bench. An investigation that ends without a named mechanism is paused, not solved.
+
+| Question | Instrument |
+|---|---|
+| *What happened, in story terms?* | event log (grep a name, a tick, a severity) |
+| *How much, how many, trending which way?* | METRIC / ECO lines |
+| *Are two universes the same universe?* | DIGEST chain (`--selftest`, `probes/ChainDump`) |
+| *What does one mind experience?* | the follow stream (JSONL perception frames, D-021) |
+| *What state did an object pass through?* | a probe on the bench (`probes/`) |
