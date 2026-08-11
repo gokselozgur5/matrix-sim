@@ -42,5 +42,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-035](adr/D-035-lens-catalog.md) | The lens catalog: asking the right question | 🟢 | — | — |
 | [D-036](adr/D-036-finish-line.md) | The finish line and the scope contract | 🟢 | — | — |
 | [D-037](adr/D-037-theory-practice-split.md) | Division of labor: the Architect holds theory, the Oracle holds practice | 🟢 | — | — |
+| [D-038](adr/D-038-season-two.md) | Season Two: the epilogue graduates, the project goes public | 🟢 | — | — |
+| [D-039](adr/D-039-unit-pr-granularity.md) | Delivery granularity: unit PRs, proportional locks | 🟢 | — | — |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
