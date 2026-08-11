@@ -42,10 +42,17 @@ public final class Config {
     public static final int PEACE_TICKS = 900;
     public static final int OPTOUT_COUNT = 6;
     public static final long DEJA_RESIDUE_SPIKE = 250;
-    public static final long KID_BASE = 140;
-    public static final int KID_JITTER = 40;
-    public static final double KID_SPIKE_CHANCE = 0.0004;
-    public static final long KID_SPIKE = 8;
+    // The Kid family (D-033, dossier #96 section 3): spike-only personal
+    // residue on BLUE links; threshold in [KID_BASE, KID_BASE+KID_JITTER)
+    // needs 5-7 spikes at lambda ~1.17/link per 6000-tick run — measured
+    // ~once per 2-5M link-ticks over the unit PR's seed sweep. The first
+    // family tried (140/40, 4e-4, 8) needed 18+ spikes and could never
+    // fire; lowered once, per the sweep, to the dossier's own numbers.
+    // 1/512 is a power of two: the chance compare is bit-exact everywhere.
+    public static final long KID_BASE = 120;
+    public static final int KID_JITTER = 48;
+    public static final double KID_SPIKE_CHANCE = 1.0 / 512;
+    public static final long KID_SPIKE = 24;
 
     public static final int HASH_CELL_CM = 5_000;
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;
