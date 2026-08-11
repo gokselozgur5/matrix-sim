@@ -69,9 +69,11 @@ public final class ChronosLog {
      * name=value lines in field-name order via reflection. Declaration
      * order from reflection is not a contract; the sort is. Stable across
      * runs and JVMs, changes exactly when Config changes — a replayed
-     * recording can refuse a universe with different physics.
+     * recording can refuse a universe with different physics. Public for
+     * exactly that refusal: ReplayHarness is the reader (crown #178) and
+     * recomputes the writer's fingerprint rather than invent its own.
      */
-    private static String configFingerprint() {
+    public static String configFingerprint() {
         Field[] fields = Config.class.getDeclaredFields();
         Arrays.sort(fields, Comparator.comparing(Field::getName));
         StringBuilder canon = new StringBuilder();
