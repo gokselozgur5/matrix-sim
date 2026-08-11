@@ -26,6 +26,8 @@ public final class Main {
         boolean bench = false;
         String follow = null;
         String chronosPath = null;
+        String replayPath = null;
+        String expectPath = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -36,6 +38,8 @@ public final class Main {
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--chronos" -> chronosPath = args[++i];
+                case "--replay" -> replayPath = args[++i];
+                case "--expect" -> expectPath = args[++i];
                 case "--help" -> {
                     usage();
                     return;
@@ -48,11 +52,25 @@ public final class Main {
             }
         }
 
+        if (expectPath != null && replayPath == null) {
+            System.err.println("--expect rides with --replay");
+            usage();
+            System.exit(2);
+        }
+        if (replayPath != null && chronosPath != null) {
+            System.err.println("--chronos records live runs; the fold replays with the recorder off");
+            System.exit(2);
+        }
         if (selftest) {
             System.exit(selftest(seed, ticks));
         }
         if (bench) {
             System.exit(bench(seed));
+        }
+        if (replayPath != null) {
+            // D-023 stage 2: no PERF line here — the fold is judged by the
+            // chain, never the wall clock; seed comes from the genesis line.
+            System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
             runHeadless(seed, ticks, follow, chronosPath);
@@ -207,6 +225,12 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
+                  --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
+                                      with recorded commands at their ticks, print the DIGEST chain
+                                      in ChainDump format (seed from the recording; honors --ticks)
+                  --expect PATH       with --replay: verify against a ChainDump-format digest file;
+                                      run length = the dump's last tick; prints REPLAY OK/FAIL and
+                                      exits 0 match / 1 divergence / 2 refused
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
                 interactive commands: red | agent | smith | deja | reload | pause | speed N | quit
