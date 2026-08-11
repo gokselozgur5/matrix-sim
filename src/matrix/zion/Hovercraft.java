@@ -1,6 +1,7 @@
 package matrix.zion;
 
 import matrix.core.Config;
+import matrix.core.PlaceGraph;
 import matrix.core.Severity;
 import matrix.core.World;
 import matrix.realworld.Human;
@@ -31,6 +32,8 @@ public final class Hovercraft {
     private final BroadcastRig rig = new BroadcastRig();
     private MissionState state = MissionState.DOCKED;
     private int ticksInState = 0;
+    /** The mission brief (#116): the insertion zone Zion assigned at launch, carried to arrival. */
+    private PlaceGraph.Zone assignedZone;
 
     public Hovercraft(String name) {
         this.name = name;
@@ -38,11 +41,13 @@ public final class Hovercraft {
 
     /**
      * Zion's launch order: the assigned crew boards in assignment order
-     * (the seeded draw's order — crown #83) and the clock starts. Only a
-     * docked ship can cast off.
+     * (the seeded draw's order — crown #83), the insertion zone rides the
+     * mission brief (#116 — Zion rotates, the rig obeys), and the clock
+     * starts. Only a docked ship can cast off.
      */
-    public void launch(List<Human> assigned, World world) {
+    public void launch(List<Human> assigned, PlaceGraph.Zone zone, World world) {
         crew.addAll(assigned);
+        assignedZone = zone;
         state = MissionState.TRANSIT;
         ticksInState = 0;
         StringBuilder names = new StringBuilder();
@@ -53,7 +58,7 @@ public final class Hovercraft {
             names.append(h.name);
         }
         world.log(Severity.OK, name + " casts off — crew of " + crew.size() + ": " + names
-                + " (transit " + Config.TRANSIT_TICKS + " ticks)");
+                + ", bound for " + zone.name() + " (transit " + Config.TRANSIT_TICKS + " ticks)");
     }
 
     /**
@@ -73,7 +78,7 @@ public final class Hovercraft {
                     state = MissionState.ON_STATION;
                     ticksInState = 0;
                     world.log(Severity.SYS, name + " on station at broadcast depth");
-                    rig.beginSession(world);
+                    rig.beginSession(world, assignedZone);
                     for (Human h : crew) {
                         rig.open(h, world);
                     }
@@ -116,5 +121,10 @@ public final class Hovercraft {
 
     public BroadcastRig rig() {
         return rig;
+    }
+
+    /** The berth list, assignment order — Zion reads it so nobody is drawn off a deck mid-mission (#116). */
+    public List<Human> crew() {
+        return crew;
     }
 }

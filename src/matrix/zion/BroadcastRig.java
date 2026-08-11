@@ -17,7 +17,8 @@ import java.util.List;
 /**
  * One hovercraft's pirate uplink (crown #123, D-032): channel capacity, a
  * per-session station budget in ticks, and the channel board itself. A
- * session begins with a seeded insertion-zone draw; {@link #open} spawns a
+ * session begins at the insertion zone Zion assigned at launch (#116's
+ * rotation — the rig spends no fate on it); {@link #open} spawns a
  * RED {@link Avatar} at that zone and jacks a crew Human in over a
  * {@code NeuralLink(PIRATE)} — the D-013 bridge, zero new Matrix code, and
  * inside, an avatar is an avatar (A1). The rig OWNS its links: pirate wires
@@ -44,15 +45,15 @@ public final class BroadcastRig {
     private int traced = 0;
 
     /**
-     * A new session: draw the insertion zone (one {@code world.rng()} draw,
-     * zion tick slot), arm the station budget, clear the board — the recall
-     * that ended the last session closed every channel, so nothing open is
-     * ever dropped here.
+     * A new session: take the insertion zone Zion assigned at launch
+     * (#116 — zone choice is the scheduler's strategy now, rotated per
+     * sortie; the rig draws nothing), arm the station budget, clear the
+     * board — the recall that ended the last session closed every
+     * channel, so nothing open is ever dropped here.
      */
-    public void beginSession(World world) {
+    public void beginSession(World world, PlaceGraph.Zone zone) {
         links.clear();
-        List<PlaceGraph.Zone> zones = world.places().zones();
-        insertionZone = zones.get(world.rng().nextInt(zones.size()));
+        insertionZone = zone;
         budgetRemaining = Config.RIG_STATION_TICKS;
         world.log(Severity.SYS, "broadcast rig live: insertion zone " + insertionZone.name()
                 + ", " + Config.RIG_CAPACITY + " channels, station budget "
