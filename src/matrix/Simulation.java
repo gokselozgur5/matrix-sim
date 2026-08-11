@@ -187,9 +187,14 @@ public final class Simulation {
         return new Position(rng.nextInt(Config.WORLD_W_CM + 1), rng.nextInt(Config.WORLD_H_CM + 1));
     }
 
-    /** Ops console: force one awakening. Even overrides respect the cap (skeptic finding). */
+    /**
+     * Ops console: force one awakening. Even overrides respect the cap —
+     * and count it the way the Director does since the v3 fix: latent
+     * (wrapped) reds included, or wrapped minds convert into grantable
+     * slots and the treaty restores the surplus (#206, H2).
+     */
     public void commandRed() {
-        if (world.count(Pill.RED) >= Config.RED_CAP) {
+        if (world.countRedIncludingWrapped() >= Config.RED_CAP) {
             world.log(Severity.SYS, "manual override refused: the city cannot hold more awakened (cap "
                     + Config.RED_CAP + ")");
             return;
@@ -237,6 +242,7 @@ public final class Simulation {
         }
         matrix.machine.Architect.INSTANCE.reload(world, false);
         world.ledger().reset();
+        director.abortPeace();
         // the boundary is already on the record — sync the version so the
         // mid-tick detector stays quiet; it still owns emergency and treaty
         chronosVersionSeen = world.version();

@@ -102,6 +102,11 @@ public final class Director {
         return null;
     }
 
+    /** A reload ends any standing peace — the timer must not leak into the next one (#206, H3 side-finding). */
+    public void abortPeace() {
+        peaceTimer = -1;
+    }
+
     /** Ops console path: deprecate Smith early, by hand. */
     public void orderSmithCollection(String reason) {
         if (forkOrdered) {
