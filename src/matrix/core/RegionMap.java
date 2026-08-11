@@ -28,14 +28,31 @@ import java.util.List;
  * draws in the map itself; the state walk runs in region-index order.
  * Parking, aggregates, and the digest segment arrive only if and as
  * the D-024 verdict rules.
+ *
+ * P3 (#134, D-008): the substrate budget's HOT-slot cap arrives as a
+ * scalar. Attention is measured exactly as before — the cap never edits
+ * lastAttended, so linger hysteresis stays a pure attention memory —
+ * and then capacity rules: when more regions are WATCHED
+ * (attention-HOT) than the budget buys, only the top slotCap by
+ * (avatarCount desc, region-index asc — the ATTN ranking) stay HOT;
+ * the rest are forcibly demoted to the COLD path. Whatever COLD means
+ * this phase (today the P1 stretch, parking when P2 lands), a demoted
+ * region simply IS cold — composition, no special case. Each NEW
+ * demotion fires the glitch counter once: demand exceeding substrate,
+ * made visible (the D-008 dossier's instrument). The budget only says
+ * how many; this map decides which, with zero draws.
  */
 public final class RegionMap {
     private final SpatialHash hash;
     private final int[] regionOfCell;
     private final int[] avatarCounts;
     private final long[] lastAttended;
+    private final boolean[] watched;
+    private final boolean[] keep;
+    private final boolean[] demotedPrev;
     private final boolean[] hot;
     private int hotCount;
+    private long glitches;
 
     public RegionMap(SpatialHash hash, PlaceGraph places) {
         this.hash = hash;
@@ -61,6 +78,9 @@ public final class RegionMap {
         this.avatarCounts = new int[zones.size()];
         this.lastAttended = new long[zones.size()];
         Arrays.fill(lastAttended, Long.MIN_VALUE / 2); // never attended, and no overflow on subtract
+        this.watched = new boolean[zones.size()];
+        this.keep = new boolean[zones.size()];
+        this.demotedPrev = new boolean[zones.size()];
         this.hot = new boolean[zones.size()];
     }
 
@@ -68,21 +88,54 @@ public final class RegionMap {
      * Called by World.step() immediately after the hash rebuild: snapshots
      * are fresh, fresh positions are never read. Reused arrays, no
      * allocation (D-027); entity walk in list order (D-010), region walk
-     * in region-index order.
+     * in region-index order. Two passes since P3: attention first
+     * (unchanged law), then capacity — {@code slotCap} is the substrate
+     * budget's scalar, Integer.MAX_VALUE when nothing commands one, and
+     * an uncapped refresh is the P1 refresh bit for bit.
      */
-    public void refresh(long tick, List<MatrixEntity> entities) {
+    public void refresh(long tick, List<MatrixEntity> entities, int slotCap) {
         Arrays.fill(avatarCounts, 0);
         for (MatrixEntity e : entities) {
             if (e.alive && e instanceof Avatar) {
                 avatarCounts[regionOfCell[hash.cellIndexOf(e.snapXCm, e.snapYCm)]]++;
             }
         }
-        hotCount = 0;
+        int watchedCount = 0;
         for (int r = 0; r < hot.length; r++) {
             if (avatarCounts[r] > 0) {
                 lastAttended[r] = tick;
             }
-            hot[r] = tick - lastAttended[r] <= Config.LOD_LINGER_TICKS;
+            watched[r] = tick - lastAttended[r] <= Config.LOD_LINGER_TICKS;
+            if (watched[r]) {
+                watchedCount++;
+            }
+        }
+        boolean capped = watchedCount > slotCap;
+        if (capped) {
+            // demand exceeds substrate: keep the top slotCap watched regions
+            // by (avatarCount desc, region-index asc) — the ATTN ranking,
+            // ties to the lower index; a lingering ghost region ranks last
+            // and is the first the cap eats. Selection is pure arithmetic.
+            Arrays.fill(keep, false);
+            for (int k = 0; k < slotCap; k++) {
+                int best = -1;
+                for (int r = 0; r < hot.length; r++) {
+                    if (watched[r] && !keep[r]
+                            && (best == -1 || avatarCounts[r] > avatarCounts[best])) {
+                        best = r;
+                    }
+                }
+                keep[best] = true; // watchedCount > slotCap > k: a candidate always remains
+            }
+        }
+        hotCount = 0;
+        for (int r = 0; r < hot.length; r++) {
+            hot[r] = watched[r] && (!capped || keep[r]);
+            boolean demoted = watched[r] && !hot[r];
+            if (demoted && !demotedPrev[r]) {
+                glitches++; // a watched room went dim — the users will call it déjà vu
+            }
+            demotedPrev[r] = demoted;
             if (hot[r]) {
                 hotCount++;
             }
@@ -103,12 +156,26 @@ public final class RegionMap {
         return avatarCounts[region];
     }
 
-    /** HOT at the last refresh: attended now, or within the linger of the last attention. */
+    /**
+     * HOT at the last refresh: attended now or within the linger — AND
+     * inside the substrate budget's slot cap (P3). What every fidelity
+     * consumer reads; a capped-out region answers cold here while its
+     * attention memory stays warm.
+     */
     public boolean isHot(int region) {
         return hot[region];
     }
 
     public int hotCount() {
         return hotCount;
+    }
+
+    /**
+     * Cumulative D-008 glitch count: how many times a WATCHED region was
+     * forcibly demoted by the slot cap (counted once per demotion edge).
+     * The SUBSTRATE line quotes it; the root carries the number across.
+     */
+    public long capGlitches() {
+        return glitches;
     }
 }

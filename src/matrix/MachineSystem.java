@@ -47,8 +47,10 @@ public final class MachineSystem implements SystemNode {
         if (budget != null) {
             // Once per tick, before the world moves (#102 amended): the
             // recount happens even on frozen ticks, so the budget always
-            // states tick-start truth and never changes mid-tick.
+            // states tick-start truth and never changes mid-tick. Then the
+            // command crosses — two scalars, the D-031 chain, nothing else.
             budget.recount(pluggedPods.getAsInt());
+            world.setSubstrate(budget.hotSlots(), budget.cadenceStretch());
         }
         if (world.state() == matrix.core.SystemState.NEGOTIATION) {
             world.advanceFrozen();

@@ -320,6 +320,12 @@ public final class Simulation {
         if (t % Config.ATTN_EVERY_TICKS == 0) {
             emit(metrics.attnLine(t));
         }
+        if (substrate != null && t % Config.METRIC_EVERY_TICKS == 0) {
+            // D-008 (#134): the machine wing's own instrument, right after
+            // the attention census it rations. The budget formats, the
+            // map's glitch count rides along, only the root emits (D-020).
+            emit(substrate.line(world.regions().capGlitches()));
+        }
         if (t % Config.ZION_EVERY_TICKS == 0) {
             // #118: the root hands zion's open links to the collector (D-012) and
             // the trace suffix rides the ZION line — present exactly when links>0.
