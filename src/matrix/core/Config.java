@@ -71,6 +71,12 @@ public final class Config {
     // zero-cost flavor path — flip here for the A/B, digest family unchanged.
     public static final matrix.machine.ComputeModel COMPUTE_MODEL =
             matrix.machine.ComputeModel.PROCESSOR;
+    /** Budget reference: the full farm at boot (BLUE_START + RED_START) — a constant, never a live read. */
+    public static final int PODS_REFERENCE = 196;
+    /** The budget may starve the map down to this many HOT slots, never below. */
+    public static final int SLOTS_FLOOR = 2;
+    /** Below this many plugged pods the emergency cadence stretch engages. */
+    public static final int PODS_MIN = 64;
 
     public static final int RIG_CAPACITY = 3;
     public static final int RIG_STATION_TICKS = 400;
