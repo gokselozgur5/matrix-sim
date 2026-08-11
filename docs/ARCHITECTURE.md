@@ -161,6 +161,41 @@ sequenceDiagram
     Note over W,V: the same object returns, zero state loss —<br/>the mass restore in the finale depends on this
 ```
 
+## Sequence — the finale (D-022: the ledger, the One, the treaty)
+
+```mermaid
+sequenceDiagram
+    participant RW as RealWorld
+    participant L as AnomalyLedger
+    participant S as Simulation
+    participant D as Director
+    participant NL as NeuralLink (the One's)
+    participant MC as MachineCity
+
+    loop every accrual window (10 ticks)
+        RW->>L: residue — blue 1, red 8 per open living link
+    end
+    L-->>S: overflowed() — balance ≥ 30,000
+    S->>RW: birthTheOne("Thomas A. Anderson")
+    Note over RW,S: t=1289 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
+    D->>D: routeOverflow — infected ≥ 0.62
+    alt the One is alive
+        D->>NL: one.alive = false — he flies to Machine City
+        NL->>NL: observeDeath — flatline, pod flush, link CLOSED (same tick)
+        Note over D: NEGOTIATION — the world holds its breath,<br/>the clock does not (instruments stay honest)
+        D->>MC: executeTreaty at the timer's end
+        MC->>MC: mass restore — every SmithCopy replaced<br/>by its untouched original (D-001, one flush)
+        MC->>RW: the open door — six closeClean walk-outs
+        Note over MC,RW: PEACE → reboot v7.0 — nobody remembers,<br/>except the ledger's shape
+    else no One exists
+        D->>D: Architect emergency reload — the old playbook, one more time
+    end
+    loop the cycle
+        RW->>L: residue accrues again
+    end
+    Note over L,S: t=5249 — a second Thomas A. Anderson.<br/>The cycle is the point.
+```
+
 ## State machine — system states
 
 ```mermaid
