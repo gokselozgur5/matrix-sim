@@ -140,7 +140,9 @@ public final class Simulation {
                     new ExileProgram(world.allocateId(), randomPosition(), kinds[i % kinds.length])));
         }
         for (matrix.entities.eco.Species species : matrix.entities.eco.Bestiary.ALL) {
-            for (int i = 0; i < species.populationCap(); i++) {
+            // The homecoming dial (#136): caps multiply, spawn order does not
+            // change — at scale 1 this loop is bit-for-bit the canonical one.
+            for (int i = 0; i < species.populationCap() * Config.ECO_SCALE; i++) {
                 world.queue(new WorldEvent.Spawn(new matrix.entities.eco.EnvironmentProgram(
                         world.allocateId(), randomPosition(), species)));
             }
@@ -158,7 +160,9 @@ public final class Simulation {
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
         world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
-                + " species rendered — a healthy program is invisible");
+                + " species rendered — a healthy program is invisible"
+                + (Config.ECO_SCALE == 1 ? ""
+                        : " (homecoming x" + Config.ECO_SCALE + ": every population multiplied)"));
         if (followName != null) {
             world.log(Severity.SYS, followed == null
                     ? "follow: no pilot matches '" + followName + "'"

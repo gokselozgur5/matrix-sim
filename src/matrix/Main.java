@@ -22,6 +22,7 @@ public final class Main {
     public static void main(String[] args) throws Exception {
         long seed = 42;
         long ticks = 2_000;
+        int scale = 1;
         boolean headless = false;
         boolean selftest = false;
         boolean bench = false;
@@ -36,6 +37,7 @@ public final class Main {
             switch (args[i]) {
                 case "--seed" -> seed = Long.parseLong(args[++i]);
                 case "--ticks" -> ticks = Long.parseLong(args[++i]);
+                case "--scale" -> scale = Integer.parseInt(args[++i]);
                 case "--headless" -> headless = true;
                 case "--selftest" -> selftest = true;
                 case "--bench" -> bench = true;
@@ -57,6 +59,17 @@ public final class Main {
             }
         }
 
+        if (scale < 1 || scale > 100) {
+            System.err.println("--scale wants 1..100 — the city is large, not infinite");
+            System.exit(2);
+        }
+        if (scale != 1 && (replayPath != null || chronosPath != null)) {
+            // The genesis line carries seed and version, not a scale: a scaled
+            // recording could not be folded back. Scale is a live-run dial.
+            System.err.println("--scale rides live runs only — the chronos record knows no scale");
+            System.exit(2);
+        }
+        matrix.core.Config.ECO_SCALE = scale;
         if (expectPath != null && replayPath == null) {
             System.err.println("--expect rides with --replay");
             usage();
@@ -129,9 +142,14 @@ public final class Main {
      * D-027's Confirmation, executable at last: measure the budget table on
      * this box and print a verdict per row. Budgets per the ADR erratas —
      * steady state >= 100 ticks/s at ecosystem scale; the full v3 arc
-     * (6,000 ticks, birth to reboot to second birth) under 30 s.
+     * (6,000 ticks, birth to reboot to second birth) under 30 s. Under
+     * {@code --scale} (#136) the steady floor stays 100 — that IS the
+     * retargeted 5,000-entity row — while the 30 s arc bound stays pinned
+     * to the canonical scale it was measured at: the scaled arc row is
+     * judged by completion and reports its time for the record.
      */
     private static int bench(long seed) {
+        boolean scaled = matrix.core.Config.ECO_SCALE != 1;
         long t0 = System.nanoTime();
         Simulation steady = new Simulation(seed, null, null);
         steady.run(2_000);
@@ -146,10 +164,12 @@ public final class Main {
         Simulation arc = new Simulation(seed, null, null);
         arc.run(6_000);
         double arcS = (System.nanoTime() - t1) / 1e9;
-        boolean arcOk = arcS < 30.0;
+        boolean arcOk = scaled || arcS < 30.0; // reaching here IS the scaled row's completion
         System.out.print(String.format(Locale.ROOT,
-                "BENCH full_arc seed=%d ticks=6000 entities=%d wall_s=%.2f bound_s=30 %s\n",
-                seed, arc.aliveEntities(), arcS, arcOk ? "PASS" : "FAIL"));
+                "BENCH full_arc seed=%d ticks=6000 entities=%d wall_s=%.2f bound%s %s\n",
+                seed, arc.aliveEntities(), arcS,
+                scaled ? "=completion (30 s row is canonical-scale)" : "_s=30",
+                arcOk ? "PASS" : "FAIL"));
 
         System.out.print("BENCH VERDICT " + (steadyOk && arcOk ? "PASS" : "FAIL")
                 + " (budgets: D-027 + erratas; digests untouched — bench runs quiet)\n");
@@ -266,6 +286,9 @@ public final class Main {
                   --headless          run without the ops console, then print PERF
                   --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
+                  --scale N           homecoming dial (#136): multiply every Bestiary population
+                                      (x11 ~ 5,269 entities — the D-027 retargeted row's scale);
+                                      live runs only, refused with --chronos/--replay (default 1)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)

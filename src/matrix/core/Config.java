@@ -79,6 +79,17 @@ public final class Config {
     public static final int COMMUTE_SWITCH_TICKS = 1_000;
     public static final int COMMUTE_ARRIVE_CM = 500;
     public static final int ECO_EVERY_TICKS = 100;
+    /**
+     * The homecoming dial (#136) — the one deliberately mutable knob in the
+     * file. {@code --scale N} multiplies every Bestiary population at seeding
+     * (x11 puts ~5,269 entities in the city, the D-027 retargeted row's
+     * scale); humans, agents, exiles and the arc keep their canon counts.
+     * Written once by Main before any Simulation exists, never after; 1 is
+     * canonical and multiplies into byte-identical digests by construction.
+     * Refused alongside --replay and --chronos: the fold's genesis line does
+     * not carry a scale, so a scaled recording would be a lie.
+     */
+    public static int ECO_SCALE = 1;
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
