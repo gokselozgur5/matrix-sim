@@ -17,6 +17,7 @@ public final class RealWorld {
     private final PodFarm farm = new PodFarm();
     private final List<Human> humans = new ArrayList<>();
     private final List<NeuralLink> links = new ArrayList<>();
+    private final List<Human> pendingLiberations = new ArrayList<>();
     private final World world;
 
     public RealWorld(World world) {
@@ -68,10 +69,27 @@ public final class RealWorld {
                 link.closeClean();
                 world.queue(new WorldEvent.Remove(link.avatar.id));
                 world.log(Severity.OK, "the door: " + link.human.name + " walked out — free");
+                pendingLiberations.add(link.human);
                 freed++;
             }
         }
         return freed;
+    }
+
+    /**
+     * The near bank of the handoff (crown #84): freed Humans wait here, in
+     * liberation order, until the root carries them across to Zion's census.
+     * This package must never import {@code matrix.zion} (zion already
+     * imports realworld) — only the composition root holds both banks
+     * (D-012), so it does the carrying. Empty drains allocate nothing.
+     */
+    public List<Human> drainLiberations() {
+        if (pendingLiberations.isEmpty()) {
+            return List.of();
+        }
+        List<Human> out = new ArrayList<>(pendingLiberations);
+        pendingLiberations.clear();
+        return out;
     }
 
     /** The One is grown, not converted: a real pod, a fated name, a hardline. */

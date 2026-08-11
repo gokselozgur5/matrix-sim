@@ -231,6 +231,12 @@ public final class Simulation {
             world.flush();
             world.log(Severity.OK, "open door tally: " + freed + " walked out; the census keeps them");
         }
+        // The handoff (crown #84): only the root holds both banks (D-012), so
+        // only the root carries freed Humans across — every tick, in link
+        // registration order. Today every pending liberation is the treaty's.
+        for (Human freed : realWorld.drainLiberations()) {
+            zion.absorb(freed, "treaty");
+        }
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
             matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
@@ -244,6 +250,9 @@ public final class Simulation {
         }
         if (t % Config.ECO_EVERY_TICKS == 0) {
             emit(metrics.ecoLine(t));
+        }
+        if (t % Config.ZION_EVERY_TICKS == 0) {
+            emit(zion.zionLine(t));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
