@@ -63,3 +63,5 @@ The five documents exist on main; every phase enters as a draft PR; every 🟡 i
 ## More Information
 
 Amended by [D-028](D-028-five-document-canon.md) (five documents) and [D-029](D-029-adr-expansion.md) (ADR files). Principles: Dev1, Dev6.
+
+Referenced by: [D-028](D-028-five-document-canon.md), [D-029](D-029-adr-expansion.md), [D-037](D-037-theory-practice-split.md).

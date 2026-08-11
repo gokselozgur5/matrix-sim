@@ -62,3 +62,5 @@ Every index row links an existing record; every record carries front matter, Y-s
 ## More Information
 
 Amends: [D-000](D-000-process-constitution.md), [D-028](D-028-five-document-canon.md). Practice source: adr.github.io (MADR), Nygard 2011, Zdun et al. Y-statements.
+
+Referenced by: [D-000](D-000-process-constitution.md), [D-028](D-028-five-document-canon.md), [D-035](D-035-lens-catalog.md).

@@ -55,3 +55,5 @@ Exactly five canonical .md documents exist plus CLAUDE.md; README's policy parag
 ## More Information
 
 Amends: [D-000](D-000-process-constitution.md). Amended by: [D-029](D-029-adr-expansion.md). Related: [D-030](D-030-agent-operating-model.md).
+
+Referenced by: [D-000](D-000-process-constitution.md), [D-029](D-029-adr-expansion.md), [D-030](D-030-agent-operating-model.md), [D-034](D-034-session-ritual.md).

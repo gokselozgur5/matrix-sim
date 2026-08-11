@@ -74,3 +74,5 @@ Every merged phase-PR shows the five locks in its thread (evidence block, digest
 Amends [D-000](D-000-process-constitution.md) (joint review clause) and [D-036](D-036-finish-line.md)'s original stage-per-review tempo — the tempo is now stage-per-verification. Elevates Ag5/Ag6 from agent rules to merge law. Principle: Dev11. The owner's standing rights are untouched: halt anything, reopen any decision, ask any question — including, whenever they wish, "show me the code" (a right, never a duty).
 
 The owner named the roles from the lore, and the fit is exact: **the Architect holds theory, the Oracle holds practice.** In the fiction too, the Architect wrote the equations in a room of monitors — and it was the Oracle who made the system survive contact with minds. Front matter of future records carries the role names.
+
+Referenced by: [D-036](D-036-finish-line.md), [D-039](D-039-unit-pr-granularity.md).
