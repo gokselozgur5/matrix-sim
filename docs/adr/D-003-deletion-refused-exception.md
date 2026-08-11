@@ -62,3 +62,5 @@ Exactly one catch site exists (Source.collect); AgentSmith/SmithPrime are the on
 ## More Information
 
 Related: [D-014](D-014-smith-lsp-violation.md), [D-025](D-025-supervision-tree.md). Principle: A9. Crowns: #45, #66, #72.
+
+Referenced by: [D-014](D-014-smith-lsp-violation.md), [D-025](D-025-supervision-tree.md).

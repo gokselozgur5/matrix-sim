@@ -57,3 +57,5 @@ In a v3.0 run the birth event cites the ledger total crossing its bound; deletin
 ## More Information
 
 Related: [D-021](D-021-perception-feed.md), [D-006](D-006-arc-tuning.md). Crowns: #52, #53. Principle: Vision L4.
+
+Referenced by: [D-033](D-033-self-substantiation.md).

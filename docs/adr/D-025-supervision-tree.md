@@ -60,3 +60,5 @@ A v2.0 run shows: deprecation notice → grace window → compliance (GC line) o
 ## More Information
 
 Related: [D-003](D-003-deletion-refused-exception.md), [D-014](D-014-smith-lsp-violation.md). Crowns: #71, #72. Principle: A9.
+
+Referenced by: [D-001](D-001-smith-infection-decorator.md), [D-003](D-003-deletion-refused-exception.md).
