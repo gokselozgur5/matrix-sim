@@ -35,10 +35,10 @@ This repo walks toward that vision in small steps: the digest chain (D-020) is t
 
 | Package | Responsibility | Key types |
 |---|---|---|
-| `matrix` (root) | Daemon bootstrap + ops console wiring | `Main` |
+| `matrix` (root) | Composition root, bootstrap, system nodes | `Simulation`, `Main`, `SystemNode`, `MachineSystem`, `RealWorldSystem` |
 | `matrix.core` | Engine: tick, world, events, determinism | `World`, `Director`, `EventBus`, `Rng`, `SystemState` |
 | `matrix.realworld` | OUTSIDE the Matrix — the biological layer | `Brain`, `Pod`, `PodFarm`, `NeuralLink` |
-| `matrix.machine` | Machine authority | `Source`, `Architect`, `MachineCity`, `ComputeModel` |
+| `matrix.machine` | Machine authority | `Source`, `Architect`, `MachineCity`, `OrphanRegistry` |
 | `matrix.entities` | INSIDE the Matrix — everyone on the field | `Avatar`, `Program`, `Agent`, `SmithPrime`, `SmithCopy`, `TheOne` |
 | `matrix.entities.eco` | The ecosystem: species as data (v2.5) | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram` |
 | `matrix.entities.behavior` | Pluggable gaits (v2.5) | `Movement`, `FlockMovement`, `SwarmMovement`, ... |
@@ -109,9 +109,9 @@ classDiagram
     Program <|-- EnvironmentProgram
     EnvironmentProgram --> Species : catalog datum, never a subclass (D-015)
     Bestiary ..> Species : ships the rows
-    EnvironmentProgram o-- Movement : gait composed (D-016)
+    EnvironmentProgram ..> Movement : dispatch via species MovementKind (D-016)
+    EnvironmentProgram ..> Scheduler : cadence + caps, static utility (D-018)
     World *-- SpatialHash : snapshot neighbors (D-017)
-    World *-- Scheduler : cadence + caps (D-018)
 
     %% v3.0 — the penthouse (D-022, the finale)
     Avatar <|-- TheOne : fated, hunt-excluded
@@ -121,30 +121,40 @@ classDiagram
     AcceptanceLoop ..> AnomalyLedger : residue in
     Director ..> MachineCity : treaty at negotiation end
     Director ..> Architect : emergency reload (no One)
-    MachineCity ..> World : executeTreaty — mass Replace + the door
+    MachineCity ..> World : executeTreaty — mass Replace, PEACE
     Architect ..> World : purge, restore, version++
+
+    %% ownership spine — as built (doc-truth pass)
+    Simulation *-- World
+    Simulation *-- RealWorld
+    Simulation *-- Director
+    Simulation *-- Source
+    Director --> Source : orders collection
+    Director --> AgentSmith : the named one, watched
+    RealWorld o-- NeuralLink : the link registry its tick walks
 ```
 
-Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
+Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. One legend honesty note from the doc-truth pass: the system-node edges (`MachineSystem ..> World`, `RealWorldSystem ..> RealWorld`, `Director ..> World`, `World ..> EventBus`, `RealWorld ..> World`) are held as final fields — drawn dashed because they are *plumbing conduits, not owned parts* (the owner is the Simulation spine above); read them as "holds a wire", not "uses in passing". The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon. Two classes hold both worlds, at different altitudes: `Simulation` holds both *aggregates* (it is the composition root — A7), and `NeuralLink` is the only object holding entity-level members of both sides — the jack remains the only bridge at the level where minds live. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
 
 ## Sequence — jack-in and the death rule
 
 ```mermaid
 sequenceDiagram
-    participant B as Brain (in pod)
+    participant S as Simulation (root)
+    participant RW as RealWorld
     participant NL as NeuralLink (jack)
     participant W as World (Matrix)
-    B->>NL: jackIn(pill)
-    NL->>W: spawn(Avatar) — the brain's PROXY
-    loop live I/O — no upload
-        W-->>B: sensory stream
-        B-->>W: neural telemetry
+    S->>RW: grow() — a Human in a pod
+    S->>W: queue Spawn(Avatar) — the brain's PROXY, never an upload
+    S->>NL: register(link) — brain and proxy joined at the jack
+    loop each tick
+        RW->>NL: observeDeath()? — the rule lives on the CONNECTION (D-013)
     end
     alt the avatar dies inside the Matrix
-        NL->>NL: observeDeath() — the rule lives on the CONNECTION (D-013)
-        NL->>B: brain.flatline(), pod flushed
-        NL->>W: Remove queued — the corpse leaves the world
+        NL->>NL: brain.flatline(), pod flushed, link closed
+        RW->>W: queue Remove — the corpse leaves the world
     end
+    Note over NL,W: the dream stream exists per followed link (D-021);<br/>there is no Brain-to-World telemetry path — residue flows<br/>link-to-ledger through the AcceptanceLoop (D-022)
 ```
 
 ## Sequence — Smith infection and restore (Decorator, D-001)
