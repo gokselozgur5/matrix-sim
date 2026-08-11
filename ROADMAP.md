@@ -133,23 +133,54 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ## v6.0 — The Heart of the City
 
+*Beat one: the pen, the legend, the telescope. One new author-class enters the world per phase; this phase introduces AUTHORSHIP itself.*
+
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Season charter: the character layer | D-041 | 🟡 awaiting verdict | #211 |
-| Stat system: one grammar, four vocabularies | D-042 | 🟡 awaiting verdict | #212 |
-| The named cast, and the two of us | D-043 | 🟡 awaiting verdict | #213 |
-| The crew becomes programs | D-044 | 🟡 awaiting verdict | #214 |
-| Bonds, and the kiss (Room 303 clause) | D-045 | 🟡 awaiting verdict | #215 |
-| The Cypher protocol | D-046 | 🟡 awaiting verdict | #216 |
-| The dream reader | D-047 | 🟡 awaiting verdict | #217 |
-| Districts with identity (the city wing) | D-048 | 🟡 awaiting verdict | #223 |
-| The Truce as a regime (the untold sixty years) | D-049 | 🟡 awaiting verdict | #224 |
-| Live events: authored, signed, foldable | D-050 | 🟡 awaiting verdict | #225 |
-| Allegiance + influence (the political weather) | D-051 | 🟡 awaiting verdict | #227 |
-| Missions (a dream with a plot) | D-052 | 🟡 awaiting verdict | #228 |
-| The favor economy (orphan insurance) | D-053 | 🟡 awaiting verdict | #229 |
+| Stat system: two-die law + permanent NEUTRAL control group | D-042 | 🟡 (birth-seed law RULED 2026-08-11: the die keys to the birth event — renaming is not rebirth) | #212 |
+| Authored history, minimal: birth cards + AUTHOR mark | D-050 | 🟡 (prerequisite of D-043 — the pen before the legend) | #225 |
+| The named cast, born signed — and the two of us | D-043 | 🟡 (the pair boards chronicle-only, by delegated choice) | #213 |
+| The dream reader — the telescope before the era | D-047 | 🟡 (draft runnable: PR #230) | #217 |
+| Season charter | D-041 | 🟡 (structure ADOPTED 2026-08-11: this four-beat split) | #211 |
+| The crew becomes programs | D-044 | 🟡 (units ride v7.0 if crews carry missions) | #214 |
 
-Build units are cut AFTER verdicts (gates before units — the D-039 law). **DoD sketch:** a stat contest decides a scene the flat world could not produce; the Architect acts in-world through the console and the log names his character; a bonded death is paid back once, priced, and LinkAudit calls it CLAUSE not GHOST; a petition re-inserts a mind the chronos record still remembers; and one command renders one mind's whole day as deterministic prose the Architect actually reads.
+**DoD:** a NEUTRAL run bit-identical to pre-v6 main · an enabled run births the signed cast · the reader renders one full biography with zero world-writes.
+
+## v6.5 — Program
+
+*Beat two: the acceptance loop learns loyalty, love, and return. Named for the Animatrix short about wanting back in.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| The Cypher protocol — the door's inward swing | D-046 | 🟡 (four-step machine + residual scar harvested) | #216 |
+| Allegiance + the influence ledger | D-051 | 🟡 | #227 |
+| Bonds & the Room 303 clause | D-045 | 🟡 (price RULED in-thread: bond consumed + ledger deposit; the will untouched) | #215 |
+
+**DoD:** one run shows `DOOR out` + `DOOR in` + one 303 firing with its ledger deposit · DrawMeter/DoorFlux PASS.
+
+## v7.0 — A Detective Story
+
+*Beat three: a dream with a plot, in a city with names.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Districts with identity | D-048 | 🟡 | #223 |
+| Missions: templates as data, one executor | D-052 | 🟡 | #228 |
+| The favor economy: orphan insurance | D-053 | 🟡 | #229 |
+
+**DoD:** one operative followed through a full mission, rendered by the reader as narrative — the two wings shake hands in one command.
+
+## v7.5 — The Truce
+
+*Beat four: the era itself. Season One becomes the fallback attractor — the film is the era's error handler.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| The Truce as a regime + treaty/org scheduler | D-049 | 🟡 | #224 |
+
+**DoD:** a 20,000-tick corridor hold (`TREATY` strain < 1.0 throughout) · a stress-seed amendment via NEGOTIATION without reboot · a chronicle-bearing run replaying digest-identical.
+
+Build units are cut AFTER verdicts (gates before units — the D-039 law).
 
 ---
 
