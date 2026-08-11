@@ -1,6 +1,6 @@
 ---
 title: "D-024 — Attention-graded fidelity: unwatched regions degrade to statistics"
-status: proposed (parked)
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #28
@@ -27,6 +27,8 @@ Nobody observes the whole world at once — consistency needs to follow attentio
 * Uniform fidelity (status quo)
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Parked until v4.0; D-018's budgets are the embryo. Thread #28 holds the idea.
 

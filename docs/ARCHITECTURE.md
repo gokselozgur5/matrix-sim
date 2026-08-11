@@ -35,10 +35,10 @@ This repo walks toward that vision in small steps: the digest chain (D-020) is t
 
 | Package | Responsibility | Key types |
 |---|---|---|
-| `matrix` (root) | Daemon bootstrap + ops console wiring | `Main` |
+| `matrix` (root) | Composition root, bootstrap, system nodes | `Simulation`, `Main`, `SystemNode`, `MachineSystem`, `RealWorldSystem` |
 | `matrix.core` | Engine: tick, world, events, determinism | `World`, `Director`, `EventBus`, `Rng`, `SystemState` |
 | `matrix.realworld` | OUTSIDE the Matrix — the biological layer | `Brain`, `Pod`, `PodFarm`, `NeuralLink` |
-| `matrix.machine` | Machine authority | `Source`, `Architect`, `MachineCity`, `ComputeModel` |
+| `matrix.machine` | Machine authority | `Source`, `Architect`, `MachineCity`, `OrphanRegistry` |
 | `matrix.entities` | INSIDE the Matrix — everyone on the field | `Avatar`, `Program`, `Agent`, `SmithPrime`, `SmithCopy`, `TheOne` |
 | `matrix.entities.eco` | The ecosystem: species as data (v2.5) | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram` |
 | `matrix.entities.behavior` | Pluggable gaits (v2.5) | `Movement`, `FlockMovement`, `SwarmMovement`, ... |
@@ -109,9 +109,9 @@ classDiagram
     Program <|-- EnvironmentProgram
     EnvironmentProgram --> Species : catalog datum, never a subclass (D-015)
     Bestiary ..> Species : ships the rows
-    EnvironmentProgram o-- Movement : gait composed (D-016)
+    EnvironmentProgram ..> Movement : dispatch via species MovementKind (D-016)
+    EnvironmentProgram ..> Scheduler : cadence + caps, static utility (D-018)
     World *-- SpatialHash : snapshot neighbors (D-017)
-    World *-- Scheduler : cadence + caps (D-018)
 
     %% v3.0 — the penthouse (D-022, the finale)
     Avatar <|-- TheOne : fated, hunt-excluded
@@ -121,30 +121,40 @@ classDiagram
     AcceptanceLoop ..> AnomalyLedger : residue in
     Director ..> MachineCity : treaty at negotiation end
     Director ..> Architect : emergency reload (no One)
-    MachineCity ..> World : executeTreaty — mass Replace + the door
+    MachineCity ..> World : executeTreaty — mass Replace, PEACE
     Architect ..> World : purge, restore, version++
+
+    %% ownership spine — as built (doc-truth pass)
+    Simulation *-- World
+    Simulation *-- RealWorld
+    Simulation *-- Director
+    Simulation *-- Source
+    Director --> Source : orders collection
+    Director --> AgentSmith : the named one, watched
+    RealWorld o-- NeuralLink : the link registry its tick walks
 ```
 
-Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon, and the one object that ever holds both worlds is the jack. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
+Dependency direction is law, verified by grep: `entities` imports nothing from `realworld` (the only bridge is `NeuralLink`, which lives on the real-world side and reaches in); `World` holds no real-world objects; nothing depends on `Main`. One legend honesty note from the doc-truth pass: the system-node edges (`MachineSystem ..> World`, `RealWorldSystem ..> RealWorld`, `Director ..> World`, `World ..> EventBus`, `RealWorld ..> World`) are held as final fields — drawn dashed because they are *plumbing conduits, not owned parts* (the owner is the Simulation spine above); read them as "holds a wire", not "uses in passing". The human hierarchy and the program hierarchy never cross — an avatar is driven from outside, a program runs on machine silicon. Two classes hold both worlds, at different altitudes: `Simulation` holds both *aggregates* (it is the composition root — A7), and `NeuralLink` is the only object holding entity-level members of both sides — the jack remains the only bridge at the level where minds live. Season One's late arrivals kept the lattice honest: `EnvironmentProgram` entered under `Program` with species as data (D-015) and gaits as composed strategies (D-016) — one class, twelve species, zero subclasses; `TheOne` entered under `Avatar` (de-finaled for exactly this: one true is-a), excluded from both hunt queries — they tried that in three films; and the ledger cluster (`AcceptanceLoop → AnomalyLedger`) runs on dependencies only, because residue is a flow, not an ownership.
 
 ## Sequence — jack-in and the death rule
 
 ```mermaid
 sequenceDiagram
-    participant B as Brain (in pod)
+    participant S as Simulation (root)
+    participant RW as RealWorld
     participant NL as NeuralLink (jack)
     participant W as World (Matrix)
-    B->>NL: jackIn(pill)
-    NL->>W: spawn(Avatar) — the brain's PROXY
-    loop live I/O — no upload
-        W-->>B: sensory stream
-        B-->>W: neural telemetry
+    S->>RW: grow() — a Human in a pod
+    S->>W: queue Spawn(Avatar) — the brain's PROXY, never an upload
+    S->>NL: register(link) — brain and proxy joined at the jack
+    loop each tick
+        RW->>NL: observeDeath()? — the rule lives on the CONNECTION (D-013)
     end
     alt the avatar dies inside the Matrix
-        NL->>NL: observeDeath() — the rule lives on the CONNECTION (D-013)
-        NL->>B: brain.flatline(), pod flushed
-        NL->>W: Remove queued — the corpse leaves the world
+        NL->>NL: brain.flatline(), pod flushed, link closed
+        RW->>W: queue Remove — the corpse leaves the world
     end
+    Note over NL,W: the dream stream exists per followed link (D-021);<br/>there is no Brain-to-World telemetry path — residue flows<br/>link-to-ledger through the AcceptanceLoop (D-022)
 ```
 
 ## Sequence — Smith infection and restore (Decorator, D-001)
@@ -185,7 +195,7 @@ sequenceDiagram
         Note over D: NEGOTIATION — the world holds its breath,<br/>the clock does not (instruments stay honest)
         D->>MC: executeTreaty at the timer's end
         MC->>MC: mass restore — every SmithCopy replaced<br/>by its untouched original (D-001, one flush)
-        MC->>RW: the open door — six closeClean walk-outs
+        S->>RW: on PEACE, the root honors the door — six closeClean walk-outs
         Note over MC,RW: PEACE → reboot v7.0 — nobody remembers,<br/>except the ledger's shape
     else no One exists
         D->>D: Architect emergency reload — the old playbook, one more time
@@ -218,9 +228,9 @@ The system as a building; every class crown carries its stage label on GitHub.
 |---|---|---|
 | Site survey | v0: docs, principles, decisions | the five documents + the ADRs |
 | **Foundation** | determinism + observability — everything rests on it | `Rng`, `Config`, `Event`, `Severity`, `EventBus`, `EventLog`, `MetricsCollector`, `DigestCalculator`, `Digest`, `MetricSnapshot` |
-| **Load-bearing skeleton** | composition roots + engine frame — expensive to change later | `Simulation`, `World`, `RealWorld`, `Director`, `SystemState`, `MatrixEntity`, `Program`, `Cell` |
+| **Load-bearing skeleton** | composition roots + engine frame — expensive to change later | `Simulation`, `World`, `RealWorld`, `Director`, `SystemState`, `MatrixEntity`, `Program`, `Position` (né Cell — crown #36) |
 | **Floors (wings)** | domain layers, phase by phase | biological wing (`Brain`, `Pod`, `PodFarm`, `Human`, `NeuralLink`, `PerceptionFrame`) · Matrix wing (`Avatar`, `Agent`, `Pill`) · machine wing at v2.0 (`Source`, `OrphanRegistry`, the Smith line, `Oracle`, exiles) · v3.0 penthouse (`TheOne`, `AcceptanceLoop`, `AnomalyLedger`, `Architect`, `MachineCity`) |
-| **Installations** | cross-cutting services | `SpatialHash` (corridors), `Scheduler` (elevators), `OpsConsole` (building management), `--bench` + PERF (the meters) |
+| **Installations** | cross-cutting services | `SpatialHash` (corridors), `Scheduler` (elevators), the ops console (building management — inline in `Main`, a plane not a class), `--bench` + PERF (the meters) |
 | **Landscaping** | v2.5 The Animatrix | `Species`, `Kingdom`, `Bestiary`, `EnvironmentProgram`, the six `Movement` gaits |
 | Facade | none — on purpose (D-019) | the building is lived in from the inside; its only window is the perception feed |
 | Scaffolding | draft PR #1 | torn down as the real floors rise (issue #25) |
@@ -239,10 +249,10 @@ The owner's standing order: this system must be worked so well that *we never ge
 **Localize (a probe narrows it).** `probes/LinkTrace.java` replays the identical universe (determinism is what makes the coroner's job possible — same seed, same corpse) and prints every change in her link's `(alive, present, closed, pill)` tuple:
 
 ```
-t=0     alive=true present=true  closed=false avatarId=8
-t=1717  alive=true present=false closed=false avatarId=8
-t=1846  alive=true present=true  closed=false avatarId=8
-t=2477  alive=true present=false closed=false avatarId=8
+t=0 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
+t=1717 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
+t=1846 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
+t=2477 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
 ```
 
 Same avatar object throughout. Never dead, never closed — but *leaving the world and coming back*. That tuple rules out death, clean exit, and the follow engine itself in one screen.
@@ -253,7 +263,7 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 [001846] FATE  The One: a copy deleted, an original restored
 ```
 
-**Mechanism (name it or you haven't finished).** Worn by Smith at 1717 (a `Replace` swaps her for a `SmithCopy` holding her object — D-001), freed by The One at 1846 (his power deletes the copy and restores the original), worn again at 2477, treaty-restored at 4324, and out the open door — free. The hijacks logged nothing because hijack logging is *sampled* at 15% for cascade-throughput reasons; the rng draw is unconditional, so the silence costs no determinism. The double-`lost` was two true losses. The system was never wrong — it was telling a story nobody had scripted, and every instrument agreed once they were read together.
+**Mechanism (name it or you haven't finished).** Worn by Smith at 1717 (a `Replace` swaps her for a `SmithCopy` holding her object — D-001), freed by The One at 1846 (his power deletes the copy and restores the original), worn again at 2477, treaty-restored at 4324, and out the open door — free. The hijacks logged nothing because hijack logging is *sampled* at 15% for cascade-throughput reasons; the sampling draw sits behind a deterministic type-check (Avatars only — the Oracle's consumption logs unsampled), so the silence costs no determinism: same universe, same silences. The double-`lost` was two true losses. The system was never wrong — it was telling a story nobody had scripted, and every instrument agreed once they were read together.
 
 ### The general method
 
@@ -274,15 +284,16 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 
 The instruments got good enough to ask a bigger question: across the multiverse, how common is the film? `probes/SeedAtlas` sweeps seeds and verdicts each universe; one command regenerates this table after any mechanics change (`java -cp out:probes/out SeedAtlas 1 20 6000`).
 
-First 20 universes, 6,000 ticks each (2026-08-11, v3.0):
+The first century — 100 universes, 6,000 ticks each (2026-08-11, v3.0):
 
 | Fate | Universes | Meaning |
 |---|---|---|
-| `FULL_ARC` | **16 / 20** | birth → war → overflow → treaty → reboot → second birth |
-| `QUIET` | **4 / 20** (seeds 2, 5, 6, 8) | the One is born, Smith forks — and the cascade never reaches the 0.62 overflow line in 6,000 ticks. Smith can lose the race. |
-| `WAR` / `TREATY`-stall | 0 | no universe overflowed without resolving, none froze mid-treaty |
-| `OLD_PLAYBOOK` | **0** | the Architect's emergency reload — overflow with no One alive — has never once occurred in the wild. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; nature refuses it, because the ledger births the One (~1300) long before any cascade can overflow (~3200+). A dead branch that is also a proof: the film's ORDER is an emergent property, not a scripted one. |
+| `FULL_ARC` | **80 / 100** | birth → war → overflow → treaty → reboot → second birth: the film, complete |
+| `TREATY` | **3 / 100** (seeds 51, 68, 82) | peace reached, second birth still pending at tick 6,000 — the cycle runs, just slower than the window |
+| `QUIET` | **17 / 100** (seeds 2, 5, 6, 8, 21, 24, 32, 33, 34, 61, 63, 72, 80, 83, 91, 95, 99) | the One is born, Smith forks — and the cascade never reaches the 0.62 overflow line. **Smith loses the race about one universe in six.** |
+| `WAR` | 0 | no universe overflowed without resolving |
+| `OLD_PLAYBOOK` | **0 / 100** | the Architect's emergency reload — overflow with no One alive — has never once occurred in nature. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; a hundred universes refuse it, because the ledger births the One (median 1289) long before any cascade can overflow (earliest ever seen: 2872). A dead branch that is also a proof: the film's ORDER is emergent law, not script. |
 
-Birth tick across all 20: min 1179, max 1379 — a 200-tick band. The ledger is a metronome: whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ (overflow 3215–4519), because the cascade rides population geometry, not the ledger.
+The distributions, at n=100: birth in a **220-tick band** (min 1159 · median 1289 · max 1379) — the ledger is a metronome; whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ wildly (overflow min 2872 · median 3686 · max 5728), because the cascade rides population geometry, not the ledger. Second births, where they arrive, land at median 4674 (min 3889 · max 5739).
 
-The census is falsifiable the same way everything here is: rerun the command, diff the table.
+The census is falsifiable the same way everything here is: rerun the command (`SeedAtlas 1 100 6000`), diff the table. The rng-stream instrumentation rides the same bench: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.

@@ -22,6 +22,7 @@ public final class Config {
     public static final int METRIC_EVERY_TICKS = 100;
     public static final int DIGEST_EVERY_TICKS = 100;
     public static final int FOLLOW_EVERY_TICKS = 100;
+    public static final int ZION_EVERY_TICKS = 100;
 
     public static final int EXILE_COUNT = 6;
     public static final int EXILE_COLLECT_EVERY_TICKS = 900;
@@ -54,6 +55,9 @@ public final class Config {
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;
 
+    public static final int RIG_CAPACITY = 3;
+    public static final int RIG_STATION_TICKS = 400;
+    public static final int TRANSIT_TICKS = 150;
     public static final int LOD_LINGER_TICKS = 200;
     public static final int LOD_COLD_STRETCH = 4;
     public static final int ATTN_EVERY_TICKS = 100;

@@ -1,6 +1,6 @@
 ---
 title: "D-023 — Chronos proper: event-sourced state, reload as replay"
-status: proposed (parked)
+status: accepted
 date: 2026-08-10
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #27
@@ -27,6 +27,8 @@ The digest chain already fingerprints reality per tick. The full inversion — e
 * Objects as state + instruments (status quo)
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-11, in session — *"hepsine agreed kanka barajı aç"* — all six gates in one breath; recorded in the gate thread.
 
 Parked until after v3.0; the revisit trigger is the simple reload shipping and hurting. Thread #27 holds the idea.
 

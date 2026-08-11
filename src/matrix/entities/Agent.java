@@ -22,15 +22,15 @@ public class Agent extends Program {
             }
             return;
         }
-        Avatar prey = w.nearestRed(pos);
+        Avatar prey = w.nearestRed(xCm(), yCm());
         if (prey == null) {
             if (w.rng().chance(0.5)) {
                 wander(w, Config.AGENT_SPEED_CM);
             }
             return;
         }
-        stepToward(prey.pos, Config.AGENT_SPEED_CM);
-        if (pos.within(prey.pos, Config.CONTACT_RADIUS_CM)) {
+        stepToward(prey, Config.AGENT_SPEED_CM);
+        if (within(prey, Config.CONTACT_RADIUS_CM)) {
             if (w.rng().chance(Config.AGENT_KILL_CHANCE)) {
                 w.kill(prey, "agent " + codename);
             } else {
