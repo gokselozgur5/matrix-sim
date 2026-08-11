@@ -1,6 +1,7 @@
 package matrix;
 
 import matrix.core.Digest;
+import matrix.core.Snapshot;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
@@ -29,6 +30,7 @@ public final class Main {
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
+        Long snapshotAt = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -42,6 +44,7 @@ public final class Main {
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
+                case "--snapshot-at" -> snapshotAt = Long.parseLong(args[++i]);
                 case "--help" -> {
                     usage();
                     return;
@@ -63,6 +66,15 @@ public final class Main {
             System.err.println("--chronos records live runs; the fold replays with the recorder off");
             System.exit(2);
         }
+        if (snapshotAt != null && (replayPath != null || !headless)) {
+            System.err.println("--snapshot-at rides with --headless — a live run, not the fold");
+            usage();
+            System.exit(2);
+        }
+        if (snapshotAt != null && (snapshotAt < 0 || snapshotAt > ticks)) {
+            System.err.println("--snapshot-at " + snapshotAt + " lies outside the run (0.." + ticks + ")");
+            System.exit(2);
+        }
         if (selftest) {
             System.exit(selftest(seed, ticks));
         }
@@ -75,7 +87,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath, sinkAt);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt, snapshotAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -145,22 +157,37 @@ public final class Main {
     }
 
     /**
-     * Headless is a scenario runner too: {@code --sink-at T} files the
-     * #119 sink order right before tick T (zion-slot execution — same
-     * seed, same T, same fate; default -1 files nothing), and
-     * {@code --chronos} records the run as it happens (D-023 stage 1).
-     * A sink fired here enters the record like any console command.
+     * Headless is the scenario runner: {@code --sink-at T} files the #119
+     * loss right before tick T; {@code --chronos} records the run (D-023
+     * stage 1); {@code --snapshot-at T} pauses after tick T, retains the
+     * walk, and lets the emitted DIGEST judge its own preimage (stage 3;
+     * the split changes nothing — run(a) + run(b) is run(a + b)). Snapshot
+     * mode and sink mode are separate scenarios by design.
      */
-    private static void runHeadless(long seed, long ticks, String follow, String chronosPath, long sinkAt) throws Exception {
+    private static void runHeadless(long seed, long ticks, String follow, String chronosPath,
+            long sinkAt, Long snapshotAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
-            for (long t = 1; t <= ticks; t++) {
-                if (t == sinkAt) {
-                    sim.recordCommand("sink");
-                    sim.commandSink();
+            if (snapshotAt != null) {
+                List<Digest> chain = sim.run(snapshotAt);
+                Snapshot snap = sim.snapshotNow();
+                System.out.print(snap.format() + "\n");
+                for (Digest d : chain) {
+                    if (d.tick() == snap.tick()) {
+                        System.out.print("SNAPSHOT_MATCHES_DIGEST="
+                                + d.sha256().equals(snap.sha256Hex()) + "\n");
+                    }
                 }
-                sim.tickOnce();
+                sim.run(ticks - snapshotAt);
+            } else {
+                for (long t = 1; t <= ticks; t++) {
+                    if (t == sinkAt) {
+                        sim.recordCommand("sink");
+                        sim.commandSink();
+                    }
+                    sim.tickOnce();
+                }
             }
             long elapsedNs = System.nanoTime() - start;
             long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
@@ -242,6 +269,9 @@ public final class Main {
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
+                  --snapshot-at T     with --headless: after tick T, retain the digest walk and print
+                                      SNAPSHOT tick/sha/bytes (D-023 stage 3); when T is a digest tick,
+                                      also verify SNAPSHOT_MATCHES_DIGEST against that tick's DIGEST line
                   --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
                                       with recorded commands at their ticks, print the DIGEST chain
                                       in ChainDump format (seed from the recording; honors --ticks)

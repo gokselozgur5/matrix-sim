@@ -5,41 +5,36 @@ import java.security.NoSuchAlgorithmException;
 
 /**
  * Streaming canonical hasher — the referee of D-010 and of D-027's
- * digest-invariance rule.
- *
- * The encoding is prefix-free by construction (skeptic finding, 2026-08-10:
- * an untagged stream let putLong(v) collide with putInt(hi)+putInt(lo)).
- * Every value is written as a domain tag byte followed by big-endian bytes;
- * variable-length sequences MUST be framed with putCount(size) first.
- * Two different feed sequences therefore cannot produce one byte stream.
+ * digest-invariance rule. The hashing {@link StateSink}: it consumes the
+ * walk and keeps only the SHA-256 (the retaining sink, {@code
+ * Snapshot.Writer}, keeps the bytes). The tagged, prefix-free frame
+ * grammar lives in {@link StateFraming}, shared by both sinks — this
+ * class owns nothing of the encoding but the hash.
  */
-public final class DigestCalculator {
-    private static final byte TAG_INT = 0x01;
-    private static final byte TAG_LONG = 0x02;
-    private static final byte TAG_COUNT = 0x03;
+public final class DigestCalculator implements StateSink {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
+    private final byte[] frame = new byte[StateFraming.MAX_FRAME];
     private MessageDigest md;
 
     public DigestCalculator() {
         this.md = newSha256();
     }
 
+    @Override
     public void putInt(int v) {
-        md.update(TAG_INT);
-        raw32(v);
+        md.update(frame, 0, StateFraming.frameInt(v, frame));
     }
 
+    @Override
     public void putLong(long v) {
-        md.update(TAG_LONG);
-        raw32((int) (v >>> 32));
-        raw32((int) v);
+        md.update(frame, 0, StateFraming.frameLong(v, frame));
     }
 
     /** Frames a variable-length sequence: feed the size, then exactly that many values. */
+    @Override
     public void putCount(int size) {
-        md.update(TAG_COUNT);
-        raw32(size);
+        md.update(frame, 0, StateFraming.frameCount(size, frame));
     }
 
     /** Returns the hex digest and resets for the next chain link. */
@@ -51,13 +46,6 @@ public final class DigestCalculator {
         }
         md = newSha256();
         return sb.toString();
-    }
-
-    private void raw32(int v) {
-        md.update((byte) (v >>> 24));
-        md.update((byte) (v >>> 16));
-        md.update((byte) (v >>> 8));
-        md.update((byte) v);
     }
 
     private static MessageDigest newSha256() {
