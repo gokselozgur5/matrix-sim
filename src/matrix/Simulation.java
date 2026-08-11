@@ -237,6 +237,16 @@ public final class Simulation {
         }
     }
 
+    /**
+     * Ops console: scuttle the active ship (#119). Operator-driven and
+     * deterministic exactly like reload — except the loss executes in the
+     * NEXT zion tick's canonical slot, so the cascade lands in tick order,
+     * never between batches.
+     */
+    public void commandSink() {
+        zion.orderSink();
+    }
+
     private boolean oneExists() {
         for (var e : world.entities()) {
             if (e.alive && e instanceof matrix.entities.TheOne) {
@@ -299,7 +309,9 @@ public final class Simulation {
             emit(metrics.attnLine(t));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
-            emit(zion.zionLine(t));
+            // #118: the root hands zion's open links to the collector (D-012) and
+            // the trace suffix rides the ZION line — present exactly when links>0.
+            emit(zion.zionLine(t) + metrics.traceSuffix(zion.openPirateAvatars()));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);

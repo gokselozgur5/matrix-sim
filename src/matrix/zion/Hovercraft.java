@@ -113,14 +113,17 @@ public final class Hovercraft {
     }
 
     /**
-     * The ship dies: LOST is terminal, and the open links execute the
-     * death rule through the same bridge — the D-032 confirmation. #119
-     * scripts the scenario that calls this; nothing on this floor does.
+     * The ship dies (#119): LOST is terminal, and every open link executes
+     * the death rule through the same bridge — the D-032 confirmation. The
+     * rig speaks one BAD line per cut wire; the ship closes with one FATE
+     * line carrying the count. Zion's sink order is the only caller today:
+     * the loss is operator-driven, deterministic — natural causes
+     * (sentinels, squiddies) arrive with later units.
      */
     public void destroy(World world) {
         state = MissionState.LOST;
-        rig.destroy(world);
-        world.log(Severity.BAD, name + " is lost");
+        int cut = rig.destroy(world);
+        world.log(Severity.FATE, name + " goes down — " + cut + " wires cut");
     }
 
     public MissionState state() {

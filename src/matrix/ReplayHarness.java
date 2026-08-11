@@ -137,6 +137,7 @@ public final class ReplayHarness {
             case "smith" -> sim.commandSmith();
             case "deja" -> sim.commandDeja();
             case "reload" -> sim.commandReload();
+            case "sink" -> sim.commandSink();
             default -> refuse("unknown recorded command '" + c.cmd() + "' at tick " + c.tick()
                     + " — the fold re-applies only what the console dispatches");
         }

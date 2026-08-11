@@ -25,6 +25,7 @@ public final class Main {
         boolean selftest = false;
         boolean bench = false;
         String follow = null;
+        long sinkAt = -1;
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
@@ -37,6 +38,7 @@ public final class Main {
                 case "--selftest" -> selftest = true;
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
+                case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
@@ -73,7 +75,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -142,11 +144,24 @@ public final class Main {
         return steadyOk && arcOk ? 0 : 1;
     }
 
-    private static void runHeadless(long seed, long ticks, String follow, String chronosPath) throws Exception {
+    /**
+     * Headless is a scenario runner too: {@code --sink-at T} files the
+     * #119 sink order right before tick T (zion-slot execution — same
+     * seed, same T, same fate; default -1 files nothing), and
+     * {@code --chronos} records the run as it happens (D-023 stage 1).
+     * A sink fired here enters the record like any console command.
+     */
+    private static void runHeadless(long seed, long ticks, String follow, String chronosPath, long sinkAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
-            sim.run(ticks);
+            for (long t = 1; t <= ticks; t++) {
+                if (t == sinkAt) {
+                    sim.recordCommand("sink");
+                    sim.commandSink();
+                }
+                sim.tickOnce();
+            }
             long elapsedNs = System.nanoTime() - start;
             long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
             long ticksPerSecond = 1_000_000_000L / perTickNs;
@@ -184,7 +199,7 @@ public final class Main {
             while ((cmd = commands.poll()) != null) {
                 String[] parts = cmd.split("\\s+");
                 switch (parts[0]) {
-                    // The five commands that touch the universe enter the chronos
+                    // The six commands that touch the universe enter the chronos
                     // record before dispatch, refusals included (D-023 stage 1).
                     // Pacing (pause, speed) steers the console, not the universe.
                     case "red" -> { sim.recordCommand(cmd); sim.commandRed(); }
@@ -192,6 +207,7 @@ public final class Main {
                     case "smith" -> { sim.recordCommand(cmd); sim.commandSmith(); }
                     case "deja" -> { sim.recordCommand(cmd); sim.commandDeja(); }
                     case "reload" -> { sim.recordCommand(cmd); sim.commandReload(); }
+                    case "sink" -> { sim.recordCommand(cmd); sim.commandSink(); }
                     case "pause" -> paused = !paused;
                     case "speed" -> {
                         try {
@@ -204,7 +220,7 @@ public final class Main {
                         System.out.print("hardline exit at tick " + sim.tick() + "\n");
                         return;
                     }
-                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | pause | speed N | quit\n");
+                    case "help" -> System.out.print("commands: red | agent | smith | deja | reload | sink | pause | speed N | quit\n");
                     default -> System.out.print("unknown command (try: help)\n");
                 }
             }
@@ -224,6 +240,7 @@ public final class Main {
                   --ticks N           tick budget for headless and selftest runs (default 2000)
                   --seed N            the fate of the universe (default 42)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
+                  --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --chronos PATH      record genesis + inputs as JSONL (D-023 stage 1; live runs only)
                   --replay PATH       fold a chronos recording (D-023 stage 2): re-run from its genesis
                                       with recorded commands at their ticks, print the DIGEST chain
@@ -233,7 +250,7 @@ public final class Main {
                                       exits 0 match / 1 divergence / 2 refused
                   --selftest          in-process digest double-run; exit 0 iff chains match
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
-                interactive commands: red | agent | smith | deja | reload | pause | speed N | quit
+                interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit
                 """);
     }
 }

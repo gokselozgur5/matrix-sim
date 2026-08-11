@@ -92,6 +92,82 @@ public final class MetricsCollector {
         return n;
     }
 
+    /**
+     * Trace pressure, measured (unit #118) — a metric, not a class, exactly
+     * as the #95 fold ruling has it: the dossier's "a drop concentrates
+     * reds" claim turned into arithmetic the instruments already know. For
+     * every live Agent, the distance to its nearest open-pirate avatar
+     * (mean over agents: {@code trace_mnn_cm}) against the distance to its
+     * nearest resident red ({@code red_baseline_cm}) — the hunting field
+     * without the visitors, The One excluded exactly as the hunt excludes
+     * him. Convergence shows as {@code trace_mnn_cm} collapsing toward (or
+     * under) the baseline while a session is live; the flock-cohesion line
+     * proved cohesion the same way, measured mean against a reference.
+     *
+     * <p>The root passes zion's open links in (D-012); the Matrix ships no
+     * code and learns nothing — the collector reads positions it could
+     * always read. Shape rule: the suffix (leading space, {@code
+     * Locale.ROOT}) extends the ZION line exactly when open pirate links
+     * exist and both populations are measurable; otherwise it is absent —
+     * the ECO line's short-form precedent. Pure read: no draw, no state,
+     * the digest cannot notice.
+     */
+    public String traceSuffix(java.util.List<matrix.entities.Avatar> pirateAvatars) {
+        java.util.List<matrix.entities.Avatar> pirates = new java.util.ArrayList<>();
+        for (var p : pirateAvatars) {
+            if (p.alive && world.isPresent(p)) {
+                pirates.add(p);
+            }
+        }
+        if (pirates.isEmpty()) {
+            return "";
+        }
+        java.util.List<matrix.entities.MatrixEntity> agents = new java.util.ArrayList<>();
+        java.util.List<matrix.entities.Avatar> residents = new java.util.ArrayList<>();
+        for (var e : world.entities()) {
+            if (!e.alive) {
+                continue;
+            }
+            if (e instanceof matrix.entities.Agent) {
+                agents.add(e);
+            } else if (e instanceof matrix.entities.Avatar a && a.pill == Pill.RED
+                    && !(e instanceof matrix.entities.TheOne) && !containsIdentity(pirates, a)) {
+                residents.add(a);
+            }
+        }
+        if (agents.isEmpty() || residents.isEmpty()) {
+            return "";
+        }
+        long traceSum = 0;
+        long redSum = 0;
+        for (var agent : agents) {
+            traceSum += nearestCm(agent, pirates);
+            redSum += nearestCm(agent, residents);
+        }
+        return String.format(java.util.Locale.ROOT, " trace_mnn_cm=%d red_baseline_cm=%d",
+                traceSum / agents.size(), redSum / agents.size());
+    }
+
+    /** Identity membership, not equals — the pirate list holds the very objects the world walks. */
+    private static boolean containsIdentity(java.util.List<matrix.entities.Avatar> list,
+            matrix.entities.Avatar avatar) {
+        for (var p : list) {
+            if (p == avatar) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static long nearestCm(matrix.entities.MatrixEntity from,
+            java.util.List<? extends matrix.entities.MatrixEntity> targets) {
+        long best = Long.MAX_VALUE;
+        for (var t : targets) {
+            best = Math.min(best, Geo.distSqCm(from.xCm(), from.yCm(), t.xCm(), t.yCm()));
+        }
+        return Math.round(Math.sqrt((double) best));
+    }
+
     public MetricSnapshot sample(long tick) {
         int alive = world.countAlive();
         double infected = alive == 0 ? 0.0 : (double) world.countInfected() / alive;
