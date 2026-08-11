@@ -13,7 +13,7 @@ public final class WanderMovement implements Movement {
     @Override
     public void move(MatrixEntity self, World w) {
         int speed = speedOf(self);
-        self.pos = self.pos.steppedBy(
+        self.moveBy(
                 w.rng().nextInt(-speed, speed + 1),
                 w.rng().nextInt(-speed, speed + 1));
     }

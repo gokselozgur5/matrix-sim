@@ -12,20 +12,20 @@ public final class SmithCopy extends MatrixEntity implements SelfReplicating {
     public final MatrixEntity original;
 
     public SmithCopy(int id, MatrixEntity original) {
-        super(id, original.pos);
+        super(id, original.xCm(), original.yCm());
         this.original = original;
     }
 
     @Override
     public void tick(World w) {
-        MatrixEntity victim = w.nearestNonReplicating(pos, id);
+        MatrixEntity victim = w.nearestNonReplicating(xCm(), yCm(), id);
         if (victim == null) {
             return;
         }
         if (w.rng().chance(0.7)) {
-            stepToward(victim.pos, Config.COPY_SPEED_CM);
+            stepToward(victim, Config.COPY_SPEED_CM);
         }
-        if (pos.within(victim.pos, Config.CONTACT_RADIUS_CM)) {
+        if (within(victim, Config.CONTACT_RADIUS_CM)) {
             SmithPrime.infect(w, victim);
         }
     }
