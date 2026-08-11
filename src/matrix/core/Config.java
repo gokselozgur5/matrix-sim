@@ -44,6 +44,8 @@ public final class Config {
     public static final long DEJA_RESIDUE_SPIKE = 250;
     public static final long KID_BASE = 140;
     public static final int KID_JITTER = 40;
+    public static final double KID_SPIKE_CHANCE = 0.0004;
+    public static final long KID_SPIKE = 8;
 
     public static final int HASH_CELL_CM = 5_000;
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;

@@ -14,11 +14,16 @@ import java.util.List;
  * simulation, where it belongs.
  */
 public final class RealWorld {
+
+    /** One banked liberation: who walked, and through which door — "treaty" (the open door) or "selfsub" (D-033). */
+    public record Liberation(Human human, String origin) {}
+
     private final PodFarm farm = new PodFarm();
     private final List<Human> humans = new ArrayList<>();
     private final List<NeuralLink> links = new ArrayList<>();
-    private final List<Human> pendingLiberations = new ArrayList<>();
+    private final List<Liberation> pendingLiberations = new ArrayList<>();
     private final World world;
+    private long selfsubCount = 0;
 
     public RealWorld(World world) {
         this.world = world;
@@ -45,7 +50,10 @@ public final class RealWorld {
     public void tick(long t) {
         if (t % matrix.core.Config.ACCRUE_EVERY_TICKS == 0) {
             for (NeuralLink link : links) {
-                AcceptanceLoop.accrue(link, world.ledger());
+                if (AcceptanceLoop.accrue(link, world.ledger(), world.rng())
+                        && world.isPresent(link.avatar)) {
+                    selfSubstantiate(link);
+                }
             }
         }
         for (NeuralLink link : links) {
@@ -55,6 +63,32 @@ public final class RealWorld {
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
+    }
+
+    /**
+     * The Kid's door (D-033): the crossing the second theorem detected
+     * executes here, where the world is — the treaty door's four moves,
+     * different cause, own origin tag. The presence gate at the call site
+     * defers a wrapped mind's exit: while Smith wears the dream it is not
+     * theirs to walk out of; the account holds, and the first window after
+     * restore the door opens. Without wraps an open live link's avatar is
+     * always present, so the gate costs nothing where it cannot matter.
+     */
+    private void selfSubstantiate(NeuralLink link) {
+        link.closeClean();
+        world.queue(new WorldEvent.Remove(link.avatar.id));
+        selfsubCount++;
+        world.log(Severity.FATE, "self-substantiation: " + link.human.name
+                + " walked out of the dream — residue " + link.personalResidue
+                + " >= threshold " + link.human.threshold + ", " + link.spikes
+                + " spikes in " + link.windows + " windows; no red pill was given (pod "
+                + link.human.pod.rackUnit + " opens)");
+        pendingLiberations.add(new Liberation(link.human, "selfsub"));
+    }
+
+    /** Monotone count of D-033 walk-outs — the METRIC selfsub= column; the root samples it (D-020, appended grammar). */
+    public long selfsubCount() {
+        return selfsubCount;
     }
 
     /** The treaty's open door: n sleepers walk out — links close CLEAN, brains live, the census keeps them. */
@@ -69,7 +103,7 @@ public final class RealWorld {
                 link.closeClean();
                 world.queue(new WorldEvent.Remove(link.avatar.id));
                 world.log(Severity.OK, "the door: " + link.human.name + " walked out — free");
-                pendingLiberations.add(link.human);
+                pendingLiberations.add(new Liberation(link.human, "treaty"));
                 freed++;
             }
         }
@@ -78,16 +112,17 @@ public final class RealWorld {
 
     /**
      * The near bank of the handoff (crown #84): freed Humans wait here, in
-     * liberation order, until the root carries them across to Zion's census.
-     * This package must never import {@code matrix.zion} (zion already
-     * imports realworld) — only the composition root holds both banks
-     * (D-012), so it does the carrying. Empty drains allocate nothing.
+     * liberation order, each with the door it came through — the treaty's
+     * or the Kid's (#121) — until the root carries them across to Zion's
+     * census. This package must never import {@code matrix.zion} (zion
+     * already imports realworld) — only the composition root holds both
+     * banks (D-012), so it does the carrying. Empty drains allocate nothing.
      */
-    public List<Human> drainLiberations() {
+    public List<Liberation> drainLiberations() {
         if (pendingLiberations.isEmpty()) {
             return List.of();
         }
-        List<Human> out = new ArrayList<>(pendingLiberations);
+        List<Liberation> out = new ArrayList<>(pendingLiberations);
         pendingLiberations.clear();
         return out;
     }
@@ -104,6 +139,7 @@ public final class RealWorld {
         dc.putCount(links.size());
         for (NeuralLink link : links) {
             dc.putLong(link.human.threshold);
+            dc.putLong(link.personalResidue);
         }
     }
 

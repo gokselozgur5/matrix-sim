@@ -60,7 +60,12 @@ public final class MetricsCollector {
         return n;
     }
 
-    public MetricSnapshot sample(long tick) {
+    /**
+     * The collector reads the Matrix side; the selfsub count is real-side
+     * state and only the root holds both banks (D-012) — so it arrives as
+     * an argument, sampled by the root at emit time.
+     */
+    public MetricSnapshot sample(long tick, long selfsub) {
         int alive = world.countAlive();
         double infected = alive == 0 ? 0.0 : (double) world.countInfected() / alive;
         return new MetricSnapshot(tick,
@@ -69,6 +74,7 @@ public final class MetricsCollector {
                 world.countAgents(),
                 alive,
                 infected,
-                (double) world.ledger().balance());
+                (double) world.ledger().balance(),
+                selfsub);
     }
 }

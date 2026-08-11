@@ -233,9 +233,10 @@ public final class Simulation {
         }
         // The handoff (crown #84): only the root holds both banks (D-012), so
         // only the root carries freed Humans across — every tick, in link
-        // registration order. Today every pending liberation is the treaty's.
-        for (Human freed : realWorld.drainLiberations()) {
-            zion.absorb(freed, "treaty");
+        // registration order. Each liberation carries its own door: the
+        // treaty's, or the Kid's selfsub tag (#121, D-033).
+        for (RealWorld.Liberation freed : realWorld.drainLiberations()) {
+            zion.absorb(freed.human(), freed.origin());
         }
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
@@ -246,7 +247,7 @@ public final class Simulation {
                     + " (the ledger does not forgive; it balances)");
         }
         if (t % Config.METRIC_EVERY_TICKS == 0) {
-            emit(metrics.sample(t).format());
+            emit(metrics.sample(t, realWorld.selfsubCount()).format());
         }
         if (t % Config.ECO_EVERY_TICKS == 0) {
             emit(metrics.ecoLine(t));
