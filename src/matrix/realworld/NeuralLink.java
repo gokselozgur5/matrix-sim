@@ -40,9 +40,17 @@ public final class NeuralLink {
         return closed;
     }
 
-    /** The treaty's door: a clean exit — the link closes, the brain LIVES, the avatar leaves the world. */
+    /**
+     * The treaty's door: a clean exit — the link closes, the brain LIVES,
+     * the avatar leaves the world, and the vacated pod opens (the selfsub
+     * FATE line always said "pod opens"; since #134 the substrate budget
+     * actually notices). The free-born have no pod to open (D-032).
+     */
     public void closeClean() {
         closed = true;
+        if (human.pod != null) {
+            human.pod.flush();
+        }
         human.link = null;
     }
 

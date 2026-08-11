@@ -31,6 +31,7 @@ public final class World {
     private int version = 6;
     private long tick = 0;
     private int nextId = 1;
+    private long unparks = 0;
     private ChronosLog chronosTap;
     // #135 hunt-index state: the ring hunts may only trust the buckets while
     // the entity list is exactly the list the rebuild walked. True from
@@ -41,6 +42,11 @@ public final class World {
     private int huntAgents;
     private int huntReds;
     private int huntNonRep;
+    // D-008 substrate scalars (#134): uncapped and unstretched until a
+    // budget commands otherwise — under BATTERY nothing ever does, and
+    // these defaults ARE the pre-D-008 world, bit for bit.
+    private int hotSlotCap = Integer.MAX_VALUE;
+    private int cadenceStretch = 1;
 
     public World(Rng rng, EventBus bus, PlaceGraph places) {
         this.rng = rng;
@@ -107,6 +113,23 @@ public final class World {
         this.chronosTap = tap;
     }
 
+    /**
+     * The D-008 command seam (#134): MachineSystem sets the tick's substrate
+     * scalars before the step — the HOT-slot cap the RegionMap must respect
+     * and the emergency cadence stretch the eco path must obey. Only
+     * scalars cross here (D-031's command chain: the machine wing commands,
+     * the World relays to its own ledger at refresh time).
+     */
+    public void setSubstrate(int hotSlotCap, int cadenceStretch) {
+        this.hotSlotCap = hotSlotCap;
+        this.cadenceStretch = cadenceStretch;
+    }
+
+    /** 1 outside an emergency: the D-008 floor multiplies eco periods only while the farm is dying. */
+    public int cadenceStretch() {
+        return cadenceStretch;
+    }
+
     /** During a negotiation the world holds its breath but the clock does not — instruments stay honest. */
     public void advanceFrozen() {
         tick++;
@@ -115,13 +138,28 @@ public final class World {
     public void step() {
         tick++;
         hash.rebuild(entities);
-        regions.refresh(tick, entities); // attention reads the snapshots the rebuild just froze (D-024 P0)
+        // attention reads the snapshots the rebuild just froze (D-024 P0);
+        // the substrate cap rides along as a scalar (D-008, #134)
+        regions.refresh(tick, entities, hotSlotCap);
         countHuntables();
         huntIndexValid = true;
         for (int i = 0; i < entities.size(); i++) {
             MatrixEntity e = entities.get(i);
             if (e.alive) {
                 e.tick(this);
+            }
+        }
+        if (tick % Config.ECO_EVERY_TICKS == 0) {
+            regions.coarseTick(this); // parked reality breathes: counted draws, region-index order (D-024 P2)
+        }
+        // The LOD gatekeeper (D-024 P2): decisions queue AFTER the walk, in
+        // region-index order, and therefore flush LAST — behind this tick's
+        // infections, so the Park handler reads settled membership.
+        for (int r = 0; r < regions.regionCount(); r++) {
+            if (regions.wantsUnpark(r)) {
+                queue(new WorldEvent.Unpark(r));
+            } else if (regions.wantsPark(r)) {
+                queue(new WorldEvent.Park(r));
             }
         }
         flush();
@@ -148,12 +186,87 @@ public final class World {
                     }
                 }
                 replaces++;
+            } else if (ev instanceof WorldEvent.Park p) {
+                // Chronos sees the fold as what it is to the walk: removals.
+                removes += park(p.regionId());
+            } else if (ev instanceof WorldEvent.Unpark u) {
+                spawns += unpark(u.regionId());
             }
         }
         pending.clear();
         if (chronosTap != null) {
             chronosTap.onFlush(tick, spawns, removes, replaces);
         }
+    }
+
+    /**
+     * The Park flush (D-024 P2, #132): folds the region's catalog residents
+     * into the RegionMap aggregate and takes them out of the walk. Runs at
+     * the end of the flush order, so it sees this tick's infections settled
+     * — and refuses the whole region while anything self-replicating stands
+     * in it: a wrapped mind must stay in the walk where the digest recurses
+     * into it, and stored-id restore is only safe when nobody parked is
+     * secretly someone else (the gate's identity ruling). One-off species
+     * stay rendered — nobody will delete the sunrise, and nobody parks it
+     * either. Membership is the snapshot cell's zone, the same D-017 law
+     * attention reads; an empty region folds nothing and stays awake.
+     */
+    private int park(int regionId) {
+        for (MatrixEntity e : entities) {
+            if (e.alive && e instanceof matrix.entities.SelfReplicating
+                    && regions.regionAt(e.snapXCm, e.snapYCm) == regionId) {
+                if (regions.markRefused(regionId)) {
+                    log(Severity.TRACE, "LOD: parking of " + places.zones().get(regionId).name()
+                            + " refused — something self-replicating walks its streets");
+                }
+                return 0;
+            }
+        }
+        List<MatrixEntity> folding = new ArrayList<>();
+        for (MatrixEntity e : entities) {
+            if (e.alive && e instanceof matrix.entities.eco.EnvironmentProgram p
+                    && regions.regionAt(e.snapXCm, e.snapYCm) == regionId
+                    && RegionMap.catalogIndex(p.species) >= 0) {
+                folding.add(p);
+            }
+        }
+        if (folding.isEmpty()) {
+            return 0;
+        }
+        regions.beginPark(regionId);
+        for (MatrixEntity e : folding) {
+            regions.fold(regionId,
+                    RegionMap.catalogIndex(((matrix.entities.eco.EnvironmentProgram) e).species), e.id);
+        }
+        entities.removeAll(folding);
+        log(Severity.TRACE, "LOD: " + places.zones().get(regionId).name() + " parks — "
+                + folding.size() + " residents fold into statistics; nobody is watching");
+        return folding.size();
+    }
+
+    /**
+     * The Unpark flush: seeded re-materialization at the flush point. Same
+     * crowd — the stored ids — different faces: positions re-drawn inside
+     * the region, headings fresh, and the residents re-enter the walk at
+     * the back exactly like any spawn (D-010 order is list order, and both
+     * films append identically). Every unpark IS a déjà vu (#133): the
+     * FATE line names the zone and the count, and cache invalidation gets
+     * priced exactly as the ops-console patch does — the D-022 mechanical-
+     * meaning precedent — with DEJA_RESIDUE_SPIKE landing on the ledger.
+     */
+    private int unpark(int regionId) {
+        List<matrix.entities.eco.EnvironmentProgram> back = regions.materialize(regionId, rng);
+        entities.addAll(back);
+        unparks++;
+        ledger.accrue(Config.DEJA_RESIDUE_SPIKE);
+        log(Severity.FATE, "déjà vu in " + places.zones().get(regionId).name()
+                + " — " + back.size() + " residents re-materialize");
+        return back.size();
+    }
+
+    /** Cumulative Unpark count — the ledger's second mechanical déjà-vu source, read by the probe bench (#133). */
+    public long unparks() {
+        return unparks;
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
@@ -529,6 +642,7 @@ public final class World {
         for (MatrixEntity e : entities) {
             digestEntity(sink, e);
         }
+        regions.digestInto(sink); // the crown's region segment: parked reality stays fingerprinted (D-024 P2)
     }
 
     private void digestEntity(StateSink sink, MatrixEntity e) {

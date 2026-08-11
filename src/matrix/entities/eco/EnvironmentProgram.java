@@ -19,8 +19,11 @@ import matrix.entities.behavior.WanderMovement;
  * the catalog row (D-016); the cadence by the scheduling wheel (D-018)
  * — stretched by LOD_COLD_STRETCH while the snapshot lies in a COLD
  * region (D-024 P1, #131): the cold city dreams slower, and a skipped
- * tick skips its rng draws too. A healthy environment program is
- * invisible — it never logs.
+ * tick skips its rng draws too. After LOD_PARK_AFTER_TICKS of nobody
+ * watching, the region parks outright (P2, #132): catalog residents fold
+ * into the RegionMap aggregate and leave the walk until attention brings
+ * them back — same ids, freshly drawn faces. A healthy environment
+ * program is invisible — it never logs.
  */
 public final class EnvironmentProgram extends Program {
     public final Species species;
@@ -34,14 +37,20 @@ public final class EnvironmentProgram extends Program {
 
     @Override
     public void tick(World w) {
-        if (!Scheduler.due(w.tick(), species.tickPeriod(), id)) {
+        // D-008 emergency floor (#134): while the farm is dying the whole
+        // eco cadence stretches uniformly. It is 1 outside the emergency,
+        // so this line is the P1 arithmetic, bit for bit.
+        int period = species.tickPeriod() * w.cadenceStretch();
+        if (!Scheduler.due(w.tick(), period, id)) {
             return;
         }
         RegionMap regions = w.regions();
         if (!regions.isHot(regions.regionAt(snapXCm, snapYCm))
-                && !Scheduler.due(w.tick(), species.tickPeriod() * Config.LOD_COLD_STRETCH, id)) {
+                && !Scheduler.due(w.tick(), period * Config.LOD_COLD_STRETCH, id)) {
             // COLD: only every LOD_COLD_STRETCH-th due tick survives — and the
             // skipped tick draws nothing, so the degraded film is its own film.
+            // Since P3 "cold" includes budget-demoted rooms: the same path,
+            // whatever cold comes to mean (D-024 P2 will park here too).
             return;
         }
         switch (species.movement()) {
