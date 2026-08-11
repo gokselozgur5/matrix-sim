@@ -127,6 +127,8 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 *The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
 
+**The floor (the Architect's bar, 2026-08-11): at least The Matrix Online.** Every MxO system is a row in the Parity Ledger (tracker #231); the season does not close while a row stands red. Measured on the system/mechanic/world axis; visual assets are not our axis (D-019). Ceiling: none.
+
 *The season's second wing (the second origin text: "adı MxO ama içi engine"): the CITY itself. Old MxO's breadth was never crowd — it was districts with character, the Truce as a lived era, and live events that became canon. Our advantage over the original: their world died with its servers in 2009; ours is seed + log — unkillable, replayable, canon by construction. The character wing gives the city its people; the city wing gives the people their world.*
 
 ## v6.0 — The Heart of the City
