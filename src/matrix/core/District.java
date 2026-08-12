@@ -19,7 +19,9 @@ import java.util.List;
  *
  * <p>Dev8's naming law names it: our quarters wear the names our citizens
  * wear, out of the same pools, mixed by a zone-keyed function of our own —
- * never MxO's borrowed map, and never a die roll.
+ * never MxO's borrowed map, and never a die roll. The same pools literally:
+ * {@link NamePool}, the one home both banks index (#842). The catalog holds
+ * no copy to keep in step.
  */
 public record District(int index, String zoneName, String name,
         int density, int wealth, int glitch) {
@@ -41,32 +43,6 @@ public record District(int index, String zoneName, String name,
      */
     public static final int AXIS_MIN = 0;
     public static final int AXIS_MAX = 1_000;
-
-    /**
-     * The citizens' first names — PodFarm's own metal, and the whole point
-     * of Dev8's law: a quarter of this city is named from the pool its
-     * people are named from, so the census can count a district like
-     * anyone else and a stranger can tell at a glance that this map was
-     * not borrowed.
-     *
-     * <p>Copied, not moved. The farm still grows every Thomas from its own
-     * array and not one citizen name changed hands — `realworld/` belongs
-     * to another crew this phase, so lifting the pool out of `PodFarm`
-     * into one shared home is filed (#842), not smuggled. Until that
-     * lands, two copies are a drift risk with no guard, so
-     * `DistrictCensus` (#538) reads the farm's arrays reflectively and
-     * fails loudly the day the two disagree.
-     */
-    static final String[] FIRST = {
-            "Thomas", "Trin", "Milo", "Dana", "Ezra", "Vera", "Otto", "Nadia",
-            "Silas", "June", "Marcus", "Lena", "Hugo", "Iris", "Felix", "Mara",
-            "Dario", "Selma", "Ivan", "Noor"};
-
-    /** The citizens' family names — the same lift, under the same debt and the same guard. */
-    static final String[] LAST = {
-            "Anderson", "Vance", "Okafor", "Lindqvist", "Marek", "Osei", "Petrov",
-            "Sato", "Weaver", "Kaya", "Moreau", "Iglesias", "Novak", "Reyes",
-            "Berg", "Duran", "Kovacs", "Aydin", "Frost", "Adeyemi"};
 
     /** Salts: one per column, so a zone's first name and its family name are independent reads of one key. */
     private static final int SALT_FIRST = 1;
@@ -131,10 +107,12 @@ public record District(int index, String zoneName, String name,
      * of a 400-name grid and only six seats are ever filled.
      */
     private static String nameFor(String zone, List<String> taken) {
+        List<String> first = NamePool.firstNames();
+        List<String> family = NamePool.familyNames();
         for (int retry = 0; ; retry++) {
             int shift = retry * SALT_RETRY;
-            String name = FIRST[Math.floorMod(mix(zone, SALT_FIRST + shift), FIRST.length)]
-                    + " " + LAST[Math.floorMod(mix(zone, SALT_LAST + shift), LAST.length)];
+            String name = first.get(Math.floorMod(mix(zone, SALT_FIRST + shift), first.size()))
+                    + " " + family.get(Math.floorMod(mix(zone, SALT_LAST + shift), family.size()));
             if (!taken.contains(name)) {
                 return name;
             }
