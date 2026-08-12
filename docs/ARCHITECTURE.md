@@ -334,6 +334,14 @@ What n=100 does **not** license: 17/100 QUIET is a 95% interval of roughly 10–
 
 **The stamp.** 2026-08-11, v3.0 · falsifiable the way everything here is: rerun the command, diff the table.
 
+**Reproduction check — and the first thing the stamp caught.** Rerun at `6e2458a` on 2026-08-12, the same command prints a different multiverse:
+
+```
+ATLAS seeds=1..100 ticks=6000 full_arc=73 treaty=6 war=0 quiet=21 old_playbook=0 birth_min=1149 birth_max=1359
+```
+
+Neither run is wrong. The entry is stamped **v3.0**, and main has since taken Season Two's declared digest moves, each of which re-rolls the stream from boot and therefore re-rolls every universe's war. The table above was describing a multiverse that no longer exists, and nothing in the repo said so — which is the whole argument for a stamp, and the whole argument against editing numbers in place. Entry 1 stands as the v3.0 measurement. Restating it at HEAD is not an edit anyone may make by hand: it is owed to the re-verdict protocol, which classifies the move first and supersedes the entry only if the classification says it must.
+
 ---
 
 The rng-stream instrumentation rides the same bench and is quoted here as context rather than as a census entry: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.
