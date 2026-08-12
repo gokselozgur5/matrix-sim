@@ -79,7 +79,7 @@ public final class AllocMeter {
                 System.err.println(refusal);
                 System.exit(2);
             }
-            matrix.core.Config.ECO_SCALE = scale;
+            matrix.core.Config.setEcoScale(scale);
         }
         com.sun.management.ThreadMXBean threads =
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
@@ -105,6 +105,7 @@ public final class AllocMeter {
         }
 
         long steady = (a1 - a0) / 500;
+        int ranAt = matrix.core.Config.ecoScale();
 
         System.out.println("ALLOC seed=" + seed
                 + " steady_bytes_per_tick=" + steady
@@ -112,8 +113,8 @@ public final class AllocMeter {
                 + " full_run_mb=" + (a4 - a0) / (1024 * 1024)
                 + " gc_collections=" + gcCount
                 // scaled runs declare themselves; the canonical line keeps its bytes
-                + (matrix.core.Config.ECO_SCALE == 1 ? ""
-                        : " scale=" + matrix.core.Config.ECO_SCALE
+                + (ranAt == 1 ? ""
+                        : " scale=" + ranAt
                                 + " entities=" + sim.aliveEntities()));
         System.out.println("ALLOC_NOTE window_steady=500-1000 window_cascade=3500-4000 ticks_total=6000");
 
@@ -122,8 +123,8 @@ public final class AllocMeter {
         // verdict against the canonical bounds would be well-formed, greppable
         // and about a city these numbers were never measured in — the same
         // failure the scale gate above refuses at the door (#826).
-        if (matrix.core.Config.ECO_SCALE != 1) {
-            System.out.println("VERDICT ALLOC_UNJUDGED scale=" + matrix.core.Config.ECO_SCALE
+        if (ranAt != 1) {
+            System.out.println("VERDICT ALLOC_UNJUDGED scale=" + ranAt
                     + " reason=no_byte_budget_at_this_scale");
             return;
         }

@@ -87,7 +87,7 @@ public final class Main {
             System.err.println("--scale rides live runs only — the chronos record knows no scale");
             System.exit(2);
         }
-        matrix.core.Config.ECO_SCALE = scale;
+        matrix.core.Config.setEcoScale(scale);
         if (expectPath != null && replayPath == null) {
             System.err.println("--expect rides with --replay");
             usage();
@@ -182,6 +182,10 @@ public final class Main {
         // miracle must outrank every other disbelief item, and a retune
         // that demotes it fails here instead of in a season's worth of runs.
         System.out.println(matrix.realworld.Bond.retailOrderLine());
+        // The homecoming dial's gate is a lock too (#882): the field is
+        // private, and the setter still refuses what --scale refuses and
+        // refuses any write once the world has read it.
+        System.out.println(matrix.core.Config.dialLockLine());
         List<Digest> a = new Simulation(seed, null, null).run(ticks);
         List<Digest> b = new Simulation(seed, null, null).run(ticks);
         if (a.size() != b.size()) {
@@ -221,7 +225,7 @@ public final class Main {
      * nobody calibrated is not a budget.
      */
     private static int bench(long seed) {
-        boolean scaled = matrix.core.Config.ECO_SCALE != 1;
+        boolean scaled = matrix.core.Config.ecoScale() != 1;
         long t0 = System.nanoTime();
         Simulation steady = new Simulation(seed, null, null);
         steady.run(2_000);
