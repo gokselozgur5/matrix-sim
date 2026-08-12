@@ -47,6 +47,7 @@ import java.util.List;
 public final class LineLint {
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         if (args.length > 0 && args[0].equals("--registry")) {
             dumpRegistry();
             return;

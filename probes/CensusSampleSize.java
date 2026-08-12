@@ -39,6 +39,7 @@ public final class CensusSampleSize {
     private static final long[] SAMPLES = {20, 50, 100, 200, 500, 1000};
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         double p = 0.17;                 // the first century's QUIET fraction
         double sd = 1;                   // median law is stated in units of sd
         double[] probs = {0.40, 0.28, 0.19, 0.13};   // four clauses, plausibly spread

@@ -49,6 +49,7 @@ public final class CensusCensor {
     private record Row(long seed, long birth, long overflow, long peace, long rebirth) {}
 
     public static void main(String[] args) throws IOException {
+        matrix.Streams.utf8();
         if (args.length < 2) {
             System.out.println("usage: CensusCensor <atlas-table> <window> [<window>...]");
             return;

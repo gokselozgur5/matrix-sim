@@ -85,6 +85,7 @@ public final class FateAtlas {
     private static final int[] DEFAULT_BUDGETS = {600, 1200, 2400, 6000, 20000};
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         if (args.length > 0 && args[0].equals("--seeds")) {
             long from = args.length > 1 ? Long.parseLong(args[1]) : 1;
             long to = args.length > 2 ? Long.parseLong(args[2]) : 20;

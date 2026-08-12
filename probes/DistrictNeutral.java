@@ -73,6 +73,7 @@ public final class DistrictNeutral {
     private static final int BURN = 1_000;
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         List<String> faults = new ArrayList<>();
 
         // Leg 1: four universes, one city.

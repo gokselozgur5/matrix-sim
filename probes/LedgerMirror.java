@@ -30,6 +30,7 @@ import matrix.realworld.NeuralLink;
 public final class LedgerMirror {
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
 

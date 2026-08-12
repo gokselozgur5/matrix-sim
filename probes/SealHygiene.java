@@ -101,6 +101,7 @@ public final class SealHygiene {
             new Door("Dario Moreau", 174L, 104L));
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         List<String> breaks = new ArrayList<>();
         int checked = 0;
 

@@ -54,6 +54,7 @@ public final class CensusBeatDrift {
             new Beat("second_birth", "The One is born"));
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         List<String> positional = new ArrayList<>();
         List<String> baselines = new ArrayList<>();
         long band = 200;

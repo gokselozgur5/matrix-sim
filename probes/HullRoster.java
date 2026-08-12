@@ -58,6 +58,7 @@ public final class HullRoster {
     private static int anomalies = 0;
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         int ordinals = args.length > 0 ? Integer.parseInt(args[0]) : 3000;
         // A range too short to reach the pinned keels cannot judge them, and a
         // verdict printed over an empty observation set is the vacuous green

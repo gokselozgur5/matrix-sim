@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 public final class SeedAtlas {
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         long from = args.length > 0 ? Long.parseLong(args[0]) : 1;
         long to = args.length > 1 ? Long.parseLong(args[1]) : 20;
         long ticks = args.length > 2 ? Long.parseLong(args[2]) : 6_000;

@@ -27,6 +27,7 @@ public final class PirateSever {
     private static int anomalies = 0;
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         // S1 — "Not like this.": the wire dies first, and the mind follows.
         Human pirate = new Human("Switch", new Brain("Switch"), null);
         Avatar red1 = new Avatar(1, new Position(0, 0), "Switch", Pill.RED);

@@ -43,6 +43,7 @@ import java.util.List;
 public final class LinkTrace {
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         String needle = args.length > 0 ? args[0] : "Nadia Petrov";
         // WHY 6_000: the old default was 2_600, chosen to bracket the v3.0.0 flip
         // window (1717/1846/2477). That window is dead on today's main, so the bare

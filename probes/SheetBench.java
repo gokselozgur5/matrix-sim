@@ -4,11 +4,7 @@ import matrix.character.Sheet;
 import matrix.character.Sheets;
 import matrix.core.NamePool;
 
-import java.io.FileDescriptor;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -46,7 +42,7 @@ public final class SheetBench {
     private static final double BITFLIP_TOLERANCE = 0.01;
 
     public static void main(String[] args) throws Exception {
-        utf8Out();
+        matrix.Streams.utf8();
         String mode = args.length > 0 ? args[0] : "";
         switch (mode) {
             case "--vocab" -> vocab();
@@ -220,18 +216,6 @@ public final class SheetBench {
             }
         }
         return pool;
-    }
-
-    /**
-     * The probe owns its output encoding. On a box whose JVM defaults to
-     * {@code ANSI_X3.4-1968} — this one, and any CI runner with no locale
-     * exported — every non-ASCII character in a printed line silently
-     * becomes {@code ?}, so a verdict line quoted in a PR would not be the
-     * line another box prints. D-020's grammar is a byte contract; a probe
-     * that inherits the environment's charset cannot honor it.
-     */
-    private static void utf8Out() {
-        System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
     }
 
     private static Method open(String name, Class<?>... params) throws Exception {

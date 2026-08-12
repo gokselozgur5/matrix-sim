@@ -102,6 +102,51 @@ jobs:
           printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no DIGEST tick=6000 line at all>}"
           [ "$got" = "$want" ] || { echo "FATAL the seal moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
 
+      # WHY: lock 7 — D-020's line grammar is a BYTE contract, and nothing owned the charset
+      # those bytes were written in (#836): with no locale exported JDK 17 resolves the
+      # default charset to ANSI_X3.4-1968 and every em dash a main() printed became '?'.
+      # This runner is NOT that box — the ubuntu-latest image exports a UTF-8 locale, and
+      # pre-fix main printed the em dash here intact — which is exactly why the step forces
+      # LC_ALL=C instead of trusting the environment. The lane that has to catch a
+      # locale-dependent defect cannot wait to be run on a hostile box; it makes one.
+      # Three captures because the pin has three ways to be forgotten — the daemon's stdout,
+      # its stderr, a probe's stdout — plus the source scan, because those three are instances
+      # and every probe main is the class. Each capture is asserted to CARRY the byte the bug
+      # destroys: a check that compares two empty files passes and proves nothing.
+      - name: charset — an instrument line is the same bytes on every box (#836)
+        shell: bash
+        run: |
+          set -euo pipefail
+          same() { # same <label> <utf8-capture> <ascii-capture>
+            cmp -s "$2" "$3" && echo "CHARSET $1 OK" \
+              || { echo "FATAL $1 differs between UTF-8 and LC_ALL=C" >&2; diff "$2" "$3" >&2; exit 1; }
+          }
+          carries() { # carries <file> <byte sequence the run must have printed>
+            grep -q "$2" "$1" || { echo "FATAL $1 carries no $2 — this check proves nothing" >&2; exit 1; }
+          }
+          java -cp out matrix.Main --help > help.utf8
+          LC_ALL=C java -cp out matrix.Main --help > help.ascii
+          carries help.utf8 '—'
+          same daemon_stdout help.utf8 help.ascii
+          java -cp out matrix.Main --scale 0 2> err.utf8 || true
+          LC_ALL=C java -cp out matrix.Main --scale 0 2> err.ascii || true
+          carries err.utf8 '—'
+          same daemon_stderr err.utf8 err.ascii
+          java -cp out:probes/out DistrictNeutral > dn.utf8
+          LC_ALL=C java -cp out:probes/out DistrictNeutral > dn.ascii
+          carries dn.utf8 '·'
+          same probe_stdout dn.utf8 dn.ascii
+          rm -f help.utf8 help.ascii err.utf8 err.ascii dn.utf8 dn.ascii
+          scanned=0 unpinned=0
+          for f in probes/*.java; do
+            grep -q 'static void main(String\[\] args)' "$f" || continue
+            scanned=$((scanned + 1))
+            grep -q 'matrix\.Streams\.utf8();' "$f" \
+              || { echo "FATAL $f prints without pinning its streams" >&2; unpinned=$((unpinned + 1)); }
+          done
+          [ "$unpinned" -eq 0 ] || exit 1
+          echo "CHARSET probe_pins OK scanned=$scanned unpinned=0"
+
       # WHY: tools/ had no runner at all, and #901 is the bug that hides exactly there —
       # a GNU-only `date -d` idiom, green on this box and dead on the macOS box that is the
       # only one to ever type the command. This step owns the LINUX half of that unit: the
