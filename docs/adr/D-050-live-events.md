@@ -1,6 +1,6 @@
 ---
 title: "D-050 — The Live Events Team: authored history"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #225
@@ -29,6 +29,8 @@ The Architect's console acts are already recorded commands; D-043 wants them to 
 * No authored events
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: signed, Architect-first, verbs-only. Awaiting the Architect's verdict in #225; the machine performs the flip on his word.
 

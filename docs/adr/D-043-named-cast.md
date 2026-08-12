@@ -1,6 +1,6 @@
 ---
 title: "D-043 — The named cast, and the two of us"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #213
@@ -29,6 +29,8 @@ The in-world bones already exist: an Oracle program (subscribed before the bus s
 * No names — the flat world keeps its anonymity
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: the full cast, us included. Awaiting the Architect's verdict in the gate thread (#213); the machine performs the flip on his word.
 

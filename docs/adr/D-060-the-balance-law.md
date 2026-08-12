@@ -1,6 +1,6 @@
 ---
 title: "D-060 — The balance law: four quarters, and the meter that proves it"
-status: proposed
+status: accepted
 date: 2026-08-12
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #781
@@ -37,6 +37,8 @@ The balance is a shape of work, and the meter exists because in this house a rul
 * Volume only: hit the daily total however it lands
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: four quarters with the meter. `tools/balance.sh [YYYY-MM-DD]` prints the day's mix in per mille against a 250‰ target per leg, names the lagging leg, and reports how many artifacts of each kind close the gap — solving for the larger day that adding them creates, rather than the day already behind us.
 
