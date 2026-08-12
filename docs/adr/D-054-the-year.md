@@ -1,6 +1,6 @@
 ---
 title: "D-054 — The Year: scale to 365"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #232
@@ -31,6 +31,8 @@ The Architect, in session, verbatim: "bu projeye 1 sene boyunca her gün en az 2
 * Keep the small horizon and let the year find itself
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Awaiting the Architect's verdict in #232 on the season arc; each season charters its own gates when its time comes.
 

@@ -1,6 +1,6 @@
 ---
 title: "D-059 — The issue tree: work branches until a leaf is one PR"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #358
@@ -30,6 +30,8 @@ The Architect's directive, verbatim in session (2026-08-11): *"issue'lar binary 
 * Flat list plus naming conventions ("Part 1 of 3")
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: native trees. **The doctrine:**
 

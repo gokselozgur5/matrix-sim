@@ -1,6 +1,6 @@
 ---
 title: "D-049 — The Truce as a regime"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #224
@@ -29,6 +29,8 @@ The films end at the peace; the only official canon that LIVED past it was MxO. 
 * Peace stays a beat
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: era-lite first, the economy as its second act. Awaiting the Architect's verdict in #224; the machine performs the flip on his word.
 

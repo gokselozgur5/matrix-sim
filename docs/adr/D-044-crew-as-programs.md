@@ -1,6 +1,6 @@
 ---
 title: "D-044 — The crew becomes programs"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #214
@@ -28,6 +28,8 @@ The repo's history is already mythology: skeptics who REFUTED three phases and w
 * No entry
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: cameo first, sheets where earned. Awaiting the Architect's verdict in the gate thread (#214); the machine performs the flip on his word.
 

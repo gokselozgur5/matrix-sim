@@ -1,6 +1,6 @@
 ---
 title: "D-048 — Districts with identity"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #223
@@ -29,6 +29,8 @@ The second origin text named the gap: 'adı MxO ama içi engine.' The machinery 
 * Stay anonymous
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: data first, mechanics by declaration. Awaiting the Architect's verdict in #223; the machine performs the flip on his word.
 

@@ -123,7 +123,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ---
 
-## The Year (D-054, proposed) — six seasons, five programs
+## The Year (D-054, accepted 2026-08-12) — six seasons, five programs
 
 *The Architect's horizon, 2026-08-11: a full year at 200+ daily contributions — "1 yılda saatlerce çalışıp dolduracak kadar büyük düşün." The year is filled by shape, not pace:*
 
@@ -138,7 +138,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 *Continuous programs, all year: the Chronicle (authored canon most days) · the Census (atlas science) · the Bench (instruments) · the Archaeology (MxO, Animatrix, comics, the games) · the Spec (data survives; closed math dies). Pacing law: gates open progressively; v1 then deepen; every season ends with its skeptic, its release, its brief.*
 
-## Season Three (D-041, proposed) — the character layer
+## Season Three (D-041, accepted 2026-08-12) — the character layer
 
 *The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
 
@@ -152,12 +152,12 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Stat system: two-die law + permanent NEUTRAL control group | D-042 | 🟡 (birth-seed law RULED 2026-08-11: the die keys to the birth event — renaming is not rebirth) | #212 |
-| Authored history, minimal: birth cards + AUTHOR mark | D-050 | 🟡 (prerequisite of D-043 — the pen before the legend) | #225 |
-| The named cast, born signed — and the two of us | D-043 | 🟡 (the pair boards chronicle-only, by delegated choice) | #213 |
-| The dream reader — the telescope before the era | D-047 | 🟡 (draft runnable: PR #230) | #217 |
-| Season charter | D-041 | 🟡 (structure ADOPTED 2026-08-11: this four-beat split) | #211 |
-| The crew becomes programs | D-044 | 🟡 (units ride v7.0 if crews carry missions) | #214 |
+| Stat system: two-die law + permanent NEUTRAL control group | D-042 | 🟢 accepted 2026-08-12 (birth-seed law ruled 2026-08-11) | #212 |
+| Authored history, minimal: birth cards + AUTHOR mark | D-050 | 🟢 accepted 2026-08-12 (the pen before the legend) | #225 |
+| The named cast, born signed — and the two of us | D-043 | 🟢 accepted 2026-08-12 (the pair boards chronicle-only) | #213 |
+| The dream reader — the telescope before the era | D-047 | 🟢 accepted 2026-08-12 (draft #230 adopts) | #217 |
+| Season charter | D-041 | 🟢 accepted 2026-08-12 (four-beat structure adopted 2026-08-11) | #211 |
+| The crew becomes programs | D-044 | 🟢 accepted 2026-08-12 (units ride v7.0) | #214 |
 
 **DoD:** a NEUTRAL run bit-identical to pre-v6 main · an enabled run births the signed cast · the reader renders one full biography with zero world-writes.
 
@@ -167,9 +167,9 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| The Cypher protocol — the door's inward swing | D-046 | 🟡 (four-step machine + residual scar harvested) | #216 |
+| The Cypher protocol — the door's inward swing | D-046 | 🟢 accepted 2026-08-12 (four-step machine + residual scar) | #216 |
 | Allegiance + the influence ledger | D-051 | 🟡 | #227 |
-| Bonds & the Room 303 clause | D-045 | 🟡 (price RULED in-thread: bond consumed + ledger deposit; the will untouched) | #215 |
+| Bonds & the Room 303 clause | D-045 | 🟢 accepted 2026-08-12 (price: bond consumed + ledger deposit, will untouched) | #215 |
 
 **DoD:** one run shows `DOOR out` + `DOOR in` + one 303 firing with its ledger deposit · DrawMeter/DoorFlux PASS.
 

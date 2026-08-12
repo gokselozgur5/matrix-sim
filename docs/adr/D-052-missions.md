@@ -1,6 +1,6 @@
 ---
 title: "D-052 — Missions: templates as data, one executor"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #228
@@ -29,6 +29,8 @@ Orgs act or the era is scenery; and the oldest critique of the repo — nobody s
 * No missions
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: rows + one executor. Awaiting the Architect's verdict in #228; the machine performs the flip on his word.
 

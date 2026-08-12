@@ -1,6 +1,6 @@
 ---
 title: "D-046 — The Cypher protocol"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #216
@@ -29,6 +29,8 @@ Cypher is not a character; he is the door's inward direction. Today liberation i
 * No inward door
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: the full protocol. Awaiting the Architect's verdict in the gate thread (#216); the machine performs the flip on his word.
 

@@ -1,6 +1,6 @@
 ---
 title: "D-045 — Bonds, and the kiss"
-status: proposed
+status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #215
@@ -29,6 +29,8 @@ The mind-body rule (D-013) is the repo's oldest law: the avatar dies, the link f
 * No bonds
 
 ## Decision Outcome
+
+Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
 Leaning: the clause, with a real price. Awaiting the Architect's verdict in the gate thread (#215); the machine performs the flip on his word.
 
