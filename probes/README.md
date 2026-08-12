@@ -19,7 +19,9 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    in a PR without prose. "Diffed across runs" is a promise the bench keeps rather
    than assumes: `probes/bench.sh --twice` runs every probe a second time and
    byte-compares, and a probe that reaches for wall-clock, a default locale, a heap
-   address or an unordered iteration fails the sweep on the line that moved.
+   address or an unordered iteration fails the sweep on the line that moved. The
+   second run is taken under `LC_ALL=C`, because the locale clause was the one this
+   pass could not see while both runs stood in the same shell (#836).
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
    `src/` must build and `--selftest` must pass with this directory deleted. "With this
    directory deleted" is a promise the bench keeps rather than assumes:
@@ -33,6 +35,11 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    closing sentence and clause (3) of D-030's errata, which records why: it was
    adopted the day a tree moved mid-verification, and the round survived only
    because the skeptic had pinned. `tools/` rides the same rule.
+7. **Owns its bytes.** A probe's first statement is `matrix.Streams.utf8()`. D-020's
+   line grammar is a byte contract, and a JVM takes its charset from the environment:
+   with no locale exported, JDK 17 resolves it to `ANSI_X3.4-1968` and every em dash
+   the probe printed becomes `?`. The pin is scanned for in CI, so a probe that
+   forgets it fails the lane rather than the next reader.
 
 ## Building and running
 

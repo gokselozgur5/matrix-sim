@@ -20,6 +20,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class Main {
 
     public static void main(String[] args) throws Exception {
+        // Before anything prints: the instrument lines are a byte contract
+        // (D-020) and the JVM took their charset from the environment.
+        Streams.utf8();
         long seed = 42;
         long ticks = 2_000;
         int scale = 1;

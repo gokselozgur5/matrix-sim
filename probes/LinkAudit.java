@@ -32,6 +32,7 @@ import matrix.realworld.NeuralLink;
 public final class LinkAudit {
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 2_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
         long sinkAt = args.length > 2 ? Long.parseLong(args[2]) : -1;

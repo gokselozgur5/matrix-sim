@@ -61,6 +61,7 @@ public final class DrawMeter {
             {"steady_pre_fork", "war_build", "cascade_peak", "after_treaty"};
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
 

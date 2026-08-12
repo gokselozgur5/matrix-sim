@@ -87,6 +87,7 @@ public final class CensusBlocks {
     private record Block(String group, String spec, long[] seeds) {}
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         List<Block> blocks = new ArrayList<>();
         long ticks = 6_000;
         int threads = Math.min(4, Runtime.getRuntime().availableProcessors());

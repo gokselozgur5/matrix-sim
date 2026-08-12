@@ -76,6 +76,7 @@ public final class CensusReverdict {
     }
 
     public static void main(String[] args) throws IOException {
+        matrix.Streams.utf8();
         List<String> positional = new ArrayList<>();
         double sdRatio = 1.25;
         for (int i = 0; i < args.length; i++) {

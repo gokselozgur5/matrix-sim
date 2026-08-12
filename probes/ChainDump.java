@@ -16,6 +16,7 @@ import java.util.List;
 public final class ChainDump {
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 2_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
 

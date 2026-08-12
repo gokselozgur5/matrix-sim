@@ -16,6 +16,7 @@ import java.util.Map;
 public final class NameCensus {
 
     public static void main(String[] args) throws Exception {
+        matrix.Streams.utf8();
         long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
         Simulation sim = new Simulation(seed, null, null);
         RealWorld rw = Probes.realWorld(sim);

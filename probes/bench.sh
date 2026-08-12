@@ -203,6 +203,16 @@ vary() {
 # two outputs compared byte for byte. The second run's output is deliberately
 # NOT reprinted — the diff is the fact, and doubling the log to say "identical"
 # helps nobody. Cost is one extra run per row inside a sweep already paid for.
+#
+# One thing about the second run is deliberately NOT the same: it is taken
+# under LC_ALL=C. Contract clause 4 has always said a probe that reaches for a
+# default locale fails this sweep on the line that moved, and until #836 that
+# sentence was false — both runs stood in the same shell, so the one property
+# a locale can break was the one property this pass could not see. DrawMeter's
+# freeze line and DistrictNeutral's catalog separators were arriving as '?' on
+# any box with no locale exported, and every row here was STABLE. The hostile
+# locale costs nothing (the probes are pinned to UTF-8 by matrix.Streams.utf8)
+# and makes the byte compare mean what the clause says it means.
 settle() {
   [ "$TWICE" = yes ] || return 0
   local cls="$1" first="$2"; shift 2
@@ -213,7 +223,7 @@ settle() {
   fi
   local again rc
   set +e
-  again="$(java -cp out:probes/out "$cls" "$@" 2>&1)"
+  again="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then

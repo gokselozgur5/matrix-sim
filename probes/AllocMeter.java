@@ -116,6 +116,7 @@ public final class AllocMeter {
     static final int STEADY_RUNS_MIN = 3;
 
     public static void main(String[] args) {
+        matrix.Streams.utf8();
         if (args.length > 0 && "--selfcheck".equals(args[0])) {
             selfcheck();
             return;
