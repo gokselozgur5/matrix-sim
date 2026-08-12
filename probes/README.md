@@ -72,11 +72,11 @@ probes/bench.sh --twice    # the sweep, plus the determinism pass below
 
 The contract table lives in that script, one row per probe — `judge <Class>
 '<exact line>'` for an instrument that verdicts, `run <Class>` for one that
-only reports, `vary <Class> '<reason>'` for one whose output may legitimately
-move. A judged probe is judged by exact-line grep (`grep -qxF`), so
-`=0` can never match `=01` and a missing verdict fails the sweep; a reporting
-probe fails only by crashing or exiting nonzero. Adding a probe is a one-row
-change here, beside the probe.
+only reports, either of them prefixed by `vary '<reason>'` when the row's
+output may legitimately move. A judged probe is judged by exact-line grep
+(`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
+sweep; a reporting probe fails only by crashing or exiting nonzero. Adding a
+probe is a one-row change here, beside the probe.
 
 ## The bench refereeing itself
 
@@ -88,7 +88,7 @@ and the first line that moved is printed with its number.
 STABLE LineLint
 DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
 EXEMPT AllocMeter reason="reads the JDK thread-allocation counter: …"
-BENCH determinism probes=15 stable=13 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
+BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
 ```
 
 The digest leash proves the *world* is deterministic and says nothing about the
@@ -103,6 +103,12 @@ than being skipped in silence. Exactly one does today: `AllocMeter` reads the JD
 thread-allocation counter, which tracks the JIT's progress as much as the daemon's
 (2,098 to 5,346 bytes/tick at seed 42 — #817).
 
+`vary` prefixes a verb rather than replacing one, because moving and being judged
+are different questions. `AllocMeter` is the row that asks them separately: its
+byte counts move with the JIT, so it is exempt from the determinism pass, while
+`VERDICT ALLOC_IN_BUDGET` is fixed for as long as the budget holds, so the sweep
+judges it (#906).
+
 ## Catalog
 
 | Probe | Question it answers | Case it solved |
@@ -116,7 +122,7 @@ thread-allocation counter, which tracks the JIT's progress as much as the daemon
 | `OneTrace` | Does the One's death close his link the same tick? | the finale's contract after the v3 fix round: died=4284, closed=4284, `CONTRACT_HELD` |
 | `CapSentinel` | Do awakened minds (present + wrapped) ever exceed the cap? | the treaty-restore cap breach, made permanently detectable (`CAP_BREACHES=0`, seeds 42 & 7) |
 | `ArcBeats` | Does the film play, in order? | the D-036 DoD as a machine verdict (`BEATS_IN_ORDER` at 42 & 7) — and its own first run caught a wrong needle and a wrong beat order, which is what instruments are for |
-| `AllocMeter` | What does the hot path allocate, really? | retired D-027's never-measured "allocation-free" row: ~30 KB/tick steady, 3 GCs per arc — now a bounded, guarded budget |
+| `AllocMeter` | What does the hot path allocate, really? | retired D-027's never-measured "allocation-free" row, then guarded the row that replaced it: steady bytes/tick and GC collections judged against the record's own 32 KB and 5, `VERDICT ALLOC_IN_BUDGET`. On this box 1,963-8,537 B/tick and 0-1 collections, so the bound has ~4x of room and catches a blow-up, not a creep (#906); `--selfcheck` runs the comparison's four cases with no universe, because at those figures the breach branch is otherwise unreachable |
 | `SeedAtlas` | Across the multiverse, how common is the film? | 20-seed census: 16 FULL_ARC, 4 QUIET (Smith can lose), 0 emergency reloads in the wild |
 | `CensusBlocks` | Is a contiguous block of seeds a random sample of the multiverse? | **no** — the same 400 universes cut contiguously disagree at φ=5.01 (`FULL_ARC` p=0.0018) and dealt interleaved do not (p=0.72): adjacency carries information, so contiguous blocks are retired as a sampling method (census entry 5). `--selfcheck` reproduces entry 3's published z=3.10/−3.54 with no universes at all |
 | `DrawMeter` | What does the rng stream spend, and where? | boot 1,728 · steady ~374/tick · cascade ~505 · negotiation freeze **exactly 0** — the held breath, instrumented; windows derive from the run's own transitions (`BOUNDS`), so a QUIET universe reports no cascade |
