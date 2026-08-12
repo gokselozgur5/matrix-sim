@@ -45,18 +45,27 @@ done
 #
 #   judge <Class> '<the exact line the run must print>' [args...]
 #   run   <Class> [args...]
-#   vary  <Class> '<why its output may legitimately move>' [args...]
+#
+# prefixed, on either of them, by:
+#
+#   vary  '<why its output may legitimately move>' judge|run <Class> ...
 #
 # The args are the probe's own, in its own order — the bench does not pretend
 # every instrument takes the same ones. $TICKS is spent where a probe's cost
 # scales with the arc; the census sweeps carry their own smaller ranges so the
 # lane's wall clock stays a lane's, not a laboratory's.
 #
-# `vary` is `run` plus one thing: an exemption from the --twice determinism
-# pass, with the reason stated in the row rather than skipped in silence. It is
-# the rarest verb and should stay that way — an instrument whose output moves
+# `vary` is a MODIFIER, not a third verb: it declares an exemption from the
+# --twice determinism pass with the reason stated in the row rather than
+# skipped in silence, and then runs whichever verb follows it. It was a verb
+# while it was a synonym for "run and forgive the drift", and that spelling
+# quietly made the two questions one — what the sweep DEMANDS of a row, and
+# whether that row's bytes may differ between two identical runs. They are
+# separate, and AllocMeter is the row that separates them: its verdict line is
+# fixed while the byte counts printed beside it move with the JIT (#906). It
+# stays the rarest thing in the table, because an instrument whose output moves
 # between two identical runs cannot be diffed across a change, which is most of
-# what a bench is for. Exactly one row holds it today, and it earns it by
+# what a bench is for. Exactly one row wears it today, and it earns it by
 # measuring the JVM instead of the world.
 # ---------------------------------------------------------------------------
 table() {
@@ -73,7 +82,9 @@ table() {
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
   run   NameCensus   42
-  vary  AllocMeter   'reads the JDK thread-allocation counter: the number moves with JIT, not with the world' 42
+  vary  'reads the JDK thread-allocation counter: the number moves with JIT, not with the world' \
+        judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
+  judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   run   SeedAtlas    1 5 "$TICKS"
   run   CensusBeatDrift 42,7 "$TICKS"
 }
@@ -95,12 +106,28 @@ execute() {
   printf '%s\n' "$ROW_OUT"
 }
 
+# The --list row, printed by both verbs from one place.
+#
+# varies= rides at the END, and only when set: every row that is not exempt
+# prints the CONTRACT line it printed before this unit, byte for byte. A field
+# inserted mid-line is a break; a field appended is evolution (D-020's law,
+# applied to the bench's own output as well as the daemon's). The only value
+# that moves is judged=, on the one row that gained a verdict.
+contract() {
+  local cls="$1" want="$2"; shift 2
+  printf 'CONTRACT %s judged="%s" args="%s"' "$cls" "$want" "$*"
+  if [ -n "$VARIES" ]; then
+    printf ' varies="%s"' "$VARIES"
+  fi
+  printf '\n'
+}
+
 # A judged probe: run it, print it, and demand its exact line.
 judge() {
   local cls="$1" want="$2"; shift 2
   PROBES=$((PROBES + 1)); JUDGED=$((JUDGED + 1))
   if [ "$LIST" = yes ]; then
-    printf 'CONTRACT %s judged="%s" args="%s"\n' "$cls" "$want" "$*"
+    contract "$cls" "$want" "$@"
     return 0
   fi
   local started; started=$(date +%s)
@@ -128,15 +155,7 @@ run() {
   local cls="$1"; shift
   PROBES=$((PROBES + 1))
   if [ "$LIST" = yes ]; then
-    # varies= rides at the END, and only when set: every row that is not exempt
-    # prints the CONTRACT line it printed before this unit, byte for byte. A field
-    # inserted mid-line is a break; a field appended is evolution (D-020's law,
-    # applied to the bench's own output as well as the daemon's).
-    printf 'CONTRACT %s judged="-" args="%s"' "$cls" "$*"
-    if [ -n "$VARIES" ]; then
-      printf ' varies="%s"' "$VARIES"
-    fi
-    printf '\n'
+    contract "$cls" '-' "$@"
     return 0
   fi
   local started; started=$(date +%s)
@@ -152,10 +171,12 @@ run() {
   settle "$cls" "$ROW_OUT" "$@"
 }
 
-# A reporting probe that is allowed to move: `run`, plus a stated reason.
+# A row that is allowed to move: the reason, then the verb it applies to.
+# Setting $VARIES around the call is the whole mechanism — `settle` reads it,
+# `contract` prints it, and both verbs are unaware they were wrapped.
 vary() {
-  local cls="$1"; VARIES="$2"; shift 2
-  run "$cls" "$@"
+  VARIES="$1"; shift
+  "$@"
   VARIES=''
 }
 
