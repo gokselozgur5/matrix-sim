@@ -28,6 +28,18 @@ public final class NeuralLink {
     long personalResidue = 0;
     int spikes = 0;
     int windows = 0;
+    /**
+     * Room 303's one-tick mark (D-045, the only exception D-013 has ever
+     * had): the clause has ANSWERED this wire's death. Written only by
+     * {@link Bond.Registry}, which is the only thing that may ask the
+     * three questions, and package-private so nothing outside
+     * {@code matrix.realworld} can forge a miracle.
+     *
+     * <p>Its first duty is arithmetic rather than mercy: a mind can stand
+     * on more than one woven edge, and a death must be answered ONCE. The
+     * mark is what makes the second edge stand down.
+     */
+    boolean clause303 = false;
 
     public NeuralLink(Human human, Avatar avatar, LinkKind kind) {
         this.human = human;
