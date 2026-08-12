@@ -21,9 +21,9 @@ import java.util.function.IntSupplier;
  * <p>Two clauses, checked in order, both of which can refuse:
  *
  * <ol>
- * <li><b>The treaty's quota.</b> {@code REINSERTION_QUOTA} returns per run.
- *     A D-006 knob until D-049's regime gives the treaty its own text — the
- *     Machines bargain, they do not surrender the farm.
+ * <li><b>The treaty's quota.</b> {@link Config#REINSERTION_QUOTA} returns
+ *     per run. A D-006 knob until D-049's regime gives the treaty its own
+ *     text — the Machines bargain, they do not surrender the farm.
  * <li><b>The substrate.</b> A pod must be free AND the budget must still be
  *     selling render capacity above its emergency floor. <b>No slot, no
  *     entry — invariant I-1.</b> D-008 stops being a fidelity curve and
@@ -49,18 +49,6 @@ import java.util.function.IntSupplier;
  * construction. I-1 lives here rather than there for that reason alone.
  */
 public final class DoorPolicy {
-
-    /**
-     * The treaty's reinsertion clause (#438). Parked here rather than in
-     * {@code core.Config} for the reason #862 records: D-006 wants it there,
-     * {@code core/} was another crew's floor this season, and a note beats a
-     * smuggled edit.
-     *
-     * <p>Two is not a placeholder. The whole census at canonical scale is six
-     * citizens; a quota that could take them all is not a bargain, it is a
-     * harvest, and the door would stop being a door.
-     */
-    public static final int REINSERTION_QUOTA = 2;
 
     private final World world;
     private final IntSupplier freePods;
@@ -95,7 +83,7 @@ public final class DoorPolicy {
      *     performer consumes, carried across the bridge by the root
      */
     public boolean decide(String name) {
-        if (granted >= REINSERTION_QUOTA) {
+        if (granted >= Config.REINSERTION_QUOTA) {
             denied++;
             world.log(Severity.SYS, "DOOR policy: denied " + name + " — quota spent");
             return false;
@@ -108,7 +96,7 @@ public final class DoorPolicy {
         }
         granted++;
         world.log(Severity.FATE, "DOOR policy: granted " + name
-                + " — quota " + granted + "/" + REINSERTION_QUOTA);
+                + " — quota " + granted + "/" + Config.REINSERTION_QUOTA);
         return true;
     }
 
