@@ -246,16 +246,33 @@ public final class BroadcastRig {
     }
 
     /**
-     * The open channels' avatars, registration order — the root hands these
-     * to the collector for the trace-pressure metric (#118, the #95 fold
-     * ruling). A read of the board, nothing more: the rig neither computes
-     * nor prints, and the Matrix never learns what a pirate is.
+     * The board's avatars, registration order — every body this rig put into
+     * the Matrix for the current session, whatever its wire's state (#808).
+     * The root hands these to the collector for the trace-pressure metric
+     * (#118, the #95 fold ruling). A read of the board, nothing more: the
+     * rig neither computes nor prints, and the Matrix never learns what a
+     * pirate is.
+     *
+     * <p>It used to hand only the OPEN wires, and that made a departing
+     * pirate change sides for one tick. A booth exit runs {@code closeClean}
+     * and queues {@code Remove} in the zion slot — the last node — so the
+     * body stands in the Matrix for the rest of the tick (D-005), alive,
+     * RED, and no longer on the open board. The collector subtracts the
+     * pirates from its resident field; with the open subset as the
+     * subtrahend, that body walked out of the treatment group and into the
+     * control group, and the baseline measured against a man standing at a
+     * phone booth. A {@code severUnclean} cut leaves the same one-tick tail:
+     * "severUnclean leaves the avatar object untouched (the mind is what
+     * died)".
+     *
+     * <p>The board is the honest set. A wire is a fact about the rig; a body
+     * is a fact about the Matrix, and the metric measures the Matrix. The
+     * collector keeps only what the world still holds, so between sessions
+     * this hands nothing the world can see.
      */
-    public void openAvatarsInto(List<Avatar> out) {
+    public void boardAvatarsInto(List<Avatar> out) {
         for (NeuralLink link : links) {
-            if (!link.closed()) {
-                out.add(link.avatar);
-            }
+            out.add(link.avatar);
         }
     }
 

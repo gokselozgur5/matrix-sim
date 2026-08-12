@@ -340,17 +340,37 @@ public final class Zion {
     }
 
     /**
-     * Every open pirate avatar across the fleet — ship order, then the
-     * board's registration order. The root carries this to the collector
-     * for the #118 trace metric (D-012: only the root holds both banks);
-     * nothing here computes, and an empty list is the quiet answer.
+     * Every pirate body the fleet's boards are carrying — ship order, then
+     * each board's registration order. The root carries this to the
+     * collector for the #118 trace metric (D-012: only the root holds both
+     * banks); nothing here computes, and an empty list is the quiet answer.
+     *
+     * <p>The board, not the open subset (#808). A wire that has closed still
+     * has a body standing in the Matrix until the next flush takes it, and
+     * for that one tick the old set moved it from the pirates into the
+     * resident field the baseline is measured against. The exclusion set is
+     * built from the board itself now, which is where it belonged: a mind
+     * the rig ever put in there is the ship's, wire or no wire, until the
+     * world lets the body go.
      */
-    public List<matrix.entities.Avatar> openPirateAvatars() {
+    public List<matrix.entities.Avatar> pirateBoard() {
         List<matrix.entities.Avatar> out = new ArrayList<>();
         for (Hovercraft ship : fleet) {
-            ship.rig().openAvatarsInto(out);
+            ship.rig().boardAvatarsInto(out);
         }
         return out;
+    }
+
+    /**
+     * The caller's name for {@link #pirateBoard}, kept because the caller is
+     * not this crew's file to edit (#808). {@code Simulation.tickOnce} says
+     * {@code zion.openPirateAvatars()}; the set it names has been the whole
+     * board since the exclusion moved off the open subset, so the name is
+     * stale by exactly one word and the rename is #866. Nothing new should
+     * call it.
+     */
+    public List<matrix.entities.Avatar> openPirateAvatars() {
+        return pirateBoard();
     }
 
     public List<Human> census() {
