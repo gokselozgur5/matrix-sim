@@ -73,9 +73,15 @@ public final class ReplayHarness {
     /** A recorded birth: who came to exist, at which tick, under which name-at-birth (#548). */
     private record Birth(long tick, String name, String family, int line) {}
 
-    /** What a recording declares before its first tick — and everything the audit answers for (#129). */
+    /**
+     * What a recording declares before its first tick — and everything the
+     * audit answers for (#129). {@code lastTick} is the record's own horizon:
+     * the last tick it says anything about, and therefore the last tick its
+     * testimony covers.
+     */
     private record Recording(long seed, int version, String configFingerprint, List<Command> commands,
-            List<Marker> markers, List<Boundary> boundaries, List<Birth> births, int records, int flushes) {}
+            List<Marker> markers, List<Boundary> boundaries, List<Birth> births, int records, int flushes,
+            long lastTick) {}
 
     /**
      * The whole stage-2 surface: fold {@code chronosPath}; with
@@ -320,6 +326,13 @@ public final class ReplayHarness {
                 return 1;
             }
         }
+        // Two horizons, and they are not the same one. The FOLD's horizon is
+        // `ticks`: a birth recorded past it was never re-executed here.
+        // The RECORD's horizon is its last tick stamp: a fold run longer than
+        // the recording (a short recording against a long --expect chain) will
+        // grow people the record never claimed to have witnessed, and silence
+        // is not testimony — those are outside the record's evidence, not
+        // divergences from it.
         List<Birth> foldable = new ArrayList<>();
         int birthsAfterHorizon = 0;
         for (Birth b : rec.births()) {
@@ -329,7 +342,13 @@ public final class ReplayHarness {
                 birthsAfterHorizon++;
             }
         }
-        if (!foldBirths(foldable, sim.births())) {
+        List<matrix.core.ChronosLog.Birth> witnessed = new ArrayList<>();
+        for (matrix.core.ChronosLog.Birth b : sim.births()) {
+            if (b.tick() <= rec.lastTick()) {
+                witnessed.add(b);
+            }
+        }
+        if (!foldBirths(foldable, witnessed)) {
             return 1;
         }
         System.out.print("REPLAY OK seed=" + rec.seed() + " ticks=" + ticks
@@ -492,7 +511,8 @@ public final class ReplayHarness {
         if (seed == null) {
             refuse("no genesis — there is nothing to replay");
         }
-        return new Recording(seed, version, config, commands, markers, boundaries, births, records, flushes);
+        return new Recording(seed, version, config, commands, markers, boundaries, births, records, flushes,
+                lastTick);
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */
