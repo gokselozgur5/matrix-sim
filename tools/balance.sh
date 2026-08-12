@@ -2,8 +2,9 @@
 # tools/balance.sh — is the day's work balanced? (D-060)
 #
 # Usage: tools/balance.sh [--account|--repo] [--for OWNER/NAME]
-#                         [--week|--month|--days N] [YYYY-MM-DD]
+#                         [--week|--month|--days N] [--events] [YYYY-MM-DD]
 #        tools/balance.sh --datecheck          (the day arithmetic, no token needed)
+#        tools/balance.sh --rulercheck         (the ruler, no token needed)
 #
 # The law: the four contribution kinds GitHub counts — commits, issues, pull
 # requests, reviews — each hold a quarter of the day. The reasoning, not the
@@ -47,10 +48,43 @@
 # those days and checks the sum against the window's own totals, and refuses
 # both readings if they disagree.
 #
-# Measured caveat, so nobody reads a window as a cure: the meter counts
-# contribution EVENTS, so one scripted day can dominate any span (2026-08-11's
-# 603 issues are 63% of that whole week). Widening the window does not fix a
-# volume asymmetry — see #828, which is about the ruler rather than the span.
+# HOW IT MEASURES, AND AGAINST WHAT. Two separate things used to make
+# `verdict=OK` unreachable, and #828 named one of them.
+#
+# The one it named — the RULER. The meter counted contribution EVENTS, so one
+# scripted day dominated any span: 2026-08-11 produced 603 issues, 63% of that
+# whole week, and widening the window from two days to thirty changed nothing.
+# A window averages the SHAPE of adjacent days; it cannot average away a day
+# whose VOLUME exceeds every other day put together. So each day now contributes
+# its own shape, weighted equally — 1000 per mille split across its four legs,
+# and the window's leg is the sum of those splits over the days that had work.
+# A sweep is then worth one day, and the most any single day can move a leg is
+# 1000/days: bounded, where the event ruler was not. A single day IS its own
+# shape, so a one-day reading is arithmetically identical under both rulers, and
+# `--events` restores the old ruler for reproducing any earlier reading.
+#
+# The cost of that, stated rather than buried: a day holding ONE contribution
+# votes as loudly as a full day. 2026-08-09 held a single pull request and
+# nothing else, and it carries a whole day's 1000‰ of PR shape into its week —
+# which is why the week ending 2026-08-13 reads its PR leg well over 300‰ by
+# shape and just over 120‰ by events. The old distortion was unbounded and this
+# one is bounded by 1000/days, which is the whole trade; D-060's errata of
+# 2026-08-13 records it as an open cost with the figures of the day.
+#
+# The one #828 did not name — the TARGET. A leg used to clear the bar at
+# `4*leg >= total`, and four legs summing to the total can all satisfy that only
+# at exact equality: `verdict=OK` demanded 250‰/250‰/250‰/250‰ to the artifact,
+# and a day of 5 commits, 5 issues, 5 PRs and 4 reviews read LAGGING. Changing
+# only the ruler would have shipped a meter that still could not say OK, with a
+# well-argued reason for it. So a leg is now THIN below HALF its quarter — under
+# 125‰, an eighth of the whole. D-060's own English is "each holding ~25%" and
+# every failure it names is an ABSENCE; the meter had turned "about a quarter"
+# into "at least a quarter on all four at once", which is a different sentence
+# and an unsatisfiable one. The floor is one-sided on purpose: a leg can only be
+# large at another leg's expense, and that expense is what the floor reads.
+#
+# Both moves are carried by D-060's errata of 2026-08-13; the tool executes a
+# ruler the record declares, it does not choose one.
 #
 # WHICH BUTTON SHAPED IT. The merge strategy is a term of this law, not a
 # preference about history (D-061). A merge commit is a second authored commit
@@ -68,10 +102,14 @@ DAY=""
 SPAN=1
 SPAN_NAME=day
 DATECHECK=0
+RULERCHECK=0
+EVENTS=0
 for arg in "$@"; do
   case "$arg" in
     --account)   SCOPE=account ;;
     --datecheck) DATECHECK=1 ;;
+    --rulercheck) RULERCHECK=1 ;;
+    --events)    EVENTS=1 ;;
     --repo)    SCOPE=repo ;;
     --week)    SPAN=7;  SPAN_NAME=week ;;
     --month)   SPAN=30; SPAN_NAME=month ;;
@@ -196,6 +234,140 @@ CASES
     exit 0
   fi
   printf 'DATECHECK VERDICT FAIL dialect=%s cases=%d failed=%d\n' "$DATE_DIALECT" "$CASES" "$FAILED"
+  exit 5
+fi
+
+# ─── the ruler and the target ────────────────────────────────────────────────
+# These four functions are the whole judgement, and they need no token, no
+# network and no repository — which is why they sit up here, above everything
+# that does, and why --rulercheck below can execute them in a `git archive` tree.
+
+FLOOR_DIV=8            # a leg is thin below total/FLOOR_DIV — half of a quarter
+
+# How far a leg is from the floor, in the unit the caller is measuring in.
+#
+#   grow    adding artifacts grows the day, so the answer is the smallest n
+#           with (have+n)*8 >= total+n, i.e. ceil((total - 8*have)/7). This is
+#           the reading a single day and the --events ruler get. It solves one
+#           leg with the other three standing still, which is an alternatives
+#           list and not a shopping list (#952, unchanged by this unit).
+#   fixed   the day-shape ruler moves per mille around inside a total that is
+#           fixed at 1000 per working day, so the shortfall is a plain distance:
+#           ceil(total/8) - have. Nothing grows, so nothing has to be solved for.
+short_by() {                    # short_by <have> <total> <grow|fixed>
+  local n
+  if [ "$3" = fixed ]; then
+    n=$(( ($2 + FLOOR_DIV - 1) / FLOOR_DIV - $1 ))
+  else
+    n=$(( ($2 - FLOOR_DIV * $1 + FLOOR_DIV - 2) / (FLOOR_DIV - 1) ))
+  fi
+  (( n < 0 )) && n=0
+  printf '%d' "$n"
+}
+
+# Judge four legs. Echoes: verdict lag gap n_c n_i n_p n_r
+judge() {                       # judge <c> <i> <p> <r> <grow|fixed>
+  local c="$1" i="$2" p="$3" r="$4" mode="$5"
+  local t=$((c + i + p + r))
+  if (( t == 0 )); then echo "EMPTY - 0 0 0 0 0"; return; fi
+  local nc ni np nr lag="" gap=0 v="OK"
+  nc="$(short_by "$c" "$t" "$mode")"; ni="$(short_by "$i" "$t" "$mode")"
+  np="$(short_by "$p" "$t" "$mode")"; nr="$(short_by "$r" "$t" "$mode")"
+  local leg n
+  for leg in "commit:$nc" "issue:$ni" "pr:$np" "review:$nr"; do
+    n="${leg##*:}"
+    if (( n > gap )); then gap="$n"; lag="${leg%%:*}"; fi
+  done
+  (( gap > 0 )) && v="LAGGING:$lag"
+  echo "$v ${lag:--} $gap $nc $ni $np $nr"
+}
+
+pct() { printf '%d' $(( ($1 * 1000 + $2 / 2) / $2 )); }   # per mille, rounded
+
+# A day expressed as 1000 per mille of itself — the day-shape ruler's unit.
+# Flooring four shares leaves 0..3 per mille unallocated; the remainder goes to
+# the day's LARGEST leg, which is the leg this ruler exists to stop from
+# dominating. Rounding therefore always runs against the argument the ruler is
+# making, and can never be accused of having made it.
+day_shape() {                   # day_shape <c> <i> <p> <r> -> four shares summing to 1000
+  local t=$(( $1 + $2 + $3 + $4 ))
+  (( t > 0 )) || { echo "0 0 0 0"; return; }
+  local sc=$(( $1 * 1000 / t )) si=$(( $2 * 1000 / t ))
+  local sp=$(( $3 * 1000 / t )) sr=$(( $4 * 1000 / t ))
+  local left=$(( 1000 - sc - si - sp - sr )) big=$1 which=c
+  (( $2 > big )) && { big=$2; which=i; }
+  (( $3 > big )) && { big=$3; which=p; }
+  (( $4 > big )) && { big=$4; which=r; }
+  case "$which" in
+    c) sc=$((sc + left)) ;; i) si=$((si + left)) ;;
+    p) sp=$((sp + left)) ;; r) sr=$((sr + left)) ;;
+  esac
+  echo "$sc $si $sp $sr"
+}
+
+# --rulercheck: the ruler and the floor, judged against day vectors whose right
+# answers are settled by arithmetic rather than by an API. It exists for the
+# same reason --datecheck does: #828's whole complaint is a claim about what the
+# meter CAN say, and a claim about reachability is only worth what an executed
+# case makes it worth. No token, no network, no repository — so CI runs it, and
+# so does a pinned tree.
+#
+# The two rows that carry the unit are the pair of "sweep beside six ordinary
+# days": the same seven days read LAGGING:review by events and OK by day-shape.
+# That pair IS "verdict=OK must be reachable by working well", executed.
+#
+# The two "one-PR days" rows are the cost, asserted so it is a known property
+# and not a future surprise: under day-shape three days holding a single pull
+# request each outvote one balanced day, and the reading flips the other way.
+if (( RULERCHECK )); then
+  FAILED=0 CASES=0
+  while IFS='|' read -r name ruler want days; do
+    case "${name// /}" in ''|'#'*) continue ;; esac
+    CASES=$((CASES + 1))
+    C=0; I=0; P=0; R=0; BAD=""
+    IFS=';' read -r -a vec <<<"$days"
+    for day in "${vec[@]}"; do
+      IFS=',' read -r dc di dp dr <<<"$day"
+      if [ "$ruler" = events ]; then
+        C=$((C + dc)); I=$((I + di)); P=$((P + dp)); R=$((R + dr))
+      else
+        (( dc + di + dp + dr > 0 )) || continue
+        read -r sc si sp sr <<<"$(day_shape "$dc" "$di" "$dp" "$dr")"
+        (( sc + si + sp + sr == 1000 )) || BAD=" shape($day) sums to $((sc + si + sp + sr))"
+        C=$((C + sc)); I=$((I + si)); P=$((P + sp)); R=$((R + sr))
+      fi
+    done
+    [ "$ruler" = events ] && MODE=grow || MODE=fixed
+    read -r got _l _g _a _b _e _f <<<"$(judge "$C" "$I" "$P" "$R" "$MODE")"
+    if [ "$got" = "$want" ] && [ -z "$BAD" ]; then
+      printf 'RULERCHECK %-48s ruler=%-9s => %-15s OK\n' "$name" "$ruler" "$got"
+    else
+      printf 'RULERCHECK %-48s ruler=%-9s => %-15s WANT %s FAIL%s\n' "$name" "$ruler" "$got" "$want" "$BAD"
+      FAILED=$((FAILED + 1))
+    fi
+  done <<'CASES'
+# the sweep day of 2026-08-11, judged alone, is the same reading either way
+the sweep day alone|events|LAGGING:review|47,603,49,0
+the sweep day alone|day-shape|LAGGING:review|47,603,49,0
+# the floor: exact quarters were the ONLY thing the old target accepted
+a day of exact quarters|events|OK|5,5,5,5
+one review short of exact quarters|events|OK|5,5,5,4
+a vestigial leg is thin|events|LAGGING:review|10,10,10,1
+# the unit: one sweep beside six ordinary days, read by each ruler
+the sweep beside six ordinary days|events|LAGGING:review|47,603,49,0;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5
+the sweep beside six ordinary days|day-shape|OK|47,603,49,0;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5;5,5,5,5
+# the cost: a day holding one artifact still casts a whole day's vote
+three one-PR days beside one ordinary day|events|OK|0,0,1,0;0,0,1,0;0,0,1,0;10,10,10,10
+three one-PR days beside one ordinary day|day-shape|LAGGING:commit|0,0,1,0;0,0,1,0;0,0,1,0;10,10,10,10
+# nothing to judge stays nothing to judge under both
+an empty window|events|EMPTY|0,0,0,0;0,0,0,0
+an empty window|day-shape|EMPTY|0,0,0,0;0,0,0,0
+CASES
+  if (( FAILED == 0 )); then
+    printf 'RULERCHECK VERDICT PASS floor=%d‰ cases=%d\n' $((1000 / FLOOR_DIV)) "$CASES"
+    exit 0
+  fi
+  printf 'RULERCHECK VERDICT FAIL floor=%d‰ cases=%d failed=%d\n' $((1000 / FLOOR_DIV)) "$CASES" "$FAILED"
   exit 5
 fi
 
@@ -442,53 +614,37 @@ scope_line() {
   fi
 }
 
-# Each leg's target is a quarter. Adding to one leg grows the total, so the
-# honest deficit solves for the bigger day rather than the day we already had:
-# the smallest n with (have+n)*4 >= total+n, which is ceil((total - 4*have)/3).
-# Closed form rather than the original count-up loop, because a month's window
-# can want thousands of iterations to answer a question arithmetic settles.
-need_in() {                     # need_in <count> <total>
-  local n=$(( ($2 - 4 * $1 + 2) / 3 ))
-  (( n < 0 )) && n=0
-  printf '%d' "$n"
-}
-
-# Judge four counts. Echoes: verdict lag gap n_c n_i n_p n_r
-judge() {
-  local c="$1" i="$2" p="$3" r="$4"
-  local t=$((c + i + p + r))
-  if (( t == 0 )); then echo "EMPTY - 0 0 0 0 0"; return; fi
-  local nc ni np nr lag="" gap=0 v="OK"
-  nc="$(need_in "$c" "$t")"; ni="$(need_in "$i" "$t")"
-  np="$(need_in "$p" "$t")"; nr="$(need_in "$r" "$t")"
-  local leg n
-  for leg in "commit:$nc" "issue:$ni" "pr:$np" "review:$nr"; do
-    n="${leg##*:}"
-    if (( n > gap )); then gap="$n"; lag="${leg%%:*}"; fi
-  done
-  (( gap > 0 )) && v="LAGGING:$lag"
-  echo "$v ${lag:--} $gap $nc $ni $np $nr"
-}
+# WHICH RULER THIS RUN USES. The default is day-shape; two things take it away,
+# and both of them are a missing measurement rather than a preference.
+#
+#   --events   asked for, so the old ruler is given: this is how any reading
+#              taken before 2026-08-13 is reproduced exactly.
+#   scope=repo over a window: the per-day query below is account-wide and has no
+#              per-repository breakdown, so there is no repo-scoped day shape to
+#              take. Falling back to events and saying so beats computing a
+#              repository's verdict out of the account's days.
+#
+# A single day is its own shape, so SPAN=1 is the same arithmetic under either
+# name and the label is the only thing that changes.
+RULER=day-shape
+RULER_WHY="asked for: the ‰ above are the counts divided by the total, which is the ruler one scripted day can dominate (#828)"
+(( EVENTS )) && RULER=events
+if [ "$RULER" = day-shape ] && (( SPAN > 1 )) && [ "$SCOPE" = repo ]; then
+  RULER=events
+  RULER_WHY="the per-day query carries no per-repository breakdown, so no day shape can be taken at scope=repo (#966)"
+fi
 
 if (( TOTAL == 0 )); then
-  printf 'BALANCE %s commits=0 issues=0 prs=0 reviews=0 verdict=EMPTY scope=%s\n' "$WHEN" "$SCOPE"
+  printf 'BALANCE %s commits=0 issues=0 prs=0 reviews=0 verdict=EMPTY scope=%s ruler=%s\n' "$WHEN" "$SCOPE" "$RULER"
   scope_line
   exit 0
 fi
 
-pct() { printf '%d' $(( ($1 * 1000 + TOTAL / 2) / TOTAL )); }   # per mille, rounded
-
-read -r VERDICT LAG GAP N_C N_I N_P N_R <<<"$(judge "$COMMITS" "$ISSUES" "$PRS" "$REVIEWS")"
-
-printf 'BALANCE %s commits=%d(%s‰) issues=%d(%s‰) prs=%d(%s‰) reviews=%d(%s‰) total=%d verdict=%s scope=%s\n' \
-  "$WHEN" "$COMMITS" "$(pct "$COMMITS")" "$ISSUES" "$(pct "$ISSUES")" \
-  "$PRS" "$(pct "$PRS")" "$REVIEWS" "$(pct "$REVIEWS")" "$TOTAL" "$VERDICT" "$SCOPE"
-scope_line
-
-# The window's days, one line each, each judged alone. This is the whole reason
-# --week exists: a day that IS a review pass or IS a decomposition sweep will
-# read LAGGING on three legs and be wrong about each, and the only way to show
-# a window fixing that is to print what the days said on their own.
+# The window's days. This read used to sit below the verdict as a cross-check on
+# it; under the day-shape ruler it IS the measurement, so it happens first and
+# the window line is computed from it. The cross-check survives unchanged at the
+# bottom — the days must still re-add to the window the API reports for the
+# whole span, and a disagreement still refuses both readings.
 if (( SPAN > 1 )); then
   DQ="{ viewer {"
   for ((k = SPAN - 1; k >= 0; k--)); do
@@ -516,12 +672,69 @@ if (( SPAN > 1 )); then
     ROWS=$((ROWS + 1))
   done <<<"$DAYROWS"
 
+  # A ruler built out of days cannot be built out of some of them. The window
+  # line printed from a short read would be a real number about a span nobody
+  # asked for, so the ruler steps back to events and the WINDOW line below still
+  # reports the short read on its own terms.
+  if [ "$RULER" = day-shape ] && (( ROWS != SPAN )); then
+    RULER=events
+    RULER_WHY="the per-day read came back ${ROWS} of ${SPAN} days, and a day shape cannot be taken from days that did not arrive"
+  fi
+
+  # Each working day contributes exactly 1000 per mille of itself. Empty days
+  # are skipped rather than counted as four zeros: a day with no work has no
+  # shape, and giving it one would drag every leg toward nothing and call the
+  # result balance.
+  SH_C=0; SH_I=0; SH_P=0; SH_R=0; WORKDAYS=0
+  for ((k = SPAN - 1; k >= 0; k--)); do
+    [ -n "${D_C[$k]:-}" ] || continue
+    (( D_C[k] + D_I[k] + D_P[k] + D_R[k] > 0 )) || continue
+    read -r sc si sp sr <<<"$(day_shape "${D_C[$k]}" "${D_I[$k]}" "${D_P[$k]}" "${D_R[$k]}")"
+    SH_C=$((SH_C + sc)); SH_I=$((SH_I + si)); SH_P=$((SH_P + sp)); SH_R=$((SH_R + sr))
+    WORKDAYS=$((WORKDAYS + 1))
+  done
+fi
+
+# What gets judged, and in what unit. The BALANCE line always prints the real
+# event COUNTS — they are facts and no ruler changes them — while the per mille
+# beside them, the verdict and the deficit all come from the ruler in force. The
+# RULER line under it says which, so no figure on the page is ambiguous about
+# what produced it.
+if [ "$RULER" = day-shape ] && (( SPAN > 1 )); then
+  J_C=$SH_C; J_I=$SH_I; J_P=$SH_P; J_R=$SH_R; MODE=fixed
+else
+  J_C=$COMMITS; J_I=$ISSUES; J_P=$PRS; J_R=$REVIEWS; MODE=grow
+fi
+J_TOTAL=$((J_C + J_I + J_P + J_R))
+
+read -r VERDICT LAG GAP N_C N_I N_P N_R <<<"$(judge "$J_C" "$J_I" "$J_P" "$J_R" "$MODE")"
+
+printf 'BALANCE %s commits=%d(%s‰) issues=%d(%s‰) prs=%d(%s‰) reviews=%d(%s‰) total=%d verdict=%s scope=%s ruler=%s\n' \
+  "$WHEN" "$COMMITS" "$(pct "$J_C" "$J_TOTAL")" "$ISSUES" "$(pct "$J_I" "$J_TOTAL")" \
+  "$PRS" "$(pct "$J_P" "$J_TOTAL")" "$REVIEWS" "$(pct "$J_R" "$J_TOTAL")" \
+  "$TOTAL" "$VERDICT" "$SCOPE" "$RULER"
+if [ "$RULER" = day-shape ] && (( SPAN > 1 )); then
+  printf 'RULER day-shape floor=%d‰ days_with_work=%d of %d  (each working day contributes its own shape, weighted equally; the ‰ above are those shapes re-added, not the counts divided)\n' \
+    $((1000 / FLOOR_DIV)) "$WORKDAYS" "$SPAN"
+elif [ "$RULER" = day-shape ]; then
+  printf 'RULER day-shape floor=%d‰  (one day is its own shape, so this reading is the same arithmetic under --events)\n' \
+    $((1000 / FLOOR_DIV))
+else
+  printf 'RULER events floor=%d‰  (%s)\n' $((1000 / FLOOR_DIV)) "$RULER_WHY"
+fi
+scope_line
+
+# The window's days, one line each, each judged alone. This is the whole reason
+# --week exists: a day that IS a review pass or IS a decomposition sweep will
+# read LAGGING on three legs and be wrong about each, and the only way to show
+# a window fixing that is to print what the days said on their own.
+if (( SPAN > 1 )); then
   S_C=0; S_I=0; S_P=0; S_R=0
   for ((k = SPAN - 1; k >= 0; k--)); do
     [ -n "${D_C[$k]:-}" ] || continue
     c="${D_C[$k]}"; i="${D_I[$k]}"; p="${D_P[$k]}"; r="${D_R[$k]}"
     d="$(day_minus "$DAY" "$k")" || exit 2
-    read -r dv _dl _dg _a _b _e _f <<<"$(judge "$c" "$i" "$p" "$r")"
+    read -r dv _dl _dg _a _b _e _f <<<"$(judge "$c" "$i" "$p" "$r" grow)"
     printf 'BALANCE_DAY day=%s commits=%d issues=%d prs=%d reviews=%d total=%d verdict=%s\n' \
       "$d" "$c" "$i" "$p" "$r" "$((c + i + p + r))" "$dv"
     S_C=$((S_C + c)); S_I=$((S_I + i)); S_P=$((S_P + p)); S_R=$((S_R + r))
@@ -530,6 +743,11 @@ if (( SPAN > 1 )); then
   # The window must BE its days re-added, not a second opinion about them. If
   # these disagree, one of the two readings is wrong and neither should be
   # quoted — so say so instead of picking a favourite.
+  #
+  # Left as it stands and filed rather than patched here: the two readings come
+  # from two separate calls, so a contribution landing between them produces a
+  # MISMATCH that is about the clock and not about the meter (#982). It fires on
+  # the run made DURING work, which is the run D-060 exists to serve.
   S_TOTAL=$((S_C + S_I + S_P + S_R))
   if (( ROWS != SPAN )); then
     printf 'WINDOW days_returned=%d expected=%d sum_check=INCOMPLETE  (the per-day read did not come back whole; the window line above stands, the days do not)\n' \
@@ -544,7 +762,18 @@ if (( SPAN > 1 )); then
   fi
 fi
 
+# The deficit carries its unit, because under the two rulers it is two different
+# quantities. Under events it is artifacts: how many of that kind would lift the
+# leg over the floor, solved against the larger day they create. Under day-shape
+# nothing grows — the total is fixed at 1000 per working day — so the shortfall
+# is a distance, and the readable form of that distance is days: 1000‰-days is
+# one whole day given to nothing but that leg.
 if (( GAP > 0 )); then
-  printf 'DEFICIT commits=%d issues=%d prs=%d reviews=%d  (the %s leg is furthest behind: %d to clear it)\n' \
-    "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP"
+  if [ "$MODE" = fixed ]; then
+    printf 'DEFICIT unit=permille-days commits=%d issues=%d prs=%d reviews=%d  (the %s leg is furthest below the floor: %d‰-days, %d.%03d of a day given entirely to it)\n' \
+      "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP" $((GAP / 1000)) $((GAP % 1000))
+  else
+    printf 'DEFICIT unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (the %s leg is furthest below the floor: %d to clear it)\n' \
+      "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP"
+  fi
 fi
