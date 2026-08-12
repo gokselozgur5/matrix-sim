@@ -35,6 +35,15 @@ import java.util.List;
  * in the coarse+seeded model, re-execution regenerates the events and
  * the chain judges the outcome.
  *
+ * Births (#548/#550) join by the same law, in the same breath: the reader
+ * learns the kind in the PR that taught the recorder to write it, because
+ * a record the strict reader refuses turns every recording that carries it
+ * into an unfoldable artifact. They are not re-applied — a birth is not an
+ * operator input — but they ARE folded: the replayed universe grows its
+ * own people and the fold proves they are the same people, at the same
+ * ticks, under the same names-at-birth. {@code REPLAY OK} says how many
+ * were re-executed rather than merely re-read.
+ *
  * Stage 5 lands as its honest slice (#129): {@code --audit} walks a
  * recording and verdicts internal consistency without booting anything
  * — the log answers for itself. The full inversion's letter — booting
@@ -61,9 +70,18 @@ public final class ReplayHarness {
     /** An epoch boundary as recorded — reload or treaty; the audit pairs reloads with their seals (#129). */
     private record Boundary(long tick, String kind, int line) {}
 
-    /** What a recording declares before its first tick — and everything the audit answers for (#129). */
+    /** A recorded birth: who came to exist, at which tick, under which name-at-birth (#548). */
+    private record Birth(long tick, String name, String family, int line) {}
+
+    /**
+     * What a recording declares before its first tick — and everything the
+     * audit answers for (#129). {@code lastTick} is the record's own horizon:
+     * the last tick it says anything about, and therefore the last tick its
+     * testimony covers.
+     */
     private record Recording(long seed, int version, String configFingerprint, List<Command> commands,
-            List<Marker> markers, List<Boundary> boundaries, int records, int flushes) {}
+            List<Marker> markers, List<Boundary> boundaries, List<Birth> births, int records, int flushes,
+            long lastTick) {}
 
     /**
      * The whole stage-2 surface: fold {@code chronosPath}; with
@@ -132,7 +150,8 @@ public final class ReplayHarness {
                 .append(" config=").append(drift ? "drift" : "match").append('\n');
         out.append("AUDIT records=").append(rec.records()).append(" commands=").append(rec.commands().size())
                 .append(" flushes=").append(rec.flushes()).append(" boundaries=").append(rec.boundaries().size())
-                .append(" seals=").append(rec.markers().size()).append('\n');
+                .append(" seals=").append(rec.markers().size())
+                .append(" births=").append(rec.births().size()).append('\n');
         String offense = firstOffense(rec);
         if (offense != null) {
             System.out.print(out);
@@ -307,11 +326,73 @@ public final class ReplayHarness {
                 return 1;
             }
         }
+        // Two horizons, and they are not the same one. The FOLD's horizon is
+        // `ticks`: a birth recorded past it was never re-executed here.
+        // The RECORD's horizon is its last tick stamp: a fold run longer than
+        // the recording (a short recording against a long --expect chain) will
+        // grow people the record never claimed to have witnessed, and silence
+        // is not testimony — those are outside the record's evidence, not
+        // divergences from it.
+        List<Birth> foldable = new ArrayList<>();
+        int birthsAfterHorizon = 0;
+        for (Birth b : rec.births()) {
+            if (b.tick() <= ticks) {
+                foldable.add(b);
+            } else {
+                birthsAfterHorizon++;
+            }
+        }
+        List<matrix.core.ChronosLog.Birth> witnessed = new ArrayList<>();
+        for (matrix.core.ChronosLog.Birth b : sim.births()) {
+            if (b.tick() <= rec.lastTick()) {
+                witnessed.add(b);
+            }
+        }
+        if (!foldBirths(foldable, witnessed)) {
+            return 1;
+        }
         System.out.print("REPLAY OK seed=" + rec.seed() + " ticks=" + ticks
                 + " links=" + chain.size() + " commands_applied=" + applied
+                + " births_folded=" + foldable.size()
                 + (sealsVerified > 0 ? " seals_verified=" + sealsVerified : "")
-                + (afterHorizon > 0 ? " commands_after_horizon=" + afterHorizon : "") + "\n");
+                + (afterHorizon > 0 ? " commands_after_horizon=" + afterHorizon : "")
+                + (birthsAfterHorizon > 0 ? " births_after_horizon=" + birthsAfterHorizon : "") + "\n");
         return 0;
+    }
+
+    /**
+     * The dispatch law for a birth record — and it is not "re-apply". A
+     * birth is not an operator input: the recorded seed already grows the
+     * same people in the same order, so the fold's duty is to prove it
+     * RE-EXECUTED the origin story rather than merely re-read it. This walks
+     * the births the replayed universe decided against the births the record
+     * claims — count, then tick, name-at-birth and family in order.
+     *
+     * <p>It is a second referee behind the chain, not a softer one: a birth
+     * that shifts by one tick under an agreeing chain means fate was spent
+     * somewhere the digest frame does not reach, which is precisely the
+     * failure the birth-seed law exists to catch. False on the first
+     * disagreement, which is named and printed.
+     */
+    private static boolean foldBirths(List<Birth> recorded, List<matrix.core.ChronosLog.Birth> observed) {
+        if (recorded.size() != observed.size()) {
+            System.out.print("REPLAY FAIL birth_count recorded=" + recorded.size()
+                    + " re_executed=" + observed.size()
+                    + " — the record and the re-run disagree about how many came to exist\n");
+            return false;
+        }
+        for (int i = 0; i < recorded.size(); i++) {
+            Birth r = recorded.get(i);
+            matrix.core.ChronosLog.Birth o = observed.get(i);
+            if (r.tick() != o.tick() || !r.name().equals(o.name()) || !r.family().equals(o.family())) {
+                System.out.print("REPLAY FAIL birth_divergence line=" + r.line()
+                        + " recorded=tick=" + r.tick() + ",name=" + r.name() + ",family=" + r.family()
+                        + " re_executed=tick=" + o.tick() + ",name=" + o.name() + ",family=" + o.family()
+                        + "\n");
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Exactly the console's dispatch table — and only it. A recording holding anything else is refused loudly. */
@@ -330,8 +411,11 @@ public final class ReplayHarness {
 
     /**
      * Reads a chronos JSONL recording: genesis first (exactly one), then
-     * commands, epoch seals (snapshot markers, #128), boundaries and
-     * flush fingerprints with monotone tick stamps. This is a reader for
+     * commands, epoch seals (snapshot markers, #128), boundaries, births
+     * (#548) and flush fingerprints with monotone tick stamps. A birth
+     * missing its name-at-birth or its family is refused like any other
+     * off-grammar line: the field the die keys on cannot be optional.
+     * This is a reader for
      * our own recorder's grammar (crown #177), not a general JSON parser
      * — anything off-grammar is refused, because a fold over a misread
      * record would be a quiet lie.
@@ -344,6 +428,7 @@ public final class ReplayHarness {
         List<Command> commands = new ArrayList<>();
         List<Marker> markers = new ArrayList<>();
         List<Boundary> boundaries = new ArrayList<>();
+        List<Birth> births = new ArrayList<>();
         int records = 0;
         int flushes = 0;
         long lastTick = 0;
@@ -401,6 +486,21 @@ public final class ReplayHarness {
                     }
                     boundaries.add(new Boundary(tick, bKind, n + 1));
                 }
+                case "birth" -> {
+                    long tick = tickField(line, n + 1, lastTick);
+                    lastTick = tick;
+                    String name = stringField(line, "name");
+                    if (name == null || name.isEmpty()) {
+                        refuse("birth without a name-at-birth at line " + (n + 1)
+                                + " — the die keys to this field; a birth that names nobody keys nothing");
+                    }
+                    String family = stringField(line, "family");
+                    if (family == null || family.isEmpty()) {
+                        refuse("birth without a family at line " + (n + 1)
+                                + " — who came to exist is half the record");
+                    }
+                    births.add(new Birth(tick, name, family, n + 1));
+                }
                 case "flush" -> {
                     lastTick = tickField(line, n + 1, lastTick);
                     flushes++;
@@ -411,7 +511,8 @@ public final class ReplayHarness {
         if (seed == null) {
             refuse("no genesis — there is nothing to replay");
         }
-        return new Recording(seed, version, config, commands, markers, boundaries, records, flushes);
+        return new Recording(seed, version, config, commands, markers, boundaries, births, records, flushes,
+                lastTick);
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */
