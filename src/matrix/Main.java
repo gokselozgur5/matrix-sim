@@ -28,6 +28,7 @@ public final class Main {
         boolean bench = false;
         String follow = null;
         long sinkAt = -1;
+        long sinkEvery = -1;
         long reloadAt = -1;
         String chronosPath = null;
         String replayPath = null;
@@ -45,6 +46,18 @@ public final class Main {
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
+                // Judged where it is read, not in the refusal block below:
+                // -1 is this flag's "off", so once the loop is over a user's
+                // own -1 is indistinguishable from the default and would run
+                // as a silent no-op — the shape #791 named on --reload-at.
+                case "--sink-every" -> {
+                    sinkEvery = Long.parseLong(args[++i]);
+                    if (sinkEvery < 1) {
+                        System.err.println("--sink-every " + sinkEvery
+                                + " is not a cadence — the period is a count of ticks, at least 1");
+                        System.exit(2);
+                    }
+                }
                 case "--reload-at" -> reloadAt = Long.parseLong(args[++i]);
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
@@ -103,6 +116,25 @@ public final class Main {
             usage();
             System.exit(2);
         }
+        if (sinkEvery > 0 && snapshotAt != null) {
+            System.err.println("--sink-every and --snapshot-at are separate scenarios — run them separately");
+            usage();
+            System.exit(2);
+        }
+        if (sinkEvery > 0 && !headless) {
+            System.err.println("--sink-every is a headless scenario flag — add --headless");
+            usage();
+            System.exit(2);
+        }
+        // Judged here rather than at the parse site, because --ticks may be
+        // read after this flag. A period longer than the run files nothing:
+        // that is a scenario the operator did not get, so it is refused like
+        // --snapshot-at's out-of-range tick and not run as a quiet no-op.
+        if (sinkEvery > ticks) {
+            System.err.println("--sink-every " + sinkEvery + " never fires in a " + ticks
+                    + "-tick run — the period must fall inside the run");
+            System.exit(2);
+        }
         if (snapshotAt != null && (snapshotAt < 0 || snapshotAt > ticks)) {
             System.err.println("--snapshot-at " + snapshotAt + " lies outside the run (0.." + ticks + ")");
             System.exit(2);
@@ -124,7 +156,7 @@ public final class Main {
             System.exit(ReplayHarness.run(replayPath, expectPath, ticks));
         }
         if (headless) {
-            runHeadless(seed, ticks, follow, chronosPath, sinkAt, reloadAt, snapshotAt);
+            runHeadless(seed, ticks, follow, chronosPath, sinkAt, sinkEvery, reloadAt, snapshotAt);
             return;
         }
         runInteractive(seed, follow, chronosPath);
@@ -220,14 +252,21 @@ public final class Main {
 
     /**
      * Headless is the scenario runner: {@code --sink-at T} files the #119
-     * loss right before tick T; {@code --chronos} records the run (D-023
-     * stage 1); {@code --snapshot-at T} pauses after tick T, retains the
+     * loss right before tick T, {@code --sink-every N} files one every N
+     * ticks (#905); {@code --chronos} records the run (D-023 stage 1);
+     * {@code --snapshot-at T} pauses after tick T, retains the
      * walk, and lets the emitted DIGEST judge its own preimage (stage 3;
      * the split changes nothing — run(a) + run(b) is run(a + b)). Snapshot
      * mode and sink mode are separate scenarios by design.
+     *
+     * <p>A cadence, not a second single shot, because the thing #806 fixed
+     * only exists past the third laydown and the third laydown only exists
+     * past the second loss. One tick number cannot state that scenario, so
+     * for two units it was stated in prose and folded from a hand-forged
+     * chronos record instead of run.
      */
     private static void runHeadless(long seed, long ticks, String follow, String chronosPath,
-            long sinkAt, long reloadAt, Long snapshotAt) throws Exception {
+            long sinkAt, long sinkEvery, long reloadAt, Long snapshotAt) throws Exception {
         try (OutputStream chronosSink = openChronos(chronosPath)) {
             Simulation sim = new Simulation(seed, System.out, follow, chronosSink);
             long start = System.nanoTime();
@@ -244,7 +283,12 @@ public final class Main {
                 sim.run(ticks - snapshotAt);
             } else {
                 for (long t = 1; t <= ticks; t++) {
-                    if (t == sinkAt) {
+                    // One order per tick even when both doors point at the
+                    // same tick: Zion.orderSink is a latch, so a second file
+                    // in the same gap sinks nothing extra, and recording it
+                    // would put two losses in the chronos record where the
+                    // world executed one.
+                    if (t == sinkAt || (sinkEvery > 0 && t % sinkEvery == 0)) {
                         sim.recordCommand("sink");
                         sim.commandSink();
                     }
@@ -337,6 +381,9 @@ public final class Main {
                                       live runs only, refused with --chronos/--replay (default 1)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
+                  --sink-every N      file a sink order every N ticks (headless scenario, #905): the only
+                                      way to reach the fourth laydown, where the roster runs out of names
+                                      and the generation mark takes over; refusals are logged, not fatal
                   --reload-at T       fire the Architect's reload right before tick T (headless scenario,
                                       #128); with --chronos the epoch seals onto the record first:
                                       snapshot marker + boundary, written BEFORE the purge
