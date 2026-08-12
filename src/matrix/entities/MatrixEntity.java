@@ -85,7 +85,16 @@ public abstract class MatrixEntity {
         moveBy(dx, dy);
     }
 
-    /** Clamped relative move — the gaits' one door into motion (steppedBy semantics, minus the mint). */
+    /**
+     * Clamped relative move — the gaits' one door into motion, and the only
+     * two-sided clamp to the city bounds in the tree: the step lands inside
+     * [0, {@link Config#WORLD_W_CM}] x [0, {@link Config#WORLD_H_CM}], and a
+     * step that would change nothing writes nothing. {@link #placeAt} is the
+     * other door, unclamped — its callers stay in the city by their own
+     * arithmetic. Until #824 this cited {@code Position.steppedBy} for its
+     * semantics: a method with no callers, which is a citation a reader
+     * cannot follow to anything that runs.
+     */
     public final void moveBy(int dx, int dy) {
         int nx = Math.max(0, Math.min(Config.WORLD_W_CM, x + dx));
         int ny = Math.max(0, Math.min(Config.WORLD_H_CM, y + dy));

@@ -1,10 +1,12 @@
 package matrix.core;
 
 /**
- * Fixed-point distance math over raw int coordinates (D-004), for hot
- * paths where no Position value exists to ask (#176). Every method
- * mirrors Position's arithmetic exactly — widen to long BEFORE the
- * subtraction, so no intermediate overflow exists at any input.
+ * Fixed-point distance math over raw int coordinates (D-004): the one home
+ * of the arithmetic. Hot paths hold ints and call here directly (#176);
+ * {@link Position} is the value dialect and reaches the same code through
+ * {@link Position#euclidSqCm} — a call, not a second copy (#824). Every
+ * method widens to long BEFORE the subtraction, so no intermediate overflow
+ * exists at any input.
  */
 public final class Geo {
 
@@ -14,7 +16,7 @@ public final class Geo {
         return dx * dx + dy * dy;
     }
 
-    /** Negative radius means nothing is within — never accidental containment (Position.within's law). */
+    /** Negative radius means nothing is within — never accidental containment. */
     public static boolean within(int axCm, int ayCm, int bxCm, int byCm, int radiusCm) {
         if (radiusCm < 0) return false;
         return distSqCm(axCm, ayCm, bxCm, byCm) <= (long) radiusCm * radiusCm;
