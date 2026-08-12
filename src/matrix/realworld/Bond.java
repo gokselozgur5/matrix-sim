@@ -21,10 +21,14 @@ import java.util.List;
  * <p>A bond is not declared, it is WOVEN. An edge opens as a CANDIDATE,
  * accrues over accrual windows, and only past {@code BOND_WEAVE_WINDOWS}
  * is it load-bearing — the gate's guard rail against speed-run love
- * (#215). Past that it can be spent exactly once, by the Room 303 clause,
- * and what survives the spending is a SCAR: an edge that can still tilt
- * allegiance and doors but can never again unwrite a death. One miracle,
- * then guaranteed tragedy — as a state machine, not as a mood.
+ * (#215). Before it gets there it can be lost: a candidate that spends
+ * {@code BOND_FORGET_WINDOWS} consecutive windows apart leaves the book
+ * (#852) — the world's answer to when it forgets a pair it once noticed,
+ * and the only reason the book is not write-once. Past the threshold
+ * nothing forgets it, and it can be spent exactly once, by the Room 303
+ * clause; what survives the spending is a SCAR: an edge that can still
+ * tilt allegiance and doors but can never again unwrite a death. One
+ * miracle, then guaranteed tragedy — as a state machine, not as a mood.
  *
  * <p>Not a Java {@code record}, deliberately: a row with a state machine
  * cannot be frozen at construction, and D-015/A5 says the state is a
@@ -65,6 +69,16 @@ public final class Bond {
     private State state = State.CANDIDATE;
     private int windows = 0;
     /**
+     * Consecutive accrual windows this CANDIDATE has spent apart — the
+     * forgetting's only clock (#852), and the mirror of {@link #windows}.
+     * Reset to zero by every window the pair is co-present, so it counts a
+     * run and not a total: time apart is not time together undone, and a
+     * pair who drift and come back have not been forgotten. It stops moving
+     * the moment an edge weaves, which is why every WOVEN and SCAR row
+     * carries zero here forever.
+     */
+    private int apart = 0;
+    /**
      * The tick the Room 303 clause spent this edge, or -1 while it is
      * unspent. This is the field the trigger's third question reads, and
      * the reason the answer can never change back: once per edge, ever.
@@ -103,6 +117,11 @@ public final class Bond {
     /** Accrual windows this edge has earned — the weave's only clock (#494). */
     public int windows() {
         return windows;
+    }
+
+    /** Consecutive windows apart, zero on every woven or scarred edge (#852). */
+    public int apart() {
+        return apart;
     }
 
     /** True while the edge is load-bearing: woven, and not yet spent. */
@@ -201,6 +220,16 @@ public final class Bond {
         /** The rotating pair walk's position: which mind, and how far along the ring its partner stands. */
         private int cursor = 0;
         private int offset = 1;
+        /**
+         * Edges the book has let go (#852). It decides nothing, and it is
+         * in the chain anyway: the walk alone cannot distinguish a book
+         * that filled once from a book that has been turning over, so two
+         * universes that end on the same 64 rows by different histories
+         * would otherwise hash equal. The same reason D-010 puts an UNUSED
+         * draw in the digest — a state change nobody read is still a state
+         * change.
+         */
+        private int forgotten = 0;
 
         public Registry(RealWorld realWorld, World world) {
             this.realWorld = realWorld;
@@ -224,6 +253,12 @@ public final class Bond {
             }
             discover();
             weave();
+            // Forgetting closes the window rather than opening it, so the
+            // invariant is exact: when tick() returns, no CANDIDATE in the
+            // book stands at or past BOND_FORGET_WINDOWS. The window that
+            // makes the count is the window the edge leaves on, and the
+            // slot it frees is open to the next window's discovery.
+            forget();
         }
 
         /**
@@ -345,11 +380,14 @@ public final class Bond {
          * before it unwrites a death — no edge below it may ever fire.
          *
          * <p>Weaving is bookkeeping and never a draw: it reads the same
-         * already-earned co-presence the candidate set derives from. An edge
-         * whose minds have drifted apart simply earns nothing this window —
-         * accrual is cumulative, because time spent apart is not time
-         * unspent together. It does not decay and it does not expire; if the
-         * verdict wants love to be perishable that is one branch, here.
+         * already-earned co-presence the candidate set derives from. Accrual
+         * is cumulative, because time spent apart is not time unspent
+         * together — a pair who drift and come back keep every window they
+         * earned. What a window apart DOES cost is the run: the same
+         * co-presence read that grants a window resets or advances
+         * {@code apart}, and past {@code BOND_FORGET_WINDOWS} of them
+         * {@link #forget} drops the edge (#852). One read, both clocks; the
+         * forgetting costs the weave nothing.
          *
          * <p>The crossing speaks exactly once. A woven edge is skipped by
          * this walk forever after, so no edge can re-cross, and a SCAR
@@ -363,15 +401,70 @@ public final class Bond {
         private void weave() {
             for (int i = 0; i < edges.size(); i++) {
                 Bond bond = edges.get(i);
-                if (bond.state != State.CANDIDATE || !coPresent(bond.a, bond.b)) {
+                if (bond.state != State.CANDIDATE) {
                     continue;
                 }
+                if (!coPresent(bond.a, bond.b)) {
+                    bond.apart++;
+                    continue;
+                }
+                bond.apart = 0;
                 bond.windows++;
                 if (bond.windows >= Config.BOND_WEAVE_WINDOWS) {
                     bond.state = State.WOVEN;
                     world.log(Severity.FATE, "BOND woven: " + bond.pair()
                             + " — over " + bond.windows + " windows");
                 }
+            }
+        }
+
+        /**
+         * The forgetting (#852). A CANDIDATE that has spent
+         * {@code BOND_FORGET_WINDOWS} consecutive windows apart leaves the
+         * book, and the world may notice somebody else in its slot.
+         *
+         * <p>Why a rule about the PAIR and not about the book's pressure.
+         * The obvious shape is eviction by rank — a full book drops its
+         * lowest-accrual candidate to admit a co-present newcomer — and it
+         * says something this world does not mean: that love is perishable
+         * only while the city is crowded, and that a pair who drifted apart
+         * at window two keep their slot indefinitely as long as nobody else
+         * wants it. Decay says the perishing is a fact about the two of
+         * them. It also needs no newcomer to fire, so the book empties on
+         * its own and the walk survives: removing from the middle of a list
+         * leaves every survivor in mint order, which the ordering discipline
+         * (#492) requires and a priority queue would have ended.
+         *
+         * <p>WOVEN and SCAR are untouchable — the loop never sees them,
+         * because {@code apart} stops moving the moment an edge weaves and
+         * every non-candidate row therefore stands at zero. A scar keeps its
+         * slot by law (#378); a woven edge the world could forget would be a
+         * bond the world forgot, which is a different feature and a worse
+         * one.
+         *
+         * <p>Forgetting is not banishment. {@link #between} finds nothing
+         * for a dropped pair, so the rotating walk may mint them again from
+         * zero if their paths cross again — the world forgot them, it did
+         * not rule on them. That is CANDIDATE renewal only and it leaves
+         * D-045 open point (c) exactly where #494 left it: a spent edge is a
+         * SCAR, a scar is never forgotten, and no pair walks back through
+         * one.
+         *
+         * <p>A pair whose wire closed or whose avatar died stops being
+         * co-present and is forgotten by the same clock, with no special
+         * case: this loop is also the reason the book no longer holds edges
+         * to minds that are gone.
+         */
+        private void forget() {
+            for (int i = edges.size() - 1; i >= 0; i--) {
+                Bond bond = edges.get(i);
+                if (bond.state != State.CANDIDATE || bond.apart < Config.BOND_FORGET_WINDOWS) {
+                    continue;
+                }
+                edges.remove(i);
+                forgotten++;
+                world.log(Severity.TRACE, "BOND forgotten: " + bond.pair()
+                        + " — " + bond.apart + " windows apart, and the book lets go");
             }
         }
 
@@ -494,12 +587,16 @@ public final class Bond {
          * that can unwrite a death is state that decides the world, so the
          * fold has to be able to prove it re-grew the same one.
          *
-         * <p>Three values per edge, nothing else: the pair as census
-         * positions, the weave state, the accrual count. Positions rather
-         * than names because names are not unique; the ordinal rather than
-         * the enum because a sink speaks integers, and the ordinal is
-         * append-safe as long as nobody reorders {@link State} — which is
-         * the same discipline every enum in the chain already lives under.
+         * <p>Per edge: the pair as census positions, the weave state, and
+         * BOTH clocks — the accrual count and the run apart (#852), because
+         * an edge one window from being forgotten is not the same edge as a
+         * freshly minted one and a fold that dropped the run would keep a
+         * pair the live run let go. Positions rather than names because
+         * names are not unique; the ordinal rather than the enum because a
+         * sink speaks integers, and the ordinal is append-safe as long as
+         * nobody reorders {@link State} — which is the same discipline every
+         * enum in the chain already lives under. The registry's own
+         * {@code forgotten} count leads, for the reason its field says.
          *
          * <p>What the digest sees here the v4.5 {@code Snapshot} must
          * retain (#179), so the root feeds this walk to BOTH sinks. If they
@@ -508,6 +605,7 @@ public final class Bond {
          * discovered in a later one.
          */
         public void digestInto(matrix.core.StateSink sink) {
+            sink.putInt(forgotten);
             sink.putCount(edges.size());
             for (int i = 0; i < edges.size(); i++) {
                 Bond bond = edges.get(i);
@@ -515,6 +613,7 @@ public final class Bond {
                 sink.putInt(bond.bIndex);
                 sink.putInt(bond.state.ordinal());
                 sink.putInt(bond.windows);
+                sink.putInt(bond.apart);
                 // The firing (#376): when it happened, and who stood back up.
                 // An edge that has paid is a different edge, and the fold has
                 // to replay a world where it already paid.
@@ -525,7 +624,8 @@ public final class Bond {
 
         /** The registry's one line, spoken at boot and greppable forever after. */
         public String line() {
-            return "BOND registry: edges=" + size() + " woven=" + woven();
+            return "BOND registry: edges=" + size() + " woven=" + woven()
+                    + " forgotten=" + forgotten;
         }
     }
 }

@@ -378,6 +378,38 @@ public final class Config {
      */
     public static final int BOND_WEAVE_WINDOWS = 12;
     /**
+     * When the world forgets a pair it once noticed (#852): consecutive
+     * accrual windows a CANDIDATE edge may spend apart before it is dropped
+     * from the book. Three commute postings, written as the arithmetic and
+     * not as a number, because the thing that separates two minds in this
+     * city is the commute: {@link #COMMUTE_SWITCH_TICKS} is one posting and
+     * a posting is 100 windows, so a pair the city sends to different
+     * districts is apart by the SCHEDULE, not by any drift of their own.
+     * Two postings could still be the city posting them apart twice. Three
+     * consecutive ones is the world saying they are not each other's people
+     * any more. Retune the commute and the forgetting follows it, which is
+     * the point of deriving rather than declaring.
+     *
+     * <p>The obvious number was {@link #BOND_WEAVE_WINDOWS} — as long to
+     * come back as it would have taken to weave, a symmetry with nothing
+     * wrong with it except that it is false. Measured with this clock
+     * disabled ({@code BondBook}, seed 42, 6,000 ticks), 63 edges reach
+     * WOVEN and two of them do it after runs of 160 and 208 windows
+     * apart, while the one pair the world never sees together again runs
+     * to 479. Twelve windows would have forgotten both returners — Nadia
+     * Novak and Thomas Marek, who weave at t=2919, and Lena Moreau and
+     * Mara Lindqvist, who weave at t=4949 — and called it decay. 300 sits
+     * in the band between the longest return and the only desertion, with
+     * margin on both sides; the probe's {@code margin} line is what
+     * reports the day that stops being true.
+     *
+     * <p>WOVEN and SCAR edges are not counted and never dropped: a scar
+     * keeps its slot by law (#378) and a woven edge the world could forget
+     * would be a different feature and a worse one.
+     */
+    public static final int BOND_FORGET_WINDOWS =
+            3 * (COMMUTE_SWITCH_TICKS / ACCRUE_EVERY_TICKS);
+    /**
      * The price of the miracle, and the most expensive line on the retail
      * price list (#212's unifier): the list is ordered by how hard a frame
      * is to reject, and no frame is harder than "you are dead". Refusing it

@@ -112,6 +112,7 @@ table() {
   run   SheetBench   --avalanche
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
+  judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
