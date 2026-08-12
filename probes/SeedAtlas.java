@@ -32,48 +32,75 @@ public final class SeedAtlas {
         long minBirth = Long.MAX_VALUE, maxBirth = -1;
 
         for (long seed = from; seed <= to; seed++) {
-            ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 22);
-            new Simulation(seed, buf, null).run(ticks);
-            String log = buf.toString(StandardCharsets.UTF_8);
-
-            long birth = tickOf(log, "The One is born", 0);
-            long overflow = tickOf(log, "SMITH OVERFLOW", 0);
-            long peace = tickOf(log, "REBOOT v", 0);
-            long rebirth = birth < 0 ? -1
-                    : tickOf(log, "The One is born", log.indexOf("The One is born") + 1);
-            boolean emergency = log.contains("EMERGENCY RELOAD");
-
-            String verdict;
-            if (emergency) {
-                verdict = "OLD_PLAYBOOK";
-                oldPlaybook++;
-            } else if (rebirth >= 0) {
-                verdict = "FULL_ARC";
-                fullArc++;
-            } else if (peace >= 0) {
-                verdict = "TREATY";
-                treaty++;
-            } else if (overflow >= 0) {
-                verdict = "WAR";
-                war++;
-            } else {
-                verdict = "QUIET";
-                quiet++;
+            Row r = census(seed, ticks);
+            switch (r.verdict()) {
+                case "OLD_PLAYBOOK" -> oldPlaybook++;
+                case "FULL_ARC" -> fullArc++;
+                case "TREATY" -> treaty++;
+                case "WAR" -> war++;
+                default -> quiet++;
             }
-            if (birth >= 0) {
-                minBirth = Math.min(minBirth, birth);
-                maxBirth = Math.max(maxBirth, birth);
+            if (r.birth() >= 0) {
+                minBirth = Math.min(minBirth, r.birth());
+                maxBirth = Math.max(maxBirth, r.birth());
             }
             System.out.println("SEED " + seed
-                    + " birth=" + birth + " overflow=" + overflow
-                    + " peace=" + peace + " rebirth=" + rebirth
-                    + " verdict=" + verdict);
+                    + " birth=" + r.birth() + " overflow=" + r.overflow()
+                    + " peace=" + r.peace() + " rebirth=" + r.rebirth()
+                    + " verdict=" + r.verdict());
         }
         System.out.println("ATLAS seeds=" + from + ".." + to + " ticks=" + ticks
                 + " full_arc=" + fullArc + " treaty=" + treaty + " war=" + war
                 + " quiet=" + quiet + " old_playbook=" + oldPlaybook
                 + " birth_min=" + (maxBirth < 0 ? -1 : minBirth)
                 + " birth_max=" + maxBirth);
+    }
+
+    /**
+     * One universe's census row: the four beats, and the fate they add up to.
+     *
+     * <p>A {@code -1} beat means "never happened inside the tick budget", which is
+     * a different statement from "happened at tick 0" — hence a signed field and
+     * not an {@code Optional}, so the row prints the same way it always has.
+     */
+    record Row(long seed, long birth, long overflow, long peace, long rebirth, String verdict) {}
+
+    /**
+     * Run one universe quietly and classify it. This is THE census classifier —
+     * {@link CensusBlocks} calls this method rather than re-deriving the fate
+     * ladder, so a block comparison can never be an argument about two different
+     * definitions of {@code QUIET}. Changing the ladder here changes it for every
+     * instrument that quotes a census number, which is the point.
+     *
+     * <p>Thread-safe: the {@code Simulation} it builds is private to the call and
+     * shares nothing with any other, so k of these may run at once on k cores and
+     * each seed still yields the byte-identical universe it yields alone.
+     */
+    static Row census(long seed, long ticks) {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 22);
+        new Simulation(seed, buf, null).run(ticks);
+        String log = buf.toString(StandardCharsets.UTF_8);
+
+        long birth = tickOf(log, "The One is born", 0);
+        long overflow = tickOf(log, "SMITH OVERFLOW", 0);
+        long peace = tickOf(log, "REBOOT v", 0);
+        long rebirth = birth < 0 ? -1
+                : tickOf(log, "The One is born", log.indexOf("The One is born") + 1);
+        boolean emergency = log.contains("EMERGENCY RELOAD");
+
+        String verdict;
+        if (emergency) {
+            verdict = "OLD_PLAYBOOK";
+        } else if (rebirth >= 0) {
+            verdict = "FULL_ARC";
+        } else if (peace >= 0) {
+            verdict = "TREATY";
+        } else if (overflow >= 0) {
+            verdict = "WAR";
+        } else {
+            verdict = "QUIET";
+        }
+        return new Row(seed, birth, overflow, peace, rebirth, verdict);
     }
 
     /** Tick of the first framed line containing the needle at/after fromIndex; -1 if absent. */
