@@ -396,11 +396,12 @@ public final class CensusBlocks {
                     names[i], c[0], c[1], c[2], c[3], z, published[i], pz, chi2, z * z, pc,
                     (zOk && idOk) ? "OK" : "MISMATCH");
         }
-        System.out.println(ok
-                ? "SELFCHECK VERDICT MATH_OK - census entry 3's published z values reproduce,"
-                        + " and the chi-square upper tail agrees with the normal two-tailed p"
-                        + " at df=1 where chi2 must equal z squared"
-                : "SELFCHECK VERDICT MATH_BROKEN");
+        System.out.println("SELFCHECK basis census entry 3's published z values reproduce, and the"
+                + " chi-square upper tail agrees with the normal two-tailed p at df=1, where chi2"
+                + " must equal z squared - two implementations checking each other");
+        // The verdict is its own short line so probes/bench.sh can judge it with
+        // grep -qxF, the exact-line rule every judged probe on the bench obeys.
+        System.out.println(ok ? "SELFCHECK VERDICT MATH_OK" : "SELFCHECK VERDICT MATH_BROKEN");
         if (!ok) {
             System.exit(1);
         }
