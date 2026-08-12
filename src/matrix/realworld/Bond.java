@@ -64,6 +64,15 @@ public final class Bond {
     private final int bIndex;
     private State state = State.CANDIDATE;
     private int windows = 0;
+    /**
+     * The tick the Room 303 clause spent this edge, or -1 while it is
+     * unspent. This is the field the trigger's third question reads, and
+     * the reason the answer can never change back: once per edge, ever.
+     */
+    private long firedAt = -1;
+    /** The mind the clause gave back, and its census position — the firing's other half. */
+    private Human resurrected;
+    private int resurrectedIndex = -1;
 
     /**
      * Package-private by law: only the registry mints edges, so the ordered
@@ -99,6 +108,16 @@ public final class Bond {
     /** True while the edge is load-bearing: woven, and not yet spent. */
     public boolean loadBearing() {
         return state == State.WOVEN;
+    }
+
+    /** The tick the clause spent this edge, or -1 — the third question's whole answer. */
+    public long firedAt() {
+        return firedAt;
+    }
+
+    /** The mind this edge gave back, or null — set once, at the firing, forever. */
+    public Human resurrected() {
+        return resurrected;
     }
 
     /** True when this mind stands at either end. */
@@ -195,11 +214,126 @@ public final class Bond {
          * turns on, because a bond is the same kind of slow accounting.
          */
         public void tick(long tick) {
+            // The clause is asked EVERY tick, because deaths are not on a
+            // wheel: an avatar dies whenever an Agent catches it, and the
+            // question has to be answered before the death rule writes.
+            // Weaving stays on the accrual window, because love is.
+            arbitrate(tick);
             if (tick % Config.ACCRUE_EVERY_TICKS != 0) {
                 return;
             }
             discover();
             weave();
+        }
+
+        /**
+         * The Room 303 clause's entry test, and nothing else (#376). D-013
+         * is this repository's oldest law — the avatar dies, the link
+         * flatlines the brain, no exceptions — and this is the ONE canonical
+         * exception, so the gate is narrow, ordered, and speaks when it
+         * refuses.
+         *
+         * <p>Three questions, in the order the ruling states them:
+         * <ol>
+         * <li>does a mind stand at the far end of a {@link Bond} edge,
+         *     dying, with a LIVING partner at the other end;</li>
+         * <li>is that edge past {@code BOND_WEAVE_WINDOWS} — load-bearing,
+         *     not a speed-run;</li>
+         * <li>is the edge UNSPENT — once per edge, ever.</li>
+         * </ol>
+         * Three yeses and the clause fires. Anything less and D-013 runs
+         * untouched, the flatline BAD line unchanged.
+         *
+         * <p>The refusals SPEAK, both of them, because a guard nobody can
+         * observe is a guard nobody can trust: a spent edge says so, and so
+         * does the one mind the clause may never save.
+         *
+         * <p>Cost: two O(1) field reads per edge per tick. The expensive
+         * presence check is paid only once a death is already on the table,
+         * which is the split the weave deliberately could not afford.
+         */
+        private void arbitrate(long tick) {
+            for (int i = 0; i < edges.size(); i++) {
+                Bond bond = edges.get(i);
+                Human dying = dyingEndOf(bond);
+                if (dying == null) {
+                    continue;
+                }
+                if (dying.link().clause303) {
+                    // One death, one edge. A mind can stand on several
+                    // woven edges (Iris Kovacs stands on two at seed 42),
+                    // and without this the same death would spend every one
+                    // of them at once — many bonds consumed for one life,
+                    // which is neither the ruling nor arithmetic. Mint order
+                    // decides: the oldest edge answers.
+                    world.log(Severity.TRACE, "Room 303: " + bond.pair()
+                            + " — the death was already answered on an older edge");
+                    continue;
+                }
+                Human partner = bond.other(dying);
+                if (!partner.alive()) {
+                    continue;
+                }
+                if (dying.link().avatar instanceof matrix.entities.TheOne) {
+                    // D-045, and #327's contract: The One's death at Machine
+                    // City stays canon. HIS bond story is the negotiation,
+                    // not the kiss, and OneTrace's died==closed must hold in
+                    // every universe.
+                    world.log(Severity.SYS, "Room 303: refused — the fated do not get the kiss");
+                    continue;
+                }
+                if (bond.state == State.CANDIDATE) {
+                    continue;
+                }
+                if (bond.firedAt >= 0) {
+                    world.log(Severity.BAD, "Room 303: refused — the edge is spent");
+                    continue;
+                }
+                fire(bond, dying, partner, tick);
+            }
+        }
+
+        /**
+         * The firing, as an authorization (#376). This unit records that the
+         * clause fired and spends the edge; the MOVES belong to its siblings
+         * — the unwriting (#377), the scar conversion (#378), the ledger
+         * price (#383), the awareness term (#380). For exactly this one
+         * merge the clause authorizes and D-013 still writes the death; the
+         * next unit makes the death not happen.
+         */
+        private void fire(Bond bond, Human dying, Human partner, long tick) {
+            dying.link().clause303 = true;
+            bond.firedAt = tick;
+            bond.resurrected = dying;
+            bond.resurrectedIndex = bond.a == dying ? bond.aIndex : bond.bIndex;
+            world.log(Severity.FATE, "Room 303: " + partner.name
+                    + " refuses the frame for " + dying.name
+                    + " — a woven edge answers a death, and the edge is spent");
+        }
+
+        /**
+         * The end of this edge that is dying RIGHT NOW: an open wire, an
+         * avatar that has stopped being alive, and a world that still holds
+         * it. The presence check is last on purpose — it is an O(census)
+         * identity walk, and it only ever runs on a tick where somebody has
+         * already died. Resurrecting an avatar the world no longer holds
+         * would manufacture exactly the ghost D-013's four phases of
+         * skeptics drove to zero.
+         */
+        private Human dyingEndOf(Bond bond) {
+            if (dying(bond.a)) {
+                return bond.a;
+            }
+            if (dying(bond.b)) {
+                return bond.b;
+            }
+            return null;
+        }
+
+        private boolean dying(Human mind) {
+            NeuralLink link = mind.link();
+            return link != null && !link.closed() && !link.avatar.alive
+                    && world.isPresent(link.avatar);
         }
 
         /**
@@ -381,6 +515,11 @@ public final class Bond {
                 sink.putInt(bond.bIndex);
                 sink.putInt(bond.state.ordinal());
                 sink.putInt(bond.windows);
+                // The firing (#376): when it happened, and who stood back up.
+                // An edge that has paid is a different edge, and the fold has
+                // to replay a world where it already paid.
+                sink.putLong(bond.firedAt);
+                sink.putInt(bond.resurrectedIndex);
             }
         }
 
