@@ -26,6 +26,10 @@ final class Probes {
         return (List<NeuralLink>) open(RealWorld.class, "links").get(rw);
     }
 
+    static matrix.machine.Source source(Simulation sim) throws ReflectiveOperationException {
+        return (matrix.machine.Source) open(Simulation.class, "source").get(sim);
+    }
+
     static matrix.zion.Zion zion(Simulation sim) throws ReflectiveOperationException {
         return (matrix.zion.Zion) open(Simulation.class, "zion").get(sim);
     }
