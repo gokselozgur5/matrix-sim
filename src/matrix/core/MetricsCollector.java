@@ -110,11 +110,17 @@ public final class MetricsCollector {
      *
      * <p>The root passes zion's open links in (D-012); the Matrix ships no
      * code and learns nothing — the collector reads positions it could
-     * always read. Shape rule: the suffix (leading space, {@code
-     * Locale.ROOT}) extends the ZION line exactly when open pirate links
-     * exist and both populations are measurable; otherwise it is absent —
-     * the ECO line's short-form precedent. Pure read: no draw, no state,
-     * the digest cannot notice.
+     * always read. Shape rule (#374, the one statement the grammar spec
+     * copies): the suffix (leading space, {@code Locale.ROOT}) extends the
+     * ZION line exactly when an open pirate link's avatar is ALIVE AND
+     * PRESENT IN THE WORLD and both populations are measurable; otherwise
+     * it is absent — the ECO line's short-form precedent. Presence is not
+     * pedantry and not the same as {@code links>0}, which the ZION line
+     * counts straight off the rigs: a wire is registered the instant it
+     * opens but its avatar only enters the world at the next flush (D-005),
+     * and a killed pirate stays on the board until the rig's watch closes
+     * it. Both ends would have this metric measuring bodies the world does
+     * not hold. Pure read: no draw, no state, the digest cannot notice.
      */
     public String traceSuffix(java.util.List<matrix.entities.Avatar> pirateAvatars) {
         java.util.List<matrix.entities.Avatar> pirates = new java.util.ArrayList<>();

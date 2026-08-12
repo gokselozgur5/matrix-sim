@@ -364,7 +364,15 @@ public final class Simulation {
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
             // #118: the root hands zion's open links to the collector (D-012) and
-            // the trace suffix rides the ZION line — present exactly when links>0.
+            // the trace suffix rides the ZION line — present exactly when the
+            // metric is MEASURABLE, which is not the same thing as links>0 (#374).
+            // The collector measures against the world it can see, so it keeps only
+            // pirate avatars the world already holds: a session opened in zion's
+            // slot (the LAST node) queues its spawns behind this tick's flush, so
+            // that tick prints links>0 with no suffix — once, at the open. It also
+            // needs live agents and resident reds, or the mean and its baseline
+            // have no denominator. Absent otherwise, the ECO line's short form.
+            // The rule is stated in full on MetricsCollector.traceSuffix.
             emit(zion.zionLine(t) + metrics.traceSuffix(zion.openPirateAvatars()));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
