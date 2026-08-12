@@ -311,6 +311,61 @@ And the chapter obeys four laws:
 
 ---
 
+### Entry 3 — the second century (standing; first batch of a campaign)
+
+**The question.** What do a hundred more universes do to entry 1's three limits — the `QUIET` fraction's ±8 points, the birth band's shapelessness, and `OLD_PLAYBOOK`'s ~3% ceiling?
+
+**The command.**
+
+```sh
+java -cp out:probes/out SeedAtlas 101 200 6000 | tail -1
+```
+
+**The sample.** Seeds 101–200, 6,000 ticks each, default scale, film era — measured at `6e2458a`, 12m57s on the reference box. Pooled figures below add the seeds 1–100 re-run **at the same tree** (13m12s), for n=200. Entry 1's published numbers are *not* pooled in: they were measured at v3.0 and pooling across a digest move would invent a multiverse nobody ran.
+
+**The table.**
+
+| Fate | Seeds 101–200 | 95% (Wilson) | Pooled n=200 | 95% (Wilson) |
+|---|---|---|---|---|
+| `FULL_ARC` | **92 / 100** | 85.0 – 95.9% | **165 / 200** | 76.6 – 87.1% |
+| `TREATY` | **2 / 100** | 0.6 – 7.0% | **8 / 200** | 2.0 – 7.7% |
+| `QUIET` | **6 / 100** | 2.8 – 12.5% | **27 / 200** | 9.4 – 18.9% |
+| `WAR` | 0 | — | 0 | — |
+| `OLD_PLAYBOOK` | **0 / 100** | ≤ 3.0% | **0 / 200** | **≤ 1.5%** |
+
+The distributions at n=200 (ticks):
+
+| Beat | mean | sd | median | min | max | n |
+|---|---|---|---|---|---|---|
+| birth | 1271.0 | **46.6** | 1279 | 1100 | 1359 | 200 |
+| overflow | 3946.5 | **593.7** | 3858 | 2963 | 5906 | 173 |
+| second birth | 4862.4 | 515.4 | 4829 | 3909 | 5999 | 165 |
+
+Birth, in 25-tick bins: 1100 ×1 · 1125 ×3 · 1150 ×3 · 1175 ×10 · 1200 ×11 · 1225 ×39 · 1250 ×25 · **1275 ×61** · 1300 ×24 · 1325 ×21 · 1350 ×2.
+
+**The distribution.** Three of entry 1's four open questions now have answers, and a fourth opened.
+
+*The band has a shape.* Birth's standard deviation is **46.6 ticks** against a mean of 1271 — a coefficient of variation of 3.7%. The metronome is real and now quantified rather than asserted. The *range*, meanwhile, did exactly what a range does: 220 ticks at n=100 became **259 ticks at n=200**, growing with the sample by construction, which is why the sd is the number this entry reports and the range is a footnote.
+
+*The cascade does not ride the ledger, and this is now measured.* Entry 1 asserted the overflow spread rides population geometry rather than the ledger. Across 173 universes that overflowed, the correlation between birth tick and overflow tick is **r = −0.021** — the ledger's metronome explains four ten-thousandths of the variance in when the war breaks. The spreads say the same thing: overflow's sd is **12.7×** birth's.
+
+*`OLD_PLAYBOOK` is bounded tighter and still not proven.* Zero in 200 puts the branch's rate under **1.5%** by the rule of three. It is not "impossible"; it is "not seen in 200 tries", and only a thousand universes will make that sentence worth its confidence.
+
+*And the alarm.* The two centuries **do not agree with each other**, at the same tree, on the same instrument: `QUIET` is 21/100 in the first and 6/100 in the second — a 15-point gap, 95% CI [5.8, 24.2], pooled **z = 3.10 (p ≈ 0.002)**; `FULL_ARC` is 73 vs 92, **z = −3.54 (p ≈ 0.0004)**. Two contiguous seed blocks drawn from one distribution should not differ like that once in five hundred tries, let alone on the first comparison. Either the seed is not the exchangeable randomizer every census fraction has silently assumed, or the multiverse has structure along the seed axis. Both are census business and neither is settled here.
+
+What n=200 does **not** license: any pooled fraction above, if the century-block effect is real. A `QUIET` interval of 9.4–18.9% assumes the 200 universes are 200 draws from one urn, and the z=3.10 is direct evidence against that assumption; until it is explained, read the pooled row as two 100-seed samples that disagree, not as one 200-seed measurement. Nor does this entry license anything about *this* tree: it is stamped at `6e2458a`, and `src/` has moved since.
+
+**The stamp.** 2026-08-12, v3.0, measured at `6e2458a` · batch 1 of the campaign (seeds 101–200 of 101–1000).
+
+**The batch protocol** — as much the deliverable as the numbers, and binding on the batches that follow:
+
+1. **A batch is 100 seeds at 6,000 ticks**, chosen so one invocation finishes inside a working session (measured: ~13 minutes on the reference box, ~7.8 s per universe).
+2. **A partial table states its own n and nothing larger.** A 300-seed interval is written as a 300-seed interval; the campaign's target is 1,000 and no batch may quote the target's precision.
+3. **Batches merge only within a tree.** Counts from two trees are never summed — a declared digest move ends the campaign's accumulation and starts a new one, and the re-verdict protocol says which.
+4. **Every batch reports the block effect.** Each new century is tested against the pooled prior blocks before its numbers are folded in; the day one of them disagrees is the day the pooling stops, not the day it is quietly averaged away.
+
+---
+
 ### Entry 2 — the beat drift table (standing, appended per recorded commit)
 
 **The question.** Is the film's timing drifting, merge by merge?
