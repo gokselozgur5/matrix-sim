@@ -187,7 +187,7 @@ sequenceDiagram
     end
     L-->>S: overflowed() — balance ≥ 30,000
     S->>RW: birthTheOne("Thomas A. Anderson")
-    Note over RW,S: t=1289 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
+    Note over RW,S: t=1299 at 8f0a527, seed 42 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
     D->>D: routeOverflow — infected ≥ 0.62
     alt the One is alive
         D->>NL: one.alive = false — he flies to Machine City
@@ -203,7 +203,7 @@ sequenceDiagram
     loop the cycle
         RW->>L: residue accrues again
     end
-    Note over L,S: t=5249 — a second Thomas A. Anderson.<br/>The cycle is the point.
+    Note over L,S: t=5229 at 8f0a527, seed 42 — a second Thomas A. Anderson.<br/>The cycle is the point.
 ```
 
 ## State machine — system states
@@ -244,7 +244,7 @@ The owner's standing order: this system must be worked so well that *we never ge
 
 ### The case of Nadia Petrov
 
-> **As of the `v3.0.0` tag.** Every tick in this case study belongs to the sealed Season One universe and is quoted from a run pinned there (`git archive fa1da4d`, per D-030's pin-to-SHA rule) — the four flips, the 1846 log line, the 4324 walk-out, all reproduce today at that tag. **On current `main` they do not**: Season Two's mechanics moved the film (the README's quickstart carries the same two dated columns — the open door is 4324 at the tag, 4754 on `main`), and re-running `LinkTrace` against `main` prints *one* line for her — `t=0`, and no change through all 6,000 ticks. She is never worn, never freed, and the event log holds nothing under her name at all. PR #230 caught this first and said so for the record. What is pinned here is the **evidence**; the method below it is era-free, which is why the chapter still teaches.
+> **As of the `v3.0.0` tag.** Every tick in this case study belongs to the sealed Season One universe and is quoted from a run pinned there (`git archive fa1da4d`, per D-030's pin-to-SHA rule) — the four flips, the 1846 log line, the 4324 walk-out, all reproduce today at that tag. **On current `main` they do not**: Season Two's mechanics moved the film (the README's quickstart carries the same two pinned columns — the open door is 4324 at the tag, 4329 at `8f0a527`), and re-running `LinkTrace` against `main` prints *one* line for her — `t=0`, and no change through all 6,000 ticks. She is never worn, never freed, and the event log holds nothing under her name at all. PR #230 caught this first and said so for the record. What is pinned here is the **evidence**; the method below it is era-free, which is why the chapter still teaches.
 
 **Symptom (one instrument speaks).** A `--follow "Nadia Petrov"` stream went dark twice — `"signal":"lost"` at tick 1800 and again at 2500 — with frames flowing again *between* the darkenings. A dream that ends should stay ended; a dream that returns should have a reason. The event log, grepped for her name across the whole run, held exactly one line: her walk-out at 4324. Silence where there should have been a story.
 
