@@ -86,64 +86,10 @@ public final class RealWorld {
             if (link.observeDeath()) {
                 Human h = link.human;
                 world.log(Severity.BAD, "the body cannot live without the mind — "
-                        + h.name + " flatlined" + flushClause(h));
+                        + h.name + " flatlined" + Pod.flushClause(h));
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
-    }
-
-    /**
-     * What happened to a body's rack slot when the mind died — one sentence,
-     * one guard, one home (#813).
-     *
-     * <p>#189 made {@code Human.pod} honestly 0..1 and installed the guards
-     * to match, and its body promised "a tree-wide {@code .pod} null audit".
-     * That audit was true on the day it was run: at {@code fc5a557} this file
-     * held two {@code .pod} reads and both were guarded. D-033's
-     * self-substantiation line landed after it and dereferenced the field
-     * bare. A sweep is a promise about a moment; an invariant needs a place
-     * to live. This is the place: a caller that wants to say what became of
-     * a pod cannot reach the field without coming through the guard.
-     *
-     * <p>Public because the pirate rig says the same sentence over the same
-     * bodies (#811) and copied the message without the branch. Zion may
-     * import realworld — the reverse is forbidden — so the one home both
-     * books can call is on this side. The sentence's more natural home is
-     * {@code Pod} itself; that move is #849, together with the reader this
-     * invariant still lacks.
-     */
-    public static String flushClause(Human h) {
-        return h.pod != null
-                ? " (pod " + h.pod.rackUnit + " flushed)"
-                : " (no pod to flush — they died free)";
-    }
-
-    /**
-     * The same sentence for the other ending (#813): the mind walked out and
-     * the slot opened behind it, rather than being flushed under it. Since
-     * #134 the substrate budget actually notices the opening — and the mind
-     * D-033 was written for is exactly the one that may have no slot at all,
-     * so this branch is the one #121's Kid walks through.
-     */
-    public static String opensClause(Human h) {
-        return h.pod != null
-                ? "(pod " + h.pod.rackUnit + " opens)"
-                : "(no pod to open — the free-born were never racked)";
-    }
-
-    /**
-     * The third sentence (#811): the ending that flushes NOTHING.
-     * {@code severUnclean} — the rig's timeout cut, and its death with the
-     * ship — kills the mind and closes the wire and never touches the rack.
-     * The old line said "nothing to flush", which was accidentally true of
-     * the ACT and false about the body: it was printed as a claim of
-     * podlessness over citizens who all hold rack units, standing empty
-     * since the day they walked out of them.
-     */
-    public static String untouchedClause(Human h) {
-        return h.pod != null
-                ? " (pod " + h.pod.rackUnit + " untouched — the cut takes the mind, not the rack)"
-                : " (no rack unit behind them — they died free)";
     }
 
     /**
@@ -155,10 +101,11 @@ public final class RealWorld {
      * restore the door opens. Without wraps an open live link's avatar is
      * always present, so the gate costs nothing where it cannot matter.
      *
-     * <p>The pod clause comes from {@link #opensClause} (#813). It used to be
-     * written here, inline and unguarded, in a door built expressly for a
-     * citizen who may have no pod: the first free-born mind to walk out would
-     * have died inside its own FATE line.
+     * <p>The pod clause comes from {@link Pod#opensClause} (#813, moved to
+     * the slot it describes by #849). It used to be written here, inline and
+     * unguarded, in a door built expressly for a citizen who may have no pod:
+     * the first free-born mind to walk out would have died inside its own
+     * FATE line.
      */
     private void selfSubstantiate(NeuralLink link) {
         link.closeClean();
@@ -168,7 +115,7 @@ public final class RealWorld {
                 + " walked out of the dream — residue " + link.personalResidue
                 + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
                 + " spikes in " + link.windows + " windows; no red pill was given "
-                + opensClause(link.human));
+                + Pod.opensClause(link.human));
         bank(new Liberation(link.human, "selfsub"));
     }
 
