@@ -34,6 +34,16 @@ final class Probes {
         return (matrix.zion.Zion) open(Simulation.class, "zion").get(sim);
     }
 
+    /** The wing's render budget — null under BATTERY, where no budget is ever constructed (D-008). */
+    static matrix.machine.SubstrateBudget substrate(Simulation sim) throws ReflectiveOperationException {
+        return (matrix.machine.SubstrateBudget) open(Simulation.class, "substrate").get(sim);
+    }
+
+    /** The inward door's far bank, as the root wired it — the object a hand-built one cannot stand in for (#886). */
+    static matrix.machine.DoorPolicy doorPolicy(Simulation sim) throws ReflectiveOperationException {
+        return (matrix.machine.DoorPolicy) open(Simulation.class, "doorPolicy").get(sim);
+    }
+
     @SuppressWarnings("unchecked")
     static List<matrix.zion.Hovercraft> fleet(matrix.zion.Zion zion) throws ReflectiveOperationException {
         return (List<matrix.zion.Hovercraft>) open(matrix.zion.Zion.class, "fleet").get(zion);
