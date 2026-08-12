@@ -19,6 +19,45 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class Main {
 
+    /**
+     * The control group's switch — the whole fence, in one place.
+     *
+     * <p>NEUTRAL is not a migration step; it is a <b>permanent control
+     * group</b> (the D-042 ruling, #212, 2026-08-11). Under {@code
+     * --neutral} the world runs the legacy path: no character coupling, no
+     * derived sheet, no new token in any line. Today that costs nothing to
+     * honor, because the character layer is imported by nothing — and that
+     * is exactly why the flag ships now rather than at the first coupling.
+     * A control group established after the first divergence proves nothing
+     * about the divergence.
+     *
+     * <p>The two-die law's real content is not "the world does not change"
+     * — the moment the grammar drives outcomes, divergence is design. It is
+     * that <b>every divergence is attributable</b>: whatever the enabled
+     * lane does, this lane reproduces the sealed pre-v6 chain link for link,
+     * so the difference between them is the feature and nothing else.
+     *
+     * <p>Every unit that couples the character layer asks here, once, at the
+     * site it changes — never by re-deriving the answer from its own flag.
+     * The permanent home for a run dial in this house is {@code
+     * Config.ECO_SCALE}'s neighbourhood; the switch lives on the class that
+     * owns argv until a coupling unit needs it inside the domain, and that
+     * unit moves it as a one-line declared change rather than inventing a
+     * second fence.
+     */
+    private static boolean neutral;
+
+    /**
+     * True while this run is the control group. Deliberately a query and
+     * not a banner: the flag prints nothing about itself, because identity
+     * is proven by a diff and never claimed. A run that announced "NEUTRAL"
+     * on its first line would have already broken the byte-equality it
+     * exists to demonstrate.
+     */
+    public static boolean neutral() {
+        return neutral;
+    }
+
     public static void main(String[] args) throws Exception {
         // Before anything prints: the instrument lines are a byte contract
         // (D-020) and the JVM took their charset from the environment.
@@ -46,6 +85,7 @@ public final class Main {
                 case "--scale" -> scale = Integer.parseInt(args[++i]);
                 case "--headless" -> headless = true;
                 case "--selftest" -> selftest = true;
+                case "--neutral" -> neutral = true;
                 case "--bench" -> bench = true;
                 case "--follow" -> follow = args[++i];
                 case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
@@ -464,6 +504,11 @@ public final class Main {
                                       write-before-purge order, epoch arithmetic, config
                                       fingerprint vs this build (drift named, not failed);
                                       exits 0 consistent / 1 inconsistent / 2 unreadable
+                  --neutral           run the control group: the legacy path, no character
+                                      coupling, no new token, no banner (D-042 ruling, #212).
+                                      Permanent, not a migration step — rides with every other
+                                      flag, and its chain is CI-pinned to the sealed pre-v6
+                                      baseline in ci/fixtures/neutral-baseline.chain
                   --selftest          in-process digest double-run; exit 0 iff chains match.
                                       Honors --scale, and since #518 says so: the verdict
                                       carries scale= and entities= at any dial but 1, so a
