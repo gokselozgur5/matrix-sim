@@ -1,5 +1,7 @@
 package matrix.character;
 
+import java.util.List;
+
 /**
  * One contest law for all four families — the grammar, not the game. A
  * contest is two sheets, one named axis each, and subtraction; the families
@@ -155,5 +157,147 @@ public final class Contest {
      */
     public static double p(Sheet a, String axisA, Sheet b, String axisB) {
         return p(a.stat(axisA), b.stat(axisB));
+    }
+
+    // ---- #359: the three-outcome bands — hit-hit, hit-miss, miss-miss, as rows ----
+
+    /**
+     * What one exchange can come to. The MxO archaeology (#212) found the
+     * round resolving to three outcomes rather than a coin's two faces, and
+     * reported that "the two extra outcomes are where the film feel lived":
+     * both can connect, both can parry.
+     *
+     * <p>Not to be confused with {@link Outcome}, which bands a MARGIN — how
+     * lopsided the matchup is. This enum bands an EXCHANGE — what actually
+     * happened when it was tried.
+     */
+    public enum Exchange { HIT_HIT, HIT_MISS, MISS_MISS }
+
+    /**
+     * One row of the band table: at this margin gap, the share of exchanges
+     * that end in mutual connection and the share that end in mutual parry.
+     * The rest is the decisive share, and the p-curve splits that.
+     */
+    public record ExchangeBand(int gap, double mutual, double parry) {
+
+        /** The share left for a decisive exchange — what the p-curve gets to split. */
+        public double decisive() {
+            return 1.0 - mutual - parry;
+        }
+    }
+
+    /**
+     * The band table, as DATA — ten rows, one per margin gap, transcribable
+     * verbatim into a {@code docs/spec/} sheet (D-058) and printable by a
+     * probe. The archaeology's closing lesson is the reason this is a table
+     * and not arithmetic in a resolver: sixteen years on, MxO's world survived
+     * because it was data and its combat did not because it was logic inside a
+     * closed implementation.
+     *
+     * <p><b>Why the mutual outcomes open with the GAP.</b> The rows are zero
+     * until the gap reaches 4 — precisely where {@link #band(int)} starts
+     * saying DECISIVE, so the exchange table and the margin bands share one
+     * law rather than inventing a second. This is deliberately the opposite of
+     * the intuition that evenly matched fighters tangle most: the neutral row
+     * MUST be zero-width or the pin is broken, because a zero-width neutral
+     * row is exactly what collapses this table back to the legacy two faces.
+     * The mutual outcomes are the flourish a real capability gap buys — the
+     * hunter so far ahead he lands and still eats the counter, the two so far
+     * apart the exchange whiffs entirely.
+     */
+    public static final List<ExchangeBand> EXCHANGE_BANDS = List.of(
+            new ExchangeBand(0, 0.00, 0.00),
+            new ExchangeBand(1, 0.00, 0.00),
+            new ExchangeBand(2, 0.00, 0.00),
+            new ExchangeBand(3, 0.00, 0.00),
+            new ExchangeBand(4, 0.02, 0.02),
+            new ExchangeBand(5, 0.04, 0.04),
+            new ExchangeBand(6, 0.06, 0.06),
+            new ExchangeBand(7, 0.08, 0.08),
+            new ExchangeBand(8, 0.10, 0.10),
+            new ExchangeBand(9, 0.12, 0.12));
+
+    static {
+        if (EXCHANGE_BANDS.size() != SPAN + 1) {
+            throw new AssertionError("the band table must cover every gap 0.." + SPAN);
+        }
+        if (EXCHANGE_BANDS.get(0).mutual() != 0.0 || EXCHANGE_BANDS.get(0).parry() != 0.0) {
+            throw new AssertionError("the neutral row must be zero-width, or the 0.10 pin is broken");
+        }
+        for (int gap = 0; gap <= SPAN; gap++) {
+            ExchangeBand b = EXCHANGE_BANDS.get(gap);
+            if (b.gap() != gap) {
+                throw new AssertionError("band rows must be ordered by gap, found " + b.gap() + " at " + gap);
+            }
+            if (b.mutual() < 0.0 || b.parry() < 0.0 || b.mutual() + b.parry() >= 1.0) {
+                throw new AssertionError("band row leaves no decisive share: gap=" + gap);
+            }
+        }
+    }
+
+    /** The row governing this matchup — the table read by the magnitude of the margin. */
+    public static ExchangeBand exchangeBand(int attackerStat, int defenderStat) {
+        long gap = Math.abs((long) attackerStat - defenderStat);
+        return EXCHANGE_BANDS.get((int) Math.min(gap, SPAN));
+    }
+
+    /** One exchange's result: which band it landed in, and who actually connected. */
+    public record Round(Exchange exchange, boolean attackerConnects, boolean defenderConnects) {}
+
+    /**
+     * Resolve one exchange from ONE roll in {@code [0, 1)}. The roll is a
+     * parameter, never a draw taken here: under the two-die law a migrated
+     * site keeps its own draw, and this function must be usable by a site that
+     * already spent it. Nothing in the world calls this yet — the AGENT catch
+     * adopts it in #352.
+     *
+     * <p>The unit interval is partitioned decisive-first, and that order is
+     * load-bearing. At the neutral row {@code mutual} and {@code parry} are
+     * exactly zero, so {@code decisive} is exactly {@code 1.0} and the first
+     * cut sits at exactly {@code p} — which makes {@code roll < cut} the same
+     * comparison, against the same number, that {@code Rng.chance(p)} makes.
+     * The legacy two faces are reproduced bit for bit, from one draw, and the
+     * two exotic outcomes are unreachable because every roll is under 1.0.
+     * Put the exotic slices first and that exactness is gone.
+     *
+     * <p><b>Known and measured: once the exotic outcomes open, {@code p} is
+     * the decisive split, not the marginal connect rate.</b> The attacker
+     * connects on HIT_MISS-for-A <i>or</i> HIT_HIT, which totals
+     * {@code decisive*p + mutual} — equal to {@code p} exactly on gaps 0..3
+     * (the pin's zone, where {@code mutual} is zero) and again at gap 9 by
+     * the table's symmetry, but above it in between:
+     *
+     * <pre>
+     *   gap  p         P(attacker connects)  delta
+     *   0-3  =p        =p                    +0.000000
+     *   4    0.277778  0.286667              +0.008889
+     *   5    0.322222  0.336444              +0.014222
+     *   6    0.366667  0.382667              +0.016000
+     *   7    0.411111  0.425333              +0.014222
+     *   8    0.455556  0.464444              +0.008889
+     *   9    0.500000  0.500000              +0.000000
+     * </pre>
+     *
+     * The bias is bounded by 0.016 and never touches the pin, so the
+     * equivalence proof is unaffected. It is disclosed here rather than
+     * silently absorbed because a reader will otherwise assume {@code p} is
+     * the kill rate: whether the catch's observed lethality must equal
+     * {@code p} on the enabled lane is #352's call at adoption, and
+     * re-deriving the mutual slice proportionally from both sides is the fix
+     * if it must.
+     */
+    public static Round round(double roll, int attackerStat, int defenderStat) {
+        ExchangeBand band = exchangeBand(attackerStat, defenderStat);
+        double decisive = band.decisive();
+        if (roll < decisive * p(attackerStat, defenderStat)) {
+            return new Round(Exchange.HIT_MISS, true, false);
+        }
+        if (roll < decisive) {
+            return new Round(Exchange.HIT_MISS, false, true);
+        }
+        if (roll < decisive + band.mutual()) {
+            return new Round(Exchange.HIT_HIT, true, true);
+        }
+        return new Round(Exchange.MISS_MISS, false, false);
     }
 }
