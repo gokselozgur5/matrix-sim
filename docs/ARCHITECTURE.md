@@ -326,6 +326,53 @@ Precedence: `RESHAPED` > `SHIFTED` > `STABLE`. What each buys: **`STABLE`** — 
 
 **The refusals.** A comparison sample that is not the same sample is not a comparison: mismatched seeds, ticks or row counts are refused rather than guessed at. And `STABLE` is a statement about the distribution, never about the universes — the churn line reports how many individual seeds changed fate, so nobody reads a held distribution as a held multiverse.
 
+### The era census — sampling design for a world whose default is peace
+
+The film's census gets away with a simple statistical design because **the film ends**. Every universe either completes the arc inside its budget or does not, and `FULL_ARC` is a fact about a finished story. A **standing era is a different object**: peace has no terminal event. A 20,000-tick corridor run that ends with the treaty intact has not shown that the corridor holds — it has shown that the corridor *outlived the window*. Counting those runs as successes is the oldest way in statistics to overstate stability, and it gets committed the first time somebody writes "corridors hold in 17 of 20 universes".
+
+This design is cut **before** the era's numbers exist, so the corridor's first table is born honest rather than corrected later. Methodology written after the first table is published is called an erratum.
+
+**1. The window law.** A window bounds every claim made inside it. No hold is ever reported without the window that bounds it — `verdict=TRUCE_HOLD` without a `window=` field is a malformed row, not a result. Window *length* is justified against the observed amendment interval and never chosen for convenience: the window must cover at least a stated multiple of the median inter-amendment interval measured on a pilot sweep, and that multiple is declared before the sweep that uses it. A window shorter than the process it observes measures the window.
+
+**2. The censoring convention.** The columns are `collapsed` (terminal event observed), `amended` (the corridor changed and survived), `intact_censored` (still standing at window end — a survivor, not a success, reported in its own column with its window), and `other`. They **partition the sample and are asserted to sum**. A universe that collapses at 19,900 and one intact at 20,000 are different observations and must never be added together.
+
+The size of that error is measurable today, on a multiverse that already exists. `probes/CensusCensor` re-reads a census table at shorter hypothetical windows; the film's own first century at `6e2458a`:
+
+| window | `collapsed` | `amended` | `intact_censored` | naive hold (censored folded in) | honest lower bound | censored universes that collapse before 6,000 |
+|---|---|---|---|---|---|---|
+| 3,000 | 0 | 0 | 100 | **100.0%** | 0.0% | 79 of 100 |
+| 4,000 | 0 | 40 | 60 | **100.0%** | 40.0% | 39 of 60 |
+| 5,000 | 0 | 71 | 29 | **100.0%** | 71.0% | 8 of 29 |
+| 6,000 | 0 | 79 | 21 | **100.0%** | 79.0% | — (the table's own budget) |
+
+The naive hold fraction is **100% at every window**. It does not move when the window moves, on data that never changed — which is the sharpest available statement of what is wrong with it: a statistic that is invariant to the observation window is not measuring the world. The honest column moves 0% → 79% across the same four windows, because it is measuring something.
+
+**3. The sample-size law, per claim.** A fraction, a median and a *ranking* are three statistics with three appetites, and one sweep's n cannot underwrite all three. `probes/CensusSampleSize` prices them before the sweep is booked:
+
+| claim | law | what it costs |
+|---|---|---|
+| a **fraction** (hold rate) | `n = (1.96/h)² · p(1−p)` | ±10 pts: n=97 · ±5 pts: n=385 · ±3 pts: n=1,068 · ±1.5 pts: n=4,269 (worst case p=0.5) |
+| a **median** (per-clause strain) | `n = (2.4565 · sd / h)²`, normal-shape assumption **stated** | ±0.5 sd: n=25 · ±0.25 sd: n=97 · ±0.10 sd: n=604 |
+| a **ranking** (first-breached clause) | no closed form worth trusting — measured by Monte Carlo | see below |
+
+Rankings are the expensive sentence. For four clauses with true probabilities 0.40 / 0.28 / 0.19 / 0.13 (20,000 trials, seeded):
+
+| runs | full ordering correct | top clause merely correct |
+|---|---|---|
+| 20 | **18.6%** | 64.7% |
+| 50 | 42.8% | 81.9% |
+| 100 | 67.0% | 92.2% |
+| 200 | 87.2% | 97.8% |
+| 500 | 98.9% | 99.9% |
+
+An ordering of four clauses read off twenty runs is right **less than one time in five**. A twenty-run sweep may name the most-breached clause (two times in three) and may not rank them.
+
+**4. The zero law.** `k = 0` in `n` bounds a rate at `3/n` at 95% and no tighter: a dead branch is bounded, never proven. It is the same rule the film's `OLD_PLAYBOOK` lives under and it will be the rule the era's un-seen failure modes live under.
+
+**5. The re-run rule.** One command regenerates the era table after any D-006 corridor tuning. That is what turns the era census from a report into a regression harness, and it is the same falsifiability clause every entry in this chapter carries: rerun the command, diff the table.
+
+**The seam, stated.** #316 teaches `SeedAtlas` the era verdicts — the **code**. #317 runs the corridor sweep and lands its table — the **measurement**. This section is neither: it is the **design** both execute against, and it is executable today only in the parts that need no era (`CensusCensor` on any census table, `CensusSampleSize` on any claim).
+
 ---
 
 ### Entry 4 — the first century, re-verdicted across all of Season Two
