@@ -1,5 +1,13 @@
 package matrix.core;
 
+import matrix.entities.eco.Bestiary;
+import matrix.entities.eco.MovementKind;
+import matrix.entities.eco.Species;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 /** Every tunable in one place (D-006 discipline). City-scale centimeters, not screen numbers (D-004). */
 public final class Config {
     public static final int WORLD_W_CM = 400_000;
@@ -55,15 +63,188 @@ public final class Config {
     public static final long KID_SPIKE = 24;
 
     public static final int HASH_CELL_CM = 5_000;
-    // The ring hunt's displacement law (#135): the largest legal single-tick
-    // gait displacement is the sparrow's flock heading (±400, ±400) — 566 cm
-    // euclid; SWARM tops out at 1.5x bee speed = 225, stepToward at ONE_SPEED
-    // 350 -> 495. The bound rounds up with headroom; anything past it (rain's
-    // ground recycle, an exile gone to ground) rides the far-mover ledger
-    // instead. Correctness never depends on this number — only ring width does.
+    /**
+     * The ring hunt's displacement law (#135). Ring <i>d</i>'s live-distance
+     * floor is {@code (d-1)*HASH_CELL_CM - HUNT_DISP_BOUND_CM}; anything that
+     * outruns the bound latches onto the far-mover ledger
+     * ({@code MatrixEntity.noteDisplacement}) and every hunt sweeps that
+     * ledger <b>linearly</b> after the rings.
+     *
+     * <p>Correctness never depends on this number — the ledger keeps the
+     * answer exact at any value, which is why lowering it moves no digest.
+     * The <b>complexity guarantee</b> does depend on it: the ledger term is
+     * (movers past the bound) x (hunts per tick), and both factors scale with
+     * population, so a gait that outgrows the bound is #135's quadratic term
+     * coming back. Measured at seed 42 over 6,000 ticks, two species crossing
+     * multiplies ledger candidates 423x (2,912 to 1,232,801) with a
+     * byte-identical digest and a passing selftest (#825).
+     *
+     * <p>Which is why the derivation below is executed rather than asserted.
+     * The comment this replaced named three gait maxima by hand and was
+     * exactly right on the day it was written; the day a gait outgrew it,
+     * nothing anywhere would have said so.
+     */
     public static final int HUNT_DISP_BOUND_CM = 640;
     public static final long HUNT_DISP_BOUND_SQ_CM2 =
             (long) HUNT_DISP_BOUND_CM * HUNT_DISP_BOUND_CM;
+
+    /** A gait that is not bounded: a declared teleport, and therefore a declared ledger tenant. */
+    private static final int GAIT_TELEPORTS = -1;
+
+    /**
+     * One mover's single-tick reach: what moves, and the largest euclidean
+     * displacement one tick of its gait can put between it and the snapshot
+     * the hunt buckets were built on. The label is the key the bench measures
+     * against — a catalog row is {@code eco:<species id>}, anything else is
+     * its class name.
+     */
+    public record GaitReach(String mover, int maxDisplacementCm) {}
+
+    /**
+     * Every bounded gait in the world, widest first — the derivation
+     * {@link #HUNT_DISP_BOUND_CM} used to state in prose (#825).
+     *
+     * <p>The eco half reads the catalog, so adding a species is covered for
+     * free; the named half is the program society, whose gaits spend the
+     * speed constants above through {@code MatrixEntity.stepToward} and
+     * {@code wander}. Both doors are Chebyshev — a clamped step per axis —
+     * so a gait's reach is its per-axis step on the diagonal.
+     *
+     * <p>{@code Avatar} carries the RED speed rather than the BLUE one
+     * because a pill is a field, not a type: the same object commutes at 120
+     * on one tick and flees at 200 on the next. {@code Agent} likewise
+     * carries the hunting speed it spends outside PEACE.
+     */
+    public static List<GaitReach> huntGaitReaches() {
+        List<GaitReach> reaches = new ArrayList<>();
+        for (Species s : Bestiary.ALL) {
+            int axis = gaitAxisStepCm(s);
+            if (axis != GAIT_TELEPORTS) {
+                reaches.add(new GaitReach("eco:" + s.id(), diagonalCm(axis)));
+            }
+        }
+        reaches.add(new GaitReach("TheOne", diagonalCm(ONE_SPEED_CM)));
+        reaches.add(new GaitReach("SmithPrime", diagonalCm(SMITH_SPEED_CM)));
+        reaches.add(new GaitReach("Agent", diagonalCm(AGENT_SPEED_CM)));
+        reaches.add(new GaitReach("AgentSmith", diagonalCm(AGENT_SPEED_CM)));
+        reaches.add(new GaitReach("SmithCopy", diagonalCm(COPY_SPEED_CM)));
+        reaches.add(new GaitReach("Avatar", diagonalCm(RED_SPEED_CM)));
+        reaches.add(new GaitReach("Oracle", diagonalCm(BLUE_SPEED_CM)));
+        reaches.sort(Comparator.comparingInt(GaitReach::maxDisplacementCm).reversed());
+        return reaches;
+    }
+
+    /**
+     * The movers that ride the far-mover ledger by design: rain's ground
+     * recycle ({@code DriftMovement} wraps the field) and an exile gone to
+     * ground ({@code ExileProgram.handleDeletion} places at a fresh draw).
+     * An exile walks a bounded 120 the rest of the time; it is listed here
+     * because one of its two doors is a teleport, and a mover is a tenant if
+     * any of its doors is.
+     */
+    public static List<String> huntTeleporters() {
+        List<String> out = new ArrayList<>();
+        for (Species s : Bestiary.ALL) {
+            if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
+                out.add("eco:" + s.id());
+            }
+        }
+        out.add("ExileProgram");
+        return out;
+    }
+
+    /**
+     * The far-mover ledger's stated ceiling: every declared tenant teleporting
+     * on the same tick. It is deliberately loose — seed 42 peaks at 2 over
+     * 6,000 ticks against a ceiling of 76 — because it is the backstop, not
+     * the tight check. The tight check is {@link #huntBoundLine()}, which
+     * reads the gait table and needs no run at all; this one catches what a
+     * table cannot see, namely a mover that reaches the ledger through a door
+     * nobody declared. Scales with {@code --scale}, because its tenants do.
+     */
+    public static int huntLedgerCeiling() {
+        int tenants = EXILE_COUNT;
+        for (Species s : Bestiary.ALL) {
+            if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
+                tenants += s.populationCap() * ECO_SCALE;
+            }
+        }
+        return tenants;
+    }
+
+    /**
+     * The displacement law as a lock rather than a comment (#825), printed by
+     * {@code --selftest} beside the retail-order line it is modelled on
+     * (#382): a bound the gaits have outgrown fails the build instead of
+     * quietly re-growing the term #135 was cut to remove.
+     *
+     * <p>It throws rather than warns, and that is the argued part. Crossing
+     * the bound is not incorrect, so nothing here is protecting an answer —
+     * it is protecting a budget that no digest, no selftest and no referee
+     * can see move. The remedy is one line: raise {@code
+     * HUNT_DISP_BOUND_CM} to the printed figure and the rings widen by one
+     * cell's worth of arithmetic, which is the trade this constant exists to
+     * make. What the throw refuses is making that trade by accident.
+     *
+     * @throws IllegalStateException when a bounded gait can outrun the bound
+     */
+    public static String huntBoundLine() {
+        GaitReach widest = huntGaitReaches().get(0);
+        if (widest.maxDisplacementCm() > HUNT_DISP_BOUND_CM) {
+            throw new IllegalStateException("HUNT bound outgrown: " + widest.mover()
+                    + " reaches " + widest.maxDisplacementCm() + " cm in one tick and"
+                    + " HUNT_DISP_BOUND_CM=" + HUNT_DISP_BOUND_CM + " — every tick of that"
+                    + " gait now latches onto the far-mover ledger, which every hunt sweeps"
+                    + " linearly. Raise the bound to at least " + widest.maxDisplacementCm()
+                    + " and the rings widen instead (#825).");
+        }
+        return "HUNT bound held: HUNT_DISP_BOUND_CM=" + HUNT_DISP_BOUND_CM + " > "
+                + widest.mover() + "=" + widest.maxDisplacementCm()
+                + " (headroom " + (HUNT_DISP_BOUND_CM - widest.maxDisplacementCm())
+                + " cm), ledger ceiling=" + huntLedgerCeiling();
+    }
+
+    /**
+     * One catalog row's largest per-axis step, or {@link #GAIT_TELEPORTS}.
+     *
+     * <p>The switch is exhaustive with no {@code default} on purpose: a
+     * thirteenth gait added to {@link MovementKind} does not compile until
+     * somebody states what one tick of it can spend. That is the half of
+     * #825 a runtime check cannot reach — the instance is caught by the
+     * arithmetic below, the class is caught by the compiler.
+     */
+    private static int gaitAxisStepCm(Species s) {
+        return switch (s.movement()) {
+            // One clamped speed per axis: FlockMovement clamps its heading,
+            // WanderMovement draws inside +/-speed, CommuteMovement clamps
+            // its step toward the destination.
+            case FLOCK, WANDER, COMMUTE -> s.speedCm();
+            // SwarmMovement draws inside +/-speed and then adds a half-speed
+            // pull toward the nearest of its own kind.
+            case SWARM -> s.speedCm() + s.speedCm() / 2;
+            // Flowers hold the line.
+            case ROOTED -> 0;
+            // DriftMovement wraps the field: the ledger's intended tenant.
+            case DRIFT -> GAIT_TELEPORTS;
+        };
+    }
+
+    /** Both axes spent at once, rounded up — the diagonal is the worst case a Chebyshev step can reach. */
+    private static int diagonalCm(int axisStepCm) {
+        return ceilSqrt(2L * axisStepCm * axisStepCm);
+    }
+
+    /** Exact integer ceiling square root: the seed is a double, the answer is corrected by integers. */
+    private static int ceilSqrt(long v) {
+        int r = (int) Math.sqrt((double) v);
+        while ((long) r * r < v) {
+            r++;
+        }
+        while (r > 0 && (long) (r - 1) * (r - 1) >= v) {
+            r--;
+        }
+        return r;
+    }
     /**
      * The hunt referee (#135): with {@code -Dmatrix.huntVerify=true} every
      * ring hunt replays the linear scan it replaced and throws on the first

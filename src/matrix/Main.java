@@ -182,6 +182,11 @@ public final class Main {
         // miracle must outrank every other disbelief item, and a retune
         // that demotes it fails here instead of in a season's worth of runs.
         System.out.println(matrix.realworld.Bond.retailOrderLine());
+        // The ring hunt's displacement law is a lock too (#825): the gait
+        // maxima are compile-time data, so this needs no world and no tick,
+        // and a gait that outgrew the bound fails here rather than arriving
+        // as a slow arc somebody blames on the box.
+        System.out.println(matrix.core.Config.huntBoundLine());
         List<Digest> a = new Simulation(seed, null, null).run(ticks);
         List<Digest> b = new Simulation(seed, null, null).run(ticks);
         if (a.size() != b.size()) {
@@ -245,9 +250,31 @@ public final class Main {
                         : "ticks_per_s=" + arcTps + " floor=100 ref_box_s=30",
                 arcOk ? "PASS" : "FAIL"));
 
-        System.out.print("BENCH VERDICT " + (steadyOk && arcOk ? "PASS" : "FAIL")
+        // The ring hunt's linear term, measured rather than assumed (#825).
+        // The bound row reads compile-time data — it is the same arithmetic
+        // --selftest throws on, printed here because this is the budget table
+        // and that is where a reader looks for it. The ledger row is the
+        // backstop the table cannot provide: it catches a mover that reaches
+        // the ledger through a door no gait declares.
+        matrix.core.Config.GaitReach widest = matrix.core.Config.huntGaitReaches().get(0);
+        int headroom = matrix.core.Config.HUNT_DISP_BOUND_CM - widest.maxDisplacementCm();
+        boolean boundOk = headroom >= 0;
+        System.out.print(String.format(Locale.ROOT,
+                "BENCH hunt_bound bound_cm=%d widest=%s reach_cm=%d headroom_cm=%d floor=0 %s\n",
+                matrix.core.Config.HUNT_DISP_BOUND_CM, widest.mover(), widest.maxDisplacementCm(),
+                headroom, boundOk ? "PASS" : "FAIL"));
+
+        int ceiling = matrix.core.Config.huntLedgerCeiling();
+        int peak = arc.farMoverPeak();
+        boolean ledgerOk = peak <= ceiling;
+        System.out.print(String.format(Locale.ROOT,
+                "BENCH far_movers seed=%d ticks=6000 peak=%d ceiling=%d %s\n",
+                seed, peak, ceiling, ledgerOk ? "PASS" : "FAIL"));
+
+        boolean pass = steadyOk && arcOk && boundOk && ledgerOk;
+        System.out.print("BENCH VERDICT " + (pass ? "PASS" : "FAIL")
                 + " (budgets: D-027 + erratas; digests untouched — bench runs quiet)\n");
-        return steadyOk && arcOk ? 0 : 1;
+        return pass ? 0 : 1;
     }
 
     /**
@@ -302,8 +329,14 @@ public final class Main {
             long elapsedNs = System.nanoTime() - start;
             long perTickNs = Math.max(1, elapsedNs / Math.max(1, ticks));
             long ticksPerSecond = 1_000_000_000L / perTickNs;
+            // far_max/far_ceiling append (#825, D-020 additive evolution): the
+            // ring hunt's one remaining linear term, and the ceiling it is
+            // judged against. Both are deterministic — the rate beside them
+            // is the only thing on this line that measures the box.
             System.out.print(String.format(Locale.ROOT,
-                    "PERF ticks_per_s=%d entities=%d ticks=%d\n", ticksPerSecond, sim.aliveEntities(), ticks));
+                    "PERF ticks_per_s=%d entities=%d ticks=%d far_max=%d far_ceiling=%d\n",
+                    ticksPerSecond, sim.aliveEntities(), ticks,
+                    sim.farMoverPeak(), matrix.core.Config.huntLedgerCeiling()));
         }
     }
 

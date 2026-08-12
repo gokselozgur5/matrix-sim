@@ -584,6 +584,15 @@ public final class Simulation {
         return world.countAlive();
     }
 
+    /**
+     * The far-mover ledger's high-water mark over this run (#825) — the
+     * linear term the ring hunts still pay, reported on PERF and judged by
+     * {@code --bench} against {@link Config#huntLedgerCeiling()}.
+     */
+    public int farMoverPeak() {
+        return world.farMoverPeak();
+    }
+
     private void emit(String line) {
         if (out != null) {
             out.print(line + "\n");

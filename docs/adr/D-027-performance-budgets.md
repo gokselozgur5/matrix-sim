@@ -101,4 +101,18 @@ Accepted with a spark: each phase closure stamps its PERF line into the phase tr
 
 *Scope of this errata.* It stamps one rung's verdict. It changes no budget figure, no floor and no measurement in any errata above: the scaled steady row keeps its 100 floor, the scaled arc keeps completion as its judgment, and the digest referee rule is untouched. It ships no code — `DIGEST tick=6000` is byte-identical at seeds 42 (`421d7263…`) and 7 (`957a1247…`). Superseding it will take a run, not a rewrite.
 
+**Errata (2026-08-13, #825) — the budget that only a comment guarded.** The ring hunt (#135) buys its stopping rule with `Config.HUNT_DISP_BOUND_CM`, and everything that outruns the bound rides a far-mover ledger every hunt sweeps **linearly**. That ledger is the one term of the hunt that is still O(movers past the bound) x (hunts per tick) — both factors scale with population, so it is precisely the quadratic term #135 was cut to remove, held off by a single number. The number was correct and it was **asserted in a comment**: three gait maxima named by hand, closing with *correctness never depends on this number*. Correctness does not. This budget does, and no instrument in the repository could see it move — measured at seed 42 over 6,000 ticks at `b44560f`, lowering the bound from 640 to 500 (what two species outgrowing it looks like to the ledger) multiplies ledger candidates **423x**, 2,912 to 1,232,801, and at 250 it reaches 42,127,206, half of all hunt work; the digest stays byte-identical at `421d7263…e0e3ce10` throughout, `--selftest` prints OK and the hunt referee still passes — because the ledger keeps the answer exact, which is the design working.
+
+The budget is now stated in three places, and the split is the argued part:
+
+| where | what it judges | why there |
+|---|---|---|
+| `Config.huntBoundLine()`, thrown from `--selftest` | the widest **declared gait** against the bound | the gait maxima are compile-time data — this needs no world, no tick and no seed, so it is the tight check and it fails the build the way `Bond.retailOrderLine()` does (#382) |
+| `BENCH hunt_bound` / `BENCH far_movers` | the same arithmetic, plus the ledger's **measured** high-water mark against a stated ceiling | this is the budget table; a reader looking for the hunt's cost looks here |
+| `PERF … far_max= far_ceiling=` | the occupancy, on every headless run | D-020: a number that governs a budget belongs on a line |
+
+The ceiling is deliberately loose — every declared ledger tenant teleporting on the same tick, 76 at canonical scale against a measured peak of 2 (seed 42) and 3 (seed 7) — and the looseness is the point of having both checks rather than one. On the 640→500 tamper the peak rises to **75 and the ceiling row still passes by one**, while the derivation row fails instantly at `headroom_cm=-66`. A backstop catches what a table cannot see (a mover reaching the ledger through a door no gait declares); it is not a substitute for the table.
+
+`probes/HuntBound` is the third leg, on the bench rather than in the daemon, because it answers the one question the table cannot ask about itself: the table is a model of the gait code, and only a run can say whether the code obeys it. Seed 42, 6,000 ticks: `eco:sparrow` declared 566, measured 566, `VERDICT HUNT_BOUND_HELD`.
+
 Referenced by: [D-006](D-006-arc-tuning.md), [D-009](D-009-build-tooling.md), [D-010](D-010-determinism.md), [D-017](D-017-spatial-hash.md), [D-018](D-018-tick-budgets.md), [D-020](D-020-observability-contract.md), [D-036](D-036-finish-line.md), [D-040](D-040-ci-and-junit.md).

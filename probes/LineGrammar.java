@@ -151,8 +151,13 @@ final class LineGrammar {
             new Family("PERF", List.of(
                     new Field("ticks_per_s", Type.INT, "rate", ">=0"),
                     count("entities"),
-                    new Field("ticks", Type.INT, "ticks", ">=0")),
-                    List.of(3), 0),
+                    new Field("ticks", Type.INT, "ticks", ">=0"),
+                    // #825's append: the far-mover ledger's high-water mark
+                    // over the run, and the ceiling it is judged against.
+                    // Both deterministic — on a line whose first column is
+                    // the only thing here that measures the box.
+                    count("far_max"), count("far_ceiling")),
+                    List.of(3, 5), 0),
             new Family("DIGEST", List.of(
                     TICK,
                     new Field("sha", Type.SHA, "sha256", "64 hex")),

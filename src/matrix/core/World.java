@@ -42,6 +42,15 @@ public final class World {
     private int huntAgents;
     private int huntReds;
     private int huntNonRep;
+    // The far-mover ledger's census (#825). The ledger is the one term of the
+    // ring hunt that is still linear, it is refilled from empty every tick,
+    // and until this counter existed nothing anywhere reported its size —
+    // an excellent number nobody could see, and therefore an excellent number
+    // nobody would notice leaving. Read at the end of the step, which is when
+    // the tick's last mover has already latched.
+    private int farMoverPeak;
+    private long farMoverTickSum;
+    private long farMoverTicks;
     // D-008 substrate scalars (#134): uncapped and unstretched until a
     // budget commands otherwise — under BATTERY nothing ever does, and
     // these defaults ARE the pre-D-008 world, bit for bit.
@@ -196,6 +205,15 @@ public final class World {
             }
         }
         flush();
+        // The tick's far-mover census (#825): one list read, after the last
+        // mover of the tick has latched and before the next rebuild clears
+        // the ledger. Draws nothing and touches no digested state.
+        int far = hash.farMoverCount();
+        farMoverTickSum += far;
+        farMoverTicks++;
+        if (far > farMoverPeak) {
+            farMoverPeak = far;
+        }
     }
 
     /** Boot-time flush so tick 1 already sees the seeded population. */
@@ -310,6 +328,26 @@ public final class World {
     /** Cumulative Unpark count — the ledger's second mechanical déjà-vu source, read by the probe bench (#133). */
     public long unparks() {
         return unparks;
+    }
+
+    /**
+     * The far-mover ledger's high-water mark over the run (#825): the most
+     * entities any single tick made the ring hunts sweep linearly. Judged
+     * against {@link Config#huntLedgerCeiling()} by {@code --bench} and
+     * reported on the PERF line.
+     */
+    public int farMoverPeak() {
+        return farMoverPeak;
+    }
+
+    /** Ledger occupancy summed over every stepped tick — the mean's numerator (#825). */
+    public long farMoverTickSum() {
+        return farMoverTickSum;
+    }
+
+    /** Stepped ticks only — the mean's denominator (#825): a frozen tick moves nobody and counts for nothing. */
+    public long farMoverTicks() {
+        return farMoverTicks;
     }
 
     /** Smith eats everything — except The One, until a surrender is on the table (v3 canon). */
