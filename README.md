@@ -71,12 +71,14 @@ java -cp out matrix.Main --headless --ticks 600 --snapshot-at 500   # stage 3: S
 `--ticks` is a budget for **headless and selftest** runs only; a live daemon runs until the console says `quit`, so a recording is as long as you let it be. `--replay` honors `--ticks` on its own (default 2,000), and `--expect` overrides it with the dump's last tick.
 
 ```
-REPLAY OK seed=42 ticks=2000 links=20 commands_applied=0
+REPLAY OK seed=42 ticks=2000 links=20 commands_applied=0 births_folded=0
 AUDIT genesis seed=42 version=6 config=match
 AUDIT OK records=2 seals_paired=0
-SNAPSHOT tick=500 sha=bf4dd8b6538034f2a06cdfa83d03722ff023b1dd32449b35238ce2079efd96de bytes=30975
+SNAPSHOT tick=500 sha=354adb0b797d93b3a0b948119d8e6a01d39cd1c4b1ff3e8c04ea8cd113484b5c bytes=31014
 SNAPSHOT_MATCHES_DIGEST=true
 ```
+
+Measured on `main` at `7dd78d2`, seed 42 — the default when `--seed` is absent. The `SNAPSHOT` sha and its byte count are a pin on the digest walk, so every declared digest move rewrites them: this one has moved twice since it was first published, most recently by the fourteen bytes room 303's clause added to each bond edge. It names the tree it was measured at for the same reason the arc beats below do — a bare number can be checked against nothing.
 
 **Scenario flags** fire a console command inside a headless run, so a scenario is reproducible without a human at the keyboard — `--sink-at T` scuttles the active ship in tick *T*'s zion slot (#119), `--sink-every N` files that same order every *N* ticks (#905), `--reload-at T` fires the Architect's reload right before tick *T* (#128; with `--chronos` the epoch seals onto the record first, written before the purge). The fleet only exists to be sunk after it launches:
 
