@@ -2,6 +2,8 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -30,7 +32,33 @@ import java.util.List;
  *   java -cp out:tools/dreamreader/out DreamReader --pilot NAME [--seed N] [--ticks N]
  * </pre>
  *
- * Exit codes: 0 a day rendered · 2 the record holds nobody by that name.
+ * <h2>The output contract</h2>
+ *
+ * What makes a page evidence rather than output:
+ *
+ * <ul>
+ *   <li><b>No wall clock, no rng of the reader's own, iteration strictly in
+ *       capture order.</b> The same arguments render the same day, byte for
+ *       byte, forever — on any machine, in any locale, in any time zone.</li>
+ *   <li><b>{@code --out FILE} writes exactly the bytes stdout gets.</b> Not a
+ *       re-render: the same {@code String}, encoded once. A tool with two
+ *       output paths has two truths.</li>
+ *   <li><b>Byte ownership (D-010):</b> UTF-8 end to end, {@code Locale.ROOT}
+ *       for every case change, explicit {@code \n} — never
+ *       {@code System.lineSeparator()}, never a default charset.</li>
+ *   <li><b>The exit grammar is part of the contract:</b> 0 a day rendered,
+ *       2 the record holds nobody by that name, 1 the golden day drifted. A
+ *       typo in a pilot's name must be a refusal, not an empty page that
+ *       reads like a quiet life.</li>
+ *   <li><b>{@code --check-golden FILE}</b> pins the SENTENCES. Determinism
+ *       only promises that one build renders one day the same way twice; it
+ *       says nothing about the next edit to the voice, which would change
+ *       every rendered day in silence. The golden day is the guard, and it
+ *       is a plain file so the drift is readable as a diff.</li>
+ * </ul>
+ *
+ * Exit codes: 0 a day rendered · 1 the golden day drifted · 2 nobody by that
+ * name.
  */
 public final class DreamReader {
 
@@ -38,6 +66,8 @@ public final class DreamReader {
         String pilot = null;
         long seed = 42;
         long ticks = 6_000;
+        String outPath = null;
+        String goldenPath = null;
         boolean captureOnly = false;
         boolean factsOnly = false;
         Voice voice = Voice.COLD;
@@ -47,6 +77,8 @@ public final class DreamReader {
                 case "--pilot" -> pilot = value(args, ++i);
                 case "--seed" -> seed = Long.parseLong(value(args, ++i));
                 case "--ticks" -> ticks = Long.parseLong(value(args, ++i));
+                case "--out" -> outPath = value(args, ++i);
+                case "--check-golden" -> goldenPath = value(args, ++i);
                 case "--capture-only" -> captureOnly = true;
                 case "--facts" -> factsOnly = true;
                 case "--voice" -> {
@@ -95,11 +127,53 @@ public final class DreamReader {
             }
         }
 
+        // One string, encoded once: stdout and --out cannot disagree because
+        // there is nothing for them to disagree about.
+        byte[] bytes = page.getBytes(StandardCharsets.UTF_8);
+        if (goldenPath != null) {
+            System.exit(checkGolden(goldenPath, bytes));
+        }
         PrintStream stdout = new PrintStream(
                 new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
-        stdout.print(page);
+        stdout.write(bytes, 0, bytes.length);
         stdout.flush();
+        if (outPath != null) {
+            Files.write(Path.of(outPath), bytes);
+        }
         System.exit(capture.resolvedName == null ? 2 : 0);
+    }
+
+    /**
+     * The golden day: does this build still write the sentences it was blessed
+     * writing? Determinism guards one build against itself; this guards the
+     * repo against the next edit to the voice. Prints the first line that
+     * moved, because "something changed" is not a finding.
+     */
+    private static int checkGolden(String path, byte[] rendered) throws Exception {
+        Path file = Path.of(path);
+        if (!Files.exists(file)) {
+            System.err.println("FATAL no golden day at " + path);
+            return 1;
+        }
+        byte[] blessed = Files.readAllBytes(file);
+        if (java.util.Arrays.equals(blessed, rendered)) {
+            System.out.println("GOLDEN OK " + path + " (" + blessed.length + " bytes)");
+            return 0;
+        }
+        String[] want = new String(blessed, StandardCharsets.UTF_8).split("\n", -1);
+        String[] got = new String(rendered, StandardCharsets.UTF_8).split("\n", -1);
+        System.out.println("GOLDEN DRIFT " + path + " — blessed " + blessed.length
+                + " bytes, rendered " + rendered.length + " bytes");
+        for (int i = 0; i < Math.max(want.length, got.length); i++) {
+            String w = i < want.length ? want[i] : "(page ends)";
+            String g = i < got.length ? got[i] : "(page ends)";
+            if (!w.equals(g)) {
+                System.out.println("  line " + (i + 1) + " blessed: " + w);
+                System.out.println("  line " + (i + 1) + " now:     " + g);
+                break;
+            }
+        }
+        return 1;
     }
 
     private static String value(String[] args, int i) {
@@ -119,6 +193,9 @@ public final class DreamReader {
                   --voice V        cold (default) or none — the fold, stated flatly
                   --facts          print the fact stream itself; no voice ever touches it
                   --capture-only   report the three feeds and stop, one greppable line last
+                  --out FILE       also write the page to FILE — the same bytes stdout got
+                  --check-golden F verdict only: does this build still write F's sentences?
+                exit: 0 a day rendered · 1 the golden day drifted · 2 nobody by that name.
                 observer-only: the tool runs its own quiet universe and mutates nothing.
                 """);
     }
