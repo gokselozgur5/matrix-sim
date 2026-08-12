@@ -244,16 +244,21 @@ The owner's standing order: this system must be worked so well that *we never ge
 
 ### The case of Nadia Petrov
 
+> **As of the `v3.0.0` tag.** Every tick in this case study belongs to the sealed Season One universe and is quoted from a run pinned there (`git archive fa1da4d`, per D-030's pin-to-SHA rule) — the four flips, the 1846 log line, the 4324 walk-out, all reproduce today at that tag. **On current `main` they do not**: Season Two's mechanics moved the film (the README's quickstart carries the same two dated columns — the open door is 4324 at the tag, 4754 on `main`), and re-running `LinkTrace` against `main` prints *one* line for her — `t=0`, and no change through all 6,000 ticks. She is never worn, never freed, and the event log holds nothing under her name at all. PR #230 caught this first and said so for the record. What is pinned here is the **evidence**; the method below it is era-free, which is why the chapter still teaches.
+
 **Symptom (one instrument speaks).** A `--follow "Nadia Petrov"` stream went dark twice — `"signal":"lost"` at tick 1800 and again at 2500 — with frames flowing again *between* the darkenings. A dream that ends should stay ended; a dream that returns should have a reason. The event log, grepped for her name across the whole run, held exactly one line: her walk-out at 4324. Silence where there should have been a story.
 
 **Localize (a probe narrows it).** `probes/LinkTrace.java` replays the identical universe (determinism is what makes the coroner's job possible — same seed, same corpse) and prints every change in her link's `(alive, present, closed, pill)` tuple:
 
 ```
+# java -cp out:probes/out LinkTrace "Nadia Petrov" 6000 42   — at the v3.0.0 tag; the flip window
 t=0 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
 t=1717 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
 t=1846 link#0 alive=true present=true closed=false avatarId=8 pill=BLUE
 t=2477 link#0 alive=true present=false closed=false avatarId=8 pill=BLUE
 ```
+
+(One more line follows at that tag and closes the story — `t=4323 … closed=true`, her exit; the four above are the mystery.)
 
 Same avatar object throughout. Never dead, never closed — but *leaving the world and coming back*. That tuple rules out death, clean exit, and the follow engine itself in one screen.
 
