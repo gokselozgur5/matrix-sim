@@ -24,10 +24,18 @@ import java.util.List;
  * be true of one call site, so the boundary is drawn and made greppable:
  *
  * <ul>
- *   <li>The <b>migrated</b> site — {@code AcceptanceLoop.threshold} and
- *       {@code spikes}, the Kid's band — keeps its exact existing mix under
- *       the two-die law. Its numbers are canon and are not this package's
- *       to move.</li>
+ *   <li>The <b>migrated</b> sites keep their exact existing mix under the
+ *       two-die law. Their numbers are canon and are not this package's to
+ *       move. This list said "site", singular, and named two of four (#837);
+ *       the full set is {@code AcceptanceLoop.threshold} and {@code spikes}
+ *       (the Kid's band), {@code RealWorld.petitionThreshold} (the inward
+ *       door), and {@code World.digestEntity} — the last of which is inside
+ *       the canonical chain itself, and was the only one of the four carrying
+ *       no comment at all. All four are pinned by {@code probes/SealHygiene}
+ *       and permitted by D-010's two-tier clause: {@code String.hashCode} is
+ *       specification-shaped, and the hygiene clause was written against the
+ *       implementation-shaped tier ({@code Object.hashCode}, identity hashes,
+ *       unordered iteration), which appears nowhere in {@code src/}.</li>
  *   <li>Every <b>new</b> axis derives here, through our own mixer: FNV-1a
  *       over the UTF-8 bytes of the name at birth, salted per (family, axis)
  *       and murmur3-finalized. No platform string hashing exists anywhere

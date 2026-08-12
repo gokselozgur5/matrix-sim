@@ -112,6 +112,7 @@ thread-allocation counter, which tracks the JIT's progress as much as the daemon
 | `LinkAudit` | What is the end-state of every NeuralLink after N ticks? | ghost-link triage: open/closed × alive/dead × present/absent |
 | `ChainDump` | What is the DIGEST chain of a run, as plain lines? | out-of-band replay diffing between two boxes |
 | `LedgerMirror` | Does every ledger delta equal the open-link residue mirror? | the ghost-HARDLINE class of bug, made permanently detectable (`LEDGER_ANOMALIES=0`, seeds 42 & 7) |
+| `SealHygiene` | Are the numbers the seal borrows from the JLS still the numbers it borrowed? | #837: `String.hashCode` sits inside `World.digestEntity`, so a species id is canonical text and not a caption — renaming `"black cat"` moved the chain from `421d7263…` to `ec0a1b61…` in total silence. Twelve ids and both door thresholds pinned; needs no ticks, no seed and no world, so it is the one probe that cannot be flaky |
 | `OneTrace` | Does the One's death close his link the same tick? | the finale's contract after the v3 fix round: died=4284, closed=4284, `CONTRACT_HELD` |
 | `CapSentinel` | Do awakened minds (present + wrapped) ever exceed the cap? | the treaty-restore cap breach, made permanently detectable (`CAP_BREACHES=0`, seeds 42 & 7) |
 | `ArcBeats` | Does the film play, in order? | the D-036 DoD as a machine verdict (`BEATS_IN_ORDER` at 42 & 7) — and its own first run caught a wrong needle and a wrong beat order, which is what instruments are for |
