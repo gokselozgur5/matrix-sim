@@ -97,6 +97,19 @@ final class LineGrammar {
      * SUBSTRATE carries no tick: it is the machine wing's own line, read
      * beside the ATTN census it rations.
      *
+     * <p>ZION's {@code deferred} (#846, #809) sits after {@code traced} and
+     * BEFORE the trace pair, which moved both of them one place right. That
+     * is a declared move, not an append, and it is the only shape this
+     * registry can hold. The field list is one ordered sequence and every
+     * legal arity must be a PREFIX of it — that is what the positional check
+     * in {@link LineLint} means by field order. A mandatory column written
+     * past the optional rider would be at position 5 on the short line and
+     * position 7 on the long one, and no single sequence describes both:
+     * the short line then reads as {@code trace_mnn_cm} renamed. The trace
+     * pair therefore has no fixed index in this family and never did; it has
+     * a fixed suffix position, which is a different promise, and one this
+     * registry has no vocabulary for.
+     *
      * <p>BIRTH is the eighth and the first that D-020 did not grow: it is
      * D-023's, the stdout echo of the chronos birth record (#553), and it is
      * registered here while it still prints only where a recorder is attached
@@ -122,8 +135,9 @@ final class LineGrammar {
             new Family("ZION", List.of(
                     TICK,
                     count("census"), count("fleet"), count("links"), count("traced"),
+                    count("deferred"),
                     cm("trace_mnn_cm"), cm("red_baseline_cm")),
-                    List.of(5, 7), 100),
+                    List.of(6, 8), 100),
             new Family("ATTN", List.of(
                     TICK,
                     count("regions"), count("hot"), count("cold"),
