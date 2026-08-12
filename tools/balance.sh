@@ -51,6 +51,14 @@
 # contribution EVENTS, so one scripted day can dominate any span (2026-08-11's
 # 603 issues are 63% of that whole week). Widening the window does not fix a
 # volume asymmetry — see #828, which is about the ruler rather than the span.
+#
+# WHICH BUTTON SHAPED IT. The merge strategy is a term of this law, not a
+# preference about history (D-061). A merge commit is a second authored commit
+# per unit, so under it the commit leg runs at about twice the PR leg and the
+# four quarters stop being a target that is missed and become one that cannot be
+# hit. Every run therefore reads the repository's own merge settings and prints
+# them on the SCOPE line: a verdict can be read wrong for a hundred reasons, but
+# never again without the button that shaped it being on the same screen.
 
 set -euo pipefail
 
@@ -361,6 +369,34 @@ else
   WHEN_WORD="in this window"
 fi
 
+# WHICH BUTTON SHAPED THIS READING (D-061, #911). The merge strategy is an input
+# to the commit leg and it is the only input that lives outside the repository,
+# in a settings page nobody reading a verdict can see. Under merge commits a unit
+# of `k` atomic commits lands `k+1`, so the commit leg sits at roughly twice the
+# PR leg by construction; under rebase it lands `k`, and `k = 1` is the 1:1 the
+# law wants. So the settings are read here and printed there.
+#
+# Read once, from the repository being judged rather than from the tree, because
+# `--for` can name a repository this checkout is not: the button that shaped the
+# counts is the button of the repository the counts came from.
+#
+# A failed read is reported as `unreadable`, not as a default and not as a fatal.
+# The nine-integer guard above already refused everything that makes the counts
+# untrustworthy; this call is a fourth thing said about a reading that is already
+# sound, and losing it should cost the reader the sentence, not the verdict.
+read -r M_MERGE M_SQUASH M_REBASE <<<"$(gh api "repos/$REPO" \
+  --jq '[.allow_merge_commit, .allow_squash_merge, .allow_rebase_merge] | @tsv' 2>/dev/null || true)"
+if [[ "$M_MERGE" =~ ^(true|false)$ && "$M_SQUASH" =~ ^(true|false)$ && "$M_REBASE" =~ ^(true|false)$ ]]; then
+  MERGE_ALLOWED=""
+  if [ "$M_MERGE"  = true ]; then MERGE_ALLOWED="${MERGE_ALLOWED}+merge";  fi
+  if [ "$M_SQUASH" = true ]; then MERGE_ALLOWED="${MERGE_ALLOWED}+squash"; fi
+  if [ "$M_REBASE" = true ]; then MERGE_ALLOWED="${MERGE_ALLOWED}+rebase"; fi
+  MERGE_ALLOWED="${MERGE_ALLOWED#+}"
+  MERGE_ALLOWED="${MERGE_ALLOWED:-none}"
+else
+  MERGE_ALLOWED=unreadable
+fi
+
 # The scope report rides every run, including the empty one: "nothing happened
 # here" and "nothing happened anywhere" are different days.
 scope_line() {
@@ -374,12 +410,35 @@ scope_line() {
   else
     note="the account also made ${delta} contribution(s) outside this repository ${WHEN_WORD}, which this verdict excludes"
   fi
-  printf 'SCOPE %s repo=%s account_total=%d repo_total=%d delta=%d judged=%s  (%s)\n' \
-    "$WHEN" "$REPO" "$A_TOTAL" "$R_TOTAL" "$delta" "$SCOPE" "$note"
+  # `merge=` goes on the end rather than beside `repo=`, so every field a reading
+  # taken before D-061 carried is still in the same place: the old line is a
+  # prefix of the new one, and nothing that quoted it has to be re-read.
+  printf 'SCOPE %s repo=%s account_total=%d repo_total=%d delta=%d judged=%s merge=%s  (%s)\n' \
+    "$WHEN" "$REPO" "$A_TOTAL" "$R_TOTAL" "$delta" "$SCOPE" "$MERGE_ALLOWED" "$note"
   # 100 is the page this query asks for. A full page means the breakdown may be
   # truncated and the repo reading could be a floor rather than a count.
   if [ "$MAXLIST" -ge 100 ]; then
     printf 'SCOPE WARN a per-repository breakdown came back full (%d of max 100): the repo reading may be truncated\n' "$MAXLIST"
+  fi
+  # Naming the open buttons is not the same as saying what they cost. D-061
+  # refuses two of the three and for different reasons, so the warning carries
+  # the reason rather than a rule number — a reader who has to open an ADR to
+  # find out why a line is yellow is a reader who will not.
+  if [ "$MERGE_ALLOWED" = unreadable ]; then
+    printf 'SCOPE WARN the merge settings of %s could not be read, so this verdict does not say which button shaped it\n' "$REPO"
+  else
+    local why=""
+    if [ "$M_MERGE" = true ]; then
+      why="merge commits author a second commit per unit, which holds the commit leg near twice the PR leg"
+    fi
+    if [ "$M_SQUASH" = true ]; then
+      if [ -n "$why" ]; then why="${why}; "; fi
+      why="${why}squash merges land one commit per unit but fuse a k>1 unit's atomic commits into one, so D-039's artifact survives only while k=1"
+    fi
+    if [ -n "$why" ]; then
+      printf 'SCOPE WARN D-061 makes rebase the term of this law and %s still offers %s: %s\n' \
+        "$REPO" "$MERGE_ALLOWED" "$why"
+    fi
   fi
 }
 
