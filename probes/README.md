@@ -78,7 +78,7 @@ change here, beside the probe.
 | Probe | Question it answers | Case it solved |
 |---|---|---|
 | `NameCensus` | Are grown pilot names unique at a seed? | seed 42: 196 humans, 154 distinct — namesakes are real |
-| `LinkTrace` | How did one pilot's link state evolve, tick by tick? | the Nadia Petrov double-dark mystery **as of the `v3.0.0` tag** (worn 1717, freed by The One 1846, worn 2477) — on current `main` that trace is gone: her link never changes in 6,000 ticks, so run this one pinned (`git archive v3.0.0`) if you want the case the field manual narrates |
+| `LinkTrace` | How did one pilot's link state evolve, tick by tick? | the Nadia Petrov double-dark mystery **as of the `v3.0.0` tag** (worn 1717, freed by The One 1846, worn 2477) — on current `main` that trace is gone: her link never changes in 6,000 ticks, so run this one pinned (`git archive v3.0.0`) if you want the case the field manual narrates. A bare run now closes with `VERDICT STILL_LINK` and the count of links that *did* move in the same window, so an era mismatch reads as a verdict instead of a malfunction |
 | `LinkAudit` | What is the end-state of every NeuralLink after N ticks? | ghost-link triage: open/closed × alive/dead × present/absent |
 | `ChainDump` | What is the DIGEST chain of a run, as plain lines? | out-of-band replay diffing between two boxes |
 | `LedgerMirror` | Does every ledger delta equal the open-link residue mirror? | the ghost-HARDLINE class of bug, made permanently detectable (`LEDGER_ANOMALIES=0`, seeds 42 & 7) |
