@@ -93,7 +93,7 @@ and the first line that moved is printed with its number.
 ```
 STABLE LineLint
 DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
-EXEMPT AllocMeter reason="reads the JDK thread-allocation counter: …"
+EXEMPT AllocMeter reason="prints its own instrument noise: steady_max is a cold …"
 BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
 ```
 
@@ -106,8 +106,15 @@ verdicts because they are two facts: `BENCH_GREEN` can sit directly above
 
 A row that legitimately moves declares itself with `vary` and states why, rather
 than being skipped in silence. Exactly one does today: `AllocMeter` reads the JDK's
-thread-allocation counter, which tracks the JIT's progress as much as the daemon's
-(2,098 to 5,346 bytes/tick at seed 42 — #817).
+thread-allocation counter, which counts the JIT compiling as well as the daemon
+allocating. Its headline barely moves — the steady window is a median of 24
+repeats and printed `367` on eleven of thirteen back-to-back runs at seed 42,
+`407` and `415` on the other two (#817) — but the same line deliberately
+carries `steady_max`, the cold first repeat, which is a different number every
+time (1,952 to 7,899 across those thirteen). That field is the
+evidence and it is why the row is still exempt: an instrument that publishes its
+own noise cannot pass a byte-compare, and hiding the noise to pass one would be
+the disease, not the cure.
 
 `vary` prefixes a verb rather than replacing one, because moving and being judged
 are different questions. `AllocMeter` is the row that asks them separately: its
@@ -129,7 +136,7 @@ judges it (#906).
 | `OneTrace` | Does the One's death close his link the same tick? | the finale's contract after the v3 fix round: died=4284, closed=4284, `CONTRACT_HELD` |
 | `CapSentinel` | Do awakened minds (present + wrapped) ever exceed the cap? | the treaty-restore cap breach, made permanently detectable (`CAP_BREACHES=0`, seeds 42 & 7) |
 | `ArcBeats` | Does the film play, in order? | the D-036 DoD as a machine verdict (`BEATS_IN_ORDER` at 42 & 7) — and its own first run caught a wrong needle and a wrong beat order, which is what instruments are for |
-| `AllocMeter` | What does the hot path allocate, really? | retired D-027's never-measured "allocation-free" row, then guarded the row that replaced it: steady bytes/tick and GC collections judged against the record's own 32 KB and 5, `VERDICT ALLOC_IN_BUDGET`. On this box 1,963-8,537 B/tick and 0-1 collections, so the bound has ~4x of room and catches a blow-up, not a creep (#906); `--selfcheck` runs the comparison's four cases with no universe, because at those figures the breach branch is otherwise unreachable |
+| `AllocMeter` | What does the hot path allocate, really? | retired D-027's never-measured "allocation-free" row, then guarded the row that replaced it: steady bytes/tick and GC collections judged against the record's own 32 KB and 5, `VERDICT ALLOC_IN_BUDGET` (#906); `--selfcheck` runs the comparison's four cases with no universe, because at these figures the breach branch is otherwise unreachable. Then it caught itself: the 1,963-8,537 B/tick it used to report was one cold sample of a window C2 was still compiling into, and twenty-four repeats on fresh simulations converge to **365-367 B/tick at seed 42, 423-425 at seed 7, 0 GCs per arc** — the bound has ~90x of room, not 4x (#817). The old headline still prints, as `steady_max` |
 | `SeedAtlas` | Across the multiverse, how common is the film? | 20-seed census: 16 FULL_ARC, 4 QUIET (Smith can lose), 0 emergency reloads in the wild |
 | `CensusBlocks` | Is a contiguous block of seeds a random sample of the multiverse? | **no** — the same 400 universes cut contiguously disagree at φ=5.01 (`FULL_ARC` p=0.0018) and dealt interleaved do not (p=0.72): adjacency carries information, so contiguous blocks are retired as a sampling method (census entry 5). `--selfcheck` reproduces entry 3's published z=3.10/−3.54 with no universes at all |
 | `DrawMeter` | What does the rng stream spend, and where? | boot 1,728 · steady ~374/tick · cascade ~505 · negotiation freeze **exactly 0** — the held breath, instrumented; windows derive from the run's own transitions (`BOUNDS`), so a QUIET universe reports no cascade |

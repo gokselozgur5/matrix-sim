@@ -2,6 +2,7 @@ import matrix.Simulation;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.util.Arrays;
 
 /**
  * Probe: what does the hot path actually allocate?
@@ -13,10 +14,35 @@ import java.lang.management.ManagementFactory;
  * three windows — steady state (post-warmup, pre-fork), cascade (the
  * infection storm), and the full arc — plus GC collection counts.
  *
- * The optimization rule is strict (measured optimization is
- * contractual, the digest is the referee), so this probe is the
- * mandatory FIRST HALF of any allocation work: the fix PR must quote
- * this baseline and beat it with byte-identical digests.
+ * <p>One sample of the steady window is not that number, and until #817
+ * this probe took one sample. Five back-to-back runs of the
+ * single-sample form gave 2,098 to 5,346 bytes/tick on one tree at one
+ * seed, because 500 ticks of warmup does not finish C2 and the compiler
+ * allocates into the very thread the counter is watching. The ramp is
+ * not noise around a true value; it is a monotone descent to one.
+ * Repeat the same window on a fresh simulation inside one JVM and the
+ * per-tick figure falls through 850, 720, 650 and 460 to a floor near
+ * 365 that then holds for as many repeats as you care to run. Every
+ * steady number this probe ever published was six to fifteen times the
+ * daemon's actual allocation, and the daemon was never asked.
+ *
+ * <p>So the steady window is measured {@link #STEADY_RUNS} times rather
+ * than once — a fresh {@link Simulation} each time, the same seed, the
+ * same tick boundaries, so every repeat dissects a byte-identical world
+ * and the only thing that varies between them is the JVM. The line
+ * keeps its field name and its position and carries the median; {@code
+ * steady_runs}, {@code steady_min} and {@code steady_max} are appended
+ * beside it. The minimum is the floor a threshold can be set against.
+ * The maximum is the cold first repeat — the number this probe used to
+ * print — kept on the line on purpose, so the gap between the
+ * instrument and the world is visible every run instead of being
+ * rediscovered.
+ *
+ * <p>Lengthening the warmup instead does not work, and the numbers say
+ * why: at 2,000 ticks of warmup three runs still spanned 949 to 3,123,
+ * because the compiler's progress is counted in invocations, not in
+ * ticks. Only repeating the measurement spends invocations without
+ * moving the window.
  *
  * <p>Measurement was the whole of it for two erratas: D-027 called this
  * probe the guard on its allocation row while the probe compared nothing
@@ -28,24 +54,38 @@ import java.lang.management.ManagementFactory;
  * window and the full-run total are reported figures no record has ever
  * bounded.
  *
- * <p>The bounds are D-027's own, unchanged, and the headroom is large on
- * purpose — the loudest steady figure this instrument has produced is
- * ~8.5 KB/tick against a 32 KB bound. Tightening it is not available
- * until the instrument's own noise floor is measured (#916): the steady
- * window moves by a third between two runs of the same tree, and a
- * threshold set inside that spread fires on weather.
+ * <p>The guard reads the median, not a sample, and that is what makes it
+ * a guard. The tail this probe used to have — one run in roughly forty
+ * printing {@code steady_bytes_per_tick=67742} at seed 1 where six
+ * consecutive runs printed 4,873 to 8,077 — was a single cold sample
+ * being handed to a comparison. A median of twenty-four cannot be
+ * dragged over a bound by one of them; such a run now shows up as a
+ * large {@code steady_max} beside an unmoved headline, which is what it
+ * always was.
  *
- * <p>Even at 4x margin the steady figure has a tail, and it has been
- * seen to clear the bound on a tree with no allocation change in it:
- * one run in roughly forty printed {@code steady_bytes_per_tick=67742}
- * at seed 1, where six consecutive runs of the same command printed
- * 4,873 to 8,077. Read a red row the way {@code tools/release.sh} says
- * to read a red bench row — re-run it before believing it — and read
- * the cascade figure beside it: that window sits 3,000 ticks past the
- * warmup and does not move (657-2,010 across every run taken here,
- * including 715 inside the 67,742 outlier). A real allocation
- * regression moves both windows; a JIT that lost a race moves only the
- * first.
+ * <p>The bounds are D-027's own, unchanged, and the headroom is now
+ * measured rather than guessed: the settled steady figure is 365-367
+ * bytes/tick at seed 42 and 423-425 at seed 7, against a 32 KB bound —
+ * a factor of about ninety, not the factor of four a cold sample
+ * suggested. Tightening the bound is a records question and belongs
+ * with the errata that set it; what was missing was the floor, and the
+ * floor is on the line as {@code steady_min}.
+ *
+ * <p>The median is reproducible but not byte-exact: across thirteen runs
+ * at seed 42 it printed 367 eleven times and 407 and 415 once each — a
+ * 13% tail where the single sample had 155%. The floor beneath it is
+ * steadier still, 365 to 366 on all thirteen, because compiler
+ * allocation only ever adds. That is why {@code probes/bench.sh} still
+ * carries this row as exempt from the determinism pass — that pass
+ * compares bytes, and 13% is not zero. Quote this instrument with its
+ * spread or do not quote it.
+ *
+ * <p>The cascade and full-arc figures come from one canonical arc run
+ * after the repeats, so they inherit a warm compiler; they are still one
+ * sample each and still move (602-782 at seed 42 across thirteen runs).
+ * {@code gc_collections} counts collections during that arc rather than
+ * the JVM's lifetime total, which is what the errata's "per full arc"
+ * always meant and the only reading that survives a repeat phase.
  *
  * Usage: java -cp out:probes/out AllocMeter [seed] [scale]
  *        java -cp out:probes/out AllocMeter --selfcheck
@@ -57,6 +97,9 @@ import java.lang.management.ManagementFactory;
  * daemon refuses, with the daemon's sentence and the daemon's exit code
  * (#826). A budget row is evidence people paste into PR bodies; a row for
  * a city that was never seeded is well-formed, greppable and false.
+ * Repeats divide by the scale, because a scaled arc costs what it costs
+ * and twenty-four of them is not a bench row. The count is on the line
+ * either way, and a scaled run is unjudged for the reason it always was.
  */
 public final class AllocMeter {
 
@@ -65,6 +108,12 @@ public final class AllocMeter {
 
     /** D-027 errata (2026-08-11): <= 5 GC collections per full arc. */
     static final long GC_BUDGET_PER_ARC = 5;
+
+    /** Steady-window repeats at scale 1; the denominator on the line (#817). */
+    static final int STEADY_RUNS = 24;
+
+    /** Floor on the repeat count, so a scaled run still has a median. */
+    static final int STEADY_RUNS_MIN = 3;
 
     public static void main(String[] args) {
         if (args.length > 0 && "--selfcheck".equals(args[0])) {
@@ -85,26 +134,39 @@ public final class AllocMeter {
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         long self = Thread.currentThread().getId();
 
+        int runs = Math.max(STEADY_RUNS_MIN, STEADY_RUNS / matrix.core.Config.ECO_SCALE);
+        long[] samples = new long[runs];
+        for (int r = 0; r < runs; r++) {
+            Simulation repeat = new Simulation(seed, null, null);
+            repeat.run(500); // warmup: boot allocations settle out of the sample
+            long s0 = threads.getThreadAllocatedBytes(self);
+            repeat.run(500); // steady window: ticks 500-1000, pre-fork city at routine
+            long s1 = threads.getThreadAllocatedBytes(self);
+            samples[r] = (s1 - s0) / 500;
+        }
+        long steadyMin = Arrays.stream(samples).min().orElse(0);
+        long steadyMax = Arrays.stream(samples).max().orElse(0);
+        Arrays.sort(samples);
+        long steady = runs % 2 == 1
+                ? samples[runs / 2]
+                : (samples[runs / 2 - 1] + samples[runs / 2]) / 2;
+
         Simulation sim = new Simulation(seed, null, null);
 
-        sim.run(500); // warmup: JIT + boot allocations settle out of the sample
+        sim.run(500); // warmup, so the arc's windows open where they always opened
 
         long a0 = threads.getThreadAllocatedBytes(self);
-        sim.run(500); // steady window: ticks 500-1000, pre-fork city at routine
-        long a1 = threads.getThreadAllocatedBytes(self);
-        sim.run(2_500); // advance to the storm
+        // The collectors have already run during the repeats, so the lifetime
+        // total is no longer a per-arc count. Take the delta across the arc,
+        // which is what the errata's row says and what it always wanted.
+        long gc0 = gcCollections();
+        sim.run(3_000); // through the steady window and on to the storm
         long a2 = threads.getThreadAllocatedBytes(self);
         sim.run(500); // cascade window: ticks 3500-4000, infection near peak
         long a3 = threads.getThreadAllocatedBytes(self);
         sim.run(2_000); // finish the arc
         long a4 = threads.getThreadAllocatedBytes(self);
-
-        long gcCount = 0;
-        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
-            gcCount += Math.max(0, gc.getCollectionCount());
-        }
-
-        long steady = (a1 - a0) / 500;
+        long gcCount = gcCollections() - gc0;
 
         System.out.println("ALLOC seed=" + seed
                 + " steady_bytes_per_tick=" + steady
@@ -114,8 +176,15 @@ public final class AllocMeter {
                 // scaled runs declare themselves; the canonical line keeps its bytes
                 + (matrix.core.Config.ECO_SCALE == 1 ? ""
                         : " scale=" + matrix.core.Config.ECO_SCALE
-                                + " entities=" + sim.aliveEntities()));
-        System.out.println("ALLOC_NOTE window_steady=500-1000 window_cascade=3500-4000 ticks_total=6000");
+                                + " entities=" + sim.aliveEntities())
+                // appended, never inserted (D-020): the headline keeps its name and
+                // its place and gains the denominator and the spread that say how
+                // much of it to believe.
+                + " steady_runs=" + runs
+                + " steady_min=" + steadyMin
+                + " steady_max=" + steadyMax);
+        System.out.println("ALLOC_NOTE window_steady=500-1000 window_cascade=3500-4000 ticks_total=6000"
+                + " steady_stat=median_of_fresh_sims gc_window=arc");
 
         // A scaled world has no allocation budget in any record: the #136
         // errata cashed the SPEED row at x11 and set no byte bound there. A
@@ -135,6 +204,15 @@ public final class AllocMeter {
                 + " gc_budget=" + GC_BUDGET_PER_ARC);
         System.out.println(over.isEmpty() ? "VERDICT ALLOC_IN_BUDGET"
                 : "VERDICT ALLOC_OVER_BUDGET over=" + over);
+    }
+
+    /** Collections across every collector, floored: a bean may report -1 for "unknown". */
+    private static long gcCollections() {
+        long gcCount = 0;
+        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+            gcCount += Math.max(0, gc.getCollectionCount());
+        }
+        return gcCount;
     }
 
     /**
@@ -157,7 +235,7 @@ public final class AllocMeter {
      * Both sides of both bounds, executed with no universe at all.
      *
      * <p>A guard that never fails is indistinguishable from a guard that
-     * cannot — and at today's figures (~2-8.5 KB/tick against 32 KB, 0-1
+     * cannot — and at today's figures (365-425 B/tick against 32 KB, 0
      * collections against 5) no run this box produces reaches the breach
      * branch. That is exactly the shape of unmeasured promise this probe was
      * written to retire, so the breach branch gets a run of its own: the bound
