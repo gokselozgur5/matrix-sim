@@ -155,6 +155,17 @@ public final class Config {
      * unbounded book would make both unbounded.
      */
     public static final int BOND_MAX_EDGES = 64;
+    /**
+     * The guard rail against speed-run love (#215): accrual windows of
+     * co-presence a candidate edge must earn before it is load-bearing.
+     * Twelve windows is 120 ticks at the current wheel — long enough that a
+     * pair who merely passed each other in a corridor never qualifies, short
+     * enough that two commuters sharing a district (COMMUTE_SWITCH_TICKS is
+     * 1,000) cross it well inside one posting. This is the number the Room
+     * 303 clause is forbidden to fire below, so retuning it retunes the
+     * miracle's admission price — a commit, and an argued one (D-006).
+     */
+    public static final int BOND_WEAVE_WINDOWS = 12;
 
     private Config() {}
 }

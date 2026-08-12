@@ -148,6 +148,46 @@ public final class Bond {
                 return;
             }
             discover();
+            weave();
+        }
+
+        /**
+         * The weave (#494). A bond is not declared, it is WOVEN: every
+         * candidate edge that is still co-present this window earns one
+         * window, and past {@code BOND_WEAVE_WINDOWS} it becomes
+         * load-bearing. That threshold is the gate's guard rail against
+         * speed-run love and the precondition the Room 303 clause checks
+         * before it unwrites a death — no edge below it may ever fire.
+         *
+         * <p>Weaving is bookkeeping and never a draw: it reads the same
+         * already-earned co-presence the candidate set derives from. An edge
+         * whose minds have drifted apart simply earns nothing this window —
+         * accrual is cumulative, because time spent apart is not time
+         * unspent together. It does not decay and it does not expire; if the
+         * verdict wants love to be perishable that is one branch, here.
+         *
+         * <p>The crossing speaks exactly once. A woven edge is skipped by
+         * this walk forever after, so no edge can re-cross, and a SCAR
+         * (#378) can never come back through it — the conservative reading
+         * of D-045 open point (c), which the gate left open: this crew does
+         * NOT allow renewal after consumption, because the scar keeps the
+         * pair's slot in the book and {@link #between} therefore refuses to
+         * mint them a second edge. Flagged, not assumed; reversing it is
+         * deleting one guard.
+         */
+        private void weave() {
+            for (int i = 0; i < edges.size(); i++) {
+                Bond bond = edges.get(i);
+                if (bond.state != State.CANDIDATE || !coPresent(bond.a, bond.b)) {
+                    continue;
+                }
+                bond.windows++;
+                if (bond.windows >= Config.BOND_WEAVE_WINDOWS) {
+                    bond.state = State.WOVEN;
+                    world.log(Severity.FATE, "BOND woven: " + bond.pair()
+                            + " — over " + bond.windows + " windows");
+                }
+            }
         }
 
         /**
