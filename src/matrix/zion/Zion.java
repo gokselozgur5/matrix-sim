@@ -201,6 +201,38 @@ public final class Zion {
         return crew;
     }
 
+    /**
+     * The census lane's gate (D-046 open point (a), #335/#468): the citizens
+     * free to walk to the inward door — alive, no wire, no berth. The root
+     * carries this roster to the door path (D-012: only the root holds both
+     * banks); this class neither knows nor asks what it is for.
+     *
+     * <p>The gate is deliberately NARROW. The verdict left "census only vs
+     * runners in-world" open, and the honest way to hold a question open is
+     * to answer the half that was settled and refuse the half that was not —
+     * not to let the implementation decide by accident. A runner riding a
+     * pirate signal wears a wire and is out. A crew mid-mission is out too,
+     * and that one is load-bearing rather than tidy: a mind in TRANSIT wears
+     * no wire yet, so the wire test alone would have quietly opened the
+     * runner lane through the back door and stranded a hovercraft. The berth
+     * check is the same one {@link #drawCrew} already trusts.
+     *
+     * <p>Empty rosters allocate nothing — a city with nobody ashore is the
+     * common case, not an error.
+     */
+    public List<Human> ashore() {
+        List<Human> out = null;
+        for (Human h : census) {
+            if (h.alive() && h.link() == null && !aboard(h)) {
+                if (out == null) {
+                    out = new ArrayList<>();
+                }
+                out.add(h);
+            }
+        }
+        return out == null ? List.of() : out;
+    }
+
     /** Identity membership across every hull's berth list — a citizen mid-mission is not free, wire or no wire. */
     private boolean aboard(Human h) {
         for (Hovercraft ship : fleet) {
