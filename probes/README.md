@@ -42,7 +42,7 @@ java -cp out:probes/out <Probe> [args]
 | `ArcBeats` | Does the film play, in order? | the D-036 DoD as a machine verdict (`BEATS_IN_ORDER` at 42 & 7) — and its own first run caught a wrong needle and a wrong beat order, which is what instruments are for |
 | `AllocMeter` | What does the hot path allocate, really? | retired D-027's never-measured "allocation-free" row: ~30 KB/tick steady, 3 GCs per arc — now a bounded, guarded budget |
 | `SeedAtlas` | Across the multiverse, how common is the film? | 20-seed census: 16 FULL_ARC, 4 QUIET (Smith can lose), 0 emergency reloads in the wild |
-| `DrawMeter` | What does the rng stream spend, and where? | boot 1,728 · steady ~398/tick · cascade ~503 · negotiation freeze **exactly 0** — the held breath, instrumented |
+| `DrawMeter` | What does the rng stream spend, and where? | boot 1,728 · steady ~374/tick · cascade ~505 · negotiation freeze **exactly 0** — the held breath, instrumented; windows derive from the run's own transitions (`BOUNDS`), so a QUIET universe reports no cascade |
 | `PirateSever` | Does the wire's third ending hold — flatline, close, nothing to flush? | unit #110's DoD as a machine verdict: pirate sever + podless death with no NPE, hardline flush unchanged, a clean exit stays unkillable (`CONTRACT_HELD`) |
 
 Add a probe when an investigation demands one; leave it here when the investigation
