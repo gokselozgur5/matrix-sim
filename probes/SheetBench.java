@@ -2,11 +2,11 @@ import matrix.character.Contest;
 import matrix.character.Family;
 import matrix.character.Sheet;
 import matrix.character.Sheets;
+import matrix.core.NamePool;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -208,24 +208,18 @@ public final class SheetBench {
     }
 
     /**
-     * Every name the pod farm can grow — {@code FIRST x LAST}, 400 of them.
-     * The same enumeration FateAtlas walks: a mixer is judged on the
-     * population it will serve, not on a bench of ten.
+     * Every name the pod farm can grow — {@link NamePool}'s first x family,
+     * 400 of them. The same enumeration FateAtlas walks: a mixer is judged
+     * on the population it will serve, not on a bench of ten.
      */
     private static List<String> namePool() throws Exception {
         List<String> pool = new ArrayList<>();
-        for (String first : table("FIRST")) {
-            for (String last : table("LAST")) {
+        for (String first : NamePool.firstNames()) {
+            for (String last : NamePool.familyNames()) {
                 pool.add(first + " " + last);
             }
         }
         return pool;
-    }
-
-    private static String[] table(String name) throws Exception {
-        Field f = matrix.realworld.PodFarm.class.getDeclaredField(name);
-        f.setAccessible(true);
-        return (String[]) f.get(null);
     }
 
     /**

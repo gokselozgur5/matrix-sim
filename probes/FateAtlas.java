@@ -1,8 +1,8 @@
 import matrix.Simulation;
 import matrix.core.Config;
+import matrix.core.NamePool;
 import matrix.realworld.AcceptanceLoop;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ import java.util.List;
  * pure function is not sampled. It is ENUMERATED.
  *
  * <p>So this is the enumerator. It walks every name the farm can grow —
- * {@code PodFarm.FIRST x LAST}, 400 of them — against that name's own
+ * {@code NamePool} first x family, 400 of them — against that name's own
  * threshold over a run's accrual windows, using the daemon's own
  * derivation (never a copy: {@link AcceptanceLoop#threshold} directly and
  * its package-private {@code spikes} by reflection, so a change in either
@@ -167,15 +167,15 @@ public final class FateAtlas {
      * Every name the farm can grow, with the fate the derivation already
      * decided for it: the threshold, the spikes it must land, the spikes it
      * does land inside the budget, and the window it crosses (0 = never).
-     * Order is FIRST x LAST as the farm declares them — a list, never a set,
-     * so the table is byte-stable across runs and boxes.
+     * Order is first x family as {@link NamePool} declares them — a list,
+     * never a set, so the table is byte-stable across runs and boxes.
      */
     private static List<Fate> fates(int windows) throws Exception {
         Method spikes = AcceptanceLoop.class.getDeclaredMethod("spikes", String.class, long.class);
         spikes.setAccessible(true);
         List<Fate> out = new ArrayList<>();
-        for (String first : names("FIRST")) {
-            for (String last : names("LAST")) {
+        for (String first : NamePool.firstNames()) {
+            for (String last : NamePool.familyNames()) {
                 String name = first + " " + last;
                 long threshold = AcceptanceLoop.threshold(name);
                 long residue = 0;
@@ -194,13 +194,6 @@ public final class FateAtlas {
             }
         }
         return out;
-    }
-
-    /** The farm's private name tables — the coroner's privilege, read-only. */
-    private static String[] names(String table) throws Exception {
-        Field f = matrix.realworld.PodFarm.class.getDeclaredField(table);
-        f.setAccessible(true);
-        return (String[]) f.get(null);
     }
 
     private FateAtlas() {}
