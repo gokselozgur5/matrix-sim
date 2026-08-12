@@ -150,6 +150,21 @@ public final class RealWorld {
     }
 
     /**
+     * The third sentence (#811): the ending that flushes NOTHING.
+     * {@code severUnclean} — the rig's timeout cut, and its death with the
+     * ship — kills the mind and closes the wire and never touches the rack.
+     * The old line said "nothing to flush", which was accidentally true of
+     * the ACT and false about the body: it was printed as a claim of
+     * podlessness over citizens who all hold rack units, standing empty
+     * since the day they walked out of them.
+     */
+    public static String untouchedClause(Human h) {
+        return h.pod != null
+                ? " (pod " + h.pod.rackUnit + " untouched — the cut takes the mind, not the rack)"
+                : " (no rack unit behind them — they died free)";
+    }
+
+    /**
      * The Kid's door (D-033): the crossing the second theorem detected
      * executes here, where the world is — the treaty door's four moves,
      * different cause, own origin tag. The presence gate at the call site
