@@ -294,7 +294,9 @@ public final class RealWorld {
      * and the correlation would be an artifact of arithmetic rather than a
      * claim anyone made. The murmur3 finalizer (the #96 avalanche fix, same
      * reason) decorrelates them. {@code String.hashCode} is fixed by the
-     * JLS, so the fate is the same on every JVM.
+     * JLS, so the fate is the same on every JVM — D-010 tier one, pinned
+     * rather than trusted by {@code probes/SealHygiene}, which checks both
+     * doors over the same six names so a JLS deviation names which one moved.
      */
     public static long petitionThreshold(String name) {
         int h = name.hashCode() ^ 0x0D00_0046;

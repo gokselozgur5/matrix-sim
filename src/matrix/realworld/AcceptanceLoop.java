@@ -50,7 +50,8 @@ public final class AcceptanceLoop {
      * Fate draws NOTHING — the open point (c) ruling, decided by data: the
      * rng-drawn variant flipped canonical seed 42 to QUIET. The breaking
      * point is a pure function of the NAME (String.hashCode is fixed by
-     * the JLS — same fate on every JVM), and the rng stream never hears
+     * the JLS — same fate on every JVM; D-010 tier one, pinned rather than
+     * trusted by probes/SealHygiene), and the rng stream never hears
      * about it. Fate was always in the name. RED exclusion doubles as
      * structural armor: The One and every pirate are RED, so the fated
      * and the visitors can never self-substantiate.

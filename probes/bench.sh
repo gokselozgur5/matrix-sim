@@ -69,6 +69,7 @@ table() {
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge FateAtlas    'VERDICT MONOCULTURE'
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
+  judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"

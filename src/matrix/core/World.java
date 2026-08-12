@@ -696,6 +696,13 @@ public final class World {
         sink.putInt(e.alive ? 1 : 0);
         sink.putInt(e instanceof Avatar a ? a.pill.ordinal() : -1);
         if (e instanceof matrix.entities.eco.EnvironmentProgram p) {
+            // The loudest borrowed number in the repository: String.hashCode, inside
+            // the seal. Permitted under D-010's two-tier clause because the JLS fixes
+            // the formula — specification-shaped, not implementation-shaped — and
+            // pinned rather than trusted by probes/SealHygiene (#837). Note what it
+            // means downstream: a species id is CANONICAL TEXT, not a caption. Editing
+            // "black cat" to "stray cat" is a declared digest move; the seal answered
+            // ec0a1b61… instead of 421d7263… when that was measured.
             sink.putInt(p.species.id().hashCode());
             sink.putInt(p.headingX);
             sink.putInt(p.headingY);

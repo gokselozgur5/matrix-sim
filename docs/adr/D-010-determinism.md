@@ -40,6 +40,21 @@ Chosen option: "single seeded Rng with bans", because everything this repo promi
 
 grep finds no banned APIs in src; the v1.0 DoD runs the engine twice with seed 42 and diffs the digest chains to empty.
 
+**Confirmation clause (2026-08-13, #837) — the two tiers of a borrowed number.** The birth-seed ruling's hygiene clause (#212) reads *the die derives from our own digest mixing, never from anything JVM-shaped*, and four call sites read `String.hashCode`, all four reaching state — one of them, `World.digestEntity`, inside the canonical chain's own preimage. Rather than treat that as a violation or as an exception, this record states the distinction it turns on, because the two are not the same thing:
+
+| tier | what it is | examples | status |
+|---|---|---|---|
+| **specification-shaped** | an algorithm a published spec fixes; reproducible outside the JVM by anyone with the spec | `String.hashCode` (JLS), UTF-8 byte order, int wraparound | **permitted in state, and pinned** |
+| **implementation-shaped** | a value the JVM is free to choose | `Object.hashCode`, identity hashes, `HashMap`/`HashSet` iteration order, default charset, `enum.hashCode` | **refused in state** |
+
+`String.hashCode` is tier one: `s[0]*31^(n-1) + …` is normative, not incidental, which makes it exactly as portable as the byte order this record already leans on. The clause was written against tier two, and tier two appears nowhere in `src/` — `grep -rn 'hashCode()\|HashMap\|HashSet\|identityHashCode' src` returns the four `String.hashCode` sites and one `LinkedHashSet`, whose order is insertion and therefore ours.
+
+Tier one is **permitted and checked, never permitted and trusted.** `matrix.character.Sheets` states the reason better than this record can: FNV-1a over bytes is stable *because it is arithmetic we define*, while `String.hashCode` is stable *because a specification says so*. A repository whose method is that an unmeasurable rule is a mood cannot leave a borrowed specification as the only thing between it and a different seal. So `probes/SealHygiene` pins every value the seal actually takes from the JLS — twelve `Species` ids and both door thresholds over six canon names — and is judged on the bench.
+
+The pin's larger catch is not a deviant JVM, which is unlikely; it is a **rename**, which is not. Editing `"black cat"` to `"stray cat"` in the Bestiary reads as a caption change and moves the canonical digest from `421d7263…e0e3ce10` to `ec0a1b61…686a9f5263` in silence. Measured, 2026-08-13; `SealHygiene` reports `SEAL_HYGIENE_BROKEN` on that tree and names both halves.
+
+**What #837 deliberately did not do.** Retiring the sites — the species *ordinal*, or FNV-1a of the id — buys independence from a specification this repository does not control, and costs the canonical chain its identity: a new sha, a reseal of the NEUTRAL lane's fixture (#528), a release note. That is a declared digest move, and the pre-v6 chain is under seal as the control group's fixture while #871 is open; #884 exists because the last such move landed beside an instrument being built for it. The pin is what makes deferring it safe rather than merely convenient, and it is the thing that would have to be re-measured, not re-argued, if the retirement ever lands.
+
 ## Pros and Cons of the Options
 
 ### Single seeded Rng owned by World; bans enforced by review
