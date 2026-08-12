@@ -32,7 +32,7 @@ The Architect's console acts are already recorded commands; D-043 wants them to 
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: signed, Architect-first, verbs-only. Awaiting the Architect's verdict in #225; the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: signed, Architect-first, verbs-only. Awaiting the Architect's verdict in #225; the machine performs the flip on his word.
 
 ### Consequences
 

@@ -32,7 +32,7 @@ The in-world bones already exist: an Oracle program (subscribed before the bus s
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: the full cast, us included. Awaiting the Architect's verdict in the gate thread (#213); the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: the full cast, us included. Awaiting the Architect's verdict in the gate thread (#213); the machine performs the flip on his word.
 
 ### Consequences
 

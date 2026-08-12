@@ -33,7 +33,7 @@ Two seasons closed in one day and the owner's verdict on the celebration was the
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: the layered build. Awaiting the Architect's verdict in the gate thread (#211); the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: the layered build. Awaiting the Architect's verdict in the gate thread (#211); the machine performs the flip on his word.
 
 ### Consequences
 

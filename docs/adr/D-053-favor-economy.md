@@ -32,7 +32,7 @@ The truce dossier's sharpest mechanism: price the underworld in the only currenc
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: shelter-minted, three spends. Awaiting the Architect's verdict in #229; the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: shelter-minted, three spends. Awaiting the Architect's verdict in #229; the machine performs the flip on his word.
 
 ### Consequences
 
