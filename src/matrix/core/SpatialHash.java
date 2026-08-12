@@ -75,16 +75,23 @@ public final class SpatialHash {
         farMovers.add(e);
     }
 
-    private final List<MatrixEntity> scratch = new ArrayList<>();
-
     /**
-     * Snapshot-exact hits around the seeker's OWN snapshot position.
-     * Returns a REUSED buffer, valid only until the next query: consume
-     * it inside your own tick, never store it (caller audit: the two
-     * gaits do exactly that; AllocMeter said this was the hot list).
+     * Snapshot-exact hits around the seeker's OWN snapshot position, appended
+     * into the CALLER'S list after clearing it. Returns that same list so the
+     * call reads as an expression.
+     *
+     * <p>This class deliberately owns no result buffer (#823). #175 kept one
+     * here and lent it out with the reuse law written on this method — but the
+     * lender was private and the borrowers all came through {@code
+     * World.nearby()}, whose contract said nothing. The warning lived on the
+     * method nobody could call. A hash that owns no buffer cannot lend one, so
+     * two callers can no longer be handed the same list; whoever wants a result
+     * brings somewhere to put it, and holds it for exactly as long as they like.
+     *
+     * <p>The allocation D-027 cares about is unchanged: a caller-owned list is
+     * built once and refilled, which is what the shared one was doing.
      */
-    public List<MatrixEntity> near(MatrixEntity self, int radiusCm) {
-        List<MatrixEntity> out = scratch;
+    public List<MatrixEntity> nearInto(MatrixEntity self, int radiusCm, List<MatrixEntity> out) {
         out.clear();
         int fx = self.snapXCm;
         int fy = self.snapYCm;

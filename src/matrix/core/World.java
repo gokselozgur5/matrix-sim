@@ -55,9 +55,27 @@ public final class World {
         this.regions = new RegionMap(hash, places);
     }
 
-    /** Snapshot neighbor query (D-017): both sides use tick-start perception coordinates. */
-    public List<MatrixEntity> nearby(MatrixEntity self, int radiusCm) {
-        return hash.near(self, radiusCm);
+    /**
+     * Snapshot neighbor query (D-017): both sides use tick-start perception
+     * coordinates. The hits are cleared into {@code out} and {@code out} is
+     * returned, so the caller owns the answer.
+     *
+     * <p><b>Bring your own list, and keep it.</b> Hold one {@code ArrayList}
+     * field on whatever does the asking and pass it every tick — that is the
+     * whole protocol, and it is why this method takes a list instead of
+     * returning one. Two radii in one breath is two lists, and both stay valid;
+     * nothing this world hands you is on loan.
+     *
+     * <p>It read the other way until #823. {@code SpatialHash} kept one reused
+     * buffer and this door returned it verbatim while promising an ordinary
+     * list, so two queries produced one object: the first caller's answer was
+     * rewritten underneath it, silently, into a list that was still a
+     * well-formed neighbour list — just the wrong entity's. Determinism could
+     * not see it, because a stable wrong answer is stable. The buffer is gone
+     * rather than better documented; there is nothing left to alias.
+     */
+    public List<MatrixEntity> nearbyInto(MatrixEntity self, int radiusCm, List<MatrixEntity> out) {
+        return hash.nearInto(self, radiusCm, out);
     }
 
     public Rng rng() {
