@@ -22,14 +22,24 @@ import java.lang.management.ManagementFactory;
  *
  * The optional scale multiplies Bestiary populations exactly as the
  * daemon's --scale does (#136) — the 5,000-entity row gets its own
- * allocation profile on the same instrument.
+ * allocation profile on the same instrument. Exactly as: it passes the
+ * same gate ({@link matrix.core.Config#scaleRefusal}) and refuses what the
+ * daemon refuses, with the daemon's sentence and the daemon's exit code
+ * (#826). A budget row is evidence people paste into PR bodies; a row for
+ * a city that was never seeded is well-formed, greppable and false.
  */
 public final class AllocMeter {
 
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
         if (args.length > 1) {
-            matrix.core.Config.ECO_SCALE = Integer.parseInt(args[1]);
+            int scale = Integer.parseInt(args[1]);
+            String refusal = matrix.core.Config.scaleRefusal(scale);
+            if (refusal != null) {
+                System.err.println(refusal);
+                System.exit(2);
+            }
+            matrix.core.Config.ECO_SCALE = scale;
         }
         com.sun.management.ThreadMXBean threads =
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
