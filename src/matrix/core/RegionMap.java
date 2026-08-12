@@ -65,6 +65,9 @@ public final class RegionMap {
     /** The P2 state ladder. Ordinals are digest law — the region segment freezes them. */
     public enum LodState { HOT, COLD, PARKED }
 
+    /** No park has been deferred in this cold era: the gatekeeper may propose one. */
+    private static final int ARMED = -1;
+
     private final SpatialHash hash;
     private final int[] regionOfCell;
     private final int[][] cellsOfRegion;
@@ -77,6 +80,7 @@ public final class RegionMap {
     private final int[] coldStreak;
     private final boolean[] parked;
     private final boolean[] refusalLogged;
+    private final int[] parkDeferredAt;
     private final List<Integer>[][] parkedIds;
     private int hotCount;
     private long glitches;
@@ -128,6 +132,8 @@ public final class RegionMap {
         this.coldStreak = new int[zones.size()];
         this.parked = new boolean[zones.size()];
         this.refusalLogged = new boolean[zones.size()];
+        this.parkDeferredAt = new int[zones.size()];
+        Arrays.fill(parkDeferredAt, ARMED);
         this.parkedIds = new List[zones.size()][Bestiary.ALL.size()];
         for (int r = 0; r < zones.size(); r++) {
             for (int s = 0; s < Bestiary.ALL.size(); s++) {
@@ -196,6 +202,7 @@ public final class RegionMap {
                 hotCount++;
                 coldStreak[r] = 0;
                 refusalLogged[r] = false;
+                parkDeferredAt[r] = ARMED; // attention ended the cold era; the next one asks fresh
             } else {
                 coldStreak[r]++;
             }
@@ -237,9 +244,30 @@ public final class RegionMap {
         return hot[region] ? LodState.HOT : LodState.COLD;
     }
 
-    /** Un-HOT for LOD_PARK_AFTER_TICKS consecutive ticks and not yet parked: the region wants to fold. */
+    /**
+     * Un-HOT for LOD_PARK_AFTER_TICKS consecutive ticks, not yet parked, and
+     * not holding a deferral: the region wants to fold. The deferral is the
+     * memory the flush's failure paths used to lack (#807) — a Park that could
+     * not be performed leaves the region exactly as it was, so without it this
+     * level-triggered test stays true and re-proposes the same impossible park
+     * on every following tick, forever.
+     */
     boolean wantsPark(int region) {
-        return !parked[region] && !hot[region] && coldStreak[region] >= Config.LOD_PARK_AFTER_TICKS;
+        return !parked[region] && !hot[region]
+                && coldStreak[region] >= Config.LOD_PARK_AFTER_TICKS
+                && (parkDeferredAt[region] == ARMED
+                        || coldStreak[region] - parkDeferredAt[region] >= Config.LOD_PARK_RETRY_TICKS);
+    }
+
+    /**
+     * The flush could not fold this region — it refused, or found nothing
+     * catalog to fold. Records the cold tick it answered on; the gatekeeper
+     * re-arms LOD_PARK_RETRY_TICKS further cold ticks later, or immediately on
+     * the next attention. Same clock as the streak, so no second time base
+     * enters the class.
+     */
+    void deferPark(int region) {
+        parkDeferredAt[region] = coldStreak[region];
     }
 
     /** The moment attention returns to a parked region — any live Avatar's snapshot enters it. */
@@ -265,6 +293,7 @@ public final class RegionMap {
     void beginPark(int region) {
         parked[region] = true;
         refusalLogged[region] = false;
+        parkDeferredAt[region] = ARMED;
         coldStreak[region] = 0;
     }
 
