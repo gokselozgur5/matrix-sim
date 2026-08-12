@@ -117,6 +117,19 @@ final class LineGrammar {
      * run starts printing it. A registry that learns a family only after the
      * family reaches a shipped lane spends the interval calling a correct line
      * an unknown one, which is a red bench row over working code.
+     *
+     * <p>BIRTH's {@code rack} and {@code id} (#847) are an append at the end,
+     * the shape the law calls legal evolution, and the arity moves 3 -> 5
+     * rather than gaining a second entry: the echo mirrors the chronos record
+     * field for field, and the record has no short form. A stream captured
+     * before #847 therefore lints as an arity break, correctly — it is the
+     * old grammar, and the registry's job is to say so.
+     *
+     * <p>{@code rack} is TEXT and not WORD even though {@code R06/U22} needs
+     * no quotes: a mind grown with no slot records the empty string, and a
+     * bare {@code rack=} would leave the splitter reading the next key as
+     * this field's value. The delimiter is what makes "no rack unit" a value
+     * a reader can see rather than a hole it has to infer.
      */
     static final List<Family> FAMILIES = List.of(
             new Family("METRIC", List.of(
@@ -165,8 +178,10 @@ final class LineGrammar {
             new Family("BIRTH", List.of(
                     TICK,
                     new Field("name", Type.TEXT, "text", "quoted"),
-                    new Field("family", Type.WORD, "text", "A-Z_")),
-                    List.of(3), 0));
+                    new Field("family", Type.WORD, "text", "A-Z_"),
+                    new Field("rack", Type.TEXT, "text", "quoted"),
+                    count("id")),
+                    List.of(5), 0));
 
     /** The family with this prefix, or null — a null is an unknown family, never a pass. */
     static Family family(String name) {

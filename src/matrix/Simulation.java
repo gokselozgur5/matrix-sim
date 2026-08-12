@@ -322,8 +322,13 @@ public final class Simulation {
      * when one is attached). Draws nothing; the birth-seed law wants the
      * event, and the event is already a fact by the time this runs.
      */
-    private void recordBirth(String name, String family) {
-        ChronosLog.Birth birth = new ChronosLog.Birth(world.tick(), name, family);
+    private void recordBirth(Human who, String family) {
+        // The rack unit and the growth ordinal come off the MIND, which is
+        // the only object that holds both (#847). A free-born has no slot,
+        // and the empty string is what the derivation reads for them — the
+        // record writes the input, not a hole where an input would be.
+        ChronosLog.Birth birth = new ChronosLog.Birth(world.tick(), who.name, family,
+                who.pod == null ? "" : who.pod.rackUnit, who.id);
         births.add(birth);
         if (chronos != null) {
             chronos.birth(birth);
@@ -337,7 +342,8 @@ public final class Simulation {
             // enabled lane and the registry catches up (#833); the line's
             // shape does not move, because field order is the contract.
             emit("BIRTH tick=" + birth.tick() + " name=\"" + birth.name()
-                    + "\" family=" + birth.family());
+                    + "\" family=" + birth.family()
+                    + " rack=\"" + birth.rack() + "\" id=" + birth.id());
         }
     }
 
@@ -467,14 +473,15 @@ public final class Simulation {
         }
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
-            matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
+            RealWorld.OneBorn born = realWorld.birthTheOne("Thomas A. Anderson");
+            matrix.entities.TheOne one = born.avatar();
             world.flush();
             // The world's own oldest birth is the substrate's first emitter
             // (#553): the record leads nothing here — the One is already in
             // the world — but from this line on the birth-seed law has an
             // event to key to. HUMAN is D-042's family vocabulary: a mind in
             // a pod, however famous.
-            recordBirth(one.pilotName, "HUMAN");
+            recordBirth(born.pilot(), "HUMAN");
             world.log(Severity.FATE, "The One is born — " + one.pilotName
                     + ", grown for a debt of " + world.ledger().balance()
                     + " (the ledger does not forgive; it balances)");

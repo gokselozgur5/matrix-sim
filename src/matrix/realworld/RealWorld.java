@@ -301,15 +301,29 @@ public final class RealWorld {
         }
     }
 
+    /**
+     * The One's birth, both halves (#847): the avatar the world holds, and
+     * the mind it was grown for. The caller needs both and they are two
+     * objects — the world spawns the avatar, and the birth record states the
+     * mind, whose rack unit and growth ordinal are inputs the die keys to.
+     *
+     * <p>Handing back only the avatar and letting the recorder find the mind
+     * afterwards would mean finding it by name, and a name is a search key in
+     * this class and never a binding ({@link #findLink}): 196 minds wear 154
+     * names at seed 42, and the record that says who came to exist must not
+     * be resolved through a string two of them could answer to.
+     */
+    public record OneBorn(matrix.entities.TheOne avatar, Human pilot) {}
+
     /** The One is grown, not converted: a real pod, a fated name, a hardline. */
-    public matrix.entities.TheOne birthTheOne(String name) {
+    public OneBorn birthTheOne(String name) {
         Human h = farm.growNamed(name);
         humans.add(h);
         matrix.entities.TheOne one = new matrix.entities.TheOne(
                 world.allocateId(), world.places().zones().get(0).center(), h.name);
         world.queue(new WorldEvent.Spawn(one));
         register(new NeuralLink(h, one, LinkKind.HARDLINE));
-        return one;
+        return new OneBorn(one, h);
     }
 
     /**
