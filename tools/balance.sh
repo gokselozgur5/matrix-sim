@@ -26,11 +26,11 @@
 #   --repo                 only this repository's contributions
 #   --for O/N              name the repository explicitly (default: origin)
 #
-# The default stays `account` deliberately. D-060 was accepted on account-wide
-# numbers, and silently redefining a law's inputs is worse than a wide scope
-# honestly labelled — flipping it is a decision for the record, not for a tool.
-# The SCOPE line is what removes the silence: when the two readings differ it
-# says by how much, so a green verdict can never quietly mean somewhere else.
+# The default stays `account`, and the argument for it no longer lives here:
+# D-060's errata of 2026-08-13 (#821) records the readings it was settled on
+# and what the flip would cost. The SCOPE line is what removes the silence in
+# the tool: when the two readings differ it says by how much, so a green
+# verdict can never quietly mean somewhere else.
 #
 # WHOSE DAY IT COUNTS. The query roots at `viewer`, so it reads whoever holds
 # the token. Every run therefore opens with a SUBJECT line naming that login,
