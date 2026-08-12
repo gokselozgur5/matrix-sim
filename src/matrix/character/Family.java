@@ -5,15 +5,35 @@ package matrix.character;
  * as law (gate #212, accepted 2026-08-12). One contest grammar is shared by
  * all; the WORDS differ per family, because every iconic scene is a
  * cross-family contest and the words are what make it legible: a human's
- * evasion against a program's hunt, a human's will against a system's
+ * evasion against a program's pursuit, a human's will against a system's
  * authority, a system's tolerance against a program's replication.
  *
  * <p>Axis names follow the record verbatim (the record spells one of them
- * {@code version-fatigue}; code bends it to {@code versionFatigue}).
+ * {@code version-fatigue}; code bends it to {@code versionFatigue}), plus
+ * the two edits the gate thread tabled and the verdict carried:
+ * <ul>
+ *   <li><b>{@code pursuit}</b> appends to PROGRAM. Hunting is THE agent
+ *       verb and the vocabulary had no word for it — the parked kernel had
+ *       to borrow {@code privilege} to stage the rooftop. Borrowing it
+ *       would have merged two different mechanisms under one number:
+ *       {@code privilege} is INSTITUTIONAL (rank bypasses validation — an
+ *       agent carries no disbelief, it carries permission), while the hunt
+ *       is a capability that a runner can out-run. Two mechanisms, two
+ *       axes. The hunt is named once, at {@link #HUNT_AXIS}, and every
+ *       reader asks for it by that name rather than holding a literal.</li>
+ *   <li><b>{@code integrity}</b> appends to HUMAN: how tightly a mind holds
+ *       its own self-image, the feeder of the disbelief DEFENCE projection
+ *       (rejecting the world's frame about you is the cheap projection, and
+ *       integrity is what pays for it). Take the mechanic, leave the
+ *       mirror — how a mind LOOKS stays out of scope under D-019, and no
+ *       such concept enters this package under any spelling. Integrity is
+ *       how hard the self-image is held, never what it depicts.</li>
+ * </ul>
  *
  * <p>The ORDER of axes is canonical and load-bearing: derivation salts each
  * axis by its index, so reordering a vocabulary re-rolls every sheet in
- * that family. Append if a verdict grows a vocabulary; never reorder.
+ * that family. Append if a verdict grows a vocabulary; never reorder. Both
+ * edits above are therefore appends, at the end of their lists.
  *
  * <p>Vocabulary discipline is the review axis this design buys with its
  * flexibility: a human never grows {@code replication}. The enum is where
@@ -27,8 +47,11 @@ package matrix.character;
  */
 public enum Family {
 
-    /** Minds in pods: what they dodge, what they insist on, what they believe, what they refuse to. */
-    HUMAN("evasion", "will", "faith", "disbelief"),
+    /**
+     * Minds in pods: what they dodge, what they insist on, what they
+     * believe, what they refuse to, and how tightly they hold themselves.
+     */
+    HUMAN("evasion", "will", "faith", "disbelief", "integrity"),
 
     /** The hardware side of the war: sentinels, harvesters, the city itself in motion. */
     MACHINE("power", "precision", "relentlessness"),
@@ -37,7 +60,23 @@ public enum Family {
     SYSTEM("stability", "tolerance", "authority", "versionFatigue"),
 
     /** Software with a purpose: agents, exiles, oracles — and one licensed anomaly (D-014). */
-    PROGRAM("purposeIntegrity", "privilege", "replication");
+    PROGRAM("purposeIntegrity", "privilege", "replication", "pursuit");
+
+    /**
+     * The hunt, named in exactly one place. Every downstream reader — the
+     * agent catch above all — asks {@code sheet.stat(Family.HUNT_AXIS)}
+     * rather than holding the string, so the day a verdict renames the
+     * hunt there is one edit and no silent survivor.
+     */
+    public static final String HUNT_AXIS = "pursuit";
+
+    static {
+        // The constant and the vocabulary cannot drift: a typo here is a
+        // class-init failure, not a mystery at the catch site.
+        if (PROGRAM.axisIndex(HUNT_AXIS) < 0) {
+            throw new IllegalStateException("HUNT_AXIS '" + HUNT_AXIS + "' is not in the PROGRAM vocabulary");
+        }
+    }
 
     private final String[] axes;
 
