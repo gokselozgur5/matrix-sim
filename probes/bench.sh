@@ -133,6 +133,14 @@ table() {
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
+  # The referee's own referee, not the referee. `NeutralDiff <ticks>` needs
+  # #528's sealed fixture, which is not in this tree, and a row that reads a
+  # file the repository does not contain is a red sweep on every box. What is
+  # judged here is the comparison itself, driven over hand-written chains with
+  # no universe: the PASS branch is the only one a green tree ever reaches, so
+  # the four failure verdicts are exercised here or nowhere. When the fixture
+  # lands, this row gains a sibling that runs the lane for real.
+  judge NeutralDiff  'SELFCHECK VERDICT REFEREE_HOLDS' --selfcheck
   run   SeedAtlas    1 5 "$TICKS"
 }
 
