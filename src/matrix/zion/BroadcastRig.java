@@ -55,12 +55,23 @@ public final class BroadcastRig {
     /**
      * A new session: take the insertion zone Zion assigned at launch
      * (#116 — zone choice is the scheduler's strategy now, rotated per
-     * sortie; the rig draws nothing), arm the station budget, clear the
-     * board — the recall that ended the last session closed every
-     * channel, so nothing open is ever dropped here.
+     * sortie; the rig draws nothing), arm the station budget, and settle
+     * the board.
+     *
+     * <p>Settle, not clear (#809). The old line wiped the board outright on
+     * the claim that "the recall that ended the last session closed every
+     * channel, so nothing open is ever dropped here" — true until #206
+     * taught the cut to defer. Since a ship can now come home with a wire
+     * the board could not reach, a wipe would drop that wire on the floor:
+     * the avatar stays in the Matrix, the Human keeps a jack nobody holds,
+     * and the census can never draw them again. So: closed wires come off,
+     * open ones are CARRIED. They cost a channel — capacity is counted off
+     * the board, and a board with an unsettled wire honestly has fewer
+     * channels to sell — and they are settled by this session's recall like
+     * everybody else.
      */
     public void beginSession(World world, PlaceGraph.Zone zone) {
-        links.clear();
+        links.removeIf(NeuralLink::closed);
         insertionZone = zone;
         budgetRemaining = Config.RIG_STATION_TICKS;
         recallIssued = false;
@@ -246,6 +257,25 @@ public final class BroadcastRig {
                 out.add(link.avatar);
             }
         }
+    }
+
+    /**
+     * Wires this rig cannot settle right now (#809): open, and their avatar
+     * is not in the world for a cut to reach — a mind worn by Smith, held
+     * by #206's presence gate until restore. A subset of {@link #openLinks}
+     * and never larger than it. The ship reads it when its own hold ceiling
+     * expires, so the line it prints on the way home names what it is
+     * leaving on the board instead of implying the board is clear. Pure
+     * read: the count moves nothing and draws nothing.
+     */
+    public int deferred(World world) {
+        int n = 0;
+        for (NeuralLink link : links) {
+            if (!link.closed() && !world.isPresent(link.avatar)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     /** Open channels right now — the ZION line's {@code links=} share of this rig. */
