@@ -69,21 +69,56 @@ public final class SheetBench {
         }
     }
 
+    /**
+     * The named cast, derived — the ten the gate argued over, in the order
+     * this bench has always printed them. It is a method rather than ten
+     * locals because it has a second reader now: {@code SheetDump --cast}
+     * prints the same ten as part of the census (#535), and two literal
+     * lists in two probes drift the day a name is added to one of them.
+     * #479 moves this table out of source entirely; until it lands, the
+     * cast lives in exactly one place and this is the place.
+     */
+    static List<Sheet> namedCast() {
+        return List.of(
+                Sheets.derive("Trinity", Family.HUMAN),
+                Sheets.derive("Morpheus", Family.HUMAN),
+                Sheets.derive("Niobe", Family.HUMAN),
+                Sheets.derive("Cypher", Family.HUMAN),
+                Sheets.derive("Thomas A. Anderson", Family.HUMAN),
+                Sheets.derive("the Architect", Family.SYSTEM),
+                Sheets.derive("the Oracle", Family.PROGRAM),
+                Sheets.derive("Otto Aydin", Family.MACHINE),
+                Sheets.derive("Agent Smith", Family.PROGRAM),
+                Sheets.derive("Agent Jones", Family.PROGRAM));
+    }
+
+    /**
+     * One member of the cast by name. The scenes below name their operands
+     * the way a reader does — "Trinity", not index 0 — so an inserted cast
+     * member cannot silently re-cast the rooftop, and a missing one is a
+     * refusal at the line that asked rather than a wrong sheet.
+     */
+    private static Sheet member(List<Sheet> cast, String name) {
+        for (Sheet sheet : cast) {
+            if (sheet.name().equals(name)) {
+                return sheet;
+            }
+        }
+        throw new IllegalStateException("no '" + name + "' in the named cast");
+    }
+
     /** The exhibit the gate argued over: ten sheets, five scenes, one count line. */
     private static void cast() {
-        Sheet trinity = Sheets.derive("Trinity", Family.HUMAN);
-        Sheet morpheus = Sheets.derive("Morpheus", Family.HUMAN);
-        Sheet niobe = Sheets.derive("Niobe", Family.HUMAN);
-        Sheet cypher = Sheets.derive("Cypher", Family.HUMAN);
-        Sheet thomas = Sheets.derive("Thomas A. Anderson", Family.HUMAN);
-        Sheet architect = Sheets.derive("the Architect", Family.SYSTEM);
-        Sheet oracle = Sheets.derive("the Oracle", Family.PROGRAM);
-        Sheet otto = Sheets.derive("Otto Aydin", Family.MACHINE);
-        Sheet smith = Sheets.derive("Agent Smith", Family.PROGRAM);
-        Sheet jones = Sheets.derive("Agent Jones", Family.PROGRAM);
+        List<Sheet> cast = namedCast();
+        Sheet trinity = member(cast, "Trinity");
+        Sheet morpheus = member(cast, "Morpheus");
+        Sheet niobe = member(cast, "Niobe");
+        Sheet thomas = member(cast, "Thomas A. Anderson");
+        Sheet architect = member(cast, "the Architect");
+        Sheet otto = member(cast, "Otto Aydin");
+        Sheet smith = member(cast, "Agent Smith");
+        Sheet jones = member(cast, "Agent Jones");
 
-        List<Sheet> cast = List.of(trinity, morpheus, niobe, cypher, thomas,
-                architect, oracle, otto, smith, jones);
         for (Sheet sheet : cast) {
             System.out.println("SHEET " + sheet.line());
         }
