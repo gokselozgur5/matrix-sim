@@ -32,6 +32,11 @@
 # The SCOPE line is what removes the silence: when the two readings differ it
 # says by how much, so a green verdict can never quietly mean somewhere else.
 #
+# WHOSE DAY IT COUNTS. The query roots at `viewer`, so it reads whoever holds
+# the token. Every run therefore opens with a SUBJECT line naming that login,
+# and refuses (exit 6) unless it owns the repository under measurement — a
+# reading of the wrong account is not a small error, it is a different day.
+#
 # WHICH DAYS IT JUDGES. Some days belong to one leg by nature — a skeptic pass
 # IS a review day, a decomposition sweep IS an issue day — so judging one square
 # of the calendar calls three legs LAGGING and is wrong about each. --week (7),
@@ -204,6 +209,92 @@ fi
 # calendar square. "This week" starting on a Monday would measure the calendar;
 # the law is about the shape of the work, and work does not observe Mondays.
 FROM="$(day_minus "$DAY" "$((SPAN - 1))")" || exit 2
+
+# WHOSE DAY IS THIS. `contributionsCollection` roots at `viewer` — the account
+# the token happens to belong to — and nothing in the output used to name it. A
+# token for the owner's *other* account therefore produced a complete, confident
+# reading of the wrong subject:
+#
+#   $ GH_TOKEN=<other account> tools/balance.sh 2026-08-11
+#   BALANCE day=2026-08-11 commits=0 issues=0 prs=0 reviews=0 verdict=EMPTY ...
+#
+# for a day that took 603 issues and 47 commits, exit 0. The nine-integer guard
+# below cannot catch that, because zero is an integer; every line was correct
+# about a subject nobody asked for. A meter that can be silently wrong about
+# WHICH subject it measured is worse than no meter (#902).
+#
+# So the subject is asserted before it is measured: the login the token resolves
+# to must own the repository being judged. Both logins come back from the API in
+# its own canonical spelling — even a `--for` argument is handed to the API and
+# echoed back resolved, so neither side of the comparison is ever the operator's
+# typing — and a plain `=` is therefore the entire test. Nothing folds case here
+# because nothing here can be miscased.
+#
+# It sits BELOW the date arithmetic and the repository resolution, because
+# everything a box can answer without a token should be answered without one:
+# `balance.sh 2026-13-99` still refuses with "cannot compute the day", not with
+# an authentication complaint about a run that was never going to happen.
+#
+# This is its OWN query, and that is deliberate: it must answer before anything
+# is measured, and the two READINGS share a query for a reason that does not
+# apply here — they must be taken at the same instant or they disagree over a
+# second of clock. Identity does not move between two calls.
+#
+# It asks `repositoryOwner`, not `repository`, and that is not interchangeable.
+# A top-level `repository(owner:,name:)` that resolves to nothing returns a
+# NOT_FOUND *error*, and on any GraphQL error `gh api --jq` prints the raw
+# response instead of the filtered row — so the parse below would take the error
+# text as a login and refuse with "the API would not say who this token is",
+# which is a true sentence about the wrong fault. `repositoryOwner` returns a
+# plain null for a login nobody has and never errors, so every path here reaches
+# the message it earned. The cost is stated rather than hidden: this resolves
+# the OWNER half of `OWNER/NAME` and not the name, so `--for <you>/typo` still
+# passes the subject check and reads zero for a repository that does not exist.
+# That is the object of the measurement rather than its subject, and #902 is
+# about the subject.
+#
+# gh's own stderr is left alone. With `repositoryOwner` the only things that can
+# reach it are transport and credential faults — `gh: Bad credentials (HTTP
+# 401)` is the sentence that tells an operator which of the two happened, and
+# the FATAL below is deliberately the general one.
+IDQ="{ viewer { login } repositoryOwner(login: \"${REPO%%/*}\") { login __typename } }"
+read -r V_LOGIN R_OWNER R_KIND <<<"$(gh api graphql -f query="$IDQ" --jq \
+  '[.data.viewer.login // "-", .data.repositoryOwner.login // "-", .data.repositoryOwner.__typename // "-"] | @tsv' \
+  || true)"
+
+# An unnamed subject is not a subject. This fires on an absent token, an expired
+# one, and a rate limit — every case where the API declined to say who is asking.
+[[ "$V_LOGIN" =~ ^[A-Za-z0-9-]+$ ]] || {
+  echo "FATAL the API would not say which account this token belongs to." >&2
+  echo "      every count below is that account's; refusing to measure an unnamed subject." >&2
+  exit 3
+}
+# No owner is nothing to check the subject against, and an unchecked subject is
+# the whole fault this guard exists for.
+[ "$R_OWNER" != "-" ] || {
+  echo "FATAL no GitHub account or organisation is named '${REPO%%/*}' (from ${REPO})." >&2
+  echo "      the subject is checked against the owner of the repository being judged, and there is" >&2
+  echo "      no owner to read; check --for, or this tree's origin remote." >&2
+  exit 3
+}
+
+MATCH=OK
+[ "$V_LOGIN" = "$R_OWNER" ] || MATCH=NO
+printf 'SUBJECT login=%s repo=%s owner=%s owner_kind=%s match=%s\n' \
+  "$V_LOGIN" "$REPO" "$R_OWNER" "$R_KIND" "$MATCH"
+if [ "$MATCH" = NO ]; then
+  if [ "$R_KIND" = Organization ]; then
+    echo "FATAL ${REPO} belongs to the ${R_OWNER} organisation, and contributionsCollection roots at" >&2
+    echo "      a single user — so no token can satisfy this check and none can be asserted against it." >&2
+    echo "      Refusing to print a verdict whose subject was never established." >&2
+  else
+    echo "FATAL this token reads ${V_LOGIN}'s day; ${REPO} belongs to ${R_OWNER}." >&2
+    echo "      the counts would be a real measurement of the wrong person — including the confident" >&2
+    echo "      verdict=EMPTY a wrong-account run used to print for a day full of work." >&2
+    echo "      Switch accounts (gh auth switch --user ${R_OWNER}) or --for a repository ${V_LOGIN} owns." >&2
+  fi
+  exit 6
+fi
 
 # One query, both readings. Asking twice would invite the two halves to be
 # measured a second apart and disagree for a reason that is not the point.
