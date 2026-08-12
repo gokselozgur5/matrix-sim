@@ -15,9 +15,9 @@ import java.util.Locale;
  * The append-only record that makes a run reconstructible (D-023 stage 1,
  * crown #177): EventLog records the story, ChronosLog records the inputs.
  * One JSONL line per record — genesis (seed, version, config fingerprint),
- * operator commands, epoch boundaries, and each flushed WorldEvent batch
- * as counts. Counts are evidence for the fold, not resurrection payloads:
- * in the coarse+seeded model, re-execution regenerates the events.
+ * operator commands, epoch boundaries, births, and each flushed WorldEvent
+ * batch as counts. Counts are evidence for the fold, not resurrection
+ * payloads: in the coarse+seeded model, re-execution regenerates the events.
  *
  * Write-only at stage 1. It draws nothing, mutates nothing, and none of
  * it enters the digest chain — the chain is the referee this log must
@@ -43,6 +43,33 @@ public final class ChronosLog {
     public void command(long tick, String cmd) {
         out.print("{\"chronos\":\"command\",\"tick\":" + tick
                 + ",\"cmd\":\"" + escape(cmd) + "\"}\n");
+    }
+
+    /**
+     * One birth as the record states it: which {@code family} of being came
+     * to exist, at which {@code tick}, under which {@code name} — the
+     * name-at-birth. Three fields, chosen to be exactly what the birth-seed
+     * law needs and nothing more.
+     *
+     * <p>{@code name} is not a duplicate of the current name. The ruling of
+     * 2026-08-11 keys derivation to the birth EVENT and never to the name a
+     * soul answers to today, so this field is written once, at the birth,
+     * and never updated: renaming is not rebirth, and identity papers
+     * cannot launder fate. Everything downstream that wants a birth-invariant
+     * input reads it from here.
+     */
+    public record Birth(long tick, String name, String family) {}
+
+    /**
+     * A birth at its tick. The recorder OBSERVES: the record is written
+     * where the world has already decided someone exists, it draws nothing,
+     * it mutates nothing, and no run ever reads it back — a recording-on run
+     * and a recording-off run walk the same universe, link for link.
+     */
+    public void birth(Birth b) {
+        out.print("{\"chronos\":\"birth\",\"tick\":" + b.tick()
+                + ",\"name\":\"" + escape(b.name())
+                + "\",\"family\":\"" + escape(b.family()) + "\"}\n");
     }
 
     /** An epoch boundary at its tick: {@code "reload"} or {@code "treaty"}. */

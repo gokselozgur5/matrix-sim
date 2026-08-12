@@ -66,6 +66,14 @@ public final class Simulation {
     private final List<Digest> chain = new ArrayList<>();
     private final PrintStream out;
     private final ChronosLog chronos;
+    /**
+     * Every birth this run has seen, in the order the world decided them —
+     * kept whether the recorder is on or off, because the FOLD runs with the
+     * recorder off and still has to prove it re-executed the same births.
+     * Observation only: no draw, no digest field, no branch the world can
+     * take because this list exists.
+     */
+    private final List<ChronosLog.Birth> births = new ArrayList<>();
     private final String followName;
     private NeuralLink followed;
     /** The mind the name resolved to, kept for good (#375): the tap binds to a person, not a string. */
@@ -264,6 +272,32 @@ public final class Simulation {
     }
 
     /**
+     * Chronos: a birth enters the record at the tick the world decided it.
+     * Called AFTER the world already holds the newborn — the record states
+     * what happened, it never causes it. Two sinks, one call: the run's own
+     * birth list (kept always, the fold's evidence) and the recorder (kept
+     * when one is attached). Draws nothing; the birth-seed law wants the
+     * event, and the event is already a fact by the time this runs.
+     */
+    private void recordBirth(String name, String family) {
+        ChronosLog.Birth birth = new ChronosLog.Birth(world.tick(), name, family);
+        births.add(birth);
+        if (chronos != null) {
+            chronos.birth(birth);
+        }
+    }
+
+    /**
+     * The births this run has seen, in world order — the fold's evidence
+     * that a recorded birth was re-EXECUTED and not merely re-read (#550).
+     * Read-only by construction: a caller that mutates this would be
+     * rewriting history, which is exactly what the record exists to prevent.
+     */
+    public List<ChronosLog.Birth> births() {
+        return List.copyOf(births);
+    }
+
+    /**
      * Chronos boundary detection for MID-TICK crossings: the emergency
      * reload (the Director's overflow playbook) and the treaty bump the
      * version inside a node's tick, where only this post-tick sweep can
@@ -367,6 +401,12 @@ public final class Simulation {
                 && world.ledger().overflowed() && !oneExists()) {
             matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
             world.flush();
+            // The world's own oldest birth is the substrate's first emitter
+            // (#553): the record leads nothing here — the One is already in
+            // the world — but from this line on the birth-seed law has an
+            // event to key to. HUMAN is D-042's family vocabulary: a mind in
+            // a pod, however famous.
+            recordBirth(one.pilotName, "HUMAN");
             world.log(Severity.FATE, "The One is born — " + one.pilotName
                     + ", grown for a debt of " + world.ledger().balance()
                     + " (the ledger does not forgive; it balances)");
