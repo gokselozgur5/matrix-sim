@@ -110,6 +110,18 @@ final class LineGrammar {
      * a fixed suffix position, which is a different promise, and one this
      * registry has no vocabulary for.
      *
+     * <p>ZION's {@code treaty} and {@code selfsub} (#831) take the same
+     * road for the same reason: they are mandatory columns, so they go at
+     * the end of the mandatory block and push the trace pair two places
+     * right, and the arities become 8 and 10. They belong beside
+     * {@code census}, which they partition, and they are not written there
+     * — moving {@code links}, {@code traced} and {@code deferred} one place
+     * right to make room is a rename of three shipped columns, and this
+     * family's law is that a reader keys on position. The registry records
+     * the door vocabulary at the width the emitter had when it was written:
+     * {@link matrix.realworld.Origin} generates the columns, so a third
+     * door grows the line by one column and this list must grow with it.
+     *
      * <p>BIRTH is the eighth and the first that D-020 did not grow: it is
      * D-023's, the stdout echo of the chronos birth record (#553), and it is
      * registered here while it still prints only where a recorder is attached
@@ -149,8 +161,9 @@ final class LineGrammar {
                     TICK,
                     count("census"), count("fleet"), count("links"), count("traced"),
                     count("deferred"),
+                    count("treaty"), count("selfsub"),
                     cm("trace_mnn_cm"), cm("red_baseline_cm")),
-                    List.of(6, 8), 100),
+                    List.of(8, 10), 100),
             new Family("ATTN", List.of(
                     TICK,
                     count("regions"), count("hot"), count("cold"),
