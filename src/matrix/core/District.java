@@ -17,9 +17,9 @@ import java.util.List;
  * Anything that lets a district touch mechanics is a declared move, made at
  * the site that moves — never here.
  *
- * <p>The name is the zone's own for now; Dev8's naming law — our quarters
- * wear the names our citizens wear, from the same pools, never MxO's
- * borrowed map — arrives with the generator's second life (#527).
+ * <p>Dev8's naming law names it: our quarters wear the names our citizens
+ * wear, out of the same pools, mixed by a zone-keyed function of our own —
+ * never MxO's borrowed map, and never a die roll.
  */
 public record District(int index, String zoneName, String name) {
 
@@ -49,6 +49,12 @@ public record District(int index, String zoneName, String name) {
             "Sato", "Weaver", "Kaya", "Moreau", "Iglesias", "Novak", "Reyes",
             "Berg", "Duran", "Kovacs", "Aydin", "Frost", "Adeyemi"};
 
+    /** Salts: one per column, so a zone's first name and its family name are independent reads of one key. */
+    private static final int SALT_FIRST = 1;
+    private static final int SALT_LAST = 2;
+    /** De-collision step: a taken name re-mixes with a shifted salt — deterministic, bounded, zero draws. */
+    private static final int SALT_RETRY = 64;
+
     /**
      * The catalog, in zone order — the whole city, built once from the zone
      * list it binds to. The same six zones give the same six districts on
@@ -57,10 +63,59 @@ public record District(int index, String zoneName, String name) {
      */
     public static List<District> catalogOf(List<PlaceGraph.Zone> zones) {
         List<District> catalog = new ArrayList<>(zones.size());
+        List<String> taken = new ArrayList<>(zones.size());
         for (int i = 0; i < zones.size(); i++) {
             String zone = zones.get(i).name();
-            catalog.add(new District(i, zone, zone));
+            String name = nameFor(zone, taken);
+            taken.add(name);
+            catalog.add(new District(i, zone, name));
         }
         return List.copyOf(catalog);
+    }
+
+    /**
+     * One quarter's name, keyed by the zone it binds: a first name and a
+     * family name out of the citizens' pools. Namesakes BETWEEN a district
+     * and a citizen are expected and are the census's business — that is
+     * the law working, not failing — but two quarters may not wear one
+     * name, or every instrument line naming a district would be ambiguous.
+     * A taken name re-mixes with a shifted salt until the city is
+     * unambiguous; the loop terminates because each shift is a fresh read
+     * of a 400-name grid and only six seats are ever filled.
+     */
+    private static String nameFor(String zone, List<String> taken) {
+        for (int retry = 0; ; retry++) {
+            int shift = retry * SALT_RETRY;
+            String name = FIRST[Math.floorMod(mix(zone, SALT_FIRST + shift), FIRST.length)]
+                    + " " + LAST[Math.floorMod(mix(zone, SALT_LAST + shift), LAST.length)];
+            if (!taken.contains(name)) {
+                return name;
+            }
+        }
+    }
+
+    /**
+     * The house mixer: FNV-1a over the key's chars, the salt folded in by
+     * the golden ratio, then murmur3's finalizer for avalanche — the
+     * AcceptanceLoop precedent (#96 open point c), where an affine mix
+     * turned out to be a bijection mod 2^k and killed the very tail it was
+     * meant to grow. Every step is arithmetic this repository owns: no
+     * {@code hashCode}, no map iteration order, nothing JVM-shaped (the
+     * #212 hygiene ruling). Wraps by JLS int law, so the city is the same
+     * city on every machine.
+     */
+    private static int mix(String key, int salt) {
+        int h = 0x811C9DC5;
+        for (int i = 0; i < key.length(); i++) {
+            h ^= key.charAt(i);
+            h *= 0x01000193;
+        }
+        h ^= (int) (salt * 0x9E3779B9L);
+        h ^= h >>> 16;
+        h *= 0x85EBCA6B;
+        h ^= h >>> 13;
+        h *= 0xC2B2AE35;
+        h ^= h >>> 16;
+        return h;
     }
 }
