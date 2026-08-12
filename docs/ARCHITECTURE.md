@@ -285,11 +285,45 @@ Same avatar object throughout. Never dead, never closed — but *leaving the wor
 | *What does one mind experience?* | the follow stream (JSONL perception frames, D-021) |
 | *What state did an object pass through?* | a probe on the bench (`probes/`) |
 
-### The multiverse census
+## The multiverse census — the standing chapter
 
-The instruments got good enough to ask a bigger question: across the multiverse, how common is the film? `probes/SeedAtlas` sweeps seeds and verdicts each universe; one command regenerates this table after any mechanics change (`java -cp out:probes/out SeedAtlas 1 20 6000`).
+The instruments got good enough to ask a bigger question: across the multiverse, how common is the film? The census is the continuous program that answers it, and this chapter is its only venue. It is a **chapter, not a document** — D-028 fences the canon at five files plus the door, and this program is the test of whether a year of work can live inside that fence. It can. Raw sweeps stay where they were produced, in PR bodies and issue threads; the chapter carries only the standing tables and the commands that regenerate them. A year of census work adds sections here, never a sixth file.
 
-The first century — 100 universes, 6,000 ticks each (2026-08-11, v3.0):
+### How a census entry is written
+
+Every entry, published or forthcoming, carries six parts in this order:
+
+| # | Part | The rule |
+|---|---|---|
+| 1 | **the question** | one sentence, falsifiable |
+| 2 | **the command** | mandatory — an entry that cannot be rerun is an anecdote, and an anecdote is refused |
+| 3 | **the sample** | seeds, ticks, scale, era: the exact population the numbers describe |
+| 4 | **the table** | the measured rows |
+| 5 | **the distribution** | what the numbers mean and, explicitly, what this sample size does *not* license |
+| 6 | **the stamp** | date and version measured at, so a v3.0 figure is never read as a v7.5 one |
+
+And the chapter obeys four laws:
+
+1. **Newest question first.** Entries sort by stamp, most recent at the top. Entry numbers are assigned in publication order and never reused, so a citation of "census entry 1" survives every later insertion.
+2. **Supersede, never rewrite.** A superseded entry is restated with its successor named, exactly as the ADRs live (D-028's neighbour rule) and for the same reason: a census whose history is editable is a census that can be argued with retroactively. Correcting a typo is an edit; changing a number is a supersession.
+3. **Part five is a limit, not a summary.** D-027's *measured, never promised* applied to statistics: a fraction is reported with the interval its sample supports, and the sentence the sample cannot carry is named in the entry rather than left for a reader to infer.
+4. **No sixth document.** No `docs/CENSUS.md`, no `journal/`, no per-sweep file. The fence is checked with the entry: `git ls-files '*.md' | grep -vE '^docs/adr/|^tools/|^probes/|^\.github/' | wc -l` must print **6**.
+
+---
+
+### Entry 1 — the first century (standing)
+
+**The question.** Across the multiverse, how common is the film — and does any universe take the Architect's emergency reload?
+
+**The command.**
+
+```sh
+java -cp out:probes/out SeedAtlas 1 100 6000 | tail -1
+```
+
+**The sample.** Seeds 1–100, 6,000 ticks each, default scale, the film era (no truce corridor). `probes/SeedAtlas` verdicts each universe from its own framed log; one command regenerates the whole table after any mechanics change.
+
+**The table.**
 
 | Fate | Universes | Meaning |
 |---|---|---|
@@ -299,6 +333,20 @@ The first century — 100 universes, 6,000 ticks each (2026-08-11, v3.0):
 | `WAR` | 0 | no universe overflowed without resolving |
 | `OLD_PLAYBOOK` | **0 / 100** | the Architect's emergency reload — overflow with no One alive — has never once occurred in nature. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; a hundred universes refuse it, because the ledger births the One (median 1289) long before any cascade can overflow (earliest ever seen: 2872). A dead branch that is also a proof: the film's ORDER is emergent law, not script. |
 
-The distributions, at n=100: birth in a **220-tick band** (min 1159 · median 1289 · max 1379) — the ledger is a metronome; whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ wildly (overflow min 2872 · median 3686 · max 5728), because the cascade rides population geometry, not the ledger. Second births, where they arrive, land at median 4674 (min 3889 · max 5739).
+**The distribution.** Birth arrives in a **220-tick band** (min 1159 · median 1289 · max 1379) — the ledger is a metronome; whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ wildly (overflow min 2872 · median 3686 · max 5728), because the cascade rides population geometry, not the ledger. Second births, where they arrive, land at median 4674 (min 3889 · max 5739).
 
-The census is falsifiable the same way everything here is: rerun the command (`SeedAtlas 1 100 6000`), diff the table. The rng-stream instrumentation rides the same bench: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.
+What n=100 does **not** license: 17/100 QUIET is a 95% interval of roughly 10–26%, so "one universe in six" is honest only as a point estimate — one in ten and one in four both survive this sample. The 220-tick birth band is a *range*, and a range grows with the sample by construction: it is not a shape and carries no tail. And `OLD_PLAYBOOK = 0/100` bounds that branch's rate at about 3%, no tighter — a hundred universes cannot distinguish *impossible* from *rare*. Each of those three limits is a question the second century is being run to answer.
+
+**The stamp.** 2026-08-11, v3.0 · falsifiable the way everything here is: rerun the command, diff the table.
+
+**Reproduction check — and the first thing the stamp caught.** Rerun at `6e2458a` on 2026-08-12, the same command prints a different multiverse:
+
+```
+ATLAS seeds=1..100 ticks=6000 full_arc=73 treaty=6 war=0 quiet=21 old_playbook=0 birth_min=1149 birth_max=1359
+```
+
+Neither run is wrong. The entry is stamped **v3.0**, and main has since taken Season Two's declared digest moves, each of which re-rolls the stream from boot and therefore re-rolls every universe's war. The table above was describing a multiverse that no longer exists, and nothing in the repo said so — which is the whole argument for a stamp, and the whole argument against editing numbers in place. Entry 1 stands as the v3.0 measurement. Restating it at HEAD is not an edit anyone may make by hand: it is owed to the re-verdict protocol, which classifies the move first and supersedes the entry only if the classification says it must.
+
+---
+
+The rng-stream instrumentation rides the same bench and is quoted here as context rather than as a census entry: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.
