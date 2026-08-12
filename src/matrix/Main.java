@@ -145,6 +145,10 @@ public final class Main {
      * the default stays 2,000 for the fast pre-push check.
      */
     private static int selftest(long seed, long ticks) {
+        // The economy's ordering is a lock, not a comment (#382): the
+        // miracle must outrank every other disbelief item, and a retune
+        // that demotes it fails here instead of in a season's worth of runs.
+        System.out.println(matrix.realworld.Bond.retailOrderLine());
         List<Digest> a = new Simulation(seed, null, null).run(ticks);
         List<Digest> b = new Simulation(seed, null, null).run(ticks);
         if (a.size() != b.size()) {

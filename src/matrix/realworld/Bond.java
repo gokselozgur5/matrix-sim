@@ -117,6 +117,46 @@ public final class Bond {
         return null;
     }
 
+    /**
+     * The retail price list's ordering, asserted rather than commented
+     * (#382). #212's unifier says the list is ordered by how hard a frame
+     * is to reject; "you are dead" is the hardest frame there is, so the
+     * miracle must cost more than every other disbelief item this repo
+     * prices. A future retune of ANY of those neighbours could otherwise
+     * demote the miracle in silence — a comment cannot stop that and an
+     * assertion can.
+     *
+     * <p>Called from --selftest, so the failure mode is a red build rather
+     * than a quiet economy. The neighbour list is explicit and its members
+     * are named in the line: when #332 and #345 add allegiance terms they
+     * belong in this array, and the reviewer who adds them will see why.
+     *
+     * @throws IllegalStateException when the miracle is no longer the most
+     *         expensive thing the world can be made to disbelieve
+     */
+    public static String retailOrderLine() {
+        long[] prices = {
+                Config.RESIDUE_RED, Config.RESIDUE_BLUE,
+                Config.KID_SPIKE, Config.DEJA_RESIDUE_SPIKE};
+        String[] names = {
+                "RESIDUE_RED", "RESIDUE_BLUE",
+                "KID_SPIKE", "DEJA_RESIDUE_SPIKE"};
+        int top = 0;
+        for (int i = 1; i < prices.length; i++) {
+            if (prices[i] > prices[top]) {
+                top = i;
+            }
+        }
+        if (Config.ROOM_303_DEPOSIT <= prices[top]) {
+            throw new IllegalStateException("RETAIL order broken: ROOM_303_DEPOSIT="
+                    + Config.ROOM_303_DEPOSIT + " no longer outranks " + names[top]
+                    + "=" + prices[top] + " — the retail list is ordered by how hard a"
+                    + " frame is to reject, and nothing outranks \"you are dead\"");
+        }
+        return "RETAIL order held: ROOM_303_DEPOSIT=" + Config.ROOM_303_DEPOSIT
+                + " > " + names[top] + "=" + prices[top];
+    }
+
     /** The pair as the log says it, in mint order — one wording, every line. */
     public String pair() {
         return a.name + " and " + b.name;
