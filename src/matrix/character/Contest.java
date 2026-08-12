@@ -259,6 +259,32 @@ public final class Contest {
      * The legacy two faces are reproduced bit for bit, from one draw, and the
      * two exotic outcomes are unreachable because every roll is under 1.0.
      * Put the exotic slices first and that exactness is gone.
+     *
+     * <p><b>Known and measured: once the exotic outcomes open, {@code p} is
+     * the decisive split, not the marginal connect rate.</b> The attacker
+     * connects on HIT_MISS-for-A <i>or</i> HIT_HIT, which totals
+     * {@code decisive*p + mutual} — equal to {@code p} exactly on gaps 0..3
+     * (the pin's zone, where {@code mutual} is zero) and again at gap 9 by
+     * the table's symmetry, but above it in between:
+     *
+     * <pre>
+     *   gap  p         P(attacker connects)  delta
+     *   0-3  =p        =p                    +0.000000
+     *   4    0.277778  0.286667              +0.008889
+     *   5    0.322222  0.336444              +0.014222
+     *   6    0.366667  0.382667              +0.016000
+     *   7    0.411111  0.425333              +0.014222
+     *   8    0.455556  0.464444              +0.008889
+     *   9    0.500000  0.500000              +0.000000
+     * </pre>
+     *
+     * The bias is bounded by 0.016 and never touches the pin, so the
+     * equivalence proof is unaffected. It is disclosed here rather than
+     * silently absorbed because a reader will otherwise assume {@code p} is
+     * the kill rate: whether the catch's observed lethality must equal
+     * {@code p} on the enabled lane is #352's call at adoption, and
+     * re-deriving the mutual slice proportionally from both sides is the fix
+     * if it must.
      */
     public static Round round(double roll, int attackerStat, int defenderStat) {
         ExchangeBand band = exchangeBand(attackerStat, defenderStat);
