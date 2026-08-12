@@ -24,6 +24,32 @@ import java.util.List;
 public record District(int index, String zoneName, String name) {
 
     /**
+     * The citizens' first names — PodFarm's own metal, and the whole point
+     * of Dev8's law: a quarter of this city is named from the pool its
+     * people are named from, so the census can count a district like
+     * anyone else and a stranger can tell at a glance that this map was
+     * not borrowed.
+     *
+     * <p>Copied, not moved. The farm still grows every Thomas from its own
+     * array and not one citizen name changed hands — `realworld/` belongs
+     * to another crew this phase, so lifting the pool out of `PodFarm`
+     * into one shared home is filed (#842), not smuggled. Until that
+     * lands, two copies are a drift risk with no guard, so
+     * `DistrictCensus` (#538) reads the farm's arrays reflectively and
+     * fails loudly the day the two disagree.
+     */
+    static final String[] FIRST = {
+            "Thomas", "Trin", "Milo", "Dana", "Ezra", "Vera", "Otto", "Nadia",
+            "Silas", "June", "Marcus", "Lena", "Hugo", "Iris", "Felix", "Mara",
+            "Dario", "Selma", "Ivan", "Noor"};
+
+    /** The citizens' family names — the same lift, under the same debt and the same guard. */
+    static final String[] LAST = {
+            "Anderson", "Vance", "Okafor", "Lindqvist", "Marek", "Osei", "Petrov",
+            "Sato", "Weaver", "Kaya", "Moreau", "Iglesias", "Novak", "Reyes",
+            "Berg", "Duran", "Kovacs", "Aydin", "Frost", "Adeyemi"};
+
+    /**
      * The catalog, in zone order — the whole city, built once from the zone
      * list it binds to. The same six zones give the same six districts on
      * every machine and in every universe, seed included, because no seed
