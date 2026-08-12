@@ -5,6 +5,7 @@ import matrix.core.PlaceGraph;
 import matrix.core.Severity;
 import matrix.core.World;
 import matrix.realworld.Human;
+import matrix.realworld.Origin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +38,25 @@ public final class Zion {
     private static final String[] MARK_SIGNS = {
             "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
 
-    private final List<Human> census = new ArrayList<>();
-    /** Index-aligned with the census: where each citizen came from ("treaty" today; #121 adds the Kid's own tag). */
-    private final List<String> origins = new ArrayList<>();
+    /**
+     * The doors, resolved once: {@link Origin#values()} clones its array on
+     * every call and the ZION line asks for it on a cadence.
+     */
+    private static final Origin[] DOORS = Origin.values();
+
+    /**
+     * One name on the registry: the freed Human and the door they came
+     * through. Until #831 this was two lists and a comment promising they
+     * stayed index-aligned — an invariant no type, assertion or probe held,
+     * in a class that handed the census out live. One list of a record is
+     * the same fact with the alignment welded on: nobody is admitted
+     * without a door, and no caller can shift one list out from under the
+     * other.
+     */
+    private record Citizen(Human human, Origin origin) {}
+
+    /** The registry, in liberation order — the fallen stay on it (D-011: liberation is not deletion). */
+    private final List<Citizen> census = new ArrayList<>();
     /** The fleet: ships built and lost here (composition — crown #84). LOST hulls stay listed: nobody deleted, not even ships. */
     private final List<Hovercraft> fleet = new ArrayList<>();
     /** A filed sink order (#119): executes at the top of the next zion tick, then clears. */
@@ -54,10 +71,9 @@ public final class Zion {
         this.world = world;
     }
 
-    /** The door on this side: one freed Human enters the census — link already closed clean, nothing flushed. */
-    public void absorb(Human human, String origin) {
-        census.add(human);
-        origins.add(origin);
+    /** The door on this side: one freed Human enters the census under the door they came through — link already closed clean, nothing flushed. */
+    public void absorb(Human human, Origin origin) {
+        census.add(new Citizen(human, origin));
     }
 
     /**
@@ -220,8 +236,25 @@ public final class Zion {
     /** Citizens still breathing — a census that counts its dead cannot crew a ship. */
     private int livingCensus() {
         int n = 0;
-        for (matrix.realworld.Human h : census) {
-            if (h.alive()) {
+        for (Citizen c : census) {
+            if (c.human().alive()) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /**
+     * How many on the registry came through one door — counted off the
+     * registry itself on the spot, never off a tally kept beside it. A
+     * running counter per door would be a second parallel structure, which
+     * is the defect this unit is here to remove; the walk is over a list
+     * the fleet already walks twice a tick, read on the ZION cadence.
+     */
+    private int admittedThrough(Origin door) {
+        int n = 0;
+        for (Citizen c : census) {
+            if (c.origin() == door) {
                 n++;
             }
         }
@@ -255,7 +288,8 @@ public final class Zion {
      */
     private List<Human> drawCrew() {
         List<Human> free = new ArrayList<>();
-        for (Human h : census) {
+        for (Citizen c : census) {
+            Human h = c.human();
             if (h.alive() && h.link() == null && !aboard(h)) {
                 free.add(h);
             }
@@ -291,7 +325,8 @@ public final class Zion {
      */
     public List<Human> ashore() {
         List<Human> out = null;
-        for (Human h : census) {
+        for (Citizen c : census) {
+            Human h = c.human();
             if (h.alive() && h.link() == null && !aboard(h)) {
                 if (out == null) {
                     out = new ArrayList<>();
@@ -350,6 +385,23 @@ public final class Zion {
      * when the trace metric is measurable (#118, #374), so the end of the
      * line belongs to an optional rider. See {@code probes/LineGrammar} —
      * the registry's ZION field list is the argument.
+     *
+     * <p>The per-door columns are #831's. {@code census=} counted the
+     * registry and said nothing about how it was filled, so
+     * {@code census=7} read the same whether the seventh came through the
+     * treaty's open door or walked out on his own — and the origin tag that
+     * could have answered was recorded by {@link #absorb} and read by
+     * nothing. One column per {@link Origin}, generated from the
+     * vocabulary rather than written out here, so the columns sum to
+     * {@code census=} by construction and a door added later cannot be
+     * silently left off the line.
+     *
+     * <p>{@code selfsub=} is deliberately a second sighting of a number
+     * METRIC already prints, and the pair is the point: METRIC's counts
+     * doors OPENED on the real-world side, this one counts citizens
+     * ADMITTED on Zion's, and the whole of #200 is the claim that the tag
+     * survives the crossing. Equal is the assertion; unequal names a
+     * liberation the root drained and the city did not keep.
      */
     public String zionLine(long tick) {
         int links = 0;
@@ -363,9 +415,13 @@ public final class Zion {
             deferred += ship.rig().deferred(world);
             traced += ship.rig().traced();
         }
-        return String.format(Locale.ROOT,
+        StringBuilder line = new StringBuilder(String.format(Locale.ROOT,
                 "ZION tick=%d census=%d fleet=%d links=%d traced=%d deferred=%d",
-                tick, census.size(), fleet.size(), links, traced, deferred);
+                tick, census.size(), fleet.size(), links, traced, deferred));
+        for (Origin door : DOORS) {
+            line.append(' ').append(door.tag()).append('=').append(admittedThrough(door));
+        }
+        return line.toString();
     }
 
     /**
@@ -390,7 +446,22 @@ public final class Zion {
         return out;
     }
 
+    /**
+     * The citizens, in liberation order. A fresh list, and that is the
+     * second half of #831: the old body returned the field itself, so any
+     * caller could add or remove an element and desynchronize a parallel
+     * origins list that no assertion checked and nothing read. There is no
+     * live {@code List<Human>} left to leak — the registry is a list of
+     * {@link Citizen} — and the copy makes the leak impossible rather than
+     * merely unattempted. The doors are not on this roster: what asks about
+     * a door today is the {@code ZION} line, and a reader nothing calls is
+     * how the origin tag got into this state.
+     */
     public List<Human> census() {
-        return census;
+        List<Human> out = new ArrayList<>(census.size());
+        for (Citizen c : census) {
+            out.add(c.human());
+        }
+        return out;
     }
 }

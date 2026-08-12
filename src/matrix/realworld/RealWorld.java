@@ -16,8 +16,13 @@ import java.util.List;
  */
 public final class RealWorld {
 
-    /** One banked liberation: who walked, and through which door — "treaty" (the open door) or "selfsub" (D-033). */
-    public record Liberation(Human human, String origin) {}
+    /**
+     * One banked liberation: who walked, and through which door. The door
+     * was a {@code String} until #831 — a tag two merged PRs advertised and
+     * nothing on the far bank could group, because a String vocabulary has
+     * no members to enumerate. {@link Origin} is that vocabulary, declared.
+     */
+    public record Liberation(Human human, Origin origin) {}
 
     /**
      * One freed mind's petition account — D-033 read backwards, per the #216
@@ -116,7 +121,7 @@ public final class RealWorld {
                 + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
                 + " spikes in " + link.windows + " windows; no red pill was given "
                 + Pod.opensClause(link.human));
-        bank(new Liberation(link.human, "selfsub"));
+        bank(new Liberation(link.human, Origin.SELFSUB));
     }
 
     /**
@@ -148,7 +153,7 @@ public final class RealWorld {
                 link.closeClean();
                 world.queue(new WorldEvent.Remove(link.avatar.id));
                 world.log(Severity.OK, "the door: " + link.human.name + " walked out — free");
-                bank(new Liberation(link.human, "treaty"));
+                bank(new Liberation(link.human, Origin.TREATY));
                 freed++;
             }
         }
