@@ -166,7 +166,7 @@ public final class Config {
         int tenants = EXILE_COUNT;
         for (Species s : Bestiary.ALL) {
             if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
-                tenants += s.populationCap() * ECO_SCALE;
+                tenants += s.populationCap() * ecoScale();
             }
         }
         return tenants;
@@ -260,31 +260,79 @@ public final class Config {
     public static final int COMMUTE_SWITCH_TICKS = 1_000;
     public static final int COMMUTE_ARRIVE_CM = 500;
     public static final int ECO_EVERY_TICKS = 100;
+    /** The dial's legal range — the city is large, not infinite (#136). */
+    public static final int ECO_SCALE_MIN = 1;
+    public static final int ECO_SCALE_MAX = 100;
     /**
      * The homecoming dial (#136) — the one deliberately mutable knob in the
-     * file. {@code --scale N} multiplies every Bestiary population at seeding
+     * file, and since #882 the only one nothing can write behind the gate's
+     * back. {@code --scale N} multiplies every Bestiary population at seeding
      * (x11 puts ~5,269 entities in the city, the D-027 retargeted row's
-     * scale); humans, agents, exiles and the arc keep their canon counts.
-     * Written once by Main before any Simulation exists, never after; 1 is
+     * scale); humans, agents, exiles and the arc keep their canon counts. 1 is
      * canonical and multiplies into byte-identical digests by construction.
      * Refused alongside --replay and --chronos: the fold's genesis line does
      * not carry a scale, so a scaled recording would be a lie.
      */
-    public static int ECO_SCALE = 1;
-    /** The dial's legal range — the city is large, not infinite (#136). */
-    public static final int ECO_SCALE_MIN = 1;
-    public static final int ECO_SCALE_MAX = 100;
+    private static int ecoScale = ECO_SCALE_MIN;
+    /**
+     * The dial's seal. #136 wrote its law as prose — "written once by Main
+     * before any Simulation exists, never after" — and prose enforces nothing.
+     * The seal closes on whichever comes first, the write or the first read:
+     * after that the dial is what the world was built from, and a second write
+     * could only make the label disagree with the city. One flag, both clauses.
+     */
+    private static boolean dialSealed = false;
+
+    /**
+     * The dial as the world reads it, and the act that seals it (#882). Every
+     * read goes through here because the field is private, so "nothing writes
+     * the dial after the world has looked at it" needs no cooperation from the
+     * reader — a future world-boot path that never heard of this law still
+     * seals the dial by using it.
+     */
+    public static int ecoScale() {
+        dialSealed = true;
+        return ecoScale;
+    }
+
+    /**
+     * The dial's only door (#882). #826 gave the dial one law and pointed the
+     * two known doors at it; the field stayed public and mutable, so the law
+     * was something a caller chose to walk through. This is the wall behind
+     * it: an out-of-range scale is refused with {@link #scaleRefusal}'s own
+     * sentence, and a write to a sealed dial is refused whatever its value.
+     *
+     * <p>Both refusals throw. The two CLI doors ask {@code scaleRefusal}
+     * first and die with a sentence and exit 2, because a stack trace is not
+     * a user-facing refusal; this method is what makes the third door — the
+     * one nobody has written yet — impossible rather than merely discouraged.
+     *
+     * @throws IllegalArgumentException when the scale is outside 1..100
+     * @throws IllegalStateException when the dial is already sealed
+     */
+    public static void setEcoScale(int scale) {
+        String refusal = scaleRefusal(scale);
+        if (refusal != null) {
+            throw new IllegalArgumentException(refusal);
+        }
+        if (dialSealed) {
+            throw new IllegalStateException("the homecoming dial is written once,"
+                    + " before the world reads it — it already carries " + ecoScale);
+        }
+        ecoScale = scale;
+        dialSealed = true;
+    }
 
     /**
      * The dial's one gate (#826): {@code null} when the scale is legal, the
-     * refusal sentence when it is not. Two doors open onto {@link #ECO_SCALE}
-     * — the daemon's {@code --scale} and the probe bench's positional scale —
-     * and until this method existed only one of them was guarded, so
+     * refusal sentence when it is not. Two doors open onto the dial — the
+     * daemon's {@code --scale} and the probe bench's positional scale — and
+     * until this method existed only one of them was guarded, so
      * {@code AllocMeter 42 0} printed a well-formed D-027 budget row for a
      * city with no ecosystem at all: the seeding loop
-     * ({@code populationCap * ECO_SCALE}) never runs at 0 or below, and 196
-     * humans measure like a triumph. One law, stated here, obeyed at both
-     * doors; each door still chooses how to die (the daemon exits 2).
+     * ({@code populationCap * ecoScale()}) never runs at 0 or below, and the
+     * bare human census measures like a triumph. One law, stated here, obeyed
+     * at both doors; each door still chooses how to die (the daemon exits 2).
      */
     public static String scaleRefusal(int scale) {
         if (scale < ECO_SCALE_MIN || scale > ECO_SCALE_MAX) {
@@ -292,6 +340,49 @@ public final class Config {
                     + " — the city is large, not infinite";
         }
         return null;
+    }
+
+    /**
+     * The dial's gate, asserted rather than commented (#882, the
+     * {@link matrix.realworld.Bond#retailOrderLine()} precedent). Called from
+     * --selftest, after the doors have had their turn, so both refusals are
+     * live: an out-of-range write and a write to the sealed dial are each
+     * attempted here and each must be refused. A gate that stops refusing
+     * fails the build instead of quietly re-opening #826 for the next probe.
+     *
+     * @throws IllegalStateException when either refusal no longer refuses
+     */
+    public static String dialLockLine() {
+        String broken = null;
+        try {
+            setEcoScale(ECO_SCALE_MAX + 1);
+            broken = "scale " + (ECO_SCALE_MAX + 1) + " was accepted";
+        } catch (IllegalArgumentException expected) {
+            // the daemon's own sentence, from the law both doors read
+        }
+        if (broken == null && !dialSealed) {
+            // Main writes the dial before it dispatches, so an unsealed dial
+            // here means the door stopped using the setter — the rewrite probe
+            // below would seal it itself and report a pass it did not earn.
+            broken = "the dial reached the selftest unsealed";
+        }
+        if (broken == null) {
+            try {
+                // the same value it already carries: the refusal is about the
+                // moment, not the number.
+                setEcoScale(ecoScale);
+                broken = "the sealed dial was written again";
+            } catch (IllegalStateException expected) {
+                // written once, before the world reads it
+            }
+        }
+        if (broken != null) {
+            throw new IllegalStateException("DIAL gate broken: " + broken
+                    + " — the homecoming dial is written through setEcoScale or"
+                    + " not at all, which is the whole of #882");
+        }
+        return "DIAL gate held: eco_scale=" + ecoScale + " sealed=" + dialSealed
+                + " — out of range refused, rewrite refused";
     }
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;

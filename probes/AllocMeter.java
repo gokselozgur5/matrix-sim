@@ -129,13 +129,13 @@ public final class AllocMeter {
                 System.err.println(refusal);
                 System.exit(2);
             }
-            matrix.core.Config.ECO_SCALE = scale;
+            matrix.core.Config.setEcoScale(scale);
         }
         com.sun.management.ThreadMXBean threads =
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         long self = Thread.currentThread().getId();
 
-        int runs = Math.max(STEADY_RUNS_MIN, STEADY_RUNS / matrix.core.Config.ECO_SCALE);
+        int runs = Math.max(STEADY_RUNS_MIN, STEADY_RUNS / matrix.core.Config.ecoScale());
         long[] samples = new long[runs];
         for (int r = 0; r < runs; r++) {
             Simulation repeat = new Simulation(seed, null, null);
@@ -168,6 +168,7 @@ public final class AllocMeter {
         sim.run(2_000); // finish the arc
         long a4 = threads.getThreadAllocatedBytes(self);
         long gcCount = gcCollections() - gc0;
+        int ranAt = matrix.core.Config.ecoScale();
 
         System.out.println("ALLOC seed=" + seed
                 + " steady_bytes_per_tick=" + steady
@@ -175,8 +176,8 @@ public final class AllocMeter {
                 + " full_run_mb=" + (a4 - a0) / (1024 * 1024)
                 + " gc_collections=" + gcCount
                 // scaled runs declare themselves; the canonical line keeps its bytes
-                + (matrix.core.Config.ECO_SCALE == 1 ? ""
-                        : " scale=" + matrix.core.Config.ECO_SCALE
+                + (ranAt == 1 ? ""
+                        : " scale=" + ranAt
                                 + " entities=" + sim.aliveEntities())
                 // appended, never inserted (D-020): the headline keeps its name and
                 // its place and gains the denominator and the spread that say how
@@ -192,8 +193,8 @@ public final class AllocMeter {
         // verdict against the canonical bounds would be well-formed, greppable
         // and about a city these numbers were never measured in — the same
         // failure the scale gate above refuses at the door (#826).
-        if (matrix.core.Config.ECO_SCALE != 1) {
-            System.out.println("VERDICT ALLOC_UNJUDGED scale=" + matrix.core.Config.ECO_SCALE
+        if (ranAt != 1) {
+            System.out.println("VERDICT ALLOC_UNJUDGED scale=" + ranAt
                     + " reason=no_byte_budget_at_this_scale");
             return;
         }
