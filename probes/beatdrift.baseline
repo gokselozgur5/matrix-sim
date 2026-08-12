@@ -1,0 +1,29 @@
+# The film's timing — the beat table's one machine-read home.
+#
+# One BEATDRIFT row per seed, verbatim as `probes/CensusBeatDrift` printed it, at the tree
+# the row's own `sha=` names. `probes/bench.sh` hands this file to the probe with
+# --baseline-file, so the judged row compares today's ticks against these and the sweep goes
+# red when a beat slides further than the declared band.
+#
+# Blank lines and lines opening with `#` are ignored. Every other line must open with
+# `BEATDRIFT ` and must carry the `ticks=` the sweep runs at: a row measured at another
+# budget is refused rather than compared, because two budgets are two questions and the
+# difference would report itself as drift.
+#
+# Moving the pin is these rows re-measured, in the commit that moves the film, with the sha
+# they were measured at riding in the rows themselves. `git log -p -- probes/beatdrift.baseline`
+# is then the whole move history, kept by git, which cannot drift from the value it explains —
+# the discipline .github/canonical-digest already keeps for the seal. docs/ARCHITECTURE.md's
+# census entry 2 keeps the narrative table of recorded commits and the per-step verdicts; this
+# file is the row the bench actually reads.
+#
+# Re-measure from a pinned tree (D-030 clause 3 — an exported tree has no .git to ask, which
+# is what --sha is for):
+#
+#     git archive <sha> | tar -x -C "$WORK" && cd "$WORK"
+#     javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
+#     javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
+#     java -cp out:probes/out CensusBeatDrift 42,7 6000 --sha <short>
+
+BEATDRIFT sha=a7660c2 seed=42 ticks=6000 birth=1299 refusal=1525 overflow=4289 flatline=4289 peace=4309 reboot=4329 door=4329 second_birth=5229 max_delta=n/a
+BEATDRIFT sha=a7660c2 seed=7 ticks=6000 birth=1259 refusal=1525 overflow=3707 flatline=3707 peace=3727 reboot=3747 door=3747 second_birth=4659 max_delta=n/a

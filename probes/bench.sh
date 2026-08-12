@@ -115,6 +115,17 @@ table() {
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
+  # The one row that reads a committed file. Its budget is written here instead of
+  # taken from $TICKS because probes/beatdrift.baseline is a measurement AT a
+  # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
+  # the other six, and comparing that against a 6,000-tick row would report the
+  # argument as drift. The probe refuses the mismatch rather than judging it —
+  # `CensusBeatDrift 42,7 2000 --baseline-file probes/beatdrift.baseline` exits 2
+  # with a FATAL naming both budgets. Band and denominator ride in the
+  # judged line, so widening the tolerance — or reading a pin that names none of
+  # the beats — is an edit to this row and not a quiet pass.
+  judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=200' \
+        42,7 6000 --band 200 --baseline-file probes/beatdrift.baseline
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
@@ -123,7 +134,6 @@ table() {
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   run   SeedAtlas    1 5 "$TICKS"
-  run   CensusBeatDrift 42,7 "$TICKS"
 }
 
 PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0

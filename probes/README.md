@@ -97,6 +97,15 @@ so judging it by exact line would pin `mean_bitflip` and `max_axis_corr` into
 the runner beside the bound the probe already prints and already checks. Its
 exit code is its verdict instead, which is what `run` reads.
 
+One row reads a committed file. `CensusBeatDrift` judges today's beat ticks against
+`probes/beatdrift.baseline` — two rows, one per standard seed, verbatim as the probe
+printed them at the tree their own `sha=` names. Moving the pin is those rows
+re-measured in the commit that moves the film, so `git log -p -- probes/beatdrift.baseline`
+is the whole move history, the way `.github/canonical-digest` holds the seal's. Its
+judged line carries the set it judged (`compared=16/16`) and the tolerance it judged
+against (`band=200`), because a probe that read a baseline naming none of the beats
+would otherwise print the same clean line as one that compared all sixteen pairs.
+
 ## The bench refereeing itself
 
 The probes referee the daemon. `--twice` is what referees the probes: every row
@@ -160,6 +169,7 @@ judges it (#906).
 | `ConfirmationSweep` | Do D-001, D-011, D-021 and D-025's *Confirmation* clauses still describe this tree? | four scripted clauses that were prose since 2026-08-10, mechanized in one own-universe pass (`CONFIRMATIONS_HELD`): 413 originals restored, 6 minds out the door alive with null links, 60 frames at max_gap 100, 8 collections through notice→grace→ending. Its own first run printed `restored=409/413` — the delete broadcast and the treaty's door share tick 4329, and four restored originals walked out of the world again before the probe looked |
 | `DistrictNeutral` | Does naming the city cost the world a die roll? | the D-048 catalog is the same six quarters at seeds 42, 7, 1 and 55, and the same again built out of a stream burned 1,000 draws down (`DISTRICTS_DRAW_NOTHING`) — #536's claim, kept |
 | `BondBook` | What holds the bond book's ceiling, and does the book ever let go? | #852's own diagnosis, refuted and replaced: the book fills at t=1419 and the slots are not squatters — `evictable=0/64`, every other slot WOVEN and exempt by law. Also the `RETURN`/`STRAND` band that set `BOND_FORGET_WINDOWS`: with the clock off, returns of 160 and 208 windows apart still weave while the one real desertion runs to 479, so the symmetric 12 would have eaten two real bonds |
+| `CensusBeatDrift` | Is the film's timing drifting, merge by merge? | the eight D-036 beats at seeds 42 and 7, pinned in `probes/beatdrift.baseline` and judged against a declared 200-tick band (`DRIFT_WITHIN_BAND compared=16/16 band=200`). `ArcBeats` gates the ORDER and throws the ticks away, so #222's cascade — seed 7's overflow, flatline, peace, reboot and door all sliding +492 together, second birth +420 — passed the lane green |
 | `LineLint` | Do the instrument lines still speak the grammar D-020 fixed? | the eight families as a runtime registry (`LineGrammar`) plus their validator: 361 instrument lines at seed 42, `families=7`, `VERDICT GRAMMAR_HELD` — an appended column passes, a renamed or moved one names itself. The eighth is `BIRTH`, which prints only where a chronos recorder is attached: the same run under `--chronos` carries 363 lines and `families=8`, and the judged bench row (no recorder, no `PERF`) reaches six of the eight |
 | `BirthInputs` | Can a reader holding nothing but the recording state the birth event the die was keyed to? | #847: it could not. The record carried tick, name and family; the derivation reads five facts, and the rack unit and the growth ordinal were on no line of the file. Its own scanner — a hundred lines that have never seen a `Simulation` — extracts the five off a recorded universe (`births=2 complete=2 short=0`, `BIRTH_INPUTS_COMPLETE`), and `--file` points the same reader at a recording on disk: a pre-#847 one prints `SHORT line=5 missing=rack,id` and `BIRTH_INPUTS_SHORT` |
 | `HullRoster` | Is the hull-naming rule total, and is it still the film? | #806's array crash, made permanently detectable without a universe: 3,000 ordinals, 3,000 distinct names, all thirteen generation marks reached, and the boot three pinned as literals — nothing else in this repository notices a renamed hull, because no `matrix.zion` state reaches the digest walk (`VERDICT ROSTER_TOTAL`) |
