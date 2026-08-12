@@ -296,7 +296,7 @@ Every entry, published or forthcoming, carries six parts in this order:
 | # | Part | The rule |
 |---|---|---|
 | 1 | **the question** | one sentence, falsifiable |
-| 2 | **the command** | mandatory — an entry that cannot be rerun is an anecdote, and an anecdote is refused |
+| 2 | **the command** | mandatory, and it regenerates **every** figure the entry publishes — an entry that cannot be rerun is an anecdote, and a number the command does not print is an anecdote sitting inside a table (#845) |
 | 3 | **the sample** | seeds, ticks, scale, era: the exact population the numbers describe |
 | 4 | **the table** | the measured rows |
 | 5 | **the distribution** | what the numbers mean and, explicitly, what this sample size does *not* license |
@@ -639,10 +639,12 @@ What this table does **not** license: two seeds is not a distribution, and `DRIF
 **The command.**
 
 ```sh
-java -cp out:probes/out SeedAtlas 1 100 6000 | tail -1
+java -cp out:probes/out SeedAtlas 1 100 6000 | grep -v '^SEED '
 ```
 
-**The sample.** Seeds 1–100, 6,000 ticks each, default scale, the film era (no truce corridor). `probes/SeedAtlas` verdicts each universe from its own framed log; one command regenerates the whole table after any mechanics change.
+Until #845 this entry's command was `| tail -1`, which selects the ATLAS line — five fate counts and the birth range, and nothing else. The three medians below and both seed lists were outside it: the lists live in the per-universe `SEED` rows the pipe discards, and no median existed anywhere in the probe. The filter selects the summary block by kind rather than by position, so a summary that grows again cannot silently truncate the entry.
+
+**The sample.** Seeds 1–100, 6,000 ticks each, default scale, the film era (no truce corridor). `probes/SeedAtlas` verdicts each universe from its own framed log; one command regenerates the whole entry — table, distribution and rosters — after any mechanics change.
 
 **The table.**
 
@@ -655,6 +657,16 @@ java -cp out:probes/out SeedAtlas 1 100 6000 | tail -1
 | `OLD_PLAYBOOK` | **0 / 100** | the Architect's emergency reload — overflow with no One alive — has never once occurred in nature. The branch exists in code, in the ops console (`reload`), and in the verification skeptic's forced probe; a hundred universes refuse it, because the ledger births the One (median 1289) long before any cascade can overflow (earliest ever seen: 2872). A dead branch that is also a proof: the film's ORDER is emergent law, not script. |
 
 **The distribution.** Birth arrives in a **220-tick band** (min 1159 · median 1289 · max 1379) — the ledger is a metronome; whatever else a universe does, it owes the One at almost the same moment. War length is where universes differ wildly (overflow min 2872 · median 3686 · max 5728), because the cascade rides population geometry, not the ledger. Second births, where they arrive, land at median 4674 (min 3889 · max 5739).
+
+**The population, recovered.** Every median above is taken over the universes that *reached* the beat, and the entry never said which population it meant. Seventeen universes never overflowed and twenty never took a second birth; their `-1` rows sit outside the min, median and max published here. That is measured rather than inferred. The world this entry describes is the tree #199 branched from — `5434c8e`, identified by rerunning it: the fate counts, the birth range and both seed lists come back seed for seed. Rerun under the chapter's own pin-and-hold rule (`git archive 5434c8e`, today's probe copied into the export so the diff cannot measure the instrument), the sweep prints this entry's figures back:
+
+```
+BEAT beat=overflow n=100 reached=83 never=17 min=2872 median=3686 max=5728 median_all=3894.5
+BEAT beat=rebirth n=100 reached=80 never=20 min=3889 median=4674 max=5739 median_all=4874
+ROSTER verdict=QUIET n=17 seeds=2,5,6,8,21,24,32,33,34,61,63,72,80,83,91,95,99
+```
+
+Read over all one hundred rows instead, with the never-reached rows ranked where lateness puts them, the same overflow median is **3894.5**; read with the `-1` sentinel sorted low, which is what an unthinking sort hands you, it is **3634**. Three readings of one word, 260 ticks apart, in an entry whose headline finding is a 220-tick band. Nothing above moves — the numbers are the ones published on 2026-08-11 — but the reading is now on the record instead of in the reader, and the command prints the population on every line.
 
 What n=100 does **not** license: 17/100 QUIET is a 95% interval of roughly 10–26%, so "one universe in six" is honest only as a point estimate — one in ten and one in four both survive this sample. The 220-tick birth band is a *range*, and a range grows with the sample by construction: it is not a shape and carries no tail. And `OLD_PLAYBOOK = 0/100` bounds that branch's rate at about 3%, no tighter — a hundred universes cannot distinguish *impossible* from *rare*. Each of those three limits is a question the second century is being run to answer.
 
