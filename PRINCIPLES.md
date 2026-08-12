@@ -52,6 +52,8 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev13 — Work branches; leaves are PRs (D-059).** A node splits until every leaf is exactly one PR — one mechanism, one machine-checkable done-when, one lock tier. Children exactly cover their parent (no gaps, no overlap), so a parent's done-when is the conjunction of its children's, stated in its `## Decomposition` section and never rewritten over the original body. Depth is earned, not performed: two is normal, three for the core's core, four only where the core has one. Closure flows upward — a parent closes when its children close and its conjunction verifies. `tools/subissue.sh` cuts and links in one motion; `tools/issuetree.sh` prints the shape.
 
+**Dev14 — Four quarters (D-060).** A day plans, builds, ships and doubts in equal measure: commits, issues, pull requests and reviews each hold about a quarter of it. `tools/balance.sh` reads the same API the profile graph reads and names the lagging leg while the day can still be fixed. Reviews are earned by real passes — an adversarial read that would have caught something — never by ceremony, and never by a second identity approving the first's work: that badge would be the only false line in a repository built on *evidence or it didn't happen*.
+
 ## Agent principles — the crew (D-030)
 
 When parts of the build are delegated to AI subagents, they join as crew under the operator's console, and these rules bind them:
