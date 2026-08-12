@@ -13,6 +13,7 @@ public final class PlaceGraph {
     public record Zone(String name, Position center) {}
 
     private final List<Zone> zones;
+    private final List<District> districts;
     private final List<Position> exits;
 
     public PlaceGraph(int worldWidthCm, int worldHeightCm) {
@@ -32,10 +33,24 @@ public final class PlaceGraph {
                 new Position(w / 2, (7 * h) / 8),
                 new Position(w / 4, h / 4),
                 new Position((3 * w) / 4, (3 * h) / 4));
+        // The city's quarters, bound one to one to the zones above (D-048):
+        // district index IS zone index IS region index. Built here because
+        // the binding IS the zone list — data, not a dice roll.
+        this.districts = District.catalogOf(zones);
     }
 
     public List<Zone> zones() {
         return zones;
+    }
+
+    /** The district catalog in zone order — one row per quarter (D-048). */
+    public List<District> districts() {
+        return districts;
+    }
+
+    /** The quarter that owns a zone/region index; the three indices are one index. */
+    public District district(int index) {
+        return districts.get(index);
     }
 
     public List<Position> exits() {
