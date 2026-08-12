@@ -19,14 +19,43 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    in a PR without prose.
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
    `src/` must build and `--selftest` must pass with this directory deleted.
+6. **Pinned to a SHA.** A probe run that is *evidence* — anything quoted in a PR,
+   a verdict, an ADR errata or a skeptic round — is taken from a `git archive <sha>`
+   copy, never from a shared working tree that may move under it. This is Ag9's
+   closing sentence and clause (3) of D-030's errata, which records why: it was
+   adopted the day a tree moved mid-verification, and the round survived only
+   because the skeptic had pinned. `tools/` rides the same rule.
 
 ## Building and running
 
+**Pinned — the form for anything you will quote.** The SHA goes in the PR next to
+the output, so a reader can reproduce the exact universe you saw:
+
 ```sh
-# from the repo root, daemon already built to out/
-javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/<Probe>.java
+SHA=$(git rev-parse HEAD)                     # or a tag: $(git rev-parse v3.0.0^{commit})
+WORK=$(mktemp -d)
+git archive "$SHA" | tar -x -C "$WORK"
+cd "$WORK"
+javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
+javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 java -cp out:probes/out <Probe> [args]
 ```
+
+Building inside the pinned copy also keeps clause 1 honest: `probes/out` is written
+in the throwaway tree, not in the tree you are working in.
+
+**Unpinned — casual local poking only.** From the repo root, daemon already built
+to `out/`, and with the understanding that the tree can move under you between the
+compile and the run:
+
+```sh
+javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
+java -cp out:probes/out <Probe> [args]
+```
+
+Compile the whole directory, not one file: seven of the twelve probes call the
+shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails on
+them with `cannot find symbol: variable Probes`.
 
 ## Catalog
 
