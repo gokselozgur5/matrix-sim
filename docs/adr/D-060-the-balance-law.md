@@ -72,6 +72,30 @@ Three things follow, and only the first two are settled here.
 
 *One consequence that is not this record's to rule.* This errata makes the commit leg count unit commits, and while merge commits remain the merge habit each unit will produce two. Under that arithmetic the four quarters are unreachable by construction — see #911, filed the same day.
 
+**Errata (2026-08-13, #821):** Every number in this record is an **account** statistic, and the record should say so in its own text rather than leave it to the tool. `contributionsCollection` roots at `viewer` and spans every repository the account touched, so the readings above answer *was the account balanced*, which is not the same sentence as *was matrix-sim balanced*. #785 taught the meter to say it on every line — `scope=account|repo`, and a `SCOPE` line carrying both readings and their delta.
+
+On every day the meter has been run, the two readings are the same number:
+
+| day | account total | repo total | delta |
+|---|---|---|---|
+| 2026-08-09 | 1 | 1 | **0** |
+| 2026-08-10 | 106 | 106 | **0** |
+| 2026-08-11 | 699 | 699 | **0** |
+| 2026-08-12 | 310 | 310 | **0** |
+| 2026-08-13 | 79 | 79 | **0** |
+
+That is stronger than it looks. A repository's contributions are a subset of the account's in every leg, so an equal total forces equality leg by leg — the two readings are identical, not merely balanced against each other. **The Confirmation's rows are therefore scope-independent:** 2026-08-11 and 2026-08-12 read the same account-wide or repo-scoped, and the caveat above is about what a future reading could mean, not about what these ones did.
+
+*The default stays `account`, and this is the record that says why.* #821 argued for flipping it to `repo` on the ground that `delta=0` makes the flip a provable no-op today, and that the cheapest moment to make a change is the moment it costs nothing. The measurement is real and it is reproduced above, but it does not carry that weight: two identical readings cannot distinguish the two defaults, so the same zero is exactly as good an argument for changing nothing. What it settles is that the question is not urgent and that these rows are safe either way. Three things then keep the wide reading in front.
+
+*It is the only reading whose object is asserted.* The subject check (#902) proves the token's login owns the repository under measurement, but it resolves the **owner** half of `OWNER/NAME` and never asks whether the name exists — `tools/balance.sh --repo --for gokselozgur5/matrix-simm 2026-08-12` prints `verdict=EMPTY` at exit 0 for a day that ran 310 contributions (#923). Behind a flag that hole is reached only by asking for it. As the default it would sit under every headline number the meter prints.
+
+*The warning belongs on the reading that can flatter.* When the two part, `scope=account` prints `WARN this verdict counts N contribution(s) made outside REPO; rerun with --repo`; `scope=repo` prints a plain note about what it excluded. The loud line is on the wide reading, which is the direction the risk runs.
+
+*And the subject of the law is genuinely arguable, which is the reason this is recorded and not decided quietly.* This record's drivers put the measurement at the same source the profile graph reads, and the graph's squares are account-wide by construction; D-054's directive is narrower — *"bu projeye"*, to this project. Both readings come from that one API, so "same source" does not settle it. A meter defaulting to `repo` would call a day lagging that the graph draws balanced, and the flip would make the year's law measure a set the graph never draws.
+
+*What this errata does not do.* It does not close the question — it prices it. The flip remains one line behind `--repo`, and the day the account first contributes somewhere else the `SCOPE` delta stops being zero and says by how much, unasked. That is the day to re-ask, with a reading that can finally tell the two defaults apart.
+
 ## Pros and Cons of the Options
 
 ### Four quarters with a meter
