@@ -6,6 +6,7 @@ import matrix.realworld.AcceptanceLoop;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Probe: who is even allowed to walk out?
@@ -36,6 +37,18 @@ import java.util.List;
  * why the seed sweep here is a boot census (who does this universe grow?)
  * and not a tick budget.
  *
+ * <p><b>But 600 is an argument, not a property</b> (#843). The single
+ * admitted name is the answer at one budget, and the enumerator answers a
+ * different question at every other: {@code personalResidue} is monotone
+ * with no decay, no reset and no cap, so a name's spike count grows
+ * linearly in windows while its bar stands still. Quoting {@code admitted}
+ * without the {@code windows} that produced it states a property of the
+ * mechanic that the mechanic does not have. {@code --sweep} exists so the
+ * budget can never be dropped: it reports admitted-per-budget across a list
+ * of budgets and verdicts whether eligibility is FLAT or DRIFTS. A mechanic
+ * whose fate keys to something other than elapsed windows (#764) makes that
+ * line read FLAT; the shipped one drifts 1 -> 400.
+ *
  * <p>This is the instrument every future {@code KID_*} tuning quotes:
  * before and after, how many names the new bar admits. #348 (the Kid family
  * absorbed as HUMAN's fourth axis) is a "byte for byte" claim that this
@@ -44,16 +57,32 @@ import java.util.List;
  * <pre>
  * java -cp out:probes/out FateAtlas [windows]          enumerate (600 = a 6,000-tick run)
  * java -cp out:probes/out FateAtlas --seeds from to    which universes grow an admitted name
+ * java -cp out:probes/out FateAtlas --sweep [w...]     admitted per budget, flat or drifting
  * </pre>
  *
  * The probe reads no world in its default form: no universe, no seed, no
  * draw — the derivation is the subject. The seed census boots universes
  * and reads their farms, and ticks nothing.
+ *
+ * <p>Every mode here is an enumeration, and an enumeration is a CEILING:
+ * it grants each name an unbroken BLUE link for the whole budget. A live
+ * link is closed by death, by the hardline and by the walk-out itself, so
+ * the names that actually cross in a run are a subset of the admitted —
+ * measured at 88 of the 374 admitted, seed 1 over 60,000 ticks. The sweep
+ * answers what the bar permits, never what a universe spends.
  */
 public final class FateAtlas {
 
     /** One name's fate, decided before the universe starts. */
     private record Fate(String name, long threshold, int needs, int spikes, int window) {}
+
+    /**
+     * The budgets the sweep reports when none are named: the canonical run,
+     * {@code ArcBeats}' own budget, and three multiples that carry the curve
+     * out to saturation. Named here rather than baked into the loop so the
+     * ruling can ask a different question by typing different numbers.
+     */
+    private static final int[] DEFAULT_BUDGETS = {600, 1200, 2400, 6000, 20000};
 
     public static void main(String[] args) throws Exception {
         if (args.length > 0 && args[0].equals("--seeds")) {
@@ -62,8 +91,95 @@ public final class FateAtlas {
             seedCensus(from, to);
             return;
         }
+        if (args.length > 0 && args[0].equals("--sweep")) {
+            int[] budgets = DEFAULT_BUDGETS;
+            if (args.length > 1) {
+                budgets = new int[args.length - 1];
+                for (int i = 1; i < args.length; i++) {
+                    budgets[i - 1] = Integer.parseInt(args[i]);
+                }
+            }
+            sweep(budgets);
+            return;
+        }
         int windows = args.length > 0 ? Integer.parseInt(args[0]) : 600;
         enumerate(windows);
+    }
+
+    /**
+     * The eligible fraction as a function of the tick budget — #843's
+     * measurement, as an instrument rather than a table someone typed.
+     *
+     * <p>The verdict is FLAT or DRIFTS, and flatness means the admitted
+     * COUNT is the same integer at every budget. "More than one name" is
+     * deliberately not the test: widening {@code KID_JITTER} moves the
+     * count at 600 windows without touching the slope, so a bar that admits
+     * forty names at 600 and four hundred at 6,000 would pass a
+     * greater-than-one test while still being the mechanic #843 describes.
+     * Only equality across budgets says eligibility stopped being a
+     * function of how long anyone happened to run.
+     *
+     * <p>The refusals guard the FLAT line, because FLAT is the line #764
+     * will grep for and a false one is worth more than no line at all.
+     * Three inputs produce a flat verdict without measuring anything, and
+     * all three are refused rather than answered: a single budget (flat by
+     * arity), a repeated budget (flat by construction — {@code --sweep 600
+     * 600} compares a column against itself), and a budget below one window
+     * (the enumeration loop never runs, so every name reports admitted=0
+     * and the strongest available verdict comes out of nonsense). Counting
+     * arguments was not enough; the values have to be distinct and real.
+     * A refusal prints no verdict line at all for a caller's
+     * {@code grep -qxF} to find.
+     */
+    private static void sweep(int[] budgets) throws Exception {
+        System.out.println("SWEEP base=" + Config.KID_BASE
+                + " jitter=" + Config.KID_JITTER
+                + " spike=" + Config.KID_SPIKE
+                + " denom=" + Config.KID_SPIKE_DENOM
+                + " accrue=" + Config.ACCRUE_EVERY_TICKS
+                + " budgets=" + budgets.length);
+
+        List<Integer> distinct = new ArrayList<>();
+        for (int windows : budgets) {
+            if (windows < 1) {
+                System.out.println("FATESWEEP REFUSED windows=" + windows
+                        + " — a budget below one window enumerates nothing");
+                return;
+            }
+            if (!distinct.contains(windows)) {
+                distinct.add(windows);
+            }
+        }
+        if (distinct.size() < 2) {
+            System.out.println("FATESWEEP REFUSED distinct=" + distinct.size()
+                    + " — a flatness claim needs at least two distinct budgets");
+            return;
+        }
+
+        int names = 0, lo = Integer.MAX_VALUE, hi = -1;
+        for (int windows : budgets) {
+            List<Fate> fates = fates(windows);
+            names = fates.size();
+            int admitted = 0, ceiling = 0;
+            for (Fate f : fates) {
+                if (f.window() > 0) {
+                    admitted++;
+                }
+                ceiling = Math.max(ceiling, f.spikes());
+            }
+            lo = Math.min(lo, admitted);
+            hi = Math.max(hi, admitted);
+            System.out.println(String.format(Locale.ROOT,
+                    "BUDGET windows=%d ticks=%d names=%d admitted=%d fraction=%.4f ceiling=%d",
+                    windows, (long) windows * Config.ACCRUE_EVERY_TICKS,
+                    names, admitted, (double) admitted / names, ceiling));
+        }
+
+        System.out.println("FATESWEEP budgets=" + budgets.length + " names=" + names
+                + " admitted_min=" + lo + " admitted_max=" + hi);
+        System.out.println(lo == hi
+                ? "VERDICT ELIGIBILITY_FLAT admitted=" + lo + " of " + names
+                : "VERDICT ELIGIBILITY_DRIFTS " + lo + ".." + hi + " of " + names);
     }
 
     private static void enumerate(int windows) throws Exception {
