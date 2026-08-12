@@ -30,7 +30,7 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 **Dev2 — Evidence or it didn't happen.** One commit per finding; a one-line proof next to each claim; DoDs are commands, not paragraphs.
 
-**Dev3 — Five documents, no more.** README, ROADMAP, ARCHITECTURE, DECISIONS, PRINCIPLES. New knowledge goes into one of the five or it does not go in. Issues are where design breathes: every open decision is a D-thread, every class wears a crown.
+**Dev3 — Five documents, no more.** README, ROADMAP, ARCHITECTURE, DECISIONS, PRINCIPLES. New knowledge goes into one of the five or it does not go in. Issues are where design breathes: every open decision is a D-thread, every class wears a crown. Outside the canon live four narrow kinds and no fifth: machine infrastructure, MADR records, shop manuals, and portable specs under `docs/spec/` (D-058) — a spec states a rule of the world so a stranger's implementation can verify itself, and carries no story.
 
 **Dev4 — Crowns stay current.** Touching a class means updating its crown issue. An outdated crown is a lie wearing jewelry.
 

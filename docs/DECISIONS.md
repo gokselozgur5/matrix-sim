@@ -60,6 +60,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-053](adr/D-053-favor-economy.md) | The favor economy: orphan insurance, conservation by construction | 🟡 | v7.0 | #229 |
 | [D-054](adr/D-054-the-year.md) | The Year: six seasons, five programs, scale to 365 | 🟡 | all | #232 |
 | [D-059](adr/D-059-issue-tree.md) | The issue tree: work branches until a leaf is one PR | 🟡 | all | #358 |
+| [D-058](adr/D-058-spec-shelf.md) | The spec shelf: docs/spec/ becomes a sanctioned document kind | 🟢 | all | #252 |
 | [D-060](adr/D-060-the-balance-law.md) | The balance law: four quarters, and the meter that proves it | 🟡 | all | #781 |
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.
