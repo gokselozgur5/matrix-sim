@@ -66,6 +66,14 @@ public final class Simulation {
     private final Zion zion;
     private final Source source;
     private final matrix.machine.SubstrateBudget substrate;
+    /**
+     * The inward door's far bank (D-046 step two): WHETHER a filed petition
+     * is granted. Held by the root because the root is the only thing allowed
+     * to hold both banks (D-012) — and because the two halves of the door must
+     * never see each other's types (A1), the root is also the only thing that
+     * can carry a name one way and a grant the other.
+     */
+    private final matrix.machine.DoorPolicy doorPolicy;
     private final Director director;
     private final List<SystemNode> nodes;
     private final MetricsCollector metrics;
@@ -129,6 +137,13 @@ public final class Simulation {
                 ? new matrix.machine.SubstrateBudget(places.zones().size())
                 : null;
         java.util.function.IntSupplier pluggedPods = realWorld.farm()::occupiedCount;
+        // D-046 step two (#338/#440): the inward door's far bank gets the
+        // SECOND named port into the farm — spare rack units, a scalar, wired
+        // here because only the root holds both banks (D-012). The rack is
+        // PODS_REFERENCE units wide; what death and liberation vacated is what
+        // a returning mind may have. DoorPolicy never learns whose.
+        this.doorPolicy = new matrix.machine.DoorPolicy(world,
+                () -> Config.PODS_REFERENCE - realWorld.farm().occupiedCount(), substrate);
         // Canonical node order (D-031, crown #122): machine, realworld, zion —
         // zion LAST, so liberations queued this tick are absorbed this tick.
         // The third node is the fence event: nodes.add, addition not refactor.
@@ -423,6 +438,14 @@ public final class Simulation {
         // After the drain on purpose: a mind freed THIS tick joins the census
         // first and can be offered the door no earlier than the next one.
         realWorld.doorTick(zion.ashore());
+        // Step two (#338): the names cross the bridge. A String goes out, a
+        // boolean comes back, and neither half of the door has learned a type
+        // belonging to the other (A1). The grant has no consumer until #340
+        // lands the performer — deliberately: WHETHER ships before WHAT, so
+        // that when the pod allocation arrives it can be unconditional.
+        for (String petitioner : realWorld.drainPetitions()) {
+            doorPolicy.decide(petitioner);
+        }
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
             matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
