@@ -73,6 +73,7 @@ them with `cannot find symbol: variable Probes`.
 | `SeedAtlas` | Across the multiverse, how common is the film? | 20-seed census: 16 FULL_ARC, 4 QUIET (Smith can lose), 0 emergency reloads in the wild |
 | `DrawMeter` | What does the rng stream spend, and where? | boot 1,728 · steady ~374/tick · cascade ~505 · negotiation freeze **exactly 0** — the held breath, instrumented; windows derive from the run's own transitions (`BOUNDS`), so a QUIET universe reports no cascade |
 | `PirateSever` | Does the wire's third ending hold — flatline, close, nothing to flush? | unit #110's DoD as a machine verdict: pirate sever + podless death with no NPE, hardline flush unchanged, a clean exit stays unkillable (`CONTRACT_HELD`) |
+| `FateAtlas` | Which names is the Kid band even willing to let out? | the monoculture, enumerated: of 400 growable names 11 need 6 spikes, 197 need 7, 192 need 8, none ever lands more than 7, and exactly one clears its own bar — `Otto Aydin` (threshold 161, window 474 = tick 4740), confirmed live at seeds 1/5/6/9 |
 | `LineLint` | Do the instrument lines still speak the grammar D-020 fixed? | the seven families as a runtime registry (`LineGrammar`) plus their validator: 361 instrument lines at seed 42, `families=7`, `VERDICT GRAMMAR_HELD` — an appended column passes, a renamed or moved one names itself |
 
 Add a probe when an investigation demands one; leave it here when the investigation
