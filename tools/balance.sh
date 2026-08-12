@@ -3,6 +3,7 @@
 #
 # Usage: tools/balance.sh [--account|--repo] [--for OWNER/NAME]
 #                         [--week|--month|--days N] [YYYY-MM-DD]
+#        tools/balance.sh --datecheck          (the day arithmetic, no token needed)
 #
 # The law: the four contribution kinds GitHub counts — commits, issues, pull
 # requests, reviews — each hold a quarter of the day. The reasoning, not the
@@ -53,9 +54,11 @@ REPO=""
 DAY=""
 SPAN=1
 SPAN_NAME=day
+DATECHECK=0
 for arg in "$@"; do
   case "$arg" in
-    --account) SCOPE=account ;;
+    --account)   SCOPE=account ;;
+    --datecheck) DATECHECK=1 ;;
     --repo)    SCOPE=repo ;;
     --week)    SPAN=7;  SPAN_NAME=week ;;
     --month)   SPAN=30; SPAN_NAME=month ;;
@@ -77,9 +80,117 @@ done
 DAY="${DAY:-$(date -u +%F)}"   # -u: the query asks in UTC, so the default day must be UTC too
 [[ "$DAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "FATAL date must be YYYY-MM-DD" >&2; exit 2; }
 
+# ONE DATE ARITHMETIC, TWO DIALECTS. `date -d` is GNU coreutils; macOS ships
+# BSD date, which spells the same subtraction `-j -f FMT -v-Nd`. This tool was
+# written and merged on a macOS box and CI runs ubuntu-latest with no tools/
+# step, so the GNU-only idiom was dead on the one machine that would ever type
+# `tools/balance.sh` and green on the one machine that never did (#901).
+#
+# The BSD branch parses NOON rather than midnight and does not ask for -u. Both
+# choices are load-bearing. `-j -f %Y-%m-%d` fills the time-of-day from the
+# clock, so `-u` would re-express a local wall time as UTC and hand back the
+# previous day whenever the operator's offset had not yet caught up with the
+# date — a meter that reads yesterday between 00:00 and 03:00 in Istanbul and is
+# right the rest of the time is worse than one that refuses. Pinning noon and
+# staying local makes it pure calendar arithmetic, which is what a day offset
+# is; noon also sits far enough from either edge that a DST shift cannot move
+# the date. The GNU branch keeps -u and midnight exactly as it was, so a Linux
+# reading taken before this change is byte-identical to the same reading now.
+#
+# The dialect is decided ONCE, here, against a day whose answer is already
+# known — 2000-03-01 minus one day is 2000-02-29, a leap day in a century year,
+# which is the arithmetic a wrong implementation gets wrong. Probing by exit
+# code alone would accept a date(1) that takes the flags and computes something
+# else; probing by answer will not — and that is not hypothetical here. BSD
+# date silently IGNORES a `-v` adjustment written after the operand:
+#
+#   date -j -f FMT '2000-03-01 12:00:00' -v-1d +%F   ->  Wed Mar  1 ...   exit 0
+#   date -j -v-1d -f FMT '2000-03-01 12:00:00' +%F   ->  2000-02-29       exit 0
+#
+# Same box, same flags, exit 0 both times, one of them a whole day wrong. So
+# the adjustment goes before the operand, and the probe reads the answer.
+#
+# Up here rather than lazily inside the helper is also the only place the
+# dialect CAN be decided: every call site reads `$(day_minus ...)`, and a
+# variable set inside a command substitution dies with the subshell that set it.
+if [ "$(date -u -d '2000-03-01 -1 days' +%F 2>/dev/null)" = 2000-02-29 ]; then
+  DATE_DIALECT=gnu
+elif [ "$(date -j -v-1d -f '%Y-%m-%d %H:%M:%S' '2000-03-01 12:00:00' +%F 2>/dev/null)" = 2000-02-29 ]; then
+  DATE_DIALECT=bsd
+else
+  echo "FATAL this date(1) speaks neither GNU (-d) nor BSD (-j -f -v) day arithmetic." >&2
+  echo "      both dialects were asked for the day before 2000-03-01 and neither said 2000-02-29;" >&2
+  echo "      refusing to compute a window from a calendar this box cannot do." >&2
+  exit 2
+fi
+
+day_minus() {                   # day_minus <YYYY-MM-DD> <N> -> the day N days earlier
+  local day="$1" n="$2" out=""
+  case "$DATE_DIALECT" in
+    gnu) out="$(date -u -d "$day -$n days" +%F 2>/dev/null)" || out="" ;;
+    bsd) out="$(date -j -v-"${n}"d -f '%Y-%m-%d %H:%M:%S' "$day 12:00:00" +%F 2>/dev/null)" || out="" ;;
+  esac
+  # A dialect that answers with something that is not a date is a dialect that
+  # did not answer. The regex is the guard, not the exit code: BSD date prints
+  # a usage line and can leave the substitution non-empty.
+  #
+  # `exit 2` here ends the SUBSHELL the caller's $(...) opened, not the script —
+  # so every call site pairs it with `|| exit 2`. Both halves are needed: the
+  # subshell owns the message, the caller owns the death.
+  [[ "$out" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || {
+    echo "FATAL cannot compute the day $n before $day (dialect=$DATE_DIALECT)" >&2
+    exit 2
+  }
+  printf '%s' "$out"
+}
+
+# --datecheck: the day arithmetic, judged against answers a calendar already
+# settled, with no token and no network in the way. It exists because #901 was
+# not a bug anyone could have read off the diff — the tool was green on the box
+# that never ran it and dead on the box that did, and only an executed case
+# tells those two apart. Every offset the flags can produce is represented:
+# 0 (the plain single-day default, the path the GNU idiom also killed), 6
+# (--week), 29 (--month), 89 (--days 90). The rest are the places calendars
+# break: both century rules, both year and month edges, and the two DST
+# Sundays that the noon pin exists to survive.
+if (( DATECHECK )); then
+  FAILED=0 CASES=0
+  while read -r base off want; do
+    [ -n "$base" ] || continue
+    CASES=$((CASES + 1))
+    got="$(day_minus "$base" "$off")" || exit 2
+    if [ "$got" = "$want" ]; then
+      printf 'DATECHECK %s -%-2s => %s OK\n' "$base" "$off" "$got"
+    else
+      printf 'DATECHECK %s -%-2s => %s WANT %s FAIL\n' "$base" "$off" "$got" "$want"
+      FAILED=$((FAILED + 1))
+    fi
+  done <<'CASES'
+2000-03-01 1  2000-02-29
+1900-03-01 1  1900-02-28
+2026-01-01 1  2025-12-31
+2026-03-01 1  2026-02-28
+2026-08-13 0  2026-08-13
+2026-08-13 6  2026-08-07
+2026-08-13 29 2026-07-15
+2026-08-13 89 2026-05-16
+2026-03-29 1  2026-03-28
+2026-10-25 1  2026-10-24
+2026-11-01 1  2026-10-31
+CASES
+  if (( FAILED == 0 )); then
+    printf 'DATECHECK VERDICT PASS dialect=%s cases=%d\n' "$DATE_DIALECT" "$CASES"
+    exit 0
+  fi
+  printf 'DATECHECK VERDICT FAIL dialect=%s cases=%d failed=%d\n' "$DATE_DIALECT" "$CASES" "$FAILED"
+  exit 5
+fi
+
 # The repository this tree came from, unless told otherwise. tools/ rides the
 # pin-to-SHA rule, and a `git archive` copy has no remote to ask — so a pinned
-# run must pass --for, and is told that rather than left to guess.
+# run must pass --for, and is told that rather than left to guess. It sits below
+# the date work because --datecheck answers for the calendar, not for a
+# repository, and must not be refused by a tree that has no remote.
 if [ -z "$REPO" ] || [ "$REPO" = "__next__" ]; then
   REPO="$(git remote get-url origin 2>/dev/null | sed -E 's#.*github\.com[/:]##; s#\.git$##' || true)"
 fi
@@ -92,8 +203,7 @@ fi
 # The window ends on DAY and reaches back SPAN-1 days: a ROLLING window, not a
 # calendar square. "This week" starting on a Monday would measure the calendar;
 # the law is about the shape of the work, and work does not observe Mondays.
-FROM="$(date -u -d "$DAY -$((SPAN - 1)) days" +%F 2>/dev/null)" \
-  || { echo "FATAL cannot compute the window start from $DAY" >&2; exit 2; }
+FROM="$(day_minus "$DAY" "$((SPAN - 1))")" || exit 2
 
 # One query, both readings. Asking twice would invite the two halves to be
 # measured a second apart and disagree for a reason that is not the point.
@@ -232,7 +342,7 @@ scope_line
 if (( SPAN > 1 )); then
   DQ="{ viewer {"
   for ((k = SPAN - 1; k >= 0; k--)); do
-    d="$(date -u -d "$DAY -$k days" +%F)"
+    d="$(day_minus "$DAY" "$k")" || exit 2
     DQ+=" d${k}: contributionsCollection(from:\"${d}T00:00:00Z\",to:\"${d}T23:59:59Z\")"
     DQ+="{totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions}"
   done
@@ -260,7 +370,7 @@ if (( SPAN > 1 )); then
   for ((k = SPAN - 1; k >= 0; k--)); do
     [ -n "${D_C[$k]:-}" ] || continue
     c="${D_C[$k]}"; i="${D_I[$k]}"; p="${D_P[$k]}"; r="${D_R[$k]}"
-    d="$(date -u -d "$DAY -$k days" +%F)"
+    d="$(day_minus "$DAY" "$k")" || exit 2
     read -r dv _dl _dg _a _b _e _f <<<"$(judge "$c" "$i" "$p" "$r")"
     printf 'BALANCE_DAY day=%s commits=%d issues=%d prs=%d reviews=%d total=%d verdict=%s\n' \
       "$d" "$c" "$i" "$p" "$r" "$((c + i + p + r))" "$dv"
