@@ -1,0 +1,23 @@
+# The canonical digest — the seal's one home in the tree.
+#
+# `--selftest` runs the daemon twice and asks whether the two runs agree. Two runs of a
+# weakened seal agree perfectly, so that question cannot catch a seal that got smaller
+# (#898). This file is the outside witness: the sha that
+#
+#     java -cp out matrix.Main --headless --ticks 6000 --seed 42
+#
+# must print on its `DIGEST tick=6000` line. `.github/workflows/locks.yml` reads the value
+# from here and from nowhere else.
+#
+# Exactly one payload line: <64 lowercase hex>  <why this value>. Blank lines and lines
+# starting with `#` are ignored; a second payload line is refused rather than silently
+# ignored, because a silently ignored pin is worse than no pin.
+#
+# A declared digest move (A10, D-020) is this one line, edited — the new sha and the reason
+# it moved — in the commit that moves it. The move history is then
+# `git log -p -- .github/canonical-digest`, kept by git, which cannot drift from the value
+# it explains. Before this file existed that history could only be recovered by rebuilding
+# old commits one at a time; #899 did exactly that, five times, to find out when the chain
+# last moved.
+
+421d726396ff8269f53f5e81c389c984191afda20073076e3f060ae3e0e3ce10  seed 42, 6,000 ticks — pinned by #899 at the value main already printed; no move declared here yet

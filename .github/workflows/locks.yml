@@ -69,6 +69,34 @@ jobs:
           probe CapSentinel  'CAP_BREACHES=0'
           probe ArcBeats     'VERDICT BEATS_IN_ORDER'
 
+      # WHY: lock 7 — the one question locks 1-6 cannot ask. Locks 2 and 3 compare a run to
+      # another run of the same binary, and a seal that got smaller weakens both sides
+      # equally: commenting out x, y and alive in World.digestEntity passes all six locks
+      # above (#898). Only a number from outside the run can refuse that, and the number
+      # lives in .github/canonical-digest rather than in this file, so a declared digest
+      # move is one data line edited with its reason attached and `git log -p` on that file
+      # is the whole move history. Exact string compare, not a substring match: a pin that
+      # matched a prefix would accept a longer sha.
+      - name: canonical digest (seed 42, 6,000 ticks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pin=.github/canonical-digest
+          [ -f "$pin" ] || { echo "FATAL $pin is missing — the seal has no home" >&2; exit 1; }
+          payload="$(grep -vE '^[[:space:]]*(#|$)' "$pin" || true)"
+          n="$(printf '%s\n' "$payload" | grep -c '[^[:space:]]' || true)"
+          [ "$n" = 1 ] || { echo "FATAL $pin holds $n payload lines, want exactly 1" >&2; exit 1; }
+          sha="$(printf '%s\n' "$payload" | awk '{print $1}')"
+          printf '%s\n' "$sha" | grep -qxE '[0-9a-f]{64}' \
+            || { echo "FATAL $pin does not open with a 64-hex sha: $sha" >&2; exit 1; }
+          [ "$(printf '%s\n' "$payload" | awk '{print NF}')" -ge 2 ] \
+            || { echo "FATAL $pin gives a sha and no reason; the payload is <sha> then why it is the sha" >&2; exit 1; }
+          want="DIGEST tick=6000 sha=$sha"
+          out="$(java -cp out matrix.Main --headless --ticks 6000 --seed 42)"
+          got="$(printf '%s\n' "$out" | grep -E '^DIGEST tick=6000 ' || true)"
+          printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no DIGEST tick=6000 line at all>}"
+          [ "$got" = "$want" ] || { echo "FATAL the seal moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
+
       # WHY: tools/ had no runner at all, and #901 is the bug that hides exactly there —
       # a GNU-only `date -d` idiom, green on this box and dead on the macOS box that is the
       # only one to ever type the command. This step owns the LINUX half of that unit: the
