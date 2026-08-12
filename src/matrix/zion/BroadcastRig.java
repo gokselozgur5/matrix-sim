@@ -10,7 +10,7 @@ import matrix.entities.Pill;
 import matrix.realworld.Human;
 import matrix.realworld.LinkKind;
 import matrix.realworld.NeuralLink;
-import matrix.realworld.RealWorld;
+import matrix.realworld.Pod;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +40,10 @@ import java.util.List;
  * through the bridge — flatline, {@code Remove}, and the rack left exactly
  * as it stood, because an unclean cut takes the mind and not the slot (#119
  * scripts the scenario that triggers it). Every sentence this rig speaks
- * about a pod comes from {@code RealWorld}, guard included (#811): the rig
- * quotes, it does not copy.
+ * about a pod comes from {@link Pod}, guard included (#811; #849 moved the
+ * clauses off the aggregate root, so the rig now imports the rack slot it
+ * is talking about instead of the whole biological book): the rig quotes,
+ * it does not copy.
  */
 public final class BroadcastRig {
     /** The channel board, registration order. Closed wires stay on it until the next session clears the board. */
@@ -162,12 +164,12 @@ public final class BroadcastRig {
         for (NeuralLink link : links) {
             if (link.observeDeath()) {
                 traced++;
-                // The clause is RealWorld's, not a copy of it (#811): this
+                // The clause is the pod's, not a copy of it (#811): this
                 // line hardcoded the podless half over six citizens who all
                 // hold rack units, while observeDeath took the branch the
                 // sentence denied and flushed the slot on the way past.
                 world.log(Severity.BAD, "the wire went dark — " + link.human.name
-                        + " flatlined mid-broadcast" + RealWorld.flushClause(link.human));
+                        + " flatlined mid-broadcast" + Pod.flushClause(link.human));
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }
@@ -251,7 +253,7 @@ public final class BroadcastRig {
                 // another. It says what it leaves: the rack, as it stood.
                 world.log(Severity.BAD, "the rig dies with " + link.human.name
                         + " still under — severed, flatlined"
-                        + RealWorld.untouchedClause(link.human));
+                        + Pod.untouchedClause(link.human));
                 world.queue(new WorldEvent.Remove(link.avatar.id));
             }
         }

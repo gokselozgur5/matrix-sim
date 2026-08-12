@@ -66,6 +66,7 @@ table() {
   judge ArcBeats     'VERDICT BEATS_IN_ORDER'  "$TICKS"
   judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
   judge PirateSever  'VERDICT CONTRACT_HELD'
+  judge PodOptional  'VERDICT POD_OPTIONAL_HELD' "$TICKS"
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge FateAtlas    'VERDICT MONOCULTURE'
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck

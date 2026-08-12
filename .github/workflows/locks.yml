@@ -68,6 +68,11 @@ jobs:
           probe OneTrace     'VERDICT CONTRACT_HELD'
           probe CapSentinel  'CAP_BREACHES=0'
           probe ArcBeats     'VERDICT BEATS_IN_ORDER'
+          # WHY: #849's reader. The pod 0..1 guards protect branches no seed reaches, so the
+          # only thing that can catch the next bare deref is a run that builds the subject the
+          # farm cannot grow. A row in probes/bench.sh alone would not have caught #813 —
+          # nothing calls bench.sh here (#789 folds these four lines into it).
+          probe PodOptional  'VERDICT POD_OPTIONAL_HELD'
 
       # WHY: lock 7 — the one question locks 1-6 cannot ask. Locks 2 and 3 compare a run to
       # another run of the same binary, and a seal that got smaller weakens both sides
