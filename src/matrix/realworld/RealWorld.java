@@ -18,12 +18,56 @@ public final class RealWorld {
     /** One banked liberation: who walked, and through which door — "treaty" (the open door) or "selfsub" (D-033). */
     public record Liberation(Human human, String origin) {}
 
+    /**
+     * The inward door's propensity family (D-046 step one, #335). Parked on
+     * this class rather than in {@code core.Config} on purpose and out loud:
+     * D-006 wants every tunable in one file, and these three belong there —
+     * {@code core/} is another crew's floor this season, so they wait here
+     * with a note instead of being smuggled in. Folding them into Config is
+     * its own unit.
+     *
+     * <p>The arithmetic, stated once: a freed mind's petition threshold is
+     * {@code PETITION_BASE + [0, PETITION_JITTER)} — 48..143 — and one grief
+     * moves an account by {@code PETITION_GRIEF_SPIKE} = 24, so the cheapest
+     * mind in the city needs two funerals and the dearest needs six. Nobody
+     * scripts Cypher: the propensity is birth data, the griefs are the
+     * world's, and no draw is spent on either.
+     */
+    public static final long PETITION_BASE = 48;
+    public static final int PETITION_JITTER = 96;
+    public static final long PETITION_GRIEF_SPIKE = 24;
+
+    /**
+     * One freed mind's petition account — D-033 read backwards, per the #216
+     * addendum: acceptance running NEGATIVE accrues toward the inward door
+     * exactly as disbelief accrues toward the outward one. Two doors, one
+     * loop, opposite signs. Walked in liberation order; {@code living}
+     * mirrors the brain so a death is seen exactly once, and {@code filed}
+     * makes a petition a one-time act — a mind asks to go back once, and
+     * then the answer is somebody else's (D-046 step two).
+     */
+    private static final class Petition {
+        final Human mind;
+        long account;
+        boolean living = true;
+        boolean filed;
+
+        Petition(Human mind) {
+            this.mind = mind;
+        }
+    }
+
     private final PodFarm farm = new PodFarm();
     private final List<Human> humans = new ArrayList<>();
     private final List<NeuralLink> links = new ArrayList<>();
     private final List<Liberation> pendingLiberations = new ArrayList<>();
+    /** Petition accounts, one per freed mind, in liberation order — the census lane of D-046's open point (a). */
+    private final List<Petition> petitions = new ArrayList<>();
+    /** Filed petitions waiting for the far bank: names only, the scalar the bridge carries (A1). */
+    private final List<String> pendingPetitions = new ArrayList<>();
     private final World world;
     private long selfsubCount = 0;
+    private long petitionCount = 0;
 
     public RealWorld(World world) {
         this.world = world;
@@ -86,7 +130,19 @@ public final class RealWorld {
                 + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
                 + " spikes in " + link.windows + " windows; no red pill was given (pod "
                 + link.human.pod.rackUnit + " opens)");
-        pendingLiberations.add(new Liberation(link.human, "selfsub"));
+        bank(new Liberation(link.human, "selfsub"));
+    }
+
+    /**
+     * One walk out, banked on both books at once: the handoff queue the root
+     * drains into the census, and the petition account this mind now holds.
+     * Every freed mind gets an account the moment it is free — the door's
+     * inward direction is not a second population, it is the SAME population
+     * read with the opposite sign.
+     */
+    private void bank(Liberation freed) {
+        pendingLiberations.add(freed);
+        petitions.add(new Petition(freed.human()));
     }
 
     /** Monotone count of D-033 walk-outs — the METRIC selfsub= column; the root samples it (D-020, appended grammar). */
@@ -106,11 +162,121 @@ public final class RealWorld {
                 link.closeClean();
                 world.queue(new WorldEvent.Remove(link.avatar.id));
                 world.log(Severity.OK, "the door: " + link.human.name + " walked out — free");
-                pendingLiberations.add(new Liberation(link.human, "treaty"));
+                bank(new Liberation(link.human, "treaty"));
                 freed++;
             }
         }
         return freed;
+    }
+
+    /**
+     * Step one of the inward door (D-046, #335): the petition, filed.
+     *
+     * <p>Nobody scripts Cypher. Every freed mind carries a propensity that
+     * is a pure function of its NAME — the D-033/KID precedent, mirrored:
+     * fate was always in the name, and the rng stream never hears about it
+     * (D-010: this method draws nothing). Real-world hardship presses on it.
+     * The griefs are the ones the real side already emits and already means:
+     * a citizen's brain going dark, whatever killed it — a hull sunk with
+     * crew aboard, a wire cut on a slow exit, a trace completed. Each death
+     * spikes the account of every living freed mind by
+     * {@code PETITION_GRIEF_SPIKE}. The petition is CAUSED, not sampled.
+     *
+     * <p>Eligibility is D-046's open point (a), and this unit answers only
+     * the half the gate settled: the CENSUS lane. The root offers the city's
+     * ashore roster — alive, no wire, no berth — and nobody else may file.
+     * A runner in-world and a crew mid-mission keep their accounts (grief
+     * reaches everyone) and simply cannot walk to the door yet; that lane
+     * waits for its own verdict rather than being decided by an accident of
+     * implementation.
+     *
+     * <p>Filing is a one-time act per mind and speaks one line. What the
+     * petition is WORTH is not decided here and cannot be: the answer lives
+     * on the far side of the bridge (A1), and only a name crosses.
+     *
+     * @param ashore the census's own gate — identity membership, never equals
+     */
+    public void doorTick(List<Human> ashore) {
+        int griefs = 0;
+        for (Petition p : petitions) {
+            if (p.living && !p.mind.alive()) {
+                p.living = false;
+                griefs++;
+            }
+        }
+        if (griefs > 0) {
+            long spike = griefs * PETITION_GRIEF_SPIKE;
+            for (Petition p : petitions) {
+                if (p.living) {
+                    p.account += spike;
+                }
+            }
+        }
+        for (Petition p : petitions) {
+            if (p.filed || !p.living
+                    || p.account < petitionThreshold(p.mind.name)
+                    || !holds(ashore, p.mind)) {
+                continue;
+            }
+            p.filed = true;
+            petitionCount++;
+            pendingPetitions.add(p.mind.name);
+            world.log(Severity.FATE, "DOOR petition: " + p.mind.name + " asks to go back");
+        }
+    }
+
+    /**
+     * The breaking point of the inward door, derived from the name alone —
+     * "some minds simply price steak above truth", and which minds those are
+     * was decided at the pod, not at the desert.
+     *
+     * <p>The salt and the mix are not decoration. {@link AcceptanceLoop#threshold}
+     * reads the same {@code String.hashCode} for the OUTWARD door; taking
+     * this one straight off it would make the two fates one die read twice —
+     * every mind fated to disbelieve early would be fated to recant early,
+     * and the correlation would be an artifact of arithmetic rather than a
+     * claim anyone made. The murmur3 finalizer (the #96 avalanche fix, same
+     * reason) decorrelates them. {@code String.hashCode} is fixed by the
+     * JLS, so the fate is the same on every JVM.
+     */
+    public static long petitionThreshold(String name) {
+        int h = name.hashCode() ^ 0x0D00_0046;
+        h ^= h >>> 16;
+        h *= 0x85EBCA6B;
+        h ^= h >>> 13;
+        h *= 0xC2B2AE35;
+        h ^= h >>> 16;
+        return PETITION_BASE + Math.floorMod(h, PETITION_JITTER);
+    }
+
+    /** Identity membership, not equals — names are not unique, and the roster holds the very objects the census walks. */
+    private static boolean holds(List<Human> roster, Human mind) {
+        for (Human h : roster) {
+            if (h == mind) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The petitions filed since the last drain, in filing order — names, and
+     * nothing but names. This is the whole bridge: {@code machine} decides
+     * WHETHER on a scalar it can read and a type it has never seen (A1), and
+     * the door's two halves stay strangers. Empty drains allocate nothing.
+     */
+    public List<String> drainPetitions() {
+        if (pendingPetitions.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>(pendingPetitions);
+        pendingPetitions.clear();
+        return out;
+    }
+
+    /** Monotone count of petitions ever filed — the door's inward pressure, for the instruments. */
+    public long petitionCount() {
+        return petitionCount;
     }
 
     /**
