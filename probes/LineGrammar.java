@@ -3,7 +3,7 @@ import java.util.List;
 /**
  * The instrument line families as runtime data (D-020, D-019).
  *
- * The seven shipped families exist in the daemon only as format strings
+ * The eight shipped families exist in the daemon only as format strings
  * scattered across their emitters, and every reader — the bench, the
  * lenses, the census sweeps, CI's greps — re-derives the grammar by eye.
  * The family-wide laws that keep the lines parseable forever (Locale.ROOT,
@@ -37,6 +37,14 @@ final class LineGrammar {
         PAIR,
         /** A double-quoted string that may hold spaces and commas: ATTN's {@code top=}. */
         TEXT,
+        /**
+         * A bare token — uppercase letters and underscores, no quotes, no
+         * spaces: BIRTH's {@code family=HUMAN}. Distinct from TEXT because
+         * the quotes are the difference a reader keys on: a TEXT value is
+         * delimited and may hold anything, a WORD is a name out of a closed
+         * set the emitter owns, and swapping one for the other is a retype.
+         */
+        WORD,
         /** Sixty-four lowercase hex characters. */
         SHA
     }
@@ -46,8 +54,15 @@ final class LineGrammar {
 
     /**
      * One family: its prefix, its columns in order, the arities that are
-     * legal today, and the cadence it is emitted at ({@code 0} = once per
-     * run, at the end).
+     * legal today, and the cadence it is emitted at.
+     *
+     * <p>{@code cadence == 0} means the family is not a sample, so no
+     * interval governs it. Two shapes live there: a line printed once at the
+     * end of a run (PERF) and a line printed when something happens (BIRTH,
+     * zero or many times, at ticks the world chose). Both are cadence 0 for
+     * the same reason — there is no period to compare against, and inventing
+     * one would make the validator report drift in a family that never
+     * promised regularity.
      */
     record Family(String name, List<Field> fields, List<Integer> arities, int cadence) {
 
@@ -72,7 +87,7 @@ final class LineGrammar {
     private static final Field TICK = new Field("tick", Type.INT, "ticks", ">=0");
 
     /**
-     * The seven families, in the order D-020 grew them. METRIC's trailing
+     * The eight families, in the order they grew. METRIC's trailing
      * {@code selfsub} is the append the law already survived once (#200);
      * ECO's two arities are the short form the collector emits when a flock
      * cannot be measured (fewer than two birds — the precedent for
@@ -81,6 +96,14 @@ final class LineGrammar {
      * both populations are measurable, so links>0 alone does not promise it.
      * SUBSTRATE carries no tick: it is the machine wing's own line, read
      * beside the ATTN census it rations.
+     *
+     * <p>BIRTH is the eighth and the first that D-020 did not grow: it is
+     * D-023's, the stdout echo of the chronos birth record (#553), and it is
+     * registered here while it still prints only where a recorder is attached
+     * — before the lane flag (#526/#543) widens that gate and a plain enabled
+     * run starts printing it. A registry that learns a family only after the
+     * family reaches a shipped lane spends the interval calling a correct line
+     * an unknown one, which is a red bench row over working code.
      */
     static final List<Family> FAMILIES = List.of(
             new Family("METRIC", List.of(
@@ -119,7 +142,12 @@ final class LineGrammar {
             new Family("DIGEST", List.of(
                     TICK,
                     new Field("sha", Type.SHA, "sha256", "64 hex")),
-                    List.of(2), 100));
+                    List.of(2), 100),
+            new Family("BIRTH", List.of(
+                    TICK,
+                    new Field("name", Type.TEXT, "text", "quoted"),
+                    new Field("family", Type.WORD, "text", "A-Z_")),
+                    List.of(3), 0));
 
     /** The family with this prefix, or null — a null is an unknown family, never a pass. */
     static Family family(String name) {

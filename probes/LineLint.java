@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * Probe: the instrument lines are the system's face — this is the mirror.
  *
- * D-020 made the lines the contract and enforced it with nobody. The seven
- * families live as format strings in seven emitters; the laws that keep
+ * D-020 made the lines the contract and enforced it with nobody. The eight
+ * families live as format strings in their emitters; the laws that keep
  * them parseable forever — one line one fact, fixed field order, additive
  * evolution only — have been honoured by discipline. Discipline is a
  * person remembering. #200 appended {@code selfsub=N} at the end of METRIC
@@ -283,6 +283,17 @@ public final class LineLint {
             case TEXT:
                 return value.length() >= 2 && value.charAt(0) == '"'
                         && value.charAt(value.length() - 1) == '"';
+            case WORD:
+                if (value.isEmpty()) {
+                    return false;
+                }
+                for (int i = 0; i < value.length(); i++) {
+                    char c = value.charAt(i);
+                    if ((c < 'A' || c > 'Z') && c != '_') {
+                        return false;
+                    }
+                }
+                return true;
             case SHA:
                 if (value.length() != 64) {
                     return false;
