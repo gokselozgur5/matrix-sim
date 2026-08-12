@@ -94,6 +94,14 @@ final class Capture {
     int censusMatches;
     /** The whole population, for the record. */
     int censusSize;
+    /**
+     * The name the TAP itself announced at boot. The reader resolves the mind
+     * with a second call to the same resolver, which is only sound while the
+     * root's constructor does nothing between arming the tap and printing this
+     * line. So the reader does not trust that: it reads the tap's own word back
+     * and refuses to render a page the tap disagrees with.
+     */
+    String tapName;
 
     // --------------------------------------------------------------- feeds
 
@@ -144,6 +152,19 @@ final class Capture {
         // so a namesake born at tick 1179 must count against the name.
         c.census(realWorld);
         c.read(buffer.toString(StandardCharsets.UTF_8));
+
+        // The reader resolved the mind with its own call to the tap's resolver.
+        // That is sound only while nothing moves between the root arming the tap
+        // and this call — true today, an assumption tomorrow. So it is checked
+        // rather than assumed: if the tap streamed somebody else's dream, no
+        // page gets written at all. Loud and early beats a beautiful lie.
+        String announced = c.tapName == null ? "" : c.tapName;
+        String mine = c.resolvedName == null ? "" : c.resolvedName;
+        if (!announced.equals(mine)) {
+            throw new IllegalStateException("FATAL the tap streamed '" + announced
+                    + "' but the reader resolved '" + mine
+                    + "' — the page would not be that mind's day");
+        }
         return c;
     }
 
@@ -202,8 +223,15 @@ final class Capture {
         String msg = raw.substring(15);
         Line line = new Line(seq++, tick, sev, msg);
 
-        // The tap's own two lines are bookkeeping about the reader, not the day.
+        // The tap's own two lines are bookkeeping about the reader, not the day
+        // — but the streaming line names the mind the tap actually bound to,
+        // and that is the one claim the reader checks itself against.
         if (msg.startsWith("follow: ")) {
+            String open = "follow: streaming the dream of ";
+            String close = " as JSONL";
+            if (msg.startsWith(open) && msg.endsWith(close)) {
+                tapName = msg.substring(open.length(), msg.length() - close.length());
+            }
             return;
         }
         if (tick == 0) {
@@ -320,7 +348,7 @@ final class Capture {
         }
         out.append("subject: ").append(resolvedName)
                 .append(podAddress == null ? " (free-born, no pod)" : " · pod " + podAddress)
-                .append('\n');
+                .append(" · the tap agrees\n");
         out.append("census: ").append(censusSize).append(" minds, ").append(namesakes)
                 .append(namesakes == 1 ? " of them wearing this name — here the name binds"
                         : " of them wearing this name — here the name does NOT bind")
