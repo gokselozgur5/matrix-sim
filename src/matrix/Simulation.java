@@ -56,6 +56,13 @@ public final class Simulation {
     private final EventBus bus = new EventBus();
     private final World world;
     private final RealWorld realWorld;
+    /**
+     * The heart's book (D-045): mind-to-mind edges, real-side by law. Held
+     * beside the biological bank rather than inside it — {@code RealWorld}
+     * is another crew's file this wave — and handed to the realworld node,
+     * which is the only thing that drives it.
+     */
+    private final matrix.realworld.Bond.Registry bonds = new matrix.realworld.Bond.Registry();
     private final Zion zion;
     private final Source source;
     private final matrix.machine.SubstrateBudget substrate;
@@ -171,6 +178,7 @@ public final class Simulation {
                 + " phone booths across " + world.places().zones().size() + " zones");
         world.log(Severity.SYS, "compute model: " + Config.COMPUTE_MODEL.name()
                 + " — " + Config.COMPUTE_MODEL.desc());
+        world.log(Severity.SYS, bonds.line() + " — nobody has mattered to anybody yet");
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
         world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
