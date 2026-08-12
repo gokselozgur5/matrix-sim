@@ -33,11 +33,34 @@ import java.util.List;
  *   margin &lt;= -4   DECISIVE_B
  * </pre>
  *
- * <p>The thresholds are asserted, not yet derived — no one has measured how
- * the derived population actually distributes across these five bands, and
- * a vocabulary where most encounters tie is a vocabulary with no drama.
- * That measurement is the band table's own unit and is owed before any
- * domain outcome consults this law.
+ * <p><b>The thresholds were asserted; they are measured now.</b> #835
+ * enumerated every ordered pair of distinct souls derivable from the pod
+ * farm's own 400-name pool, over all 120 pairs of vocabulary words —
+ * 19,152,000 contests, run through {@link #resolve} itself rather than
+ * through a copy of its arithmetic. The derived population lands where an
+ * independent uniform 1..10 pair would:
+ *
+ * <pre>
+ *   band          measured   uniform 1..10
+ *   DECISIVE_A     21.16%       21.00%
+ *   EDGE_A         23.85%       24.00%
+ *   TIE            10.00%       10.00%
+ *   EDGE_B         23.83%       24.00%
+ *   DECISIVE_B     21.16%       21.00%
+ * </pre>
+ *
+ * <p>The failure these bands were afraid of — a vocabulary where most
+ * encounters tie — is absent: TIE lands 0.002 percentage points off its
+ * analytic expectation, inside a 0.225 tolerance derived from the pool
+ * size and not from taste. The number the record now has to live with is
+ * the other one: <b>42.3% of staged contests are a foregone conclusion</b>
+ * under this vocabulary. That is the figure a later drama target has to
+ * argue against, and until one is stated, moving ±4 would swap an asserted
+ * threshold for another asserted threshold. The edge is not free in any
+ * case — {@link #EXCHANGE_BANDS} opens its exotic outcomes at exactly gap
+ * 4, deliberately, so the two tables share one law.
+ *
+ * <p>Reproduce with {@code java -cp out:probes/out SheetBench --bands}.
  */
 public final class Contest {
 
