@@ -64,10 +64,10 @@ public final class DreamReader {
 
         Capture capture = Capture.of(pilot, seed, ticks);
 
-        // Until the fold lands (#663) the capture stage IS the output; the
-        // --capture-only flag pins this view for good, so the counts stay
-        // quotable as evidence after the prose arrives on top of them.
-        String page = capture.report();
+        // --capture-only pins the capture stage's own view: the three feeds
+        // and their counts, quotable as evidence after the page is built on
+        // top of them.
+        String page = captureOnly ? capture.report() : Fold.plain(Fold.of(capture));
 
         PrintStream stdout = new PrintStream(
                 new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
