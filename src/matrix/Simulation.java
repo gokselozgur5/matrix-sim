@@ -363,6 +363,12 @@ public final class Simulation {
         for (RealWorld.Liberation freed : realWorld.drainLiberations()) {
             zion.absorb(freed.human(), freed.origin());
         }
+        // The door's inward direction, step one (D-046, #335). Only the root
+        // holds both banks (D-012), so only the root can offer the city's
+        // ashore roster to the door path — the census lane, and no other.
+        // After the drain on purpose: a mind freed THIS tick joins the census
+        // first and can be offered the door no earlier than the next one.
+        realWorld.doorTick(zion.ashore());
         if (world.state() == matrix.core.SystemState.NORMAL
                 && world.ledger().overflowed() && !oneExists()) {
             matrix.entities.TheOne one = realWorld.birthTheOne("Thomas A. Anderson");
