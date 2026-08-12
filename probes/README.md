@@ -16,7 +16,10 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    protects the domain from the domain — not the coroner from the corpse.
 4. **Greppable verdicts.** Evidence lines are stable, prefixed, one-per-fact
    (`DUP …`, `t=… link#… …`), so a probe's output can be diffed across runs and quoted
-   in a PR without prose.
+   in a PR without prose. "Diffed across runs" is a promise the bench keeps rather
+   than assumes: `probes/bench.sh --twice` runs every probe a second time and
+   byte-compares, and a probe that reaches for wall-clock, a default locale, a heap
+   address or an unordered iteration fails the sweep on the line that moved.
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
    `src/` must build and `--selftest` must pass with this directory deleted.
 6. **Pinned to a SHA.** A probe run that is *evidence* — anything quoted in a PR,
@@ -64,14 +67,41 @@ One command runs every probe and prints one verdict:
 ```sh
 probes/bench.sh            # 6,000 ticks each, compile included
 probes/bench.sh --list     # the contract table, run nothing
+probes/bench.sh --twice    # the sweep, plus the determinism pass below
 ```
 
 The contract table lives in that script, one row per probe — `judge <Class>
 '<exact line>'` for an instrument that verdicts, `run <Class>` for one that
-only reports. A judged probe is judged by exact-line grep (`grep -qxF`), so
+only reports, `vary <Class> '<reason>'` for one whose output may legitimately
+move. A judged probe is judged by exact-line grep (`grep -qxF`), so
 `=0` can never match `=01` and a missing verdict fails the sweep; a reporting
 probe fails only by crashing or exiting nonzero. Adding a probe is a one-row
 change here, beside the probe.
+
+## The bench refereeing itself
+
+The probes referee the daemon. `--twice` is what referees the probes: every row
+runs a second time at the same seed and budget, the two outputs are byte-compared,
+and the first line that moved is printed with its number.
+
+```
+STABLE LineLint
+DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
+EXEMPT AllocMeter reason="reads the JDK thread-allocation counter: …"
+BENCH determinism probes=15 stable=13 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
+```
+
+The digest leash proves the *world* is deterministic and says nothing about the
+instruments pointed at it — and a drifting instrument is worse than none, because
+it manufactures mysteries the world never had and the next skeptic spends a round
+chasing a phantom that lives in the coroner, not the corpse. The sweep prints two
+verdicts because they are two facts: `BENCH_GREEN` can sit directly above
+`INSTRUMENTS_DRIFTED`, and the run still exits nonzero.
+
+A row that legitimately moves declares itself with `vary` and states why, rather
+than being skipped in silence. Exactly one does today: `AllocMeter` reads the JDK's
+thread-allocation counter, which tracks the JIT's progress as much as the daemon's
+(2,098 to 5,346 bytes/tick at seed 42 — #817).
 
 ## Catalog
 
