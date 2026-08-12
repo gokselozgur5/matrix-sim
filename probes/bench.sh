@@ -16,6 +16,12 @@
 # in probes/README.md, the verdicts are in the probes, and the list of what
 # gets judged belongs next to them. This runner is that list.
 #
+# Since #880 the workflow runs this script instead of keeping a second list of
+# its own — the two had drifted until two thirds of the judged rows here
+# reached no runner but a human's hands, and a probe CI does not run is a probe
+# that guards nothing between two people remembering it. Adding a row below is
+# therefore adding a lock: no YAML edit, no second place to remember.
+#
 # The discipline the CI lane already got right, kept exactly: a judged probe is
 # judged by EXACT-LINE grep (grep -qxF), so `=0` can never match `=01`, and a
 # missing verdict line fails the sweep. A reporting probe is RUN — a crash or a
@@ -86,6 +92,7 @@ table() {
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge FateAtlas    'VERDICT MONOCULTURE'
   judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
+  judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
