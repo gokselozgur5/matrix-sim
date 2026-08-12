@@ -157,6 +157,11 @@ public final class RealWorld {
      * theirs to walk out of; the account holds, and the first window after
      * restore the door opens. Without wraps an open live link's avatar is
      * always present, so the gate costs nothing where it cannot matter.
+     *
+     * <p>The pod clause comes from {@link #opensClause} (#813). It used to be
+     * written here, inline and unguarded, in a door built expressly for a
+     * citizen who may have no pod: the first free-born mind to walk out would
+     * have died inside its own FATE line.
      */
     private void selfSubstantiate(NeuralLink link) {
         link.closeClean();
@@ -165,8 +170,8 @@ public final class RealWorld {
         world.log(Severity.FATE, "self-substantiation: " + link.human.name
                 + " walked out of the dream — residue " + link.personalResidue
                 + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
-                + " spikes in " + link.windows + " windows; no red pill was given (pod "
-                + link.human.pod.rackUnit + " opens)");
+                + " spikes in " + link.windows + " windows; no red pill was given "
+                + opensClause(link.human));
         bank(new Liberation(link.human, "selfsub"));
     }
 
