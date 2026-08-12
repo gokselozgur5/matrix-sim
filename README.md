@@ -61,12 +61,14 @@ java -cp out matrix.Main --follow "Thomas A." --headless --ticks 6000 | grep '^{
 **Chronos — record, fold, verdict (D-023).** A universe is its genesis plus its inputs; everything else is replay. `--chronos` records (live runs only), `--replay` folds a recording back into the same film, `--expect` makes that a machine verdict, `--audit` verdicts a recording without booting a universe at all, and `--snapshot-at` proves a retained digest walk agrees with the chain:
 
 ```bash
-java -cp out matrix.Main --ticks 400 --chronos rec.jsonl            # stage 1: record genesis + console inputs as JSONL
+java -cp out matrix.Main --chronos rec.jsonl                        # stage 1: the live daemon records genesis + console inputs; `quit` ends it
 java -cp out matrix.Main --replay rec.jsonl > rec.chain             # stage 2: fold it — the chain, in ChainDump format
 java -cp out matrix.Main --replay rec.jsonl --expect rec.chain      # verify: REPLAY OK | FAIL — exit 0 match / 1 divergence / 2 refused
-java -cp out matrix.Main --audit rec.jsonl                          # stage 5: AUDIT OK — consistency without a universe
+java -cp out matrix.Main --audit rec.jsonl                          # stage 5 slice: consistency without booting a universe
 java -cp out matrix.Main --headless --ticks 600 --snapshot-at 500   # stage 3: SNAPSHOT tick/sha/bytes + SNAPSHOT_MATCHES_DIGEST
 ```
+
+`--ticks` is a budget for **headless and selftest** runs only; a live daemon runs until the console says `quit`, so a recording is as long as you let it be. `--replay` honors `--ticks` on its own (default 2,000), and `--expect` overrides it with the dump's last tick.
 
 ```
 REPLAY OK seed=42 ticks=2000 links=20 commands_applied=0
