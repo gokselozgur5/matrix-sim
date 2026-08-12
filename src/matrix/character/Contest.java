@@ -78,4 +78,82 @@ public final class Contest {
         }
         return Outcome.DECISIVE_B;
     }
+
+    // ---- #357: the p-curve — one function, pinned at 0.10 ----
+
+    /**
+     * The pin: the probability a contest returns when neither side is ahead —
+     * the flat constant the AGENT catch has drawn against since v1,
+     * {@code matrix.core.Config.AGENT_KILL_CHANCE}, written here as the same
+     * double literal.
+     *
+     * <p>A literal and NOT an import, deliberately. The package door forbids
+     * this layer from importing {@code matrix.core} at all — "no
+     * {@code matrix.core}, no rng, no clock" — and that law is worth more
+     * than the convenience: a stat layer that reaches into the daemon's
+     * tuning table has stopped being a pure function of identity. The
+     * equality that matters — this double and the legacy double, bit for bit
+     * — is therefore asserted at the BOUNDARY, where the migration happens
+     * and both names are already in scope: #467 owns that assertion, and the
+     * catch's own adoption in #352 spends it. A pin nobody checks is a wish;
+     * a pin checked in the wrong package is a broken door.
+     */
+    public static final double NEUTRAL_P = 0.10;
+
+    /** No evader is ever safe: the floor a full-spectrum disadvantage cannot get under. */
+    public static final double FLOOR_P = 0.01;
+
+    /** No hunter is ever certain: the ceiling a full-spectrum advantage cannot get over. */
+    public static final double CEILING_P = 0.50;
+
+    /** The widest margin the vocabularies can produce — values are 1..10. */
+    public static final int SPAN = 9;
+
+    /**
+     * The contest's probability curve: how likely the A side's attempt lands,
+     * given both sides' numbers. Pure, total, and rng-silent — this function
+     * decides a THRESHOLD, never a draw. Under D-042's two-die law a migrated
+     * site keeps its exact existing draw and lets the sheets move only this
+     * number.
+     *
+     * <p><b>The pin, and why it is bit-exact.</b> p is a function of the
+     * MARGIN, not of the absolute values, so it returns the legacy constant at
+     * every equal pair — 1v1, 5v5, 10v10 alike — and the pin therefore does
+     * not depend on which value the permanent-NEUTRAL flag (#336) picks for a
+     * neutral sheet. At margin zero {@code t} is exactly {@code 0.0}, so the
+     * endpoint term is multiplied by exactly zero and the neutral term by
+     * exactly one: IEEE-754 gives back {@link #NEUTRAL_P} bit for bit, with no
+     * branch special-casing the pin. Note that the sign test below is
+     * immaterial at zero — both endpoints are annihilated by {@code t == 0.0},
+     * so the curve has no seam where its two halves meet.
+     *
+     * <p><b>The shape.</b> Linear in the margin, anchored at the pin and
+     * running to a declared floor below and a declared ceiling above. The
+     * two-sided form {@code (1-t)*A + t*B} is used rather than
+     * {@code A + (B-A)*t} because only the former is exact at BOTH ends: the
+     * naive form lands 5e-18 under {@link #FLOOR_P} at margin -9 and would
+     * quietly break the very bound this class advertises. The interior is
+     * deliberately the simplest thing that could work — #469 owns re-settling
+     * it by measurement, and it may do so without touching the pin, which is
+     * this unit's whole claim.
+     *
+     * <p>Margins beyond {@link #SPAN} clamp rather than extrapolate, so a
+     * future vocabulary with a wider band cannot push p out of its bounds.
+     */
+    public static double p(int attackerStat, int defenderStat) {
+        long m = (long) attackerStat - defenderStat;
+        double t = Math.min(Math.abs(m), SPAN) / (double) SPAN;
+        double end = m >= 0 ? CEILING_P : FLOOR_P;
+        return (1.0 - t) * NEUTRAL_P + t * end;
+    }
+
+    /**
+     * The curve read through two sheets and their named axes — the same
+     * grammar {@link #margin} and {@link #resolve} speak, so a cross-family
+     * contest (a program's hunt against a human's evasion) gets its
+     * probability from the same call shape as its band.
+     */
+    public static double p(Sheet a, String axisA, Sheet b, String axisB) {
+        return p(a.stat(axisA), b.stat(axisB));
+    }
 }
