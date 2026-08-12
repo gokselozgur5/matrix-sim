@@ -308,6 +308,7 @@ And the chapter obeys four laws:
 2. **Supersede, never rewrite.** A superseded entry is restated with its successor named, exactly as the ADRs live (D-028's neighbour rule) and for the same reason: a census whose history is editable is a census that can be argued with retroactively. Correcting a typo is an edit; changing a number is a supersession.
 3. **Part five is a limit, not a summary.** D-027's *measured, never promised* applied to statistics: a fraction is reported with the interval its sample supports, and the sentence the sample cannot carry is named in the entry rather than left for a reader to infer.
 4. **No sixth document.** No `docs/CENSUS.md`, no `journal/`, no per-sweep file. The fence is checked with the entry: `git ls-files '*.md' | grep -vE '^docs/adr/|^tools/|^probes/|^\.github/' | wc -l` must print **6**.
+5. **Seeds are drawn scattered, never contiguous.** A run of adjacent seeds is *not* a random sample of the multiverse — measured, not feared: entry 5 cut the same 400 universes two ways and found contiguous blocks disagreeing at φ ≈ 5 where an interleaved partition of the identical set behaved exactly like independent draws. A new sample uses a stride (`1:4:100`, `1001:100:100`), and a sample that must be contiguous — an old table, a batch protocol already running — reports its counts as a **block**, carries a design-effect interval, and is never pooled into a larger n without `probes/CensusBlocks` ruling the pooling legal. The rule exists because the alternative is a chapter of fractions whose intervals are half the width they earned.
 
 ### The re-verdict protocol — what a census owes a declared digest move
 
@@ -372,6 +373,67 @@ An ordering of four clauses read off twenty runs is right **less than one time i
 **5. The re-run rule.** One command regenerates the era table after any D-006 corridor tuning. That is what turns the era census from a report into a regression harness, and it is the same falsifiability clause every entry in this chapter carries: rerun the command, diff the table.
 
 **The seam, stated.** #316 teaches `SeedAtlas` the era verdicts — the **code**. #317 runs the corridor sweep and lands its table — the **measurement**. This section is neither: it is the **design** both execute against, and it is executable today only in the parts that need no era (`CensusCensor` on any census table, `CensusSampleSize` on any claim).
+
+---
+
+### Entry 5 — the seed-block effect: contiguous blocks are not a random sample
+
+**The question.** Every fraction this chapter has ever quoted assumes a contiguous block of seeds is a random sample of the multiverse. Entry 3 tested it by accident and it did not pass. Is the seed an exchangeable randomizer, or does the multiverse have structure along the seed axis?
+
+**The command.**
+
+```sh
+java -cp out:probes/out CensusBlocks --threads 4 \
+  --group contiguous  1-100 101-200 201-300 301-400 \
+  --group interleaved 1:4:100 2:4:100 3:4:100 4:4:100 \
+  --group span        1-400 1001:100:100 \
+  6000
+```
+
+**The sample.** 500 distinct universes at 6,000 ticks, default scale, film era — measured at `4c82835`, 62m14s wall on four threads of a loaded 4-core box (`load average 33–41` throughout, shared with other work; the per-universe cost is not a clean reference-box figure and is not quoted as one). The three groups share their universes: seeds 1–400 are simulated **once** and partitioned **twice**, so the decisive comparison below costs no extra universes at all.
+
+**The table.** Same 400 universes, cut two ways.
+
+| Partition | blocks | `FULL_ARC` per block | `QUIET` per block | max &#124;z&#124; | worst p | overdispersion φ | verdict |
+|---|---|---|---|---|---|---|---|
+| **contiguous** 1-100 … 301-400 | 4 × 100 | 73 · 92 · 86 · 77 | 21 · 6 · 11 · 19 | **3.54** | **0.0018** | **5.01** | `BLOCK_EFFECT` |
+| **interleaved** 1:4:100 … 4:4:100 | 4 × 100 | 79 · 83 · 81 · 85 | 16 · 15 · 16 · 10 | 1.26 | 0.5671 | 0.68 | `BLOCKS_EXCHANGEABLE` |
+| **span** 1-400 vs 1001,1101,…,10901 | 400 + 100 | 328 vs 79 | 57 vs 15 | 1.00 | 0.3157 | 1.01 | `BLOCKS_EXCHANGEABLE` |
+
+Per-fate homogeneity, contiguous (df = 3, Bonferroni α = 0.0167 over the three testable fates):
+
+| Fate | χ² | p | φ |
+|---|---|---|---|
+| `FULL_ARC` | 15.041 | **0.00178** | **5.01** |
+| `QUIET` | 12.010 | **0.00735** | **4.00** |
+| `TREATY` | 2.424 | 0.48914 | 0.81 |
+
+`WAR` and `OLD_PLAYBOOK` are 0 across all 500 and are reported **not testable** rather than counted as agreement.
+
+**The distribution.** Three explanations were on the table. The data rules on all three.
+
+*It is not the 1-in-500.* The effect reproduces at k = 4 with p = 0.0018 on `FULL_ARC` and 0.0074 on `QUIET` **after** a Bonferroni correction this instrument owes and entry 3 did not — entry 3 made one comparison, this makes fifteen. Explanation 3 is dead.
+
+*It is not the universes; it is where they sit.* This is the measurement the entry exists for. The interleaved partition contains **exactly the same 400 universes** as the contiguous one — same seeds, same fates, one simulation each — dealt out like cards instead of cut like a deck. Cut contiguously they disagree at φ ≈ 4–5. Dealt interleaved they are indistinguishable from independent draws. A property that appears and vanishes under re-partitioning of an identical set cannot be a property of the set: **adjacency carries information.** Neighbouring seeds make correlated universes.
+
+*And it is local, not a drift.* The span group puts seeds 1–400 against a hundred seeds spread from 1,001 to 10,901 and finds nothing — every fate agrees (worst p = 0.32). So the seed axis has no gradient; far-flung seeds are drawn from the same distribution as low ones. What is broken is **decorrelation between neighbours**, which is a seeding weakness (explanation 1) expressed as real structure over short ranges (explanation 2). The two were never rival explanations; they are one finding at two zoom levels.
+
+*What φ costs, in the only units that matter.* Overdispersion of 5.01 means the standard error of a contiguously-sampled fraction is **2.24× larger** than the binomial formula reports. Four hundred contiguous seeds buy the precision of about **80 independent** ones for `FULL_ARC`, and about 100 for `QUIET`:
+
+| Fate | pooled 1-400 | naive 95% (Wilson) | design-corrected 95% | n_eff |
+|---|---|---|---|---|
+| `FULL_ARC` | **328 / 400** (82.0%) | 77.9 – 85.5% | **72.2 – 88.9%** | ~80 |
+| `QUIET` | **57 / 400** (14.25%) | 11.2 – 18.0% | **8.7 – 22.4%** | ~100 |
+| `TREATY` | **15 / 400** (3.75%) | 2.3 – 6.1% | 2.4 – 5.8% | ~494 |
+| `OLD_PLAYBOOK` | **0 / 500** | ≤ 0.60% | **≤ 1.67%** | ~180 |
+
+What this entry does **not** license: **every pooled fraction in this chapter measured from contiguous blocks is provisional**, including entry 3's n=200 row and the pooled column above — not wrong in its centre, but stated with an interval roughly half the width it has earned. Nor does it license a correction anyone can apply by arithmetic: φ is itself estimated from four blocks and is not precise. And it says nothing about the *point* estimates, which the span test suggests are unbiased — seeds 1–400 look like a fair draw from the axis, they are merely not 400 independent ones.
+
+*A confirmation nobody asked for.* Seeds 1–100 return `full_arc=73 treaty=6 quiet=21` with band 1149–1359, and seeds 101–200 return `92 / 2 / 6` — **identical, to the count and the tick**, to entries 3 and 4 as measured at `6e2458a`. Three PRs have touched `src/` since (#759, #765, #771), each claiming digest-invariance. Four hundred universes agree with them.
+
+**The ruling, binding on this chapter.** Contiguous seed blocks are **retired as a sampling method**. New census samples are drawn scattered — a stride, not a run (see the fifth law under *How a census entry is written*). Existing contiguous tables stand as measurements and are re-read with a design-effect interval, never silently pooled into a larger n.
+
+**The stamp.** 2026-08-12, v3.0, measured at `4c82835` · 500 universes · the ruling on #775.
 
 ---
 
