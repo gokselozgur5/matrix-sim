@@ -71,7 +71,9 @@ done
 # stays the rarest thing in the table, because an instrument whose output moves
 # between two identical runs cannot be diffed across a change, which is most of
 # what a bench is for. Exactly one row wears it today, and it earns it by
-# measuring the JVM instead of the world.
+# printing the JVM's noise beside the world's number instead of in place of it
+# (#817): the steady figure is a median of twenty-four repeats and barely moves,
+# and the cold sample published next to it moves by design.
 # ---------------------------------------------------------------------------
 table() {
   judge LedgerMirror 'LEDGER_ANOMALIES=0'      "$TICKS"
@@ -92,7 +94,7 @@ table() {
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
   run   NameCensus   42
-  vary  'reads the JDK thread-allocation counter: the number moves with JIT, not with the world' \
+  vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   run   SeedAtlas    1 5 "$TICKS"
