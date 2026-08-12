@@ -83,13 +83,19 @@ probes/bench.sh --twice    # the sweep, plus the determinism pass below
 probes/bench.sh --without-probes   # clause 5: does src/ still stand alone?
 ```
 
-The contract table lives in that script, one row per probe — `judge <Class>
-'<exact line>'` for an instrument that verdicts, `run <Class>` for one that
-only reports, either of them prefixed by `vary '<reason>'` when the row's
+The contract table lives in that script, one row per invocation — `judge
+<Class> '<exact line>'` for an instrument that verdicts, `run <Class>` for one
+that only reports, either of them prefixed by `vary '<reason>'` when the row's
 output may legitimately move. A judged probe is judged by exact-line grep
 (`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
 sweep; a reporting probe fails only by crashing or exiting nonzero. Adding a
-probe is a one-row change here, beside the probe.
+probe is a one-row change here, beside the probe — one row per probe, and one
+row per mode where a probe verdicts in more than one. `SheetBench` is the only
+one that does today, and its `--avalanche` row is `run` rather than `judge` on
+purpose: that mode prints its measurements and its verdict on the same line,
+so judging it by exact line would pin `mean_bitflip` and `max_axis_corr` into
+the runner beside the bound the probe already prints and already checks. Its
+exit code is its verdict instead, which is what `run` reads.
 
 ## The bench refereeing itself
 
@@ -154,6 +160,7 @@ judges it (#906).
 | `DistrictNeutral` | Does naming the city cost the world a die roll? | the D-048 catalog is the same six quarters at seeds 42, 7, 1 and 55, and the same again built out of a stream burned 1,000 draws down (`DISTRICTS_DRAW_NOTHING`) — #536's claim, kept |
 | `LineLint` | Do the instrument lines still speak the grammar D-020 fixed? | the eight families as a runtime registry (`LineGrammar`) plus their validator: 361 instrument lines at seed 42, `families=7`, `VERDICT GRAMMAR_HELD` — an appended column passes, a renamed or moved one names itself. The eighth is `BIRTH`, which prints only where a chronos recorder is attached: the same run under `--chronos` carries 363 lines and `families=8`, and the judged bench row (no recorder, no `PERF`) reaches six of the eight |
 | `HullRoster` | Is the hull-naming rule total, and is it still the film? | #806's array crash, made permanently detectable without a universe: 3,000 ordinals, 3,000 distinct names, all thirteen generation marks reached, and the boot three pinned as literals — nothing else in this repository notices a renamed hull, because no `matrix.zion` state reaches the digest walk (`VERDICT ROSTER_TOTAL`) |
+| `SheetBench` | What does the character kernel derive, and is its mixer worth believing? | the two questions the parked kernel's review left as homework, answered with numbers instead of assurance: strict avalanche on the finalizer reads `mean_bitflip=0.5001` over 400 names × 16 axes × 32 bits, and cross-axis Pearson tops out at `0.0969` on `HUMAN.disbelief~integrity` under a stated `0.15` bound, printed beside the measurement because a verdict without its threshold is a claim. `--discipline` is the other half: a HUMAN asked for `replication` throws and the message names the vocabulary it does have (D-042). Building it also caught a byte bug in the bench itself — this box's JVM reports `file.encoding=ANSI_X3.4-1968`, so an em dash in a verdict line was silently becoming `?` and a line quoted in a PR would not have been the line another box prints, which is why this probe sets its own UTF-8 stream and why #836 exists for the rest. The kernel is imported by nothing in the domain, so this bench is the only place its numbers exist |
 
 Add a probe when an investigation demands one; leave it here when the investigation
 ends. The next skeptic starts from this bench, not from zero. (Tooling under D-030.)

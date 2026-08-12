@@ -97,6 +97,19 @@ table() {
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=18 breaks=0'  "$TICKS"
+  # SheetBench holds two rows because it is two instruments behind one class,
+  # and the table is keyed by (class, args) rather than by class. --discipline
+  # prints a standalone verdict line and is judged like every other row.
+  # --avalanche prints its measurements and its verdict on ONE line, so an
+  # exact-line judge would pin mean_bitflip and max_axis_corr into this table
+  # beside the bound the probe already prints and already checks — and the row
+  # would then go red on a lawful mixer change the probe itself passed, which
+  # is a false alarm the bench would have manufactured. It is `run` instead,
+  # and it is judged all the same: --avalanche is the one mode in the bench
+  # whose exit code is its verdict (`System.exit(avalanche())`, 1 when the
+  # bound is missed), and `run` fails a row on a nonzero exit.
+  judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
+  run   SheetBench   --avalanche
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
