@@ -26,10 +26,19 @@ public final class PirateSever {
 
     private static int anomalies = 0;
 
+    /**
+     * The growth ordinal for a mind built by hand in a vise (#847). No farm
+     * grew these four, so no ordinal is true of them; the number sits past
+     * anything a real universe reaches, so it can never be read back as a
+     * claim about a mind the world actually grew. Nothing in these four
+     * scenarios reads it.
+     */
+    private static final int VISE_ORDINAL = 100_000;
+
     public static void main(String[] args) {
         matrix.Streams.utf8();
         // S1 — "Not like this.": the wire dies first, and the mind follows.
-        Human pirate = new Human("Switch", new Brain("Switch"), null);
+        Human pirate = new Human("Switch", new Brain("Switch"), null, VISE_ORDINAL);
         Avatar red1 = new Avatar(1, new Position(0, 0), "Switch", Pill.RED);
         NeuralLink wire1 = new NeuralLink(pirate, red1, LinkKind.PIRATE);
         wire1.severUnclean();
@@ -44,7 +53,7 @@ public final class PirateSever {
                 fact("no_second_death", !reExecuted));
 
         // S2 — killed inside, no pod outside: the rule runs, nothing flushes.
-        Human free = new Human("Mouse", new Brain("Mouse"), null);
+        Human free = new Human("Mouse", new Brain("Mouse"), null, VISE_ORDINAL);
         Avatar red2 = new Avatar(2, new Position(0, 0), "Mouse", Pill.RED);
         NeuralLink wire2 = new NeuralLink(free, red2, LinkKind.PIRATE);
         red2.alive = false;
@@ -64,7 +73,7 @@ public final class PirateSever {
 
         // S3 — the farm's old rule, byte for byte: sleeper dies, pod flushes.
         Pod pod = new Pod("R01/U01");
-        Human sleeper = new Human("Dana Frost", new Brain("Dana Frost"), pod);
+        Human sleeper = new Human("Dana Frost", new Brain("Dana Frost"), pod, VISE_ORDINAL);
         Avatar blue = new Avatar(3, new Position(0, 0), "Dana Frost", Pill.BLUE);
         NeuralLink wire3 = new NeuralLink(sleeper, blue, LinkKind.HARDLINE);
         blue.alive = false;
@@ -74,7 +83,7 @@ public final class PirateSever {
                 fact("pod_flushed", !pod.occupied()));
 
         // S4 — walked out the door first: the sever finds nothing to kill.
-        Human freed = new Human("Ezra Berg", new Brain("Ezra Berg"), null);
+        Human freed = new Human("Ezra Berg", new Brain("Ezra Berg"), null, VISE_ORDINAL);
         Avatar red4 = new Avatar(4, new Position(0, 0), "Ezra Berg", Pill.RED);
         NeuralLink wire4 = new NeuralLink(freed, red4, LinkKind.PIRATE);
         wire4.closeClean();

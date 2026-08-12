@@ -90,6 +90,7 @@ table() {
   judge PirateSever  'VERDICT CONTRACT_HELD'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD' "$TICKS"
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
+  judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
   judge FateAtlas    'VERDICT MONOCULTURE'
   judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
   judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'

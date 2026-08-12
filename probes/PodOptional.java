@@ -65,6 +65,15 @@ public final class PodOptional {
     private static int scenarios = 0;
     private static int anomalies = 0;
 
+    /**
+     * The growth ordinal for a mind this probe builds by hand (#847). These
+     * eight subjects stand inside a real universe that has already grown its
+     * own people with ordinals of their own, so the vise takes a number past
+     * the farm's range rather than one that would read as a claim about
+     * somebody the world grew. Nothing in the four endings reads it.
+     */
+    private static final int VISE_ORDINAL = 100_000;
+
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
@@ -131,7 +140,7 @@ public final class PodOptional {
      */
     private static void selfsub(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
         NeuralLink wire = jackIn(u, mind, Pill.BLUE);
         u.realWorld.register(wire);
         standResidueAt(wire, AcceptanceLoop.threshold(name));
@@ -163,7 +172,7 @@ public final class PodOptional {
      */
     private static void treaty(String name, Pod pod) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
         NeuralLink wire = jackIn(u, mind, Pill.BLUE);
         u.realWorld.register(wire);
 
@@ -191,7 +200,7 @@ public final class PodOptional {
      */
     private static void rigDeath(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
         BroadcastRig rig = new BroadcastRig();
         rig.beginSession(u.world, u.world.places().zones().get(0));
         NeuralLink wire = rig.open(mind, u.world);
@@ -221,7 +230,7 @@ public final class PodOptional {
      */
     private static void rigCut(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
         BroadcastRig rig = new BroadcastRig();
         rig.beginSession(u.world, u.world.places().zones().get(0));
         NeuralLink wire = rig.open(mind, u.world);

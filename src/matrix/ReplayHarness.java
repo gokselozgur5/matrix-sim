@@ -41,8 +41,9 @@ import java.util.List;
  * into an unfoldable artifact. They are not re-applied — a birth is not an
  * operator input — but they ARE folded: the replayed universe grows its
  * own people and the fold proves they are the same people, at the same
- * ticks, under the same names-at-birth. {@code REPLAY OK} says how many
- * were re-executed rather than merely re-read.
+ * ticks, under the same names-at-birth, in the same rack units and in the
+ * same order (#847). {@code REPLAY OK} says how many were re-executed
+ * rather than merely re-read.
  *
  * Stage 5 lands as its honest slice (#129): {@code --audit} walks a
  * recording and verdicts internal consistency without booting anything
@@ -70,8 +71,14 @@ public final class ReplayHarness {
     /** An epoch boundary as recorded — reload or treaty; the audit pairs reloads with their seals (#129). */
     private record Boundary(long tick, String kind, int line) {}
 
-    /** A recorded birth: who came to exist, at which tick, under which name-at-birth (#548). */
-    private record Birth(long tick, String name, String family, int line) {}
+    /**
+     * A recorded birth: who came to exist, at which tick, under which
+     * name-at-birth (#548), in which rack unit and as the universe's how-manyth
+     * mind (#847). The last two are the derivation inputs the record was two
+     * fields short of; {@code rack} is legally the empty string for a mind
+     * grown without a slot.
+     */
+    private record Birth(long tick, String name, String family, String rack, int id, int line) {}
 
     /**
      * What a recording declares before its first tick — and everything the
@@ -366,13 +373,21 @@ public final class ReplayHarness {
      * same people in the same order, so the fold's duty is to prove it
      * RE-EXECUTED the origin story rather than merely re-read it. This walks
      * the births the replayed universe decided against the births the record
-     * claims — count, then tick, name-at-birth and family in order.
+     * claims — count, then tick, name-at-birth, family, rack unit and growth
+     * ordinal in order.
      *
      * <p>It is a second referee behind the chain, not a softer one: a birth
      * that shifts by one tick under an agreeing chain means fate was spent
      * somewhere the digest frame does not reach, which is precisely the
      * failure the birth-seed law exists to catch. False on the first
      * disagreement, which is named and printed.
+     *
+     * <p>The rack unit and the ordinal (#847) are compared for the same
+     * reason the tick is: they are inputs the die keys to, so a re-run that
+     * racked the same mind one slot over is a re-run whose fates are not the
+     * record's fates, however well the chain agrees. The chain cannot see
+     * that today — no rack unit reaches the digest — which is exactly why the
+     * fold has to.
      */
     private static boolean foldBirths(List<Birth> recorded, List<matrix.core.ChronosLog.Birth> observed) {
         if (recorded.size() != observed.size()) {
@@ -384,10 +399,13 @@ public final class ReplayHarness {
         for (int i = 0; i < recorded.size(); i++) {
             Birth r = recorded.get(i);
             matrix.core.ChronosLog.Birth o = observed.get(i);
-            if (r.tick() != o.tick() || !r.name().equals(o.name()) || !r.family().equals(o.family())) {
+            if (r.tick() != o.tick() || !r.name().equals(o.name()) || !r.family().equals(o.family())
+                    || !r.rack().equals(o.rack()) || r.id() != o.id()) {
                 System.out.print("REPLAY FAIL birth_divergence line=" + r.line()
                         + " recorded=tick=" + r.tick() + ",name=" + r.name() + ",family=" + r.family()
+                        + ",rack=" + r.rack() + ",id=" + r.id()
                         + " re_executed=tick=" + o.tick() + ",name=" + o.name() + ",family=" + o.family()
+                        + ",rack=" + o.rack() + ",id=" + o.id()
                         + "\n");
                 return false;
             }
@@ -413,8 +431,12 @@ public final class ReplayHarness {
      * Reads a chronos JSONL recording: genesis first (exactly one), then
      * commands, epoch seals (snapshot markers, #128), boundaries, births
      * (#548) and flush fingerprints with monotone tick stamps. A birth
-     * missing its name-at-birth or its family is refused like any other
-     * off-grammar line: the field the die keys on cannot be optional.
+     * missing its name-at-birth, its family, its rack unit or its growth
+     * ordinal is refused like any other off-grammar line: the fields the die
+     * keys on cannot be optional. A recording cut before #847 is therefore
+     * refused by this reader, and that is the intent — it cannot answer the
+     * question the record now exists to answer, and a fold that let it
+     * through would be reading a two-field-short record as if it were whole.
      * This is a reader for
      * our own recorder's grammar (crown #177), not a general JSON parser
      * — anything off-grammar is refused, because a fold over a misread
@@ -499,7 +521,23 @@ public final class ReplayHarness {
                         refuse("birth without a family at line " + (n + 1)
                                 + " — who came to exist is half the record");
                     }
-                    births.add(new Birth(tick, name, family, n + 1));
+                    // Absent is refused; EMPTY is accepted and means "no rack
+                    // unit", which is what the derivation reads for a mind
+                    // grown without a slot. The two cases are distinguished
+                    // because stringField returns null only when the key is
+                    // not on the line at all (#847).
+                    String rack = stringField(line, "rack");
+                    if (rack == null) {
+                        refuse("birth without a rack unit at line " + (n + 1)
+                                + " — the die keys to the birth event, and a birth that says"
+                                + " nothing about where it happened cannot be re-derived;"
+                                + " a mind grown with no slot records an empty rack, not none");
+                    }
+                    // longField refuses an absent or non-numeric id by line,
+                    // so an id has no null case to guard: the reader either
+                    // has the number or has already refused.
+                    int id = (int) longField(line, "id", n + 1);
+                    births.add(new Birth(tick, name, family, rack, id, n + 1));
                 }
                 case "flush" -> {
                     lastTick = tickField(line, n + 1, lastTick);

@@ -48,8 +48,8 @@ public final class ChronosLog {
     /**
      * One birth as the record states it: which {@code family} of being came
      * to exist, at which {@code tick}, under which {@code name} — the
-     * name-at-birth. Three fields, chosen to be exactly what the birth-seed
-     * law needs and nothing more.
+     * name-at-birth — in which {@code rack} unit, as the universe's
+     * {@code id}-th mind.
      *
      * <p>{@code name} is not a duplicate of the current name. The ruling of
      * 2026-08-11 keys derivation to the birth EVENT and never to the name a
@@ -57,19 +57,43 @@ public final class ChronosLog {
      * and never updated: renaming is not rebirth, and identity papers
      * cannot launder fate. Everything downstream that wants a birth-invariant
      * input reads it from here.
+     *
+     * <p>{@code rack} and {@code id} are the two fields #847 found missing.
+     * The record's job is to hold the derivation's INPUTS, not its outcome —
+     * D-023's founding argument, that a coarse seeded model records what went
+     * in and re-executes to get what came out. The daemon's key mixes five
+     * facts; the seed is on genesis and the other four are these, so a reader
+     * holding nothing but the file can now re-derive the key the daemon used
+     * and say why one mind woke and another did not. A key stored instead
+     * would be a derived value in a record of inputs, and the day the mixing
+     * function moves, every old recording would state a number no build
+     * reproduces.
+     *
+     * <p>{@code rack} is the empty string for a mind grown with no slot, and
+     * that is a value rather than an absence: it is exactly what the
+     * derivation reads for the free-born, so writing it down is writing down
+     * what went in. {@code id} is the farm's growth ordinal ({@code Human.id})
+     * and never the avatar's world handle.
      */
-    public record Birth(long tick, String name, String family) {}
+    public record Birth(long tick, String name, String family, String rack, int id) {}
 
     /**
      * A birth at its tick. The recorder OBSERVES: the record is written
      * where the world has already decided someone exists, it draws nothing,
      * it mutates nothing, and no run ever reads it back — a recording-on run
      * and a recording-off run walk the same universe, link for link.
+     *
+     * <p>{@code rack} and {@code id} are appended after {@code family}, in
+     * that order. Field order is the grammar: a reader written against the
+     * three-field form still finds every field it knew, at the key it knew it
+     * by, and the two it does not know are past the end.
      */
     public void birth(Birth b) {
         out.print("{\"chronos\":\"birth\",\"tick\":" + b.tick()
                 + ",\"name\":\"" + escape(b.name())
-                + "\",\"family\":\"" + escape(b.family()) + "\"}\n");
+                + "\",\"family\":\"" + escape(b.family())
+                + "\",\"rack\":\"" + escape(b.rack())
+                + "\",\"id\":" + b.id() + "}\n");
     }
 
     /** An epoch boundary at its tick: {@code "reload"} or {@code "treaty"}. */
