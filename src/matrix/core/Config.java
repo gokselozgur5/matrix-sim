@@ -174,6 +174,24 @@ public final class Config {
      * miracle's admission price — a commit, and an argued one (D-006).
      */
     public static final int BOND_WEAVE_WINDOWS = 12;
+    /**
+     * The price of the miracle, and the most expensive line on the retail
+     * price list (#212's unifier): the list is ordered by how hard a frame
+     * is to reject, and no frame is harder than "you are dead". Refusing it
+     * is therefore the maximal disbelief event, and this constant must
+     * stand strictly above every other disbelief item this repo prices —
+     * RESIDUE_RED, RESIDUE_BLUE, KID_SPIKE, DEJA_RESIDUE_SPIKE, and the
+     * allegiance terms arriving in #332/#345. That ordering is not a
+     * comment: {@code Bond.retailOrderLine()} asserts it inside --selftest,
+     * so a retune that silently demotes the miracle fails the build.
+     *
+     * <p>Scale: 16x the deja-vu spike, and 13% of LEDGER_BOUND — one
+     * miracle is a serious dent in the debt that grows The One, and seven
+     * of them would summon him outright. That is the intended shape. The
+     * debt belongs to the WORLD (#383), so this number is what the world
+     * pays, never what the lover pays.
+     */
+    public static final long ROOM_303_DEPOSIT = 4_000;
 
     private Config() {}
 }
