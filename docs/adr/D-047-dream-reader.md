@@ -32,7 +32,7 @@ D-019 banned presentation from the domain and the ban stands: the daemon stays b
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: the post-run teleprinter first; live tail as its second commit. Awaiting the Architect's verdict in the gate thread (#217); the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: the post-run teleprinter first; live tail as its second commit. Awaiting the Architect's verdict in the gate thread (#217); the machine performs the flip on his word.
 
 ### Consequences
 

@@ -32,7 +32,7 @@ Orgs act or the era is scenery; and the oldest critique of the repo — nobody s
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: rows + one executor. Awaiting the Architect's verdict in #228; the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: rows + one executor. Awaiting the Architect's verdict in #228; the machine performs the flip on his word.
 
 ### Consequences
 

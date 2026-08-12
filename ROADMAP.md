@@ -168,7 +168,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
 | The Cypher protocol — the door's inward swing | D-046 | 🟢 accepted 2026-08-12 (four-step machine + residual scar) | #216 |
-| Allegiance + the influence ledger | D-051 | 🟡 | #227 |
+| Allegiance + the influence ledger | D-051 | 🟢 accepted 2026-08-12 | #227 |
 | Bonds & the Room 303 clause | D-045 | 🟢 accepted 2026-08-12 (price: bond consumed + ledger deposit, will untouched) | #215 |
 
 **DoD:** one run shows `DOOR out` + `DOOR in` + one 303 firing with its ledger deposit · DrawMeter/DoorFlux PASS.
@@ -179,9 +179,9 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| Districts with identity | D-048 | 🟡 | #223 |
-| Missions: templates as data, one executor | D-052 | 🟡 | #228 |
-| The favor economy: orphan insurance | D-053 | 🟡 | #229 |
+| Districts with identity | D-048 | 🟢 accepted 2026-08-12 | #223 |
+| Missions: templates as data, one executor | D-052 | 🟢 accepted 2026-08-12 | #228 |
+| The favor economy: orphan insurance | D-053 | 🟢 accepted 2026-08-12 | #229 |
 
 **DoD:** one operative followed through a full mission, rendered by the reader as narrative — the two wings shake hands in one command.
 
@@ -191,7 +191,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
-| The Truce as a regime + treaty/org scheduler | D-049 | 🟡 | #224 |
+| The Truce as a regime + treaty/org scheduler | D-049 | 🟢 accepted 2026-08-12 | #224 |
 
 **DoD:** a 20,000-tick corridor hold (`TREATY` strain < 1.0 throughout) · a stress-seed amendment via NEGOTIATION without reboot · a chronicle-bearing run replaying digest-identical.
 

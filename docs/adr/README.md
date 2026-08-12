@@ -52,7 +52,7 @@ If you cannot write the Y-statement, the decision is not understood yet.
 1. Take the next D-number; copy [TEMPLATE.md](TEMPLATE.md) to `D-0XX-short-slug.md`.
 2. Open a `decision` issue (the thread), link it in `consulted`.
 3. Fill the record with `status: proposed`; add the row to [../DECISIONS.md](../DECISIONS.md).
-4. Discuss in the thread. The owner's verdict in the thread closes the gate; **the machine then performs the flip** — record status and index emoji together, citing the verdict comment. Never merge 🟡 into code first (Dev1/Ag4).
+4. Discuss in the thread. The owner's verdict in the thread closes the gate; **the machine then performs the flip** — record status, index emoji, and the decision's ROADMAP gate row where it has one, together in one commit, citing the verdict comment. Three mirrors, one edit: a flip that reaches two of them leaves the gate undefined, which is how D-048/D-049/D-051/D-052/D-053 stood accepted in the index and proposed in the roadmap until #907. The flip replaces no text — the pre-verdict leaning stays in the record, labelled as pre-verdict, because the record is an audit trail. Never merge 🟡 into code first (Dev1/Ag4).
 
 ## Asking the right question — the lens catalog (D-035)
 

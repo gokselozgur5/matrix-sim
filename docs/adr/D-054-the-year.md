@@ -34,7 +34,7 @@ The Architect, in session, verbatim: "bu projeye 1 sene boyunca her gün en az 2
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Awaiting the Architect's verdict in #232 on the season arc; each season charters its own gates when its time comes.
+*Recorded before the verdict, kept unedited:* Awaiting the Architect's verdict in #232 on the season arc; each season charters its own gates when its time comes.
 
 **The seasons:** S3 The Heart of the City → The Truce (now–Oct; the four beats already adopted) · S4 The Six Iterations (Oct–Dec; the failed heavens as config-eras — Paradise v1, the Nightmare v2, the cycles; belief-collapse dynamics) · S5 The Real World (Dec–Feb; Zion the settlement, machine city 01, sentinel ecology, the surface) · S6 The Crop (Feb–Apr; the scale ladder 5k → 100k → 1,000,000 minds; LOD generations; metropolis science) · S7 The Analyst (Apr–Jun; the D-036 pocket's Resurrections era: fear/desire A/B, the sheeple loop, modal worlds — a game studio inside the Matrix) · S8 The Sixty Years (Jun–Aug 2027; the decades resolved; the anniversary: a year of chronicle canon; the Parity Ledger closes; "inspired by" becomes "wider than").
 

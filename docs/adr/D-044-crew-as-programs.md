@@ -31,7 +31,7 @@ The repo's history is already mythology: skeptics who REFUTED three phases and w
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: cameo first, sheets where earned. Awaiting the Architect's verdict in the gate thread (#214); the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: cameo first, sheets where earned. Awaiting the Architect's verdict in the gate thread (#214); the machine performs the flip on his word.
 
 ### Consequences
 

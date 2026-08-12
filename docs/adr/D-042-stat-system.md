@@ -33,7 +33,7 @@ Every memorable scene in the films is a CROSS-family contest: a human's evasion 
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: one grammar, four vocabularies. Awaiting the Architect's verdict in the gate thread (#212); the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: one grammar, four vocabularies. Awaiting the Architect's verdict in the gate thread (#212); the machine performs the flip on his word.
 
 ### Consequences
 

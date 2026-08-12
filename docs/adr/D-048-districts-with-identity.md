@@ -32,7 +32,7 @@ The second origin text named the gap: 'adı MxO ama içi engine.' The machinery 
 
 Accepted by the owner's verdict, 2026-08-12, in session — *"hepsine agreed kanka barajı aç"* — all thirteen Season Three gates in one breath, the same word that opened Season Two; recorded in the gate thread.
 
-Leaning: data first, mechanics by declaration. Awaiting the Architect's verdict in #223; the machine performs the flip on his word.
+*Recorded before the verdict, kept unedited:* Leaning: data first, mechanics by declaration. Awaiting the Architect's verdict in #223; the machine performs the flip on his word.
 
 ### Consequences
 
