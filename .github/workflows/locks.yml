@@ -68,3 +68,18 @@ jobs:
           probe OneTrace     'VERDICT CONTRACT_HELD'
           probe CapSentinel  'CAP_BREACHES=0'
           probe ArcBeats     'VERDICT BEATS_IN_ORDER'
+
+      # WHY: tools/ had no runner at all, and #901 is the bug that hides exactly there —
+      # a GNU-only `date -d` idiom, green on this box and dead on the macOS box that is the
+      # only one to ever type the command. This step owns the LINUX half of that unit: the
+      # operator proves the BSD dialect by running it, the runner proves the GNU one, and
+      # the asserted `dialect=gnu` is what stops this from re-proving the same half twice.
+      # Needs no token and no network — it judges the calendar, not the account.
+      - name: tools — balance.sh day arithmetic, GNU dialect (#901)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(bash tools/balance.sh --datecheck)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q '^DATECHECK VERDICT PASS dialect=gnu ' \
+            || { echo "FATAL the runner did not reach a passing GNU-dialect verdict" >&2; exit 1; }
