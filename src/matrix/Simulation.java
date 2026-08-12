@@ -5,6 +5,7 @@ import matrix.core.Config;
 import matrix.core.Digest;
 import matrix.core.DigestCalculator;
 import matrix.core.Director;
+import matrix.core.District;
 import matrix.core.EventBus;
 import matrix.core.EventLog;
 import matrix.core.MetricsCollector;
@@ -200,6 +201,24 @@ public final class Simulation {
                 + (Config.WORLD_W_CM / 100_000.0) + " km x " + (Config.WORLD_H_CM / 100_000.0) + " km");
         world.log(Severity.SYS, "exit nodes online: " + world.places().exits().size()
                 + " phone booths across " + world.places().zones().size() + " zones");
+        // The catalog, said out loud once, over the zones the line above just
+        // counted (#539, D-048). Each row is District.row() verbatim — the
+        // print quotes the catalog, it never re-formats the same facts beside
+        // it, so a row cannot disagree with the object it describes.
+        //
+        // NARRATIVE, not a ninth instrument family. D-020's ECO/ATTN precedent
+        // is additive-grammar for key=value sample lines, and this row is prose
+        // with three figures at the end of it: emitted bare, LineGrammar's own
+        // rule reads DISTRICT as an instrument prefix and LineLint verdicts six
+        // correct lines GRAMMAR_BROKEN. The event log is D-020's first
+        // instrument and the home every other boot fact already uses.
+        //
+        // Costs the stream nothing: the catalog was built by PlaceGraph at
+        // construction from zone names alone, and this loop reads it. Guarded
+        // by probes/DistrictNeutral leg 4, not by this comment.
+        for (District district : world.places().districts()) {
+            world.log(Severity.SYS, district.row());
+        }
         world.log(Severity.SYS, "compute model: " + Config.COMPUTE_MODEL.name()
                 + " — " + Config.COMPUTE_MODEL.desc());
         world.log(Severity.SYS, bonds.line() + " — nobody has mattered to anybody yet");
