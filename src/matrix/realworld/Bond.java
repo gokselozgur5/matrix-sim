@@ -1,5 +1,10 @@
 package matrix.realworld;
 
+import matrix.core.Config;
+import matrix.core.Geo;
+import matrix.core.Severity;
+import matrix.core.World;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -121,6 +126,118 @@ public final class Bond {
     public static final class Registry {
 
         private final List<Bond> edges = new ArrayList<>();
+        private final RealWorld realWorld;
+        private final World world;
+        /** The rotating pair walk's position: which mind, and how far along the ring its partner stands. */
+        private int cursor = 0;
+        private int offset = 1;
+
+        public Registry(RealWorld realWorld, World world) {
+            this.realWorld = realWorld;
+            this.world = world;
+        }
+
+        /**
+         * The heart's tick, driven by the realworld node BEFORE the death
+         * rule runs. Formation is bookkeeping on an accrual window and
+         * nothing else happens off one — the same wheel the acceptance loop
+         * turns on, because a bond is the same kind of slow accounting.
+         */
+        public void tick(long tick) {
+            if (tick % Config.ACCRUE_EVERY_TICKS != 0) {
+                return;
+            }
+            discover();
+        }
+
+        /**
+         * Where an edge comes from — D-045's open point (b), closed here as
+         * a stated rule so the verdict can redirect it in ONE place.
+         *
+         * <p>Two sources were on the table and both derive from state the
+         * world already has, never from a draw. This unit ships EARNED
+         * CO-PRESENCE: two minds whose avatars keep standing near each other
+         * are a candidate pair. The rejected alternative is boot-seeded
+         * affinity — a pure function of the two names, the D-033 fate
+         * precedent, "some people were always going to matter to each other"
+         * — rejected because it makes the warmth of the world a property of
+         * its seed rather than of what happens in it, and because the
+         * commute (#105) already produces real shared rooms the hash can
+         * see. If the verdict prefers the seed, {@link #coPresent} is the
+         * one method that changes.
+         *
+         * <p>Bounded by construction: the walk offers exactly
+         * {@code BOND_SCAN_PAIRS} pairs per window from a rotating cursor
+         * over the pair ring, so every pair in the census is eventually
+         * offered and no window ever costs more than a constant. Zero draws
+         * (D-010): the rng is never consulted, here or anywhere below.
+         */
+        private void discover() {
+            List<Human> minds = realWorld.humans();
+            int n = minds.size();
+            if (n < 2) {
+                return;
+            }
+            for (int k = 0; k < Config.BOND_SCAN_PAIRS; k++) {
+                if (edges.size() >= Config.BOND_MAX_EDGES) {
+                    return;
+                }
+                Human x = minds.get(cursor % n);
+                Human y = minds.get((cursor + offset) % n);
+                step(n);
+                if (x == y || !coPresent(x, y) || between(x, y) != null) {
+                    continue;
+                }
+                Bond bond = new Bond(x, y);
+                edges.add(bond);
+                world.log(Severity.TRACE, "BOND candidate: " + bond.pair()
+                        + " — their paths keep crossing");
+            }
+        }
+
+        /** One step along the pair ring: every mind against every offset, forever, in order. */
+        private void step(int n) {
+            cursor++;
+            if (cursor >= n) {
+                cursor = 0;
+                offset++;
+                if (offset >= n) {
+                    offset = 1;
+                }
+            }
+        }
+
+        /**
+         * The co-presence predicate — the one method open point (b) lives in.
+         * Both minds must be dreaming (an open wire, a living avatar) and
+         * their avatars must stand within {@code BOND_NEAR_CM}. Deliberately
+         * NOT a presence check against the entity list: that walk is O(census)
+         * and this runs on a wheel. The clause's guard pays for presence
+         * because it fires once; the weave cannot afford to.
+         */
+        private boolean coPresent(Human x, Human y) {
+            NeuralLink lx = x.link();
+            NeuralLink ly = y.link();
+            if (lx == null || ly == null || lx.closed() || ly.closed()) {
+                return false;
+            }
+            if (!lx.avatar.alive || !ly.avatar.alive) {
+                return false;
+            }
+            return Geo.within(lx.avatar.xCm(), lx.avatar.yCm(),
+                    ly.avatar.xCm(), ly.avatar.yCm(), Config.BOND_NEAR_CM);
+        }
+
+        /** The edge between these two, either way round, or null. Identity, never names. */
+        Bond between(Human x, Human y) {
+            for (int i = 0; i < edges.size(); i++) {
+                Bond bond = edges.get(i);
+                if ((bond.a == x && bond.b == y) || (bond.a == y && bond.b == x)) {
+                    return bond;
+                }
+            }
+            return null;
+        }
 
         /** The ordered walk. Read-only: nobody outside mints or reorders edges. */
         public List<Bond> edges() {

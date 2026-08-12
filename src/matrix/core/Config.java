@@ -128,5 +128,33 @@ public final class Config {
     // pick is unbiased as well as bit-stable.
     public static final int LOD_AGG_SPECIES_BOUND = 27_720;
 
+    // ── The heart (D-045, gate #215) ───────────────────────────────────────
+    // Bonds are EARNED, never drawn: a candidate pair is two minds whose
+    // avatars keep standing near each other on accrual windows. The knobs
+    // below are the whole formation story, and retuning any of them is a
+    // commit (D-006) — not a flag, not an argument.
+    /**
+     * Co-presence radius. 20 m: close enough that the city put them in the
+     * same room, wide enough that two commuters who arrive at the same
+     * district count as together (COMMUTE_ARRIVE_CM is 500, so a shared
+     * destination lands well inside this). Not the contact radius — an
+     * Agent's kill reach is 1 m and love is not a collision.
+     */
+    public static final int BOND_NEAR_CM = 2_000;
+    /**
+     * Bounded discovery (D-018/D-027): pairs OFFERED per accrual window. The
+     * scan is a rotating walk of the pair space, so cost per window is this
+     * constant and never a function of the census — a candidate set that
+     * grows with the square of the population is a performance bug wearing a
+     * love story.
+     */
+    public static final int BOND_SCAN_PAIRS = 24;
+    /**
+     * The book's ceiling. Past this the world stops noticing new pairs: the
+     * registry is walked by the digest and by the clause's guard, and an
+     * unbounded book would make both unbounded.
+     */
+    public static final int BOND_MAX_EDGES = 64;
+
     private Config() {}
 }

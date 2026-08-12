@@ -62,7 +62,7 @@ public final class Simulation {
      * is another crew's file this wave — and handed to the realworld node,
      * which is the only thing that drives it.
      */
-    private final matrix.realworld.Bond.Registry bonds = new matrix.realworld.Bond.Registry();
+    private final matrix.realworld.Bond.Registry bonds;
     private final Zion zion;
     private final Source source;
     private final matrix.machine.SubstrateBudget substrate;
@@ -104,6 +104,7 @@ public final class Simulation {
         PlaceGraph places = new PlaceGraph(Config.WORLD_W_CM, Config.WORLD_H_CM);
         this.world = new World(rng, bus, places);
         this.realWorld = new RealWorld(world);
+        this.bonds = new matrix.realworld.Bond.Registry(realWorld, world);
         this.zion = new Zion(world);
         this.source = new Source(world);
         this.metrics = new MetricsCollector(world);
@@ -133,7 +134,7 @@ public final class Simulation {
         // The third node is the fence event: nodes.add, addition not refactor.
         this.nodes = List.of(
                 new MachineSystem(world, director, source, substrate, pluggedPods),
-                new RealWorldSystem(realWorld),
+                new RealWorldSystem(realWorld, bonds),
                 new ZionSystem(zion));
         world.flush();
         if (followName != null) {
