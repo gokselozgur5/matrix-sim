@@ -150,6 +150,11 @@ public final class SpatialHash {
         return farMovers;
     }
 
+    /** How many entities this tick's rings must sweep linearly — the census World keeps (#825). */
+    int farMoverCount() {
+        return farMovers.size();
+    }
+
     int cellIndexOf(int xCm, int yCm) {
         return bucketIndex(xCm, yCm);
     }

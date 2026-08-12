@@ -87,6 +87,7 @@ table() {
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
+  judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=18 breaks=0'  "$TICKS"
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
