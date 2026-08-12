@@ -476,17 +476,24 @@ public final class Simulation {
             emit(substrate.line(world.regions().capGlitches()));
         }
         if (t % Config.ZION_EVERY_TICKS == 0) {
-            // #118: the root hands zion's open links to the collector (D-012) and
-            // the trace suffix rides the ZION line — present exactly when the
+            // #118: the root hands zion's pirate BOARD to the collector (D-012)
+            // and the trace suffix rides the ZION line — present exactly when the
             // metric is MEASURABLE, which is not the same thing as links>0 (#374).
+            // The suffix follows BODIES; links= on the same line follows WIRES,
+            // counted straight off the rigs. They are two facts, and they disagree
+            // at both ends of a session by design. At the open, a session opened in
+            // zion's slot (the LAST node) queues its spawn behind this tick's flush,
+            // so that tick prints links>0 with no suffix. At the close, a wire cut
+            // in the same slot leaves its body standing until the next flush, so the
+            // board still carries a pirate links= has already dropped — which is the
+            // whole point of handing over the board and not the open subset (#808):
+            // that body is a visitor, and the resident baseline must not absorb it.
             // The collector measures against the world it can see, so it keeps only
-            // pirate avatars the world already holds: a session opened in zion's
-            // slot (the LAST node) queues its spawns behind this tick's flush, so
-            // that tick prints links>0 with no suffix — once, at the open. It also
-            // needs live agents and resident reds, or the mean and its baseline
-            // have no denominator. Absent otherwise, the ECO line's short form.
-            // The rule is stated in full on MetricsCollector.traceSuffix.
-            emit(zion.zionLine(t) + metrics.traceSuffix(zion.openPirateAvatars()));
+            // board bodies the world already holds, and it needs live agents and
+            // resident reds or the mean and its baseline have no denominator. Absent
+            // otherwise, the ECO line's short form. The rule is stated in full on
+            // MetricsCollector.traceSuffix.
+            emit(zion.zionLine(t) + metrics.traceSuffix(zion.pirateBoard()));
         }
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
