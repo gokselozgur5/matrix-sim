@@ -24,11 +24,18 @@ import java.util.Locale;
  */
 public final class Zion {
     /**
-     * The hull roster (#116): names in boot order, a fixed array — the
-     * Nth hull ever laid down bears the Nth name, never a draw. The
-     * Hammer waits past {@code FLEET_MAX} for a later floor.
+     * The named keels (#116): names in boot order, a fixed array — the Nth
+     * hull ever laid down bears the Nth name, never a draw. The Hammer waits
+     * past {@code FLEET_MAX} for a later floor. This is a list of names, not
+     * a ceiling on keels: {@link #hullName} owns what a hull is called, and
+     * it does not stop where the array does.
      */
     private static final String[] ROSTER = {"the Nebuchadnezzar", "the Logos", "the Hammer"};
+
+    /** The generation mark's table — ASCII, locale-free, greedy from the top. */
+    private static final int[] MARK_VALUES = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+    private static final String[] MARK_SIGNS = {
+            "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
 
     private final List<Human> census = new ArrayList<>();
     /** Index-aligned with the census: where each citizen came from ("treaty" today; #121 adds the Kid's own tag). */
@@ -75,11 +82,10 @@ public final class Zion {
         }
         while (afloat() < Config.FLEET_MAX
                 && livingCensus() >= Config.RIG_CAPACITY * (afloat() + 1)) {
-            Hovercraft hull = new Hovercraft(ROSTER[fleet.size()]);
+            int laydown = fleet.size();
+            Hovercraft hull = new Hovercraft(hullName(laydown));
             fleet.add(hull);
-            world.log(Severity.FATE, fleet.size() == 1
-                    ? "the first hull: " + hull.name + " joins the fleet — the census learns to fly"
-                    : "a second hull: " + hull.name + " joins the fleet — the census can man two boards");
+            world.log(Severity.FATE, laydownLine(laydown, hull.name));
         }
         for (Hovercraft ship : fleet) {
             ship.tick(world);
@@ -95,6 +101,69 @@ public final class Zion {
                 break;
             }
         }
+    }
+
+    /**
+     * What the Nth hull ever laid down is called (#806), N zero-based and
+     * unbounded. The laydown ordinal counts the fallen, because the registry
+     * does — #202's ruling, kept: liberation is not deletion and neither is
+     * a sinking. The laydown GATE counts only the afloat (#206, M1). Those
+     * two numbers were the same number once and the roster index quietly
+     * assumed they always would be; the third loss proved otherwise with an
+     * {@code ArrayIndexOutOfBoundsException}.
+     *
+     * <p>Through the roster this IS the roster, in boot order: same three
+     * hulls, same three names, same film. Past it the city does what fleets
+     * have always done with a name whose bearer is gone — lay the keel again
+     * and mark the generation: {@code the Nebuchadnezzar II} is the fourth
+     * keel, {@code the Logos II} the fifth. That is the rule, stated, not a
+     * silent modulo: the mark is part of the name, so no two hulls ever wear
+     * the same string, the fallen keep the name they went down under, and
+     * any line in the log reads back to exactly one ordinal.
+     *
+     * <p>The invariant is now structural rather than remembered: this
+     * function is TOTAL over the ordinals, so there is no index left for the
+     * array to refuse. Public because an invariant nobody can read is the
+     * thing that broke here — a bench row can walk the ordinals and check
+     * the rule without booting a universe (#832).
+     */
+    public static String hullName(int laydown) {
+        String named = ROSTER[laydown % ROSTER.length];
+        int generation = 1 + laydown / ROSTER.length;
+        return generation == 1 ? named : named + " " + generationMark(generation);
+    }
+
+    /**
+     * How the city announces a keel (#806, the same block's second lie): by
+     * its ORDINAL, which is what the sentence always claimed to be saying.
+     * "A second hull" was printed over the third one — witnessed at seed 42,
+     * t=021560, over the Hammer — and every hull after it would have said
+     * the same. The instrument was not lying about a count it printed; it
+     * was lying about a count it narrated. Past the second, a laydown can
+     * only happen because a hull was lost — the gate is
+     * {@code afloat() < FLEET_MAX} — so the line says that, instead of
+     * counting boards it is not adding.
+     */
+    private static String laydownLine(int laydown, String name) {
+        return switch (laydown) {
+            case 0 -> "the first hull: " + name + " joins the fleet — the census learns to fly";
+            case 1 -> "a second hull: " + name + " joins the fleet — the census can man two boards";
+            default -> "hull number " + (laydown + 1) + ": " + name
+                    + " joins the fleet — the census replaces what it lost";
+        };
+    }
+
+    /** The generation mark: greedy Roman, so every generation a census could reach has a name. */
+    private static String generationMark(int generation) {
+        StringBuilder mark = new StringBuilder();
+        int n = generation;
+        for (int i = 0; i < MARK_VALUES.length; i++) {
+            while (n >= MARK_VALUES[i]) {
+                n -= MARK_VALUES[i];
+                mark.append(MARK_SIGNS[i]);
+            }
+        }
+        return mark.toString();
     }
 
     /**
