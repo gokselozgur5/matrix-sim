@@ -110,6 +110,8 @@ table() {
   # bound is missed), and `run` fails a row on a nonzero exit.
   judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
   run   SheetBench   --avalanche
+  judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
+  judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
