@@ -1,5 +1,6 @@
 package matrix.realworld;
 
+import matrix.core.Config;
 import matrix.core.Severity;
 import matrix.core.World;
 import matrix.core.WorldEvent;
@@ -17,25 +18,6 @@ public final class RealWorld {
 
     /** One banked liberation: who walked, and through which door — "treaty" (the open door) or "selfsub" (D-033). */
     public record Liberation(Human human, String origin) {}
-
-    /**
-     * The inward door's propensity family (D-046 step one, #335). Parked on
-     * this class rather than in {@code core.Config} on purpose and out loud:
-     * D-006 wants every tunable in one file, and these three belong there —
-     * {@code core/} is another crew's floor this season, so they wait here
-     * with a note instead of being smuggled in. Folding them into Config is
-     * its own unit.
-     *
-     * <p>The arithmetic, stated once: a freed mind's petition threshold is
-     * {@code PETITION_BASE + [0, PETITION_JITTER)} — 48..143 — and one grief
-     * moves an account by {@code PETITION_GRIEF_SPIKE} = 24, so the cheapest
-     * mind in the city needs two funerals and the dearest needs six. Nobody
-     * scripts Cypher: the propensity is birth data, the griefs are the
-     * world's, and no draw is spent on either.
-     */
-    public static final long PETITION_BASE = 48;
-    public static final int PETITION_JITTER = 96;
-    public static final long PETITION_GRIEF_SPIKE = 24;
 
     /**
      * One freed mind's petition account — D-033 read backwards, per the #216
@@ -237,7 +219,8 @@ public final class RealWorld {
      * a citizen's brain going dark, whatever killed it — a hull sunk with
      * crew aboard, a wire cut on a slow exit, a trace completed. Each death
      * spikes the account of every living freed mind by
-     * {@code PETITION_GRIEF_SPIKE}. The petition is CAUSED, not sampled.
+     * {@link Config#PETITION_GRIEF_SPIKE}. The petition is CAUSED, not
+     * sampled.
      *
      * <p>Eligibility is D-046's open point (a), and this unit answers only
      * the half the gate settled: the CENSUS lane. The root offers the city's
@@ -262,7 +245,7 @@ public final class RealWorld {
             }
         }
         if (griefs > 0) {
-            long spike = griefs * PETITION_GRIEF_SPIKE;
+            long spike = griefs * Config.PETITION_GRIEF_SPIKE;
             for (Petition p : petitions) {
                 if (p.living) {
                     p.account += spike;
@@ -305,7 +288,7 @@ public final class RealWorld {
         h ^= h >>> 13;
         h *= 0xC2B2AE35;
         h ^= h >>> 16;
-        return PETITION_BASE + Math.floorMod(h, PETITION_JITTER);
+        return Config.PETITION_BASE + Math.floorMod(h, Config.PETITION_JITTER);
     }
 
     /** Identity membership, not equals — names are not unique, and the roster holds the very objects the census walks. */

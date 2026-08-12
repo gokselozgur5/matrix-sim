@@ -215,5 +215,40 @@ public final class Config {
      */
     public static final long ROOM_303_DEPOSIT = 4_000;
 
+    // ── The inward door (D-046, gate #216) ─────────────────────────────────
+    // The door that opens the other way, priced. These four shipped on the
+    // classes that read them because core/ belonged to another crew while
+    // Season Three built the door; #862 brings them home. The values are the
+    // values they were and the chain is byte-identical across the move — a
+    // constant that moves when it changes files was never really a constant.
+    // What a relocation DOES move is the genesis fingerprint, which hashes
+    // this file and only this file: recordings cut before the move are
+    // refused as foreign physics by a build after it, and the universe they
+    // recorded is the same universe.
+    /**
+     * The petition threshold's floor, and with {@link #PETITION_JITTER} its
+     * span (#335): a freed mind's breaking point is
+     * {@code PETITION_BASE + [0, PETITION_JITTER)} — 48..143 — derived from
+     * the NAME and never drawn, the D-033 KID precedent read backwards.
+     * Nobody scripts Cypher: the propensity is birth data.
+     */
+    public static final long PETITION_BASE = 48;
+    /** The span above {@link #PETITION_BASE} the name selects within (#335). */
+    public static final int PETITION_JITTER = 96;
+    /**
+     * What one death costs every living freed mind's account (#335). At 24,
+     * the cheapest mind in the city needs two funerals and the dearest six —
+     * the griefs are the world's own, and no draw is spent on either.
+     */
+    public static final long PETITION_GRIEF_SPIKE = 24;
+    /**
+     * The treaty's reinsertion clause (#338): grants per run, until D-049's
+     * regime gives the treaty its own text. Two is not a placeholder — the
+     * whole census at canonical scale is six citizens, and a quota that
+     * could take them all is not a bargain, it is a harvest, and the door
+     * would stop being a door.
+     */
+    public static final int REINSERTION_QUOTA = 2;
+
     private Config() {}
 }
