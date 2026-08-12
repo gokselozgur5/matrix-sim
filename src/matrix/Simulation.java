@@ -293,6 +293,17 @@ public final class Simulation {
         births.add(birth);
         if (chronos != null) {
             chronos.birth(birth);
+            // The record's own echo, in the run's own stream (#553): where a
+            // recording is being written, the operator watching stdout sees
+            // exactly what the chronos file is receiving, at the same tick,
+            // in the record's own field order. The gate is the recorder for
+            // one reason — with no record there is nothing to echo, and a
+            // recorder-free run stays byte-identical to a pre-BIRTH main.
+            // When the lane flag lands (#526/#543) the gate widens to the
+            // enabled lane and the registry catches up (#833); the line's
+            // shape does not move, because field order is the contract.
+            emit("BIRTH tick=" + birth.tick() + " name=\"" + birth.name()
+                    + "\" family=" + birth.family());
         }
     }
 
