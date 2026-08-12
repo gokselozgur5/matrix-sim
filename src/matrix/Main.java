@@ -507,8 +507,8 @@ public final class Main {
                   --neutral           run the control group: the legacy path, no character
                                       coupling, no new token, no banner (D-042 ruling, #212).
                                       Permanent, not a migration step — rides with every other
-                                      flag, and its chain is CI-pinned to the sealed pre-v6
-                                      baseline in ci/fixtures/neutral-baseline.chain
+                                      flag, and its chain is CI-pinned to the sealed baseline
+                                      in ci/fixtures/neutral-baseline.chain
                   --selftest          in-process digest double-run; exit 0 iff chains match.
                                       Honors --scale, and since #518 says so: the verdict
                                       carries scale= and entities= at any dial but 1, so a
