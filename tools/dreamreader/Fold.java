@@ -28,10 +28,10 @@ import java.util.Locale;
  * <h2>The output is facts, not prose</h2>
  *
  * The fold emits {@link Fact}s: a movement, a kind, a tick and the record's own
- * strings and numbers. It never writes a sentence. That boundary is what lets a
- * voice be swapped or audited later — and what lets a diff, rather than a
- * careful reader, catch a narrator that quietly rounds a distance or drops a
- * tick.
+ * strings and numbers. It never writes a sentence — not one string in this file
+ * is addressed to a human. That boundary is what lets a voice be swapped or
+ * audited ({@link Voice}), and what lets a diff, rather than a careful reader,
+ * catch a narrator that quietly rounds a distance or drops a tick.
  *
  * <h2>No invented facts</h2>
  *
@@ -90,54 +90,6 @@ final class Fold {
 
     private void add(String movement, String kind, long tick, String... args) {
         facts.add(Fact.of(movement, kind, tick, args));
-    }
-
-    /** The four movements, in order, with the name the page gives each. */
-    static String title(String movement) {
-        return switch (movement) {
-            case I -> "THE SLEEPER'S MORNING";
-            case II -> "THE WARS SEEN FROM A WINDOW";
-            case III -> "THE DOOR, IF THEY WALKED";
-            case IV -> "THE DARK, IF THE WIRE CUT";
-            default -> movement;
-        };
-    }
-
-    /**
-     * The fold stated flatly: every fact under its movement, one per line.
-     * This is not a debug mode — it is the page a machine should read, and it
-     * is what a narrator will later have to render without changing a single
-     * value on it.
-     */
-    static String plain(List<Fact> facts) {
-        StringBuilder out = new StringBuilder(1 << 14);
-        Fact subject = facts.get(0);
-        out.append("DREAM READER — the fold, unvoiced\n");
-        out.append("pilot: ").append(subject.arg(0))
-                .append(" · resolved: ")
-                .append(subject.arg(1).isEmpty() ? "(nobody)" : subject.arg(1))
-                .append(" · seed ").append(subject.arg(2))
-                .append(" · ticks ").append(subject.arg(3)).append("\n\n");
-        String movement = "";
-        for (Fact f : facts) {
-            if (f.movement().equals("HEAD")) {
-                continue;
-            }
-            if (!f.movement().equals(movement)) {
-                movement = f.movement();
-                out.append(movement.equals("END") ? "END.\n"
-                        : movement + ". " + title(movement) + "\n");
-            }
-            out.append("  ").append(f.kind());
-            if (f.tick() >= 0) {
-                out.append(" t=").append(f.tick());
-            }
-            for (String a : f.args()) {
-                out.append(" | ").append(a);
-            }
-            out.append('\n');
-        }
-        return out.toString();
     }
 
     // ------------------------------------------------------------------ run
