@@ -361,18 +361,6 @@ public final class Zion {
         return out;
     }
 
-    /**
-     * The caller's name for {@link #pirateBoard}, kept because the caller is
-     * not this crew's file to edit (#808). {@code Simulation.tickOnce} says
-     * {@code zion.openPirateAvatars()}; the set it names has been the whole
-     * board since the exclusion moved off the open subset, so the name is
-     * stale by exactly one word and the rename is #866. Nothing new should
-     * call it.
-     */
-    public List<matrix.entities.Avatar> openPirateAvatars() {
-        return pirateBoard();
-    }
-
     public List<Human> census() {
         return census;
     }
