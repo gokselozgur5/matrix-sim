@@ -21,7 +21,12 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    byte-compares, and a probe that reaches for wall-clock, a default locale, a heap
    address or an unordered iteration fails the sweep on the line that moved.
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
-   `src/` must build and `--selftest` must pass with this directory deleted.
+   `src/` must build and `--selftest` must pass with this directory deleted. "With this
+   directory deleted" is a promise the bench keeps rather than assumes:
+   `probes/bench.sh --without-probes` extracts `git archive HEAD` into a throwaway tree,
+   removes `probes/` from **that** copy, builds `src/` and selftests there, and prints
+   `VERDICT BENCH_STANDS_ALONE` or `VERDICT BENCH_ENTANGLED`. It never deletes anything
+   in the tree you are standing in — clause 1 binds the check as hard as it binds a probe.
 6. **Pinned to a SHA.** A probe run that is *evidence* — anything quoted in a PR,
    a verdict, an ADR errata or a skeptic round — is taken from a `git archive <sha>`
    copy, never from a shared working tree that may move under it. This is Ag9's
@@ -68,6 +73,7 @@ One command runs every probe and prints one verdict:
 probes/bench.sh            # 6,000 ticks each, compile included
 probes/bench.sh --list     # the contract table, run nothing
 probes/bench.sh --twice    # the sweep, plus the determinism pass below
+probes/bench.sh --without-probes   # clause 5: does src/ still stand alone?
 ```
 
 The contract table lives in that script, one row per probe — `judge <Class>

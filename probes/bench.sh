@@ -6,6 +6,9 @@
 #        probes/bench.sh --no-build     sweep without recompiling
 #        probes/bench.sh --twice        sweep, then run each probe a second
 #                                       time and byte-compare the two outputs
+#        probes/bench.sh --without-probes
+#                                       build src/ and selftest with probes/
+#                                       deleted, in a throwaway copy of HEAD
 #
 # The bench was fifteen programs invoked by hand while CI judged four of them,
 # with the expected verdict lines inlined in a workflow file most contributors
@@ -30,11 +33,13 @@ TICKS=6000
 BUILD=yes
 LIST=no
 TWICE=no
+WITHOUT=no
 for arg in "$@"; do
   case "$arg" in
     --list) LIST=yes ;;
     --no-build) BUILD=no ;;
     --twice) TWICE=yes ;;
+    --without-probes) WITHOUT=yes ;;
     ''|*[!0-9]*) echo "FATAL unknown argument: $arg" >&2; exit 2 ;;
     *) TICKS="$arg" ;;
   esac
@@ -247,10 +252,92 @@ moved() {
   exec 3<&- 4<&-
 }
 
+# Clause 5 of the probe contract, instrumented (#818):
+#
+#   Outside the build. Nothing under probes/ is compiled into the daemon.
+#   src/ must build and --selftest must pass with this directory deleted.
+#
+# Until now that clause was enforced by nobody having broken it. CI compiles
+# src/, then compiles probes/ against it, and never once asks whether the first
+# step still stands when the second directory is not there.
+#
+# The instrument is the clause read literally: take a copy of the tree, delete
+# probes/ from the COPY, build src/ and selftest there. Two properties matter
+# more than the three commands. First, the copy comes from `git archive HEAD`,
+# so the check judges a pinned tree (clause 6) and never the working one —
+# deleting probes/ in place to test whether probes/ is needed is how you lose
+# an afternoon's uncommitted work to a lock. Second, everything happens under
+# mktemp: clause 1 forbids the bench from mutating the tree it is pointed at,
+# and a check that breaks the contract it is checking is not a check.
+#
+# A tree with no .git — the pinned form the README prescribes for evidence
+# runs, which is an extracted tarball — cannot be archived. Rather than fail
+# there, the copy falls back to the worktree and says so on its own line, so
+# the reader always knows which tree reached the verdict.
+clause5() {
+  local work tmp from sha started rc log builds self verdict
+  started=$(date +%s)
+  tmp="${TMPDIR:-/tmp}"
+  work="$(mktemp -d "${tmp%/}/bench-clause5.XXXXXX")"
+  if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    from=archive
+    sha="$(git rev-parse HEAD)"
+    git archive HEAD | tar -x -C "$work"
+  else
+    from=worktree
+    sha='-'
+    tar -cf - --exclude './probes' --exclude './probes/*' \
+              --exclude './out' --exclude './.git' --exclude './.git/*' . \
+      | tar -xf - -C "$work"
+  fi
+  rm -rf "$work/probes"
+
+  printf 'CLAUSE5 source=%s sha=%s probes_present=%s ticks=%s tree=%s\n' \
+    "$from" "$sha" "$([ -e "$work/probes" ] && echo yes || echo no)" \
+    "$TICKS" "$work"
+
+  builds=no
+  self='-'
+  log="$work/clause5.log"
+  set +e
+  ( cd "$work" && javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java') ) >"$log" 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" -eq 0 ]; then
+    builds=yes
+    set +e
+    ( cd "$work" && java -cp out matrix.Main --selftest --ticks "$TICKS" ) >>"$log" 2>&1
+    rc=$?
+    set -e
+    # Exit code AND the greppable line, the same pair CI's lock 2 trusts: a
+    # selftest that exits 0 without printing its verdict has not passed.
+    if [ "$rc" -eq 0 ] && grep -q '^SELFTEST OK ' "$log"; then self=OK; else self=FAIL; fi
+  fi
+
+  if [ "$builds" = yes ] && [ "$self" = OK ]; then
+    verdict=BENCH_STANDS_ALONE
+  else
+    verdict=BENCH_ENTANGLED
+    echo "--- the deleted-probes tree said: ---"
+    tail -20 "$log"
+    echo "--- tree kept for reading: $work ---"
+  fi
+  printf 'CLAUSE5 secs=%s\n' "$(($(date +%s) - started))"
+  printf 'BENCH clause5 src_builds=%s selftest=%s VERDICT %s\n' "$builds" "$self" "$verdict"
+  [ "$verdict" = BENCH_STANDS_ALONE ] || return 1
+  rm -rf "$work"
+}
+
 if [ "$LIST" = yes ]; then
   table
   echo "CONTRACT probes=$PROBES judged=$JUDGED ticks=$TICKS"
   exit 0
+fi
+
+# The clause-5 check is its own errand: it builds a different tree from the one
+# the sweep builds, and it runs no probe. It answers alone.
+if [ "$WITHOUT" = yes ]; then
+  if clause5; then exit 0; else exit 1; fi
 fi
 
 SWEEP_START=$(date +%s)
