@@ -27,6 +27,30 @@ public final class Hovercraft {
     /** The mission clock's positions. LOST is terminal — no arithmetic leads back out of it. */
     public enum MissionState { DOCKED, TRANSIT, ON_STATION, RETURNING, LOST }
 
+    /**
+     * The ship's own ceiling on the hold (#809). #117 spent this clock's
+     * only bound on a branch this class does not own — the rig's timeout
+     * cut — and then claimed in prose that the bound holds: <em>"the hold
+     * is bounded by the timeout, so the mission clock stays arithmetic."</em>
+     * #206 then gave that cut a presence gate, correctly: a wire whose
+     * avatar is worn by Smith is not the rig's to cut. Each is right on its
+     * own; together they turned the exit condition into "some other class
+     * managed to act this tick", and when it cannot, the hull holds station
+     * with its crew and its citizens aboard — no BAD line, no FATE line, no
+     * instrument moving. Measured at seed 42 with one wire deferred: 1,963
+     * watches of hold against a bound advertised as 200.
+     *
+     * <p>So the ship keeps its own clock. The rig gets its whole promise —
+     * {@code RECALL_TIMEOUT_TICKS} watches to settle every wire — and then
+     * the same again as grace for the ones it had to defer. Past that the
+     * hold is not a sprint any more, it is a fault, and a fault is no reason
+     * to strand a hull: the ship turns for home and SAYS what it is leaving
+     * on the board. Derived from the rig's own knob, deliberately, rather
+     * than adding a knob: it cannot fire before the timeout cut has had its
+     * full run, so no run that the rig can settle ever moves.
+     */
+    private static final int HOLD_CEILING_TICKS = 2 * Config.RECALL_TIMEOUT_TICKS;
+
     public final String name;
     private final List<Human> crew = new ArrayList<>();
     private final BroadcastRig rig = new BroadcastRig();
@@ -67,11 +91,12 @@ public final class Hovercraft {
      * neither does the sprint. Arrival opens the session and jacks the
      * crew in, capacity-capped. Budget exhaustion issues the recall
      * order — since #117 an order, not a lift: the ship HOLDS STATION
-     * while the crew sprint for booths, and turns for home only when
-     * every channel has closed, clean or cut (the rig's timeout bounds
-     * the hold at {@code RECALL_TIMEOUT_TICKS} watches, so the clock
-     * stays arithmetic). Docking releases the crew to the census
-     * rotation.
+     * while the crew sprint for booths, and turns for home when every
+     * channel has closed, clean or cut — or when its OWN hold ceiling
+     * expires, whichever comes first (#809). The second exit is what makes
+     * the clock arithmetic; the first one alone never did, because it is
+     * another class's number and that class may rightly decline to move
+     * it. Docking releases the crew to the census rotation.
      */
     public void tick(World world) {
         rig.watch(world);
@@ -98,6 +123,16 @@ public final class Hovercraft {
                     state = MissionState.RETURNING;
                     ticksInState = 0;
                     world.log(Severity.SYS, name + " turns for home — every channel closed, one way or the other");
+                } else if (++ticksInState >= HOLD_CEILING_TICKS) {
+                    // The hold ends on this ship's arithmetic, whatever the
+                    // board can or cannot do (#809). The debt stays the
+                    // rig's: the board keeps every unsettled wire and cuts
+                    // it the moment the world holds that avatar again.
+                    state = MissionState.RETURNING;
+                    ticksInState = 0;
+                    world.log(Severity.SYS, name + " turns for home on its own clock — "
+                            + rig.openLinks() + " wires still open, " + rig.deferred(world)
+                            + " beyond the board's reach; the hold is over, the debt is not");
                 }
             }
             case RETURNING -> {
