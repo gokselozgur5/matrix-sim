@@ -85,9 +85,7 @@ public final class Zion {
             int laydown = fleet.size();
             Hovercraft hull = new Hovercraft(hullName(laydown));
             fleet.add(hull);
-            world.log(Severity.FATE, laydown == 0
-                    ? "the first hull: " + hull.name + " joins the fleet — the census learns to fly"
-                    : "a second hull: " + hull.name + " joins the fleet — the census can man two boards");
+            world.log(Severity.FATE, laydownLine(laydown, hull.name));
         }
         for (Hovercraft ship : fleet) {
             ship.tick(world);
@@ -133,6 +131,26 @@ public final class Zion {
         String named = ROSTER[laydown % ROSTER.length];
         int generation = 1 + laydown / ROSTER.length;
         return generation == 1 ? named : named + " " + generationMark(generation);
+    }
+
+    /**
+     * How the city announces a keel (#806, the same block's second lie): by
+     * its ORDINAL, which is what the sentence always claimed to be saying.
+     * "A second hull" was printed over the third one — witnessed at seed 42,
+     * t=021560, over the Hammer — and every hull after it would have said
+     * the same. The instrument was not lying about a count it printed; it
+     * was lying about a count it narrated. Past the second, a laydown can
+     * only happen because a hull was lost — the gate is
+     * {@code afloat() < FLEET_MAX} — so the line says that, instead of
+     * counting boards it is not adding.
+     */
+    private static String laydownLine(int laydown, String name) {
+        return switch (laydown) {
+            case 0 -> "the first hull: " + name + " joins the fleet — the census learns to fly";
+            case 1 -> "a second hull: " + name + " joins the fleet — the census can man two boards";
+            default -> "hull number " + (laydown + 1) + ": " + name
+                    + " joins the fleet — the census replaces what it lost";
+        };
     }
 
     /** The generation mark: greedy Roman, so every generation a census could reach has a name. */
