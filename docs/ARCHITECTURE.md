@@ -311,6 +311,49 @@ And the chapter obeys four laws:
 
 ---
 
+### Entry 2 — the beat drift table (standing, appended per recorded commit)
+
+**The question.** Is the film's timing drifting, merge by merge?
+
+**The command.**
+
+```sh
+java -cp out:probes/out CensusBeatDrift 42,7 6000 --band 200 --baseline "<the row above>"
+```
+
+A row is recorded at a tree pinned by `git archive <sha>`, which has no `.git` to ask, so a pinned row stamps itself with `--sha <short>`.
+
+**The sample.** Seeds 42 and 7 — the repo's two standard universes, plural by design so a drift that is really a one-universe accident cannot masquerade as a systemic one — 6,000 ticks each, one row per recorded commit. The beats are D-036's eight, extracted by the same sequential scan `ArcBeats` uses, so the recorded ticks are the ticks CI's gate actually saw.
+
+**The table.** Newest commit last, because a drift table is read downward.
+
+| commit | seed | birth | refusal | overflow | flatline | peace | reboot | door | second_birth |
+|---|---|---|---|---|---|---|---|---|---|
+| `2b49550` (v3.0.0) | 42 | 1289 | 1525 | 4284 | 4284 | 4304 | 4324 | 4324 | 5249 |
+| `2b49550` (v3.0.0) | 7 | 1289 | 1525 | 3334 | 3334 | 3354 | 3374 | 3374 | 4299 |
+| `62e12ac` (#200 merged) | 42 | 1289 | 1525 | 4302 | 4302 | 4322 | 4342 | 4342 | 5269 |
+| `62e12ac` (#200 merged) | 7 | 1289 | 1525 | 3215 | 3215 | 3235 | 3255 | 3255 | 4239 |
+| `ca8ed5e` (#222 merged) | 42 | 1299 | 1525 | 4290 | 4290 | 4310 | 4330 | 4330 | 5239 |
+| `ca8ed5e` (#222 merged) | 7 | 1259 | 1525 | 3707 | 3707 | 3727 | 3747 | 3747 | 4659 |
+| `0cad45b` (main) | 42 | 1299 | 1525 | 4290 | 4290 | 4310 | 4330 | 4330 | 5239 |
+| `0cad45b` (main) | 7 | 1259 | 1525 | 3707 | 3707 | 3727 | 3747 | 3747 | 4659 |
+
+Per-step maxima, at a declared band of **200 ticks**:
+
+| step | seed 42 | seed 7 | verdict |
+|---|---|---|---|
+| `2b49550` → `62e12ac` | 20 | 119 | `DRIFT_WITHIN_BAND` |
+| `62e12ac` → `ca8ed5e` | 30 | **492** | **`DRIFT_FLAGGED`** — overflow, flatline, peace, reboot, door all +492; second birth +420 |
+| `ca8ed5e` → `0cad45b` | 0 | 0 | `DRIFT_WITHIN_BAND` — a whole stretch of merges, timing-neutral |
+
+**The distribution.** `refusal` has not moved a single tick in the repo's entire history: 1525 in every row, both seeds. Everything downstream of the overflow has moved in every declared break, and the moves are **rigid** — at #222, seed 7's overflow, flatline, peace, reboot and door all slid by exactly +492 together, which is the signature of a cascade that started later rather than a finale that runs differently. Second birth slid +420, less than the block, so the post-reboot leg absorbed 72 ticks of the shift.
+
+What this table does **not** license: two seeds is not a distribution, and `DRIFT_WITHIN_BAND` at n=2 means "neither of two universes moved", never "the film is stable". The 200-tick band is a **declared convention, not a measured tolerance** — nothing here establishes that 200 is the right number, only that it is the number this table was judged against, stated before the rows were read. And four commits out of hundreds is a sparse sample of the repo's history: the table can prove a specific step moved the film, and cannot prove any step did not, because the steps between rows were never measured.
+
+**The stamp.** 2026-08-12, v3.0 · rows measured at four pinned trees; `0cad45b` is main at the time of writing.
+
+---
+
 ### Entry 1 — the first century (standing)
 
 **The question.** Across the multiverse, how common is the film — and does any universe take the Architect's emergency reload?
