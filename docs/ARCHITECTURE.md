@@ -309,6 +309,73 @@ And the chapter obeys four laws:
 3. **Part five is a limit, not a summary.** D-027's *measured, never promised* applied to statistics: a fraction is reported with the interval its sample supports, and the sentence the sample cannot carry is named in the entry rather than left for a reader to infer.
 4. **No sixth document.** No `docs/CENSUS.md`, no `journal/`, no per-sweep file. The fence is checked with the entry: `git ls-files '*.md' | grep -vE '^docs/adr/|^tools/|^probes/|^\.github/' | wc -l` must print **6**.
 
+### The re-verdict protocol — what a census owes a declared digest move
+
+The digest ritual answers *did the world change?*. It was never designed to answer *did the distribution change?* — and a declared move that breaks nothing still re-rolls every universe's war, because the cascade rides draws. Without a procedure, someone remembers to rerun `SeedAtlas` or nobody does, and the chapter quietly describes a multiverse that no longer exists.
+
+**The procedure.** On a declared move, the census reruns at a **fixed comparison sample** — the same seeds, the same ticks — with **both sides pinned by `git archive <sha>`** (D-030's pin-to-SHA rule: never a working tree that can move mid-verification). The **world** is pinned and the **instrument is held constant**: the probe source is copied into both exported trees before either is built, or the diff measures the probe rather than the move. The two tables go to `probes/CensusReverdict`, which classifies against thresholds fixed before the numbers are seen, so the classification is a computation rather than an argument.
+
+**The four rules.**
+
+1. **The zero rule.** A verdict class that was exactly 0 and is now nonzero, or the reverse, is never `STABLE`. A branch appearing in nature is a structural fact, not a fluctuation — and no count-based noise band is valid at that cell anyway.
+2. **The mix rule.** Every other class is compared against the two-sample 95% band `1.96 · sqrt(2 · n · p · (1−p))` counts, `p` pooled over both sides. Beyond it: `SHIFTED`.
+3. **The band rule.** The birth distribution's **mean** is compared with a two-sample 95% band and its **sd** against a stated ratio (default 1.25× either way). Either beyond: `RESHAPED`. Mean and sd, never min/max — a range grows with the sample by construction and cannot be tested.
+4. **The roster rule.** An entry that **names individual seeds** is making a paired claim, not a distributional one, so no noise band governs it: one seed changing fate falsifies the roster however `STABLE` the mix. Reported alongside the verdict, because it is a different obligation on a different part of the entry.
+
+Precedence: `RESHAPED` > `SHIFTED` > `STABLE`. What each buys: **`STABLE`** — nothing is restated, and *that is the point* — the protocol's daily value is telling you when you may leave the table alone. **`SHIFTED`** — the entry is re-stamped and the move's PR quotes the new mix. **`RESHAPED`** — the entry is superseded, not edited, and the move's PR owes a paragraph on why the metronome changed.
+
+**The refusals.** A comparison sample that is not the same sample is not a comparison: mismatched seeds, ticks or row counts are refused rather than guessed at. And `STABLE` is a statement about the distribution, never about the universes — the churn line reports how many individual seeds changed fate, so nobody reads a held distribution as a held multiverse.
+
+---
+
+### Entry 4 — the first century, re-verdicted across all of Season Two
+
+**The question.** Season Two's declared digest moves re-rolled the stream from boot. Did they change the multiverse's *distribution*, or only its universes?
+
+**The command.**
+
+```sh
+git archive 2b49550 | tar -x -C /tmp/old && cp probes/SeedAtlas.java /tmp/old/probes/   # world pinned, instrument held
+java -cp out:probes/out CensusReverdict old-table.txt new-table.txt
+```
+
+**The sample.** The fixed comparison sample: seeds 1–100 at 6,000 ticks, both sides. Old side `2b49550` (the `v3.0.0` tag), 28m37s; new side `6e2458a`, 13m12s. The old side reproduces entry 1's published table **exactly**, counts and rosters both — which is the first independent confirmation that entry 1 was measured where its stamp says it was.
+
+**The table.**
+
+```
+REVERDICT sample=100 full_arc=80->73 treaty=3->6 war=0->0 quiet=17->21 old_playbook=0->0
+          band=1159-1379->1149-1359 VERDICT STABLE
+```
+
+| Class | old | new | delta | 95% noise band | rule |
+|---|---|---|---|---|---|
+| `FULL_ARC` | 80 | 73 | −7 | ±11.75 | within noise |
+| `TREATY` | 3 | 6 | +3 | ±5.75 | within noise |
+| `WAR` | 0 | 0 | 0 | — | zero rule: held |
+| `QUIET` | 17 | 21 | +4 | ±10.87 | within noise |
+| `OLD_PLAYBOOK` | 0 | 0 | 0 | — | zero rule: held |
+
+Birth: mean 1284.70 → 1275.33 (moved 9.37 against a 12.26 band), sd 45.08 → 43.34 (ratio 0.96 against a 1.25 limit). **Band held.**
+
+And the line that matters most:
+
+```
+CHURN seeds_changed=34/100
+ROSTER named_seed_claims=INVALIDATED
+```
+
+**The distribution.** The verdict is `STABLE`, and the honest reading of `STABLE` is narrow: **the distribution held while a third of the multiverse changed fate.** Entry 1's fractions stand — 80→73 and 17→21 are what a 100-seed comparison sample cannot distinguish from noise, and pretending otherwise would be reading precision the sample never had. Entry 1's **rosters do not stand**. Of the seventeen universes entry 1 names as `QUIET`, only four are still quiet at `6e2458a` — 5, 33, 72, 99 — while thirteen have joined the war and seventeen new ones have dropped out of it. `TREATY` kept one name of three. A fraction survived a move that replaced almost every universe behind it, which is the entire reason rule 4 exists and the reason it was written after this run rather than before.
+
+Restated rosters at `6e2458a`, superseding entry 1's lists (entry 1's counts are **not** superseded):
+
+- `QUIET` (21): 1, 5, 31, 33, 47, 52, 53, 59, 64, 66, 68, 69, 71, 72, 76, 79, 81, 82, 90, 98, 99
+- `TREATY` (6): 12, 16, 36, 51, 80, 94
+
+What this does **not** license: `STABLE` at n=100 is not "unchanged". The comparison sample can only see a mix move of about ±11 counts, so a real 8-point shift in `FULL_ARC` would sit inside this verdict undetected — `STABLE` means *not resolvable at n=100*, and a census that wants to resolve smaller moves must pay for a larger comparison sample, not reword the verdict. Nor does it license anything about `SHIFTED` or `RESHAPED` in practice: both were exercised only against their stated arithmetic here, since no available pair of trees produces one.
+
+**The stamp.** 2026-08-12, v3.0 · `2b49550` → `6e2458a`, seeds 1–100 at 6,000 ticks.
+
 ---
 
 ### Entry 3 — the second century (standing; first batch of a campaign)
@@ -444,6 +511,8 @@ ATLAS seeds=1..100 ticks=6000 full_arc=73 treaty=6 war=0 quiet=21 old_playbook=0
 ```
 
 Neither run is wrong. The entry is stamped **v3.0**, and main has since taken Season Two's declared digest moves, each of which re-rolls the stream from boot and therefore re-rolls every universe's war. The table above was describing a multiverse that no longer exists, and nothing in the repo said so — which is the whole argument for a stamp, and the whole argument against editing numbers in place. Entry 1 stands as the v3.0 measurement. Restating it at HEAD is not an edit anyone may make by hand: it is owed to the re-verdict protocol, which classifies the move first and supersedes the entry only if the classification says it must.
+
+**Classified 2026-08-12 — see entry 4.** The protocol ran on this exact pair of trees and returned **`VERDICT STABLE`**: the deltas above are inside what a 100-seed comparison sample can resolve, so **the counts in this entry are not superseded**. The **rosters are** — churn was 34/100 and only four of the seventeen named `QUIET` seeds are still quiet. Entry 4 carries the restated lists. Two sentences in the paragraph above are therefore sharper than the measurement supports, and they are left standing under law 2: the correction lives in entry 4, where a reader can see both.
 
 ---
 
