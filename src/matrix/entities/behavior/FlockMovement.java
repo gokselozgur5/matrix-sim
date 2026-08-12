@@ -6,16 +6,29 @@ import matrix.entities.MatrixEntity;
 import matrix.entities.eco.EnvironmentProgram;
 import matrix.entities.eco.Kingdom;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Boids — the one gait with real math, in pure fixed-point integers:
  * separation from the too-close, cohesion toward the neighborhood
  * centroid, alignment with the neighbors' headings. The heading memory
- * lives on the entity; this class stays a stateless singleton.
+ * lives on the entity.
+ *
+ * <p>The singleton holds exactly one piece of state: {@link #neighbors}, the
+ * list it asks the world to fill. It stopped being stateless at #823, when the
+ * world stopped lending its own buffer — and the state is the point rather
+ * than a cost. The list is this gait's and no other's, so no query anywhere
+ * else in the tick can rewrite an answer this gait is still reading. Each
+ * bird's walk finishes before the next one starts, which is what makes one
+ * list enough; the engine is single-threaded by D-010 and this field is one
+ * more thing that would have to be revisited if it ever stopped being.
  */
 public final class FlockMovement implements Movement {
     public static final FlockMovement INSTANCE = new FlockMovement();
+
+    /** Filled and drained inside one call to {@link #move}; never escapes it. */
+    private final List<MatrixEntity> neighbors = new ArrayList<>();
 
     private FlockMovement() {}
 
@@ -29,7 +42,7 @@ public final class FlockMovement implements Movement {
         long sumX = 0, sumY = 0, headX = 0, headY = 0;
         int sepX = 0, sepY = 0, count = 0;
         long sep2 = (long) Config.FLOCK_SEPARATION_CM * Config.FLOCK_SEPARATION_CM;
-        List<MatrixEntity> near = w.nearby(self, Config.FLOCK_NEIGHBOR_RADIUS_CM);
+        List<MatrixEntity> near = w.nearbyInto(self, Config.FLOCK_NEIGHBOR_RADIUS_CM, neighbors);
         for (MatrixEntity n : near) {
             if (n == self || !(n instanceof EnvironmentProgram other)
                     || other.species.kingdom() != Kingdom.FAUNA_BIRD) {
