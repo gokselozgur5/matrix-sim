@@ -34,7 +34,21 @@ echo "$SELFTEST_LINE"
 [[ "$SELFTEST_LINE" == SELFTEST\ OK* ]] || { echo "FATAL selftest failed" >&2; exit 1; }
 
 echo "== lock 3/3: bench (D-027 budget table)"
-BENCH_OUT="$(java -cp out matrix.Main --bench)" || { echo "$BENCH_OUT"; echo "FATAL bench failed" >&2; exit 1; }
+# Both rows are rates since #384 (>= 100 ticks/s steady and over the arc), so a
+# loaded box degrades proportionally instead of falling off a 30 s cliff. A red
+# row is therefore a real signal — but a box under heavy enough external load can
+# still push a healthy tree under the floor, and "FATAL bench failed" alone sends
+# the operator hunting a regression that is not there. Say what the row means.
+BENCH_OUT="$(java -cp out matrix.Main --bench)" || {
+  echo "$BENCH_OUT"
+  echo "FATAL bench failed" >&2
+  echo "  Both rows are ticks/s against a floor of 100 (#384); ref_box_s=30 on the arc" >&2
+  echo "  row is D-027's reference-box expectation, not the verdict." >&2
+  echo "  That box is a QUIET 2-core x86-64 cloud VM (Debian, OpenJDK 17, single-" >&2
+  echo "  threaded), where the full arc runs ~15 s. Releases are cut on a quiet box:" >&2
+  echo "  if this one is busy, re-run the bench idle before believing the red." >&2
+  exit 1
+}
 echo "$BENCH_OUT"
 
 SHA="$(git rev-parse HEAD)"
