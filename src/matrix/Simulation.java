@@ -454,6 +454,10 @@ public final class Simulation {
             // only the root holds both banks (D-012), so only the root can
             // feed both worlds to one referee.
             realWorld.digestInto(digests);
+            // ...and the heart rides immediately after it (#497): a declared
+            // move, appended at the end of the real-side walk exactly where
+            // it would sit if RealWorld framed it itself.
+            bonds.digestInto(digests);
             Digest d = new Digest(t, digests.finishHex());
             chain.add(d);
             emit(d.format());
@@ -504,7 +508,10 @@ public final class Simulation {
      * Reads only; taking a snapshot moves nothing and draws nothing.
      */
     public Snapshot snapshotNow() {
-        return Snapshot.of(world, realWorld::digestInto);
+        return Snapshot.of(world, sink -> {
+            realWorld.digestInto(sink);
+            bonds.digestInto(sink);
+        });
     }
 
     public int aliveEntities() {

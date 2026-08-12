@@ -53,6 +53,15 @@ public final class Bond {
 
     private final Human a;
     private final Human b;
+    /**
+     * Census positions at mint time — the pair's identity in the chain
+     * (#497). A {@code Human} has no id and its name is not unique (196
+     * minds wear 154 names at seed 42), so a name would let two different
+     * worlds hash equal. The census is append-only by D-011, so a position
+     * taken once is that person's forever.
+     */
+    private final int aIndex;
+    private final int bIndex;
     private State state = State.CANDIDATE;
     private int windows = 0;
 
@@ -61,9 +70,11 @@ public final class Bond {
      * walk every downstream reader depends on cannot be forged from outside
      * {@code matrix.realworld}.
      */
-    Bond(Human a, Human b) {
+    Bond(Human a, int aIndex, Human b, int bIndex) {
         this.a = a;
+        this.aIndex = aIndex;
         this.b = b;
+        this.bIndex = bIndex;
     }
 
     /** The near end, in the order the registry minted the edge. */
@@ -222,13 +233,15 @@ public final class Bond {
                 if (edges.size() >= Config.BOND_MAX_EDGES) {
                     return;
                 }
-                Human x = minds.get(cursor % n);
-                Human y = minds.get((cursor + offset) % n);
+                int xi = cursor % n;
+                int yi = (cursor + offset) % n;
+                Human x = minds.get(xi);
+                Human y = minds.get(yi);
                 step(n);
                 if (x == y || !coPresent(x, y) || between(x, y) != null) {
                     continue;
                 }
-                Bond bond = new Bond(x, y);
+                Bond bond = new Bond(x, xi, y, yi);
                 edges.add(bond);
                 world.log(Severity.TRACE, "BOND candidate: " + bond.pair()
                         + " — their paths keep crossing");
@@ -297,6 +310,38 @@ public final class Bond {
                 }
             }
             return n;
+        }
+
+        /**
+         * The heart's segment of the digest chain — framed, in mint order,
+         * appended by the root immediately after the realworld segment
+         * (D-020/A4, the {@code digestInto} declared-move precedent). New
+         * state is digest-covered state and love gets no exemption: an edge
+         * that can unwrite a death is state that decides the world, so the
+         * fold has to be able to prove it re-grew the same one.
+         *
+         * <p>Three values per edge, nothing else: the pair as census
+         * positions, the weave state, the accrual count. Positions rather
+         * than names because names are not unique; the ordinal rather than
+         * the enum because a sink speaks integers, and the ordinal is
+         * append-safe as long as nobody reorders {@link State} — which is
+         * the same discipline every enum in the chain already lives under.
+         *
+         * <p>What the digest sees here the v4.5 {@code Snapshot} must
+         * retain (#179), so the root feeds this walk to BOTH sinks. If they
+         * ever disagree, {@code SNAPSHOT == DIGEST} is the thing that
+         * catches it, and it is checked in this unit rather than
+         * discovered in a later one.
+         */
+        public void digestInto(matrix.core.StateSink sink) {
+            sink.putCount(edges.size());
+            for (int i = 0; i < edges.size(); i++) {
+                Bond bond = edges.get(i);
+                sink.putInt(bond.aIndex);
+                sink.putInt(bond.bIndex);
+                sink.putInt(bond.state.ordinal());
+                sink.putInt(bond.windows);
+            }
         }
 
         /** The registry's one line, spoken at boot and greppable forever after. */
