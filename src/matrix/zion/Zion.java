@@ -316,27 +316,56 @@ public final class Zion {
 
     /**
      * The ZION instrument line (D-020, additive grammar), now with real
-     * counts: fleet size, open pirate links across the fleet's rigs, and
-     * sessions ended the hard way. {@code Locale.ROOT}, byte-stable across
+     * counts: fleet size, open pirate links across the fleet's rigs,
+     * sessions ended the hard way, and the share of those open links the
+     * board cannot settle. {@code Locale.ROOT}, byte-stable across
      * locales; the caller prints, never this class. The #197 note is
      * cashed (#119): a lost hull's tally moved up to the city the moment
      * it went down, so the sum walks only ships still afloat and no count
      * is forgotten. {@code fleet=} keeps counting every hull ever built —
      * the fallen stay on the registry, ships included (D-011's spirit).
+     *
+     * <p>{@code deferred=} is the #809 debt on the instruments (#846). A
+     * wire whose avatar the world no longer holds is one #206's presence
+     * gate correctly refuses to cut, and inside {@code links=} it is
+     * indistinguishable from a wire that is merely still sprinting: the
+     * operator watching METRIC/ZION/DIGEST — the whole observation contract
+     * (D-020) — could not tell a live sortie from a hull carrying a debt it
+     * cannot pay. It is a SUBSET of {@code links=}, never larger, and it is
+     * a gauge like {@code links=} and unlike the cumulative {@code traced=}:
+     * it falls back to zero the moment the Source gives the mind back and
+     * the next watch cuts the wire.
+     *
+     * <p>Summed over the same hulls {@code links=} walks, LOST excluded, and
+     * for the same reason plus one: {@link BroadcastRig#destroy} cuts every
+     * open wire unconditionally, so a sunk rig's deferred count is zero by
+     * construction and there is nothing for the city to carry the way it
+     * carries {@code tracedFallen}. A DOCKED hull is included and that is
+     * the point — since #809 a ship can come home with wires still on the
+     * board, and that is precisely the state this column exists to show.
+     *
+     * <p>The column lands after {@code traced=} and not at the end of the
+     * printed line, which are two different places: the root glues
+     * {@code trace_mnn_cm}/{@code red_baseline_cm} on behind this string
+     * when the trace metric is measurable (#118, #374), so the end of the
+     * line belongs to an optional rider. See {@code probes/LineGrammar} —
+     * the registry's ZION field list is the argument.
      */
     public String zionLine(long tick) {
         int links = 0;
+        int deferred = 0;
         int traced = tracedFallen;
         for (Hovercraft ship : fleet) {
             if (ship.state() == Hovercraft.MissionState.LOST) {
                 continue;
             }
             links += ship.rig().openLinks();
+            deferred += ship.rig().deferred(world);
             traced += ship.rig().traced();
         }
         return String.format(Locale.ROOT,
-                "ZION tick=%d census=%d fleet=%d links=%d traced=%d",
-                tick, census.size(), fleet.size(), links, traced);
+                "ZION tick=%d census=%d fleet=%d links=%d traced=%d deferred=%d",
+                tick, census.size(), fleet.size(), links, traced, deferred);
     }
 
     /**
