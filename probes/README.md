@@ -57,6 +57,22 @@ Compile the whole directory, not one file: seven of the twelve probes call the
 shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails on
 them with `cannot find symbol: variable Probes`.
 
+## The sweep
+
+One command runs every probe and prints one verdict:
+
+```sh
+probes/bench.sh            # 6,000 ticks each, compile included
+probes/bench.sh --list     # the contract table, run nothing
+```
+
+The contract table lives in that script, one row per probe — `judge <Class>
+'<exact line>'` for an instrument that verdicts, `run <Class>` for one that
+only reports. A judged probe is judged by exact-line grep (`grep -qxF`), so
+`=0` can never match `=01` and a missing verdict fails the sweep; a reporting
+probe fails only by crashing or exiting nonzero. Adding a probe is a one-row
+change here, beside the probe.
+
 ## Catalog
 
 | Probe | Question it answers | Case it solved |
