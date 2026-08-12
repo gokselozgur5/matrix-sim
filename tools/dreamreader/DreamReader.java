@@ -2,6 +2,7 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * D-047's teleprinter (gate #217, accepted): the dream, rendered as prose.
@@ -38,6 +39,8 @@ public final class DreamReader {
         long seed = 42;
         long ticks = 6_000;
         boolean captureOnly = false;
+        boolean factsOnly = false;
+        Voice voice = Voice.COLD;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -45,6 +48,15 @@ public final class DreamReader {
                 case "--seed" -> seed = Long.parseLong(value(args, ++i));
                 case "--ticks" -> ticks = Long.parseLong(value(args, ++i));
                 case "--capture-only" -> captureOnly = true;
+                case "--facts" -> factsOnly = true;
+                case "--voice" -> {
+                    String name = value(args, ++i);
+                    voice = Voice.named(name);
+                    if (voice == null) {
+                        System.err.println("unknown voice: " + name + " (cold, none)");
+                        System.exit(2);
+                    }
+                }
                 case "--help" -> {
                     usage();
                     return;
@@ -64,10 +76,24 @@ public final class DreamReader {
 
         Capture capture = Capture.of(pilot, seed, ticks);
 
-        // --capture-only pins the capture stage's own view: the three feeds
-        // and their counts, quotable as evidence after the page is built on
-        // top of them.
-        String page = captureOnly ? capture.report() : Fold.plain(Fold.of(capture));
+        // Three views of one day, in the order the reader builds them: the
+        // capture's own counts, the fold's facts, and a voice over the facts.
+        // The first two exist so the third can be checked rather than trusted.
+        String page;
+        if (captureOnly) {
+            page = capture.report();
+        } else {
+            List<Fold.Fact> facts = Fold.of(capture);
+            if (factsOnly) {
+                StringBuilder sb = new StringBuilder(1 << 14);
+                for (Fold.Fact f : facts) {
+                    sb.append(f.line()).append('\n');
+                }
+                page = sb.toString();
+            } else {
+                page = voice.render(facts);
+            }
+        }
 
         PrintStream stdout = new PrintStream(
                 new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
@@ -90,6 +116,8 @@ public final class DreamReader {
                   --pilot NAME     whose dream to fold (the tap's semantics: first live match)
                   --seed N         the fate of the universe (default 42)
                   --ticks N        how long the day runs (default 6000)
+                  --voice V        cold (default) or none — the fold, stated flatly
+                  --facts          print the fact stream itself; no voice ever touches it
                   --capture-only   report the three feeds and stop, one greppable line last
                 observer-only: the tool runs its own quiet universe and mutates nothing.
                 """);
