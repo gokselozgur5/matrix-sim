@@ -108,23 +108,38 @@ public final class MetricsCollector {
      * under) the baseline while a session is live; the flock-cohesion line
      * proved cohesion the same way, measured mean against a reference.
      *
-     * <p>The root passes zion's open links in (D-012); the Matrix ships no
+     * <p>The root passes zion's pirate BOARD in (D-012); the Matrix ships no
      * code and learns nothing — the collector reads positions it could
-     * always read. Shape rule (#374, the one statement the grammar spec
-     * copies): the suffix (leading space, {@code Locale.ROOT}) extends the
-     * ZION line exactly when an open pirate link's avatar is ALIVE AND
-     * PRESENT IN THE WORLD and both populations are measurable; otherwise
-     * it is absent — the ECO line's short-form precedent. Presence is not
-     * pedantry and not the same as {@code links>0}, which the ZION line
-     * counts straight off the rigs: a wire is registered the instant it
-     * opens but its avatar only enters the world at the next flush (D-005),
-     * and a killed pirate stays on the board until the rig's watch closes
-     * it. Both ends would have this metric measuring bodies the world does
-     * not hold. Pure read: no draw, no state, the digest cannot notice.
+     * always read. Shape rule (#374's statement, widened by #808 and stated
+     * here in full): the suffix (leading space, {@code Locale.ROOT}) extends
+     * the ZION line exactly when a body ON THE RIGS' BOARDS is ALIVE AND
+     * PRESENT IN THE WORLD and both populations are measurable; otherwise it
+     * is absent — the ECO line's short-form precedent.
+     *
+     * <p>The suffix follows BODIES; {@code links=} follows WIRES, counted
+     * straight off the rigs. They are two different facts and they disagree
+     * at both ends of a session, by design. At the open: a wire is
+     * registered the instant it opens but its avatar only enters the world
+     * at the next flush (D-005), so the opening tick prints {@code links>0}
+     * with no suffix. At the close: a wire closes in the zion slot — the
+     * last node — so its body stands in the Matrix for the rest of that tick
+     * and can be measured while {@code links} has already fallen. Both are
+     * the same rule read from the two ends: this metric measures the world,
+     * not the board's bookkeeping.
+     *
+     * <p>Membership follows from the same rule (#808, #118's judgment call
+     * 1 kept honest): the resident field is the hunting ground WITHOUT the
+     * visitors, so a body the rig owns is never a resident — wire open, wire
+     * cut, wire closed clean, all the same. Built from the open subset, the
+     * exclusion let a pirate cross from the treatment group into the control
+     * group for exactly one tick, and the tick it crossed on was the tick it
+     * stood at an exit booth: the least representative red on the map, added
+     * to the reference the whole argument is measured against. Pure read: no
+     * draw, no state, the digest cannot notice.
      */
-    public String traceSuffix(java.util.List<matrix.entities.Avatar> pirateAvatars) {
+    public String traceSuffix(java.util.List<matrix.entities.Avatar> pirateBoard) {
         java.util.List<matrix.entities.Avatar> pirates = new java.util.ArrayList<>();
-        for (var p : pirateAvatars) {
+        for (var p : pirateBoard) {
             if (p.alive && world.isPresent(p)) {
                 pirates.add(p);
             }
