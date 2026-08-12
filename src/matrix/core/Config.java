@@ -90,6 +90,28 @@ public final class Config {
      * not carry a scale, so a scaled recording would be a lie.
      */
     public static int ECO_SCALE = 1;
+    /** The dial's legal range — the city is large, not infinite (#136). */
+    public static final int ECO_SCALE_MIN = 1;
+    public static final int ECO_SCALE_MAX = 100;
+
+    /**
+     * The dial's one gate (#826): {@code null} when the scale is legal, the
+     * refusal sentence when it is not. Two doors open onto {@link #ECO_SCALE}
+     * — the daemon's {@code --scale} and the probe bench's positional scale —
+     * and until this method existed only one of them was guarded, so
+     * {@code AllocMeter 42 0} printed a well-formed D-027 budget row for a
+     * city with no ecosystem at all: the seeding loop
+     * ({@code populationCap * ECO_SCALE}) never runs at 0 or below, and 196
+     * humans measure like a triumph. One law, stated here, obeyed at both
+     * doors; each door still chooses how to die (the daemon exits 2).
+     */
+    public static String scaleRefusal(int scale) {
+        if (scale < ECO_SCALE_MIN || scale > ECO_SCALE_MAX) {
+            return "--scale wants " + ECO_SCALE_MIN + ".." + ECO_SCALE_MAX
+                    + " — the city is large, not infinite";
+        }
+        return null;
+    }
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;

@@ -63,8 +63,9 @@ public final class Main {
             }
         }
 
-        if (scale < 1 || scale > 100) {
-            System.err.println("--scale wants 1..100 — the city is large, not infinite");
+        String scaleRefusal = matrix.core.Config.scaleRefusal(scale);
+        if (scaleRefusal != null) {
+            System.err.println(scaleRefusal);
             System.exit(2);
         }
         if (scale != 1 && (replayPath != null || chronosPath != null)) {
