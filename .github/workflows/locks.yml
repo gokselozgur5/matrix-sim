@@ -172,3 +172,18 @@ jobs:
           printf '%s\n' "$out"
           printf '%s\n' "$out" | grep -q '^DATECHECK VERDICT PASS dialect=gnu ' \
             || { echo "FATAL the runner did not reach a passing GNU-dialect verdict" >&2; exit 1; }
+
+      # WHY: #828's complaint is a claim about what the meter CAN say — that no window could
+      # reach verdict=OK — and a reachability claim is worth exactly what an executed case
+      # makes it worth. --rulercheck runs the ruler and the floor over day vectors whose right
+      # answers arithmetic already settled, including the pair that IS the unit: one sweep day
+      # beside six ordinary ones reads LAGGING:review by events and OK by day-shape. Needs no
+      # token and no network — it judges the arithmetic, not the account.
+      - name: tools — balance.sh ruler and floor (#828)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(bash tools/balance.sh --rulercheck)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q '^RULERCHECK VERDICT PASS ' \
+            || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }

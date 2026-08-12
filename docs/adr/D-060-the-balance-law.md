@@ -95,6 +95,39 @@ That is stronger than it looks. A repository's contributions are a subset of the
 *And the subject of the law is genuinely arguable, which is the reason this is recorded and not decided quietly.* This record's drivers put the measurement at the same source the profile graph reads, and the graph's squares are account-wide by construction; D-054's directive is narrower — *"bu projeye"*, to this project. Both readings come from that one API, so "same source" does not settle it. A meter defaulting to `repo` would call a day lagging that the graph draws balanced, and the flip would make the year's law measure a set the graph never draws.
 
 *What this errata does not do.* It does not close the question — it prices it. The flip remains one line behind `--repo`, and the day the account first contributes somewhere else the `SCOPE` delta stops being zero and says by how much, unasked. That is the day to re-ask, with a reading that can finally tell the two defaults apart.
+**Errata (2026-08-13, #828) — the ruler and the target both move.** The meter could not print `verdict=OK`. Two separate faults held it shut, and #828 named one of them.
+
+*The ruler.* The meter counted contribution **events**, and 2026-08-11 produced 603 issues — 63% of that entire week. A window averages the *shape* of adjacent days; it cannot average away a day whose *volume* exceeds every other day put together, so widening the span from two days to thirty changed nothing. #784 landed the windows on the theory that adjacent days of different character would balance, ran the proof it had named, and the proof failed. Measured with the old ruler, live, on 2026-08-13 with those days closed:
+
+| span | commits | issues | prs | reviews | total | verdict | deficit on the lagging leg |
+|---|---|---|---|---|---|---|---|
+| 2026-08-11 alone | 47 | **603** (863‰) | 49 | 0 | 699 | `LAGGING:review` | +233 reviews |
+| 2026-08-12 alone | 56 | 87 (281‰) | 64 | 103 | 310 | `LAGGING:commit` | +29 commits |
+| the pair (`--days 2`) | 103 | **690** (684‰) | 113 | 103 | 1009 | `LAGGING:commit` | +199 commits |
+| `--week` | 105 | **791** (709‰) | 117 | 103 | 1116 | `LAGGING:review` | +235 reviews |
+| `--month` | 105 | 791 (709‰) | 117 | 103 | 1116 | `LAGGING:review` | +235 reviews |
+
+Thirty days and seven days are the same reading, which is the whole argument in one row. The unit was wrong: 603 issues is one act — a decomposition sweep — recorded as 603 units of thought.
+
+**So each day now contributes its own shape, weighted equally.** A working day is 1000 per mille split across its four legs, and a window's leg is the sum of those splits over the days that had work. One sweep is worth one day, and the most any single day can move a leg is 1000/days — bounded, where the event ruler was not. A single day *is* its own shape, so every one-day reading in this record is arithmetically unchanged, and `tools/balance.sh --events` reproduces any window reading taken before today.
+
+*The target, which #828 did not name and which alone would have kept the meter shut.* A leg cleared the bar when `4*leg >= total`. Four legs that sum to the total can all satisfy that only at **exact equality**, so `verdict=OK` demanded 250‰/250‰/250‰/250‰ to the artifact — a day of 5 commits, 5 issues, 5 PRs and 4 reviews read `LAGGING`. This record's own English is "each holding ~25%", and every failure it names is an *absence*: a day of only issues is a day nobody shipped, a day without reviews is a day nothing was doubted. The meter had turned "about a quarter" into "at least a quarter on all four at once", which is a different sentence and an unsatisfiable one. **A leg is now thin below half its quarter — under 125‰, an eighth of the whole.** The floor is one-sided deliberately: a leg can only be large at another leg's expense, and that expense is what the floor reads.
+
+Both together, measured back to back at 2026-08-12T22:47Z against the same live API:
+
+| reading | before | after |
+|---|---|---|
+| 2026-08-12 | `LAGGING:commit`, +29 commits | **`OK`** |
+| 2026-08-13, at 30/37/38/35 (214‰/264‰/271‰/250‰) | `LAGGING:commit`, +7 commits | **`OK`** |
+| week ending 2026-08-13 | `LAGGING:commit`, **+239 commits** | `LAGGING:commit`, **146‰-days** — 0.146 of a day |
+
+The middle row is the target fault standing alone: a day that planned, built, shipped and doubted within six per cent of a quarter on every leg was called lagging. The bottom row is the ruler fault: the same week that wanted three months of ordinary work now wants an afternoon. *The law did not change. It became answerable.*
+
+*The cost, recorded rather than buried.* A day holding one contribution now casts a whole day's vote. 2026-08-09 held a single pull request and nothing else, and it carries a whole day's 1000‰ of PR shape into its week: at 2026-08-12T22:47Z the week ending 2026-08-13 read 315‰ prs by shape against 123‰ by events, off one PR. The old distortion was unbounded and this one is bounded by 1000/days, which is the trade — but it is a real distortion and it is open. `--rulercheck` asserts it as a known property rather than leaving it to be discovered.
+
+*What this errata does not do.* It does not touch `--repo`. The per-day query is account-wide and carries no per-repository breakdown, so no repository-scoped day shape can be taken; a `--repo` window falls back to `ruler=events` and prints why. Every line of every run now carries `ruler=`, so no reading in this record or after it is ambiguous about what produced it.
+
+*Confirmation for both moves.* `tools/balance.sh --rulercheck` judges the ruler and the floor against day vectors whose answers arithmetic already settles, with no token and no network; CI runs it on every pull request. The row that carries the change is the pair where the same seven days — one sweep beside six ordinary days — read `LAGGING:review` by events and `OK` by day-shape.
 
 ## Pros and Cons of the Options
 
