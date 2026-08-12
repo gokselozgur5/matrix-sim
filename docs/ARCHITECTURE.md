@@ -376,6 +376,53 @@ An ordering of four clauses read off twenty runs is right **less than one time i
 
 ---
 
+### Entry 6 — the campaign's batches 2 and 3, and the re-pricing entry 5 forces
+
+**The question.** Entry 3 opened a thousand-universe campaign in 100-seed batches and named three claims waiting on it: `OLD_PLAYBOOK` bounded at three digits, the `QUIET` fraction at ±1.5 points, and the birth band's tail. What do the next two batches do to them?
+
+**The command.** Each batch is reproducible on its own, as the batch protocol requires:
+
+```sh
+java -cp out:probes/out SeedAtlas 201 300 6000 | tail -1
+java -cp out:probes/out SeedAtlas 301 400 6000 | tail -1
+```
+
+**The sample.** Seeds 201–400 at 6,000 ticks, default scale, film era — measured at `4c82835` as part of entry 5's 500-universe run (62m14s wall for all 500 on four threads of a loaded box; ~12m27s per hundred at that aggregate throughput, which is an aggregate figure and not a clean per-batch reference-box measurement). The classifier is `SeedAtlas.census()` — literally the same method the command above calls, so these counts and a standalone `SeedAtlas` invocation cannot disagree.
+
+**The table.** Each batch states its own n and nothing larger — batch protocol rule 2, now reinforced by entry 5's ruling.
+
+| Batch | Seeds | `FULL_ARC` | `TREATY` | `WAR` | `QUIET` | `OLD_PLAYBOOK` | birth mean / sd | birth range |
+|---|---|---|---|---|---|---|---|---|
+| 1 (#367) | 101–200 | 92 | 2 | 0 | 6 | **0** | 1266.6 / 49.6 | 1100–1359 |
+| **2** | **201–300** | **86** | **3** | **0** | **11** | **0** | 1277.7 / 51.1 | 1119–1399 |
+| **3** | **301–400** | **77** | **4** | **0** | **19** | **0** | 1264.3 / 47.7 | 1119–1379 |
+| — | 1–100 | 73 | 6 | 0 | 21 | **0** | 1275.3 / 43.6 | 1149–1359 |
+| **scattered** | 1001, 1101, … 10901 | **79** | **6** | **0** | **15** | **0** | 1271.1 / 55.2 | 1159–1389 |
+
+The four contiguous blocks are **not pooled into a 400-seed row here**, and the campaign's 1,000-seed row is not opened. Entry 5 ruled the pooling illegal without a design-effect interval, and the batch protocol's rule 4 — *every batch reports the block effect* — is what caught it.
+
+**The distribution.** The batches land; the campaign they were cut for does not survive them intact.
+
+*The three claims, re-priced.* Entry 5 measured the design effect at φ ≈ 4 for `QUIET` and 5 for `FULL_ARC`, so a contiguous sample of n behaves like about n/4 independent draws. `probes/CensusSampleSize` prices the claims; the ruling divides the sample:
+
+| Claim | campaign's plan | what it actually buys | what the claim needs |
+|---|---|---|---|
+| `QUIET` at ±1.5 pts | 1,000 contiguous | n_eff ≈ 250 → **±4.3 pts** | ~2,090 **scattered**, or ~8,350 contiguous |
+| `QUIET` at n=200 (entry 3's row) | — | n_eff ≈ 50 → **±9.7 pts** | (published as ±4.7) |
+| `OLD_PLAYBOOK` ≤ 0.3% | zero in 1,000 | n_eff ≈ 250 → **≤ 1.2%** | ~1,000 **scattered** |
+
+The middle row is the uncomfortable one: entry 3's published `QUIET` interval is roughly **half the width it earned**, which entry 5 already declared and this entry now quantifies for the specific row. The `OLD_PLAYBOOK` re-pricing assumes the φ measured on the fates that *have* variance transfers to the one that has none — an assumption, stated, because a fate at 0/500 cannot be measured for overdispersion at all.
+
+*So the remaining batches are re-scoped rather than run.* Six more contiguous centuries would add about 150 effective universes and roughly 5 hours of wall clock. The same 600 seeds drawn **scattered** would add 600. Batches 4–9 are therefore not run as 401–500, 501–600 … ; the campaign continues under the chapter's fifth law, with a stride, and its target n is re-derived from the table above rather than inherited from a round number. Filed as its own unit.
+
+*What the batches say on their own.* `OLD_PLAYBOOK` is **0 in every block measured** — 0/500 across this run, 0/600 counting entry 3's batch 1 at the same tree. Naively that bounds the branch at ≤0.5%; design-corrected it is ≤1.7%. It remains what it has always been: not seen, never proven, and now with an honest interval instead of a flattering one. The birth band is stable across all five blocks — means 1264–1278 against sds 43.6–55.2 — and the scattered block's mean (1271.1) sits on the contiguous pool's (1271.0), which is the same thing entry 5's span group said: the axis has no gradient, only local texture.
+
+What this entry does **not** license: any 400-seed or 1,000-seed `QUIET` or `FULL_ARC` fraction, and any restatement of entry 3's interval as though it were wider than published — entry 3 stands as written, with entry 5's ruling and this table naming what its interval is worth. The blocks above are five measurements, not one.
+
+**The stamp.** 2026-08-12, v3.0, measured at `4c82835` · batches 2–3 of the campaign (seeds 201–400 of 101–1000), plus one scattered block.
+
+---
+
 ### Entry 5 — the seed-block effect: contiguous blocks are not a random sample
 
 **The question.** Every fraction this chapter has ever quoted assumes a contiguous block of seeds is a random sample of the multiverse. Entry 3 tested it by accident and it did not pass. Is the seed an exchangeable randomizer, or does the multiverse have structure along the seed axis?
