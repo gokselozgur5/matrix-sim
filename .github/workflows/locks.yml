@@ -20,8 +20,13 @@ jobs:
     timeout-minutes: 15
     steps:
       # WHY: the litany judges the tree as pushed — no caches, no artifacts from elsewhere.
+      # WHY fetch-depth 0: lock 9 compares this tree's seal pin against the BASE's and reads
+      # the commit messages in between. A depth-1 checkout has neither, and a gate that
+      # cannot see the base would pass every move (#884).
       - name: check out the tree
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # WHY: Temurin 17 is the JDK the locks are calibrated on; setup-java only puts javac/java on PATH.
       - name: put JDK 17 on PATH
@@ -102,7 +107,7 @@ jobs:
           printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no DIGEST tick=6000 line at all>}"
           [ "$got" = "$want" ] || { echo "FATAL the seal moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
 
-      # WHY: lock 7 — D-020's line grammar is a BYTE contract, and nothing owned the charset
+      # WHY: lock 8 — D-020's line grammar is a BYTE contract, and nothing owned the charset
       # those bytes were written in (#836): with no locale exported JDK 17 resolves the
       # default charset to ANSI_X3.4-1968 and every em dash a main() printed became '?'.
       # This runner is NOT that box — the ubuntu-latest image exports a UTF-8 locale, and
@@ -146,6 +151,24 @@ jobs:
           done
           [ "$unpinned" -eq 0 ] || exit 1
           echo "CHARSET probe_pins OK scanned=$scanned unpinned=0"
+
+      # WHY: lock 9 — lock 7 refuses an UNDECLARED move, and there is exactly one way to
+      # make it green again: paste the printed sha into the pin. That keystroke is the same
+      # whether the mover reasoned or was tired of the red X, and afterwards the tree cannot
+      # tell them apart — which is how a control group quietly stops being one (#884, RULING
+      # #212). This step asks the other half: the pin moved, so was that a decision? It is
+      # armed by the act it governs — NONE and green for every unit that leaves the world's
+      # bytes alone, and it cannot be satisfied by editing this file, because what it reads
+      # is a commit message and the pin's own reason field.
+      # PR-only, and for the same reason the attribution step is: a push to main has no base
+      # branch to compare against, and by then the move has already landed — this gate is
+      # meant to be met before the merge button, not to paint main red after it.
+      - name: the seal moved, so the move is argued (#884)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bash tools/digest-move.sh --base "origin/$BASE_REF"
 
       # WHY: tools/ had no runner at all, and #901 is the bug that hides exactly there —
       # a GNU-only `date -d` idiom, green on this box and dead on the macOS box that is the
