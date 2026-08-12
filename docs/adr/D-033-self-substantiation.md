@@ -120,5 +120,40 @@ The last two columns are identical, at seed 7 as well (body's base 3334 / 4299; 
 *What this errata does not do.* It does not edit PR #200's body, and the refusal is the point. Dev10 and D-029 hold that records are immutable — a changed mind supersedes, it never rewrites — and a merged PR body is the only surviving artifact of what the first three commits measured. Correcting it in place would erase the evidence that the branch's numbers were ever published, and would leave #373's warning to the FateAtlas unit (*"#362 quotes the pre-merge constants from PR #200's body"*) pointing at a body that no longer contains them. The body stays as the branch's record; the corrected numbers live here, in version control, where they diff. PR #200 carries a comment linking to this record.
 
 *One measurement this record cannot make.* The merged unit is invisible to every lock the project runs: the litany is seed-42-only and seed 42 never self-substantiates, so replacing the crossing comparison in `AcceptanceLoop.accrue` with `return false` deletes every walk-out in the repository and still prints `LOCKS ALL GREEN` with the canonical digest byte-identical. The accrual half is leashed — the digest hashes `threshold(name)` and `personalResidue` per link — but the Confirmation cashed above is cashed entirely outside the gate that merges code. Filed as #929.
+**Errata (2026-08-13, #843 — the rarity above is a reading at one tick budget, not a property of the mechanic):** The first errata measured eligibility at 6,000 ticks and reported one admitted name. That number is an argument's answer, not a constant. Eligibility is a function of the mechanic **and the run length**, and it moves fast enough that every rate this record quotes has to carry the budget it was read at.
+
+*The curve.* `personalResidue` only moves in steps of `KID_SPIKE=24`, so crossing needs `ceil(threshold/24)` spikes — 6, 7 or 8 across the whole pool. Spike arrivals are a fixed `(name, window)` lookup at density 1/512, so a name's spike count grows linearly in windows with no variance at all, while its bar stands still. There is no decay, no reset and no cap: `personalResidue` is monotone for the life of the link. The accumulator therefore always wins; the only question is when. Enumerated over `NamePool` first x family = 400 names by `probes/FateAtlas --sweep`:
+
+| windows | ticks (`ACCRUE_EVERY_TICKS=10`) | admitted | fraction | spike ceiling |
+|---|---|---|---|---|
+| 600 | 6,000 — the canonical run | 1 | 0.0025 | 7 |
+| 1,200 | 12,000 — `ArcBeats`' budget | 3 | 0.0075 | 8 |
+| 2,400 | 24,000 | 59 | 0.1475 | 13 |
+| 6,000 | 60,000 | 374 | 0.9350 | 24 |
+| 20,000 | 200,000 | 400 | 1.0000 | 58 |
+
+*What that does to the rarity number.* The Confirmation's rarity is quoted per link-tick, which presumes a per-link-tick hazard the mechanic does not have. The #844 errata above has already retired PR #200's `2 events / 23.04M` as a reading of a tree that never merged, so the comparison below uses the merged derivation on both sides. Take the identical nominal budget and slice it two ways:
+
+| slicing | nominal blue-link-ticks | events |
+|---|---|---|
+| 20 universes x 192 links x 6,000 ticks (#844's re-run, seeds 1-18 + 42 + 99, re-measured here) | 23.04M | **10** |
+| 2 universes x 192 links x 60,000 ticks (seeds 1 and 42) | 23.04M | **207** |
+
+Same denominator, 20.7x the numerator, and nothing changed but how the ticks were cut. The nominal denominator flatters the long slice — `blue` falls from 191 to 7 over that run — so the true density gap is wider than 20.7x, not narrower. Seed 42 is the sharpest single case: it is this record's own control, cited in the first errata as ending `selfsub=0`, and it does, at 6,000. It ends `selfsub=107` when the same universe is allowed to run ten times longer.
+
+*The live run is not the enumeration, and is worse.* The table is a ceiling — it grants every name an unbroken BLUE link for the whole budget, which no live link gets. At 60,000 ticks seed 1 crosses 88 distinct names, not 374. But the operational reading is harsher than the eligibility reading, because `BLUE_START=192` is grown once at boot and the farm is never replenished, so the walk-out is a permanent withdrawal from a fixed stock:
+
+```
+METRIC tick=6000  blue=169 ... selfsub=0      (seed 42)
+METRIC tick=24000 blue=134 ... selfsub=17
+METRIC tick=48000 blue=31  ... selfsub=94
+METRIC tick=60000 blue=7   ... selfsub=107
+```
+
+The fourth decision driver above is *"self-substantiation must stay extraordinary"*, and the first Consequence warns that a badly tuned threshold *"either never fires or empties the pod farm"*. At the canonical budget it barely fires. At 60,000 ticks it empties the farm. Both readings come from one unchanged set of constants, which is the finding: the constants do not pick a point on that consequence, the run length does. Filed separately as the population half (#927), where the same seed reaches `blue=0` at tick 61,900 and never recovers.
+
+*What this errata does and does not settle.* It settles the measurement and the instrument: `FateAtlas --sweep` reports admitted-per-budget and verdicts `ELIGIBILITY_FLAT` or `ELIGIBILITY_DRIFTS`, so no future `KID_*` tuning can quote an admitted count without the budget that produced it, and #764's acceptance test has a line to grep. It settles nothing about the ruling. #373 still owes a verdict, and it now has a third input the deferral did not have: *keep the chosen one* holds only while nobody runs past 6,000 ticks, and *widen `KID_JITTER`* moves which names are admitted at a given budget without touching the slope that carries the fraction to 1. The knob the shape turns on is the accumulator's slope against the run length, and no constant in the family bounds it. When the verdict lands it is still owed an errata of its own; this one only makes sure the verdict is chosen with the budget on the table.
+
+Reproduce: `java -cp out:probes/out FateAtlas --sweep` (0.8 s, no universe booted) and `java -cp out matrix.Main --headless --ticks 60000 --seed 42 | grep -c 'self-substantiation'` (10 s).
 
 Referenced by: [D-032](D-032-pirate-broadcast.md), [D-036](D-036-finish-line.md), [D-038](D-038-season-two.md).
