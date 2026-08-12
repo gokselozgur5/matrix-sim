@@ -58,6 +58,43 @@ java -cp out matrix.Main --headless --ticks 6000 --seed 42   # the whole film, d
 java -cp out matrix.Main --follow "Thomas A." --headless --ticks 6000 | grep '^{' | jq .   # the One's dream (D-021)
 ```
 
+**Chronos — record, fold, verdict (D-023).** A universe is its genesis plus its inputs; everything else is replay. `--chronos` records (live runs only), `--replay` folds a recording back into the same film, `--expect` makes that a machine verdict, `--audit` verdicts a recording without booting a universe at all, and `--snapshot-at` proves a retained digest walk agrees with the chain:
+
+```bash
+java -cp out matrix.Main --chronos rec.jsonl                        # stage 1: the live daemon records genesis + console inputs; `quit` ends it
+java -cp out matrix.Main --replay rec.jsonl > rec.chain             # stage 2: fold it — the chain, in ChainDump format
+java -cp out matrix.Main --replay rec.jsonl --expect rec.chain      # verify: REPLAY OK | FAIL — exit 0 match / 1 divergence / 2 refused
+java -cp out matrix.Main --audit rec.jsonl                          # stage 5 slice: consistency without booting a universe
+java -cp out matrix.Main --headless --ticks 600 --snapshot-at 500   # stage 3: SNAPSHOT tick/sha/bytes + SNAPSHOT_MATCHES_DIGEST
+```
+
+`--ticks` is a budget for **headless and selftest** runs only; a live daemon runs until the console says `quit`, so a recording is as long as you let it be. `--replay` honors `--ticks` on its own (default 2,000), and `--expect` overrides it with the dump's last tick.
+
+```
+REPLAY OK seed=42 ticks=2000 links=20 commands_applied=0
+AUDIT genesis seed=42 version=6 config=match
+AUDIT OK records=2 seals_paired=0
+SNAPSHOT tick=500 sha=bf4dd8b6538034f2a06cdfa83d03722ff023b1dd32449b35238ce2079efd96de bytes=30975
+SNAPSHOT_MATCHES_DIGEST=true
+```
+
+**Scenario flags** fire a console command inside a headless run, so a scenario is reproducible without a human at the keyboard — `--sink-at T` scuttles the active ship in tick *T*'s zion slot (#119), `--reload-at T` fires the Architect's reload right before tick *T* (#128; with `--chronos` the epoch seals onto the record first, written before the purge). The fleet only exists to be sunk after it launches:
+
+```bash
+java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400
+# [004331] FATE  the first hull: the Nebuchadnezzar joins the fleet — the census learns to fly
+# [004400] FATE  the Nebuchadnezzar goes down — 0 wires cut, 3 souls lost with the hull
+```
+
+**`--scale N`** is the homecoming dial (#136): it multiplies every Bestiary population while humans, agents, exiles and the arc keep canon counts. `--scale 11` is the ~5,269-entity world D-027's retargeted budget row is measured at. Live runs only — it is refused with `--chronos`/`--replay` (exit 2), because a genesis line carries no scale, and scale 1 is the canonical world byte-for-byte.
+
+```bash
+java -cp out matrix.Main --headless --ticks 200 --seed 42 --scale 11
+# METRIC tick=200 blue=191 red=5 agents=6 total=5269 infected=0.000 anomaly=4522.0 selfsub=0
+```
+
+`java -cp out matrix.Main --help` prints the full flag list; it is the surface of record, and this section is checked against it.
+
 What the 6,000-tick run plays, in order (seed 42) — **two truthful answers, pick your checkout**:
 
 - **As of the `v3.0.0` tag** (the sealed Season One film): **The One is born** (t=1289, debt 30,227) → `I DIDN'T` (1525) → **SMITH OVERFLOW** + Neo's flatline at Machine City (4284) → `"Peace."` (4304) → treaty, six walk free, **REBOOT v7.0** (4324) → a second Thomas at 5249.
@@ -67,7 +104,7 @@ What the 6,000-tick run plays, in order (seed 42) — **two truthful answers, pi
 
 A followed dream has two possible endings, and the stream tells them apart: `"ended — they walked out the open door"` (liberation) vs `"lost — the dream is no longer theirs"` (death — or a mind currently worn by Smith). One pilot's stream went dark twice and came back in between; the investigation that explained her is the field manual's case study in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (*the case of Nadia Petrov*).
 
-Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `smith` · `deja` · `reload` · `pause` · `speed N` · `quit`
+Ops console commands (an admin plane, not a UI — D-007/D-019): `red` · `agent` · `smith` · `deja` · `reload` · `sink` · `pause` · `speed N` · `quit`
 
 Observability contract (D-020): append-only event log, `METRIC` lines every 100 ticks, and a `DIGEST` chain — a canonical hash of world state. Two runs with the same seed produce identical digest chains; a diff pinpoints the tick where reality diverged. Same seed, same fate, on every platform: a seed-42 run produces byte-identical digests on Apple-Silicon macOS and x86-64 Linux (verified 2026-08-10).
 
