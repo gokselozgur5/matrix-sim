@@ -10,8 +10,16 @@ Closes #
 
 - [ ] compile: `javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')`
 - [ ] `--selftest` — paste the `SELFTEST OK` line (docs-only: state carried from `main`)
-- [ ] digest leash — byte-identical `DIGEST` at an agreed tick, or the PR states why the universe legitimately changed
+- [ ] digest leash — byte-identical `DIGEST` at an agreed tick, or the seal moved and the section below is filled in
 - [ ] `--bench` — required when the change is speed-adjacent (paste the `BENCH VERDICT` line)
+
+## Declared digest move
+
+<!-- Delete this heading if `tools/digest-move.sh` prints NONE. Otherwise: the old head, the
+     new head, and why the world's bytes are allowed to be different — the argument, not the
+     observation that they are. Editing `.github/canonical-digest` is the declaration; the
+     commit that does it carries `Declared digest move: <old> -> <new>` and an issue number.
+     Paste the `DIGEST MOVE VERDICT ARGUED` line. -->
 
 ## Evidence
 

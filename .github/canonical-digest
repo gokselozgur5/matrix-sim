@@ -19,5 +19,19 @@
 # it explains. Before this file existed that history could only be recovered by rebuilding
 # old commits one at a time; #899 did exactly that, five times, to find out when the chain
 # last moved.
+#
+# EDITING THIS LINE IS GATED (#884). Pasting a printed sha in here is the four-second way
+# to turn a red build green, and it is the same keystroke whether the mover reasoned about
+# the move or was tired of the red X. So the edit has a second obligation: the commit that
+# makes it carries
+#
+#     Declared digest move: <old sha> -> <new sha>
+#
+# with both shas in full on one line and an issue number in the same message, and the
+# reason field below names that issue too. `tools/digest-move.sh` is the reader, and it is
+# lock 9 — it stays silent for every unit that does not move the seal, and refuses the
+# ones that move it without saying so. The chain of heads is then one query:
+#
+#     git log --format=%B | grep '^Declared digest move:'
 
 421d726396ff8269f53f5e81c389c984191afda20073076e3f060ae3e0e3ce10  seed 42, 6,000 ticks — pinned by #899 at the value main already printed; no move declared here yet

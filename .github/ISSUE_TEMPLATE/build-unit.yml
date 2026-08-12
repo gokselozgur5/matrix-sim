@@ -7,6 +7,8 @@ body:
       value: |
         One unit = one small PR + `Closes #N` + atomic commits carrying finding, fix, and evidence.
         Gates before units: if this unit executes a 🟡/🔵 decision, the verdict must land in the gate thread first.
+        Does this unit change the world's bytes? If so it is a **declared digest move** — pick that
+        lock tier, and the PR argues the move rather than reporting it (#884).
   - type: textarea
     id: statement
     attributes:
@@ -38,6 +40,7 @@ body:
       options:
         - "light — compile · --selftest · digest (docs-only: n/a)"
         - "light + bench — speed-adjacent work"
+        - "declared digest move — this unit changes the world's bytes; the move is argued in the PR"
         - "full — phase boundary, adversarial skeptic pass"
     validations:
       required: true
