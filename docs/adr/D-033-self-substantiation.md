@@ -82,4 +82,43 @@ A diceless fate makes the *who* a property of the name pool rather than of the u
 
 Reproduce: `java -cp out matrix.Main --headless --ticks 6000 --seed 1 | grep 'self-substantiation'`.
 
+**Errata (2026-08-13, #844 — the implementation record's evidence, corrected against the tree that merged):** D-039 makes a unit's PR body its lock record, so this decision's implementation record is PR #200's body. That body was written for the unit's first three commits and never touched again after the fourth, `55198ad`, replaced the mechanic it describes; it merged that way, with no comment, addendum or errata anywhere on it. The errata above corrected the **ruling** and the **constants**. This one corrects the **measurements**, because they are not vaguely wrong: each is a correct reading of a tree that never reached `main`, each reproduces exactly when that tree is checked out, and that is how they were identified. This is not the errata the paragraph above owes #373 — that one is still the Architect's, and still owed.
+
+*Where the body's digest table comes from.* PR #200 declares a break with an old/new pair at ticks 2,000 and 6,000, and both pairs are real. They belong to the two commits on either end of the branch's first three commits:
+
+| tree | tick 2000 | tick 6000 |
+|---|---|---|
+| `b8a026c` — parent of the unit's first commit; the body's **"old sha (branch baseline)"** | `b6e0652bfea4f0b87611ccac99bcd8b3b81c08209e2e72b3dffc50243be31a7d` | `64089b664a56f0031006a6b08c0e5959421acca8a5c97190e54d7142140f0ea2` |
+| `5762a7f` — branch tip **before** `55198ad`; the body's **"new sha"** | `b1eef6310cb9e80f9c527ea64311e8d75bb1624ded897118df62406cd0839425` | `f886d77b373314b36f46ac87df0ba6dbd51afd5cb84e73746165ab3d250cd893` |
+
+*What `main` actually moved through.* The merge is `62e12ac`, first parent `5efa766`:
+
+| tree | tick 2000 | tick 6000 |
+|---|---|---|
+| `5efa766` — before | `b6e0652bfea4f0b87611ccac99bcd8b3b81c08209e2e72b3dffc50243be31a7d` | `a3183742c05a53c48d21956ef92e5b08db068cfc2b144f355afcb7de9a293006` |
+| `62e12ac` — after | `48431260f102fc5f8822a9735c3f27349e075d20da62ac0639f9565a5cbe9b07` | `ae8609c87d324bdf021cb2c0720b4c65b6179ff1487c5780b407b4cf3d70a1b0` |
+
+One of the body's four shas is accidentally right: `b8a026c` and `5efa766` still agree at tick 2,000. By tick 6,000 they do not, and **66 commits** landed on `main` between them — so the declared break's baseline was stale before the redesign ever touched it. The other three name a state `main` was never in. Reproduce any row with `git archive <sha> | tar -x -C <dir>`, `javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')`, `java -cp out matrix.Main --headless --ticks <n> --seed 42 | grep '^DIGEST'`.
+
+*The isolation proof is replaced by a stronger one.* The body proves its break is "only the draws" by stubbing two draw sites out in an uncommitted experiment. The merged unit has no draw sites to stub and needs no experiment: run the merge parent and the merge commit at seed 42 and diff the streams with the instrument lines removed — `--headless --ticks 6000 --seed 42 | grep -vE '^(DIGEST|METRIC|PERF)'` — **745 lines each, `diff` silent.** The entire merged digest move is the framed realworld segment the grammar grew; the simulation it hashes did not move by one byte. `ArcBeats` says the same thing independently: identical beats at `5efa766` and `62e12ac`, seeds 42 and 7.
+
+*The ArcBeats table is retired.* The body reports that seed 42 "flips to the QUIET class", with overflow onward struck out. That is a true reading of `5762a7f` — `VERDICT ARC_BROKEN` there, birth 1339, refusal 1525, every later beat `MISSING` — and it is precisely why the fourth commit was written. It is not a reading of anything that merged:
+
+| seed 42 | body's "base" (`b8a026c`) | body's "new" (`5762a7f`) | merge parent (`5efa766`) | merged (`62e12ac`) |
+|---|---|---|---|---|
+| birth | 1289 | 1339 | 1289 | 1289 |
+| overflow / flatline | 4284 | — | 4302 | 4302 |
+| second birth | 5249 | — | 5269 | 5269 |
+| verdict | BEATS_IN_ORDER | **ARC_BROKEN** | BEATS_IN_ORDER | BEATS_IN_ORDER |
+
+The last two columns are identical, at seed 7 as well (body's base 3334 / 4299; both merge-side trees 3215 / 4239) — the merged unit moves no beat in either canonical film. The body's "base" column is `b8a026c`'s, not the merge parent's, so both of its columns are stale, in opposite ways.
+
+*The rarity sweep is retired rather than restated.* The body's `2 events / 23.04M blue-link-ticks ≈ 1 per ~11.5M`, its Poisson interval, its λ, its named walkers (Lena Kovacs, seed 9, t=5429; Mara Kovacs, seed 16, t=5089) and its sentence *"the single permitted lowering is spent"* all describe the rng family. Under the merged derivation there is no rate to interval: a Poisson CI over a pure function of the name is a category error, and the tuning grant it accounts for is `KID_BASE=120`, which never shipped. Re-run over the body's own twenty seeds (1–18 plus 42 and 99) at `45d8585`: **10 events in 20 universes** — 11 produce none, 8 produce one, seed 16 produces two — and every one of them is Otto Aydin at his window 474. The named walkers do not exist: seed 9 crosses once at `[004739]`, seed 16 twice, at `[004739]` and `[005489]`, the second deferred by the presence gate. The standing tuning question is #373's, on the merged constants.
+
+*The census evidence keeps its shape and loses its numbers.* The body reads seed 9's handoff as `census 6 → 7` between `ZION tick=5400` and `5500`, with `METRIC … selfsub=` stepping in the same window. At `45d8585` seed 9 crosses at 4739, so the same handoff reads `ZION tick=4700 census=6` → `ZION tick=4800 census=7`, and `METRIC tick=6000 … selfsub=1`. The mechanism the body describes is the one that shipped; the ticks and the walker are not.
+
+*What this errata does not do.* It does not edit PR #200's body, and the refusal is the point. Dev10 and D-029 hold that records are immutable — a changed mind supersedes, it never rewrites — and a merged PR body is the only surviving artifact of what the first three commits measured. Correcting it in place would erase the evidence that the branch's numbers were ever published, and would leave #373's warning to the FateAtlas unit (*"#362 quotes the pre-merge constants from PR #200's body"*) pointing at a body that no longer contains them. The body stays as the branch's record; the corrected numbers live here, in version control, where they diff. PR #200 carries a comment linking to this record.
+
+*One measurement this record cannot make.* The merged unit is invisible to every lock the project runs: the litany is seed-42-only and seed 42 never self-substantiates, so replacing the crossing comparison in `AcceptanceLoop.accrue` with `return false` deletes every walk-out in the repository and still prints `LOCKS ALL GREEN` with the canonical digest byte-identical. The accrual half is leashed — the digest hashes `threshold(name)` and `personalResidue` per link — but the Confirmation cashed above is cashed entirely outside the gate that merges code. Filed as #929.
+
 Referenced by: [D-032](D-032-pirate-broadcast.md), [D-036](D-036-finish-line.md), [D-038](D-038-season-two.md).
