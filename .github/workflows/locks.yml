@@ -75,6 +75,17 @@ jobs:
       # operator proves the BSD dialect by running it, the runner proves the GNU one, and
       # the asserted `dialect=gnu` is what stops this from re-proving the same half twice.
       # Needs no token and no network — it judges the calendar, not the account.
+      # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
+      # shipped, because they carried an address GitHub resolves to the owner's OTHER account
+      # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
+      # gets a reader rather than a note. PR-only: a push to main has no pull request to read,
+      # and by then the commit is already in the history this is meant to keep clean.
+      - name: tools — every commit on this PR is attributed to the owner (#910)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/attribution.sh --pr ${{ github.event.pull_request.number }}
+
       - name: tools — balance.sh day arithmetic, GNU dialect (#901)
         shell: bash
         run: |

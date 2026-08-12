@@ -54,6 +54,24 @@ Leaning: four quarters with the meter. `tools/balance.sh [YYYY-MM-DD]` prints th
 
 `tools/balance.sh` prints a verdict line for any day, and its first two readings are recorded here: 2026-08-11 `verdict=LAGGING:review` (0‰ reviews against 863‰ issues) and 2026-08-12 `verdict=LAGGING:issue` at the time of writing, both from the live API.
 
+**Errata (2026-08-13, #910):** Both readings above were taken with **the commit leg blind**, and the record should not be read without knowing it. `totalCommitContributions` credits a commit only when the author address is verified on the account being read. Every non-merge commit on `main` at the time — **258** of them, every unit commit this repository had ever shipped — carried `g.ozgur@archangelautonomy.com`, which GitHub resolves to the owner's **other** account. So the leg counted merge commits, and only the ones GitHub's UI authored. The match is exact on every day measured:
+
+| day | merges by the verified address | merges by the other address | API commit leg |
+|---|---|---|---|
+| 2026-08-10 | 2 | 0 | **2** |
+| 2026-08-11 | 47 | 15 | **47** |
+| 2026-08-12 | 56 | 0 | **56** |
+
+Three things follow, and only the first two are settled here.
+
+*The readings stand as readings and fall as evidence for the leg.* 2026-08-11's `0‰ reviews` is untouched — reviews were never in question. But 2026-08-12's `commits=56 … deficit 29` was taken on a day that landed 77 unit commits, none of them counted. The shape this record was accepted on was real in three legs and under-read in the fourth.
+
+*The rule now has a keeper rather than a note.* `tools/attribution.sh` asks GitHub's own resolution per commit and prints a denominator; CI runs it on every pull request and fails the build on a misattributed one. The fault was a global `git config` — the reason nobody saw it is that nobody typed it, which is exactly the class of thing a document cannot hold.
+
+*What this errata does not do.* The 258 historical commits are left as they are. Correcting them means rewriting every SHA in the repository, which would break every pinned `git archive`, every SHA quoted in an ADR, and every evidence line in a merged PR body — a cost only the Architect can weigh against a graph that is retrospectively honest. The question is recorded here so the answer is a decision rather than a drift.
+
+*One consequence that is not this record's to rule.* This errata makes the commit leg count unit commits, and while merge commits remain the merge habit each unit will produce two. Under that arithmetic the four quarters are unreachable by construction — see #911, filed the same day.
+
 ## Pros and Cons of the Options
 
 ### Four quarters with a meter
