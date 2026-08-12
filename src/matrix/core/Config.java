@@ -384,6 +384,29 @@ public final class Config {
         return "DIAL gate held: eco_scale=" + ecoScale + " sealed=" + dialSealed
                 + " — out of range refused, rewrite refused";
     }
+
+    /**
+     * The dial's declaration (#518): what a verdict line appends so that a
+     * scaled run cannot be read as a canonical one, and the empty string at
+     * scale 1 so the canonical line keeps its bytes.
+     *
+     * <p>The gate decides which worlds may exist and {@link #setEcoScale} is
+     * the door onto them; this decides whether the line that judges a world
+     * can say which world it judged. Same law, read from its other end. A
+     * verdict is evidence people paste into PR bodies, and {@code SELFTEST OK
+     * seed=42 ticks=2000 chain_length=20} was byte-identical at x1 and at
+     * x100 — determinism proved in a world whose size the proof refused to
+     * state, which is the #826 failure with the range replaced by the reader.
+     *
+     * <p>{@code entities} is the count the dial actually produced, not the
+     * dial repeated: the scale says what was asked for, the census says what
+     * was seeded, and a multiplier that silently failed to multiply shows up
+     * as the gap between them.
+     */
+    public static String scaleTag(int entities) {
+        int scale = ecoScale();
+        return scale == 1 ? "" : " scale=" + scale + " entities=" + entities;
+    }
     public static final int GRACE_TICKS = 25;
     public static final int SMITH_SPEED_CM = 320;
     public static final int COPY_SPEED_CM = 240;

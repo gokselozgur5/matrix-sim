@@ -175,10 +175,12 @@ public final class AllocMeter {
                 + " cascade_bytes_per_tick=" + (a3 - a2) / 500
                 + " full_run_mb=" + (a4 - a0) / (1024 * 1024)
                 + " gc_collections=" + gcCount
-                // scaled runs declare themselves; the canonical line keeps its bytes
-                + (ranAt == 1 ? ""
-                        : " scale=" + ranAt
-                                + " entities=" + sim.aliveEntities())
+                // Scaled runs declare themselves; the canonical line keeps its
+                // bytes. This probe wrote that rule first and #518 moved it into
+                // Config.scaleTag when a second and third line needed it — the
+                // same "stated once" that #826 applied to the gate beside it.
+                // The dial is sealed by now, so the tag reads what ranAt read.
+                + matrix.core.Config.scaleTag(sim.aliveEntities())
                 // appended, never inserted (D-020): the headline keeps its name and
                 // its place and gains the denominator and the spread that say how
                 // much of it to believe.
