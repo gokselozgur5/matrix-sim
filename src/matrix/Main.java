@@ -179,6 +179,18 @@ public final class Main {
      * one verdict. Honors --ticks so the gate can cover the full v3 arc
      * (skeptic finding: 2,000 hardcoded ticks left the finale untested);
      * the default stays 2,000 for the fast pre-push check.
+     *
+     * <p>Honors --scale too, and has since #136 — the dial is written
+     * before this runs, so the double-run happens in whatever world it
+     * built. What it did not do was say so: every verdict line was the
+     * canonical one, because chain_length counts DIGEST links (one per 100
+     * ticks) and not minds. A scaled proof and an unscaled proof printed the
+     * same twenty characters, so the line #518 nominates as the rung's
+     * determinism evidence could not be told from a run that never touched
+     * the dial. {@link matrix.core.Config#scaleTag} appends the world; at
+     * scale 1 it appends nothing, so the canonical verdict — the one
+     * locks.yml, tools/release.sh and every past PR body quote — keeps its
+     * bytes.
      */
     private static int selftest(long seed, long ticks) {
         // The economy's ordering is a lock, not a comment (#382): the
@@ -194,19 +206,27 @@ public final class Main {
         // private, and the setter still refuses what --scale refuses and
         // refuses any write once the world has read it.
         System.out.println(matrix.core.Config.dialLockLine());
-        List<Digest> a = new Simulation(seed, null, null).run(ticks);
+        Simulation first = new Simulation(seed, null, null);
+        List<Digest> a = first.run(ticks);
         List<Digest> b = new Simulation(seed, null, null).run(ticks);
+        // The census of the run that produced chain a. A divergence is
+        // reported in the world it happened in, so the tag rides the FAIL
+        // lines too — a red line that cannot name its scale is the exact
+        // thing this method was fixed for, and red is when it matters most.
+        String world = matrix.core.Config.scaleTag(first.aliveEntities());
         if (a.size() != b.size()) {
-            System.out.println("SELFTEST FAIL chain_length " + a.size() + " vs " + b.size());
+            System.out.println("SELFTEST FAIL chain_length " + a.size() + " vs " + b.size() + world);
             return 1;
         }
         for (int i = 0; i < a.size(); i++) {
             if (!a.get(i).equals(b.get(i))) {
-                System.out.println("SELFTEST FAIL first_divergence_at_tick " + a.get(i).tick());
+                System.out.println("SELFTEST FAIL first_divergence_at_tick "
+                        + a.get(i).tick() + world);
                 return 1;
             }
         }
-        System.out.println("SELFTEST OK seed=" + seed + " ticks=" + ticks + " chain_length=" + a.size());
+        System.out.println("SELFTEST OK seed=" + seed + " ticks=" + ticks
+                + " chain_length=" + a.size() + world);
         return 0;
     }
 
@@ -444,7 +464,10 @@ public final class Main {
                                       write-before-purge order, epoch arithmetic, config
                                       fingerprint vs this build (drift named, not failed);
                                       exits 0 consistent / 1 inconsistent / 2 unreadable
-                  --selftest          in-process digest double-run; exit 0 iff chains match
+                  --selftest          in-process digest double-run; exit 0 iff chains match.
+                                      Honors --scale, and since #518 says so: the verdict
+                                      carries scale= and entities= at any dial but 1, so a
+                                      scaled proof cannot be read as a canonical one
                   --bench             measure the D-027 budget table; exit 0 iff all rows pass
                 interactive commands: red | agent | smith | deja | reload | sink | pause | speed N | quit
                 """);
