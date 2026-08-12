@@ -158,15 +158,19 @@ public final class RealWorld {
     }
 
     /**
-     * Case-insensitive pilot lookup for --follow. Only STREAMABLE links match —
-     * open, avatar alive and present in the world. A dead Thomas must not
-     * shadow the newborn one, and a mind currently worn by Smith must not
-     * re-tap into an endless "lost" loop (skeptic finding + its regression).
+     * Case-insensitive pilot lookup for --follow — the FIRST resolution and no
+     * other (#375). Only STREAMABLE links match: open, avatar alive and present
+     * in the world. A dead Thomas must not shadow the newborn one, and a mind
+     * currently worn by Smith must not re-tap into an endless "lost" loop
+     * (skeptic finding + its regression). The fragment is a search key, never a
+     * binding: names are not unique — 196 humans wear 154 of them at seed 42 —
+     * so the caller keeps the mind this returns and re-taps through
+     * {@link #linkOf}, which cannot resolve to somebody else.
      */
     public NeuralLink findLink(String nameFragment) {
         String needle = nameFragment.toLowerCase(java.util.Locale.ROOT);
         for (NeuralLink link : links) {
-            if (link.closed() || !link.avatar.alive || !world.isPresent(link.avatar)) {
+            if (!streamable(link)) {
                 continue;
             }
             if (link.human.name.toLowerCase(java.util.Locale.ROOT).contains(needle)) {
@@ -174,5 +178,41 @@ public final class RealWorld {
             }
         }
         return null;
+    }
+
+    /**
+     * The re-tap, bound to one mind (#375): that human's CURRENT link when it
+     * is streamable, else null while they are dark. A Human holds at most one
+     * link at a time and every jack-in installs the new one, so this resumes
+     * the same person across a whole life — walked out through the treaty's
+     * door and later riding a pirate signal is the same mind on a new wire,
+     * and it resumes; a namesake, who is a different person however the string
+     * reads, never can.
+     */
+    public NeuralLink linkOf(Human mind) {
+        return streamable(mind.link()) ? mind.link() : null;
+    }
+
+    /**
+     * The One is a role, not a name (#375): whoever wears it now. This is the
+     * one subject a name-free tap may still re-arm onto, and it is not an
+     * exception to the identity rule — it is a different kind of subject. The
+     * world keeps the role unique by construction (a birth needs the ledger
+     * overflowed AND no living One), so "another One" can never be a stranger
+     * who merely shares a string. That is what keeps #107's reborn Thomas
+     * resuming while every other name loses the right to re-arm.
+     */
+    public NeuralLink theOneLink() {
+        for (NeuralLink link : links) {
+            if (streamable(link) && link.avatar instanceof matrix.entities.TheOne) {
+                return link;
+            }
+        }
+        return null;
+    }
+
+    /** The tap's one predicate: an open wire, a living avatar, and a world that holds it. */
+    private boolean streamable(NeuralLink link) {
+        return link != null && !link.closed() && link.avatar.alive && world.isPresent(link.avatar);
     }
 }

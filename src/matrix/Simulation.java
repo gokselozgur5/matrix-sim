@@ -68,6 +68,10 @@ public final class Simulation {
     private final ChronosLog chronos;
     private final String followName;
     private NeuralLink followed;
+    /** The mind the name resolved to, kept for good (#375): the tap binds to a person, not a string. */
+    private Human followedMind;
+    /** ...unless the subject is The One, who is a role the world re-fills — #107's re-arm, kept. */
+    private boolean followingTheOne;
     private int chronosVersionSeen;
     private int agentsSpawned = 0;
     private int patchesDeployed = 0;
@@ -118,7 +122,7 @@ public final class Simulation {
                 new ZionSystem(zion));
         world.flush();
         if (followName != null) {
-            followed = realWorld.findLink(followName);
+            followed = reTap();
         }
         bootBanner(seed);
     }
@@ -320,6 +324,26 @@ public final class Simulation {
         world.log(Severity.SYS, "IDS daemon deployed: agent " + codename);
     }
 
+    /**
+     * The follow tap's only resolver (#375). Before the first match the name is
+     * a search key; the instant it lands, the tap is BOUND and the name is never
+     * consulted again — afterwards this returns that same mind's current link,
+     * or the current One when the subject was The One. Null means the subject is
+     * dark right now, never "here is somebody else". Pure read: it resolves
+     * links the observer may print and touches no state the digest can see.
+     */
+    private NeuralLink reTap() {
+        if (followedMind == null) {
+            NeuralLink first = realWorld.findLink(followName);
+            if (first != null) {
+                followedMind = first.human;
+                followingTheOne = first.avatar instanceof matrix.entities.TheOne;
+            }
+            return first;
+        }
+        return followingTheOne ? realWorld.theOneLink() : realWorld.linkOf(followedMind);
+    }
+
     public void tickOnce() {
         for (SystemNode node : nodes) {
             node.tick(world.tick() + 1);
@@ -386,10 +410,17 @@ public final class Simulation {
             emit(d.format());
         }
         if (followName != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
-            // One rule, no special cases: a dark stream re-taps any LIVE link matching
-            // the name — a reborn Thomas resumes, a walked-out or eaten pilot does not.
+            // One rule, bound to a MIND and not to a string (#375): the name is a
+            // search key exactly once, and from the first match the stream belongs
+            // to that person. Names are not unique — 196 humans wear 154 of them at
+            // seed 42 — so re-tapping by name let a namesake walk in mid-stream
+            // under the same heading. A dark stream still re-arms, but only onto
+            // its own subject: the same mind on a new wire resumes (walked out,
+            // then riding a pirate signal — the whole point of the tap), and The
+            // One resumes because The One is a role the world keeps unique, not a
+            // name that happens to match. #107's reborn Thomas is untouched.
             if (followed == null) {
-                followed = realWorld.findLink(followName);
+                followed = reTap();
             }
             if (followed == null) {
                 // still dark; nothing to say
