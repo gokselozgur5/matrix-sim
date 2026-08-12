@@ -225,6 +225,14 @@ public final class World {
      * stay rendered — nobody will delete the sunrise, and nobody parks it
      * either. Membership is the snapshot cell's zone, the same D-017 law
      * attention reads; an empty region folds nothing and stays awake.
+     *
+     * <p>Both ways out that fold nothing tell the map so (#807). They write no
+     * other state, so the gatekeeper's test — a level, not an edge — would
+     * still read true on the next tick and re-propose the identical impossible
+     * park, forever: one record, one full entity pass, once per tick, for the
+     * whole cold era. {@code deferPark} is that missing acknowledgement; the
+     * region re-asks after LOD_PARK_RETRY_TICKS cold ticks, or at once if
+     * attention comes back and starts a new era.
      */
     private int park(int regionId) {
         for (MatrixEntity e : entities) {
@@ -234,6 +242,7 @@ public final class World {
                     log(Severity.TRACE, "LOD: parking of " + places.zones().get(regionId).name()
                             + " refused — something self-replicating walks its streets");
                 }
+                regions.deferPark(regionId);
                 return 0;
             }
         }
@@ -246,6 +255,7 @@ public final class World {
             }
         }
         if (folding.isEmpty()) {
+            regions.deferPark(regionId);
             return 0;
         }
         regions.beginPark(regionId);

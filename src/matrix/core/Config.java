@@ -119,6 +119,14 @@ public final class Config {
     // D-024 P2, the parking family (#132): a region un-HOT for this many
     // CONSECUTIVE ticks parks its catalog residents into the aggregate.
     public static final int LOD_PARK_AFTER_TICKS = 600;
+    // A Park the flush cannot perform — refused by a self-replicating resident,
+    // or nothing catalog left to fold — changes no state, so the gatekeeper's
+    // level-triggered test stays true and re-proposes it on the very next tick.
+    // The deferral gives that outcome a memory: the region re-arms only after
+    // this many further cold ticks. One ECO beat, the cadence parked reality
+    // itself breathes at — the question is re-asked at the rate the world can
+    // plausibly have changed its answer, not once per tick (#807).
+    public static final int LOD_PARK_RETRY_TICKS = 100;
     // Parked life at ECO cadence: the event draw fires a birth on 0 and a
     // death on 1 — 1/8 each, a power of two so the compare is bit-exact
     // everywhere (the KID_SPIKE_DENOM precedent).
