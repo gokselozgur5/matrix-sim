@@ -49,14 +49,14 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-042](adr/D-042-stat-system.md) | Stats: one contest grammar, four family vocabularies | 🟢 | v6.0 | #212 |
 | [D-043](adr/D-043-named-cast.md) | The named cast — and the Architect and Oracle in-world | 🟢 | v6.0 | #213 |
 | [D-044](adr/D-044-crew-as-programs.md) | The crew enters the world as program society | 🟢 | v6.0 | #214 |
-| [D-045](adr/D-045-bonds-and-the-kiss.md) | Bonds, and the Room 303 clause — love as bookkeeping | 🟢 | v6.0 | #215 |
-| [D-046](adr/D-046-cypher-protocol.md) | The Cypher protocol: the door's inward direction | 🟢 | v6.0 | #216 |
+| [D-045](adr/D-045-bonds-and-the-kiss.md) | Bonds, and the Room 303 clause — love as bookkeeping | 🟢 | v6.5 | #215 |
+| [D-046](adr/D-046-cypher-protocol.md) | The Cypher protocol: the door's inward direction | 🟢 | v6.5 | #216 |
 | [D-047](adr/D-047-dream-reader.md) | The dream reader: a teleprinter for one mind's day | 🟢 | v6.0 | #217 |
-| [D-048](adr/D-048-districts-with-identity.md) | Districts with identity: the city's quarters mean something | 🟢 | v6.0 | #223 |
-| [D-049](adr/D-049-truce-regime.md) | The Truce as a regime: the untold sixty years, playable | 🟢 | v6.0 | #224 |
+| [D-048](adr/D-048-districts-with-identity.md) | Districts with identity: the city's quarters mean something | 🟢 | v7.0 | #223 |
+| [D-049](adr/D-049-truce-regime.md) | The Truce as a regime: the untold sixty years, playable | 🟢 | v7.5 | #224 |
 | [D-050](adr/D-050-live-events.md) | Live events as signed chronos entries: authored history | 🟢 | v6.0 | #225 |
-| [D-051](adr/D-051-allegiance-influence.md) | Allegiance as data; the influence ledger as political weather | 🟢 | v6.0 | #227 |
-| [D-052](adr/D-052-missions.md) | Missions: template rows, one executor, a dream with a plot | 🟢 | v6.0 | #228 |
+| [D-051](adr/D-051-allegiance-influence.md) | Allegiance as data; the influence ledger as political weather | 🟢 | v6.5 | #227 |
+| [D-052](adr/D-052-missions.md) | Missions: template rows, one executor, a dream with a plot | 🟢 | v7.0 | #228 |
 | [D-053](adr/D-053-favor-economy.md) | The favor economy: orphan insurance, conservation by construction | 🟢 | v7.0 | #229 |
 | [D-054](adr/D-054-the-year.md) | The Year: six seasons, five programs, scale to 365 | 🟢 | all | #232 |
 | [D-059](adr/D-059-issue-tree.md) | The issue tree: work branches until a leaf is one PR | 🟢 | all | #358 |

@@ -4,7 +4,7 @@ status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #215
-informed: milestone v6.0
+informed: milestone v6.5
 ---
 
 # D-045 — Bonds, and the kiss
