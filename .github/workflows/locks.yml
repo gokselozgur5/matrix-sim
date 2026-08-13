@@ -217,44 +217,24 @@ jobs:
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
       # WHY: lock 10 — the permanent control group (D-042's ruling, #212). NEUTRAL is not a
       # migration step and this lane does not retire: it runs the flagged world at the
-      # canonical seed and holds its chain against the sealed pre-v6 fixture, link by link,
-      # forever. Failing on the FIRST unequal link is deliberate — the first divergence is
-      # the only one that carries information; every link after it is that link's echo.
-      # The fixture's edit rule lives beside it (ci/fixtures/README.md) and is the half of
-      # this lock that CI cannot enforce: a baseline regenerated to make a build green is
-      # not a control group.
-      - name: neutral lane (control group vs the sealed baseline)
+      # canonical seed and holds its chain against the sealed baseline, link by link, forever.
+      # Failing on the FIRST unequal link is deliberate — the first divergence is the only one
+      # that carries information; every link after it is that link's echo. The fixture's edit
+      # rule lives beside it (ci/fixtures/README.md) and is the half of this lock that CI
+      # cannot enforce: a baseline regenerated to make a build green is not a control group.
+      #
+      # The comparison is `probes/NeutralDiff` (#537, #339) rather than an awk written here.
+      # This lane shipped its own inline comparison because the referee did not exist yet and
+      # a control group guarded from two merges onward is a control group unguarded for one;
+      # the referee landed on 2026-08-13, reads this exact fixture, and #532's DoD is its
+      # verdict line and not ours. A lane that keeps a second implementation of the referee's
+      # job is a second thing to keep in step — so the inline awk is deleted rather than kept
+      # beside it. Probes exit 0 by house rule, so the exact-line grep is the contract.
+      - name: neutral lane (control group vs the sealed baseline, refereed)
         shell: bash
         run: |
           set -euo pipefail
-          sealed=ci/fixtures/neutral-baseline.chain
-          java -cp out matrix.Main --neutral --headless --seed 42 --ticks 6000 \
-            | grep '^DIGEST ' > neutral-lane.chain
-          awk '
-            NR == FNR { want[FNR] = $0; sealed_n = FNR; next }
-            # Ordered before the comparison on purpose: referencing want[FNR] past the seal
-            # would create the element, and the diagnostic would then report a blank line
-            # as the thing the run failed to match.
-            FNR > sealed_n {
-              printf "FATAL the control group outran the seal — link %d has nothing to match\n", FNR > "/dev/stderr"
-              printf "  run:    %s\n", $0 > "/dev/stderr"
-              diverged = 1
-              exit 1
-            }
-            $0 != want[FNR] {
-              printf "FATAL the control group moved — first unequal link at chain line %d\n", FNR > "/dev/stderr"
-              printf "  sealed: %s\n", want[FNR] > "/dev/stderr"
-              printf "  run:    %s\n", $0 > "/dev/stderr"
-              diverged = 1
-              exit 1
-            }
-            { run_n = FNR }
-            END {
-              if (diverged) { exit 1 }
-              if (run_n != sealed_n) {
-                printf "FATAL the control group ran %d links against a seal of %d\n", run_n + 0, sealed_n > "/dev/stderr"
-                exit 1
-              }
-              printf "NEUTRAL LANE %d/%d links byte-equal to the seal\n", run_n, sealed_n
-            }
-          ' "$sealed" neutral-lane.chain
+          out="$(java -cp out:probes/out NeutralDiff)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -qxF 'NEUTRALDIFF 60/60 byte-equal VERDICT PASS' \
+            || { echo "FATAL the control group moved, or the referee did not judge it" >&2; exit 1; }
