@@ -32,8 +32,9 @@ jobs:
 
       # WHY: lock 0 — the only lock that judges a claim rather than a compilation (#822).
       # It asks the PR which main its evidence was measured against, and checks whether
-      # that is still the main underneath it. Warns on drift, fails on a declared move
-      # whose 'before' is not the tree's before.
+      # that is still the main underneath it. Warns on drift, and fails when this PR moves
+      # the seal and its 'before' is not the tree's before — a move nobody can verify.
+      # Whether the seal moved is read off .github/canonical-digest, not off the body.
       #
       # The body goes through env and a file, never through interpolation into this
       # script: a PR body is text a stranger can write, and `${{ }}` into a `run:` block
@@ -46,6 +47,22 @@ jobs:
         run: |
           printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
           bash tools/baseline.sh "$RUNNER_TEMP/pr-body.md" "$BASE_SHA"
+
+      # WHY: lock 0 judges one body against one base, so on a green day it walks one of its
+      # paths and every other path is a claim. The suite runs all of them against this
+      # repository's real history — including the ones the runner will almost never reach:
+      # a stated sha that is not a commit, and a seal move whose 'before' is not the tree's
+      # before. Every fixture is built out of git rather than hardcoded, so the suite dates
+      # no better and no worse than the tree it runs in. Not PR-only: the cases are about
+      # history, which a push to main also has.
+      - name: evidence baseline — the checker's own cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(bash tools/baseline.sh --selftest)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -qE '^BASELINE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            || { echo "FATAL the baseline suite reached no passing verdict" >&2; exit 1; }
 
       # WHY: Temurin 17 is the JDK the locks are calibrated on; setup-java only puts javac/java on PATH.
       - name: put JDK 17 on PATH
