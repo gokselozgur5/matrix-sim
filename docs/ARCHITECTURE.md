@@ -684,4 +684,11 @@ Neither run is wrong. The entry is stamped **v3.0**, and main has since taken Se
 
 ---
 
-The rng-stream instrumentation rides the same bench and is quoted here as context rather than as a census entry: `DrawMeter` puts the boot at 1,728 draws, the steady city near 398 per tick, the cascade near 503 — and the negotiation freeze at exactly zero across its forty ticks, which is "the world holds its breath" as a measured law rather than prose.
+The rng-stream instrumentation rides the same bench and is quoted here as context rather than as a census entry — but context that cannot be rerun is an anecdote, so it carries a command, its seeds and the tree it was read at like everything else in this chapter:
+
+```sh
+java -cp out:probes/out DrawMeter 6000 42
+java -cp out:probes/out DrawMeter 6000 7
+```
+
+At `4316525`, `DrawMeter` puts the boot at 1,728 draws and the negotiation freeze at exactly zero across its forty ticks — "the world holds its breath" as a measured law rather than prose — and both hold at either seed. The rates are readings, not constants: the steady city is **374** draws a tick at seed 42 and **343** at seed 7, the cascade peak **491** and **514**. Each window derives from its own run's transitions (`BOUNDS`), so a declared digest move that re-rolls the world moves the cascade with it. This line read *near 398* and *near 503* until #987, naming no command, no seed and no tree — so it could not be rerun, could not be falsified, and drifted: the cascade really was 505 at `c5e1132`, and three declared seal moves have landed since.
