@@ -95,6 +95,12 @@ table() {
   judge FateAtlas    'VERDICT MONOCULTURE'
   judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
   judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'
+  # Seed 42 explicitly rather than $TICKS: this probe's only argument is a
+  # seed, and its cost is one boot, not an arc. Judged rather than run — the
+  # off-pool and duplicate-quarter legs have verdicts, and a row that only
+  # demanded survival would have accepted the NoSuchFieldException this probe
+  # threw the moment #842 moved the pools out from under it (#892).
+  judge DistrictCensus 'VERDICT CITY_CENSUSED' 42
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
