@@ -62,13 +62,23 @@ public final class ConfirmationSweep {
     /**
      * D-021's subject, and the choice is not free. The clause promises a
      * frame per 100 ticks; the tap delivers that only for a mind nobody
-     * hijacks and nobody frees. "Otto" binds to Otto Anderson at seed 42,
-     * a sleeper who is still dreaming at tick 6,000. Following
-     * "Thomas A. Anderson" through the same run prints 1,300 ticks of
-     * silence before the One is born and 1,000 more after Smith takes him
-     * — the stream says nothing at all in either window (#767).
+     * hijacks and nobody frees. Following "Thomas A. Anderson" through the
+     * same run prints 1,300 ticks of silence before the One is born and
+     * 1,000 more after Smith takes him — the stream says nothing at all in
+     * either window (#767).
+     *
+     * <p>"Nadia" binds to Nadia Petrov at seed 42, and she is the one
+     * subject in this tree the documents already vouch for: the field
+     * manual's case study follows her because on `main` she is never worn
+     * and never freed. It was "Otto" — Otto Anderson, a sleeper in the film
+     * as it stood — until #377 moved the film and Smith wrapped him at
+     * t=3800, and the clause's own probe read 57 frames with a 400-tick
+     * hole. The subject is a property of the universe and not of the
+     * clause, so it is re-argued when the universe moves. Nadia is BLUE for
+     * all 6,000 ticks in BOTH films, which is the strongest form of that
+     * argument available without a second boot.
      */
-    private static final String FOLLOW = "Otto";
+    private static final String FOLLOW = "Nadia";
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();

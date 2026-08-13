@@ -82,9 +82,33 @@ public final class NeuralLink {
         human.link = null;
     }
 
-    /** Returns true exactly once — when it observes the avatar's death and executes the rule. */
+    /**
+     * Returns true exactly once — when it observes the avatar's death and
+     * executes the rule.
+     *
+     * <p>Since D-045 there is exactly ONE way for this method to see a dead
+     * avatar and write nothing: the Room 303 clause, marked on this wire
+     * earlier in the same tick by {@link Bond.Registry} after it asked its
+     * three questions (#376). D-013's rule is not weakened anywhere else —
+     * the branch is guarded by a package-private mark the registry alone
+     * writes, not by a flag anyone can set, and it is consumed the instant
+     * it is read so a mark can never pay for two deaths.
+     */
     public boolean observeDeath() {
         if (closed || avatar.alive) {
+            return false;
+        }
+        if (clause303) {
+            // The unwriting (#377). The death is not written, and it is not
+            // written HERE — before the wire flatlines, before the pod is
+            // flushed, before the caller is told there is anything to bury.
+            // The link is never marked closed, so the jack law needs no
+            // amendment and gets none: a link that never closed needs no new
+            // link. Returning false is what keeps the caller's Remove
+            // unqueued and its BAD line unspoken — D-013's rule did not run,
+            // rather than running and being undone.
+            clause303 = false;
+            avatar.alive = true;
             return false;
         }
         closed = true;

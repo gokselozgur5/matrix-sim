@@ -329,12 +329,12 @@ public final class Bond {
         }
 
         /**
-         * The firing, as an authorization (#376). This unit records that the
-         * clause fired and spends the edge; the MOVES belong to its siblings
-         * — the unwriting (#377), the scar conversion (#378), the ledger
-         * price (#383), the awareness term (#380). For exactly this one
-         * merge the clause authorizes and D-013 still writes the death; the
-         * next unit makes the death not happen.
+         * The firing. The mark goes on the wire and the death stops being
+         * something that is going to happen: {@code observeDeath()} takes
+         * its exception branch this same tick, before the wire flatlines
+         * (#377). The remaining moves are still their own units — the scar
+         * conversion (#378), the ledger price (#383), the awareness term
+         * (#380).
          */
         private void fire(Bond bond, Human dying, Human partner, long tick) {
             dying.link().clause303 = true;
@@ -342,8 +342,8 @@ public final class Bond {
             bond.resurrected = dying;
             bond.resurrectedIndex = bond.a == dying ? bond.aIndex : bond.bIndex;
             world.log(Severity.FATE, "Room 303: " + partner.name
-                    + " refuses the frame for " + dying.name
-                    + " — a woven edge answers a death, and the edge is spent");
+                    + " paid it back for " + dying.name
+                    + " — the death is unwritten; the brain lives");
         }
 
         /**

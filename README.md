@@ -109,7 +109,7 @@ java -cp out matrix.Main --headless --ticks 200 --seed 42 --scale 11
 What the 6,000-tick run plays, in order (seed 42) — **two truthful answers, pick your checkout**:
 
 - **As of the `v3.0.0` tag** (the sealed Season One film): **The One is born** (t=1289, debt 30,227) → `I DIDN'T` (1525) → **SMITH OVERFLOW** + Neo's flatline at Machine City (4284) → `"Peace."` (4304) → treaty, six walk free, **REBOOT v7.0** (4324) → a second Thomas at 5249.
-- **On `main` at `8f0a527`** (Season Two's world — LOD, substrate, the fleet, the audit): birth **1299** (debt 30,107) → `I DIDN'T` (1525) → overflow + flatline **4289** → `"Peace."` (4309) → reboot + the door **4329** → the second Thomas at **5229**. Measured, not remembered: `java -cp out:probes/out ArcBeats 6000`.
+- **On `main` at `ea2c141`** (Season Two's world — LOD, substrate, the fleet, the audit): birth **1299** (debt 30,107) → `I DIDN'T` (1525) → overflow + flatline **4035** → `"Peace."` (4055) → reboot + the door **4075** → the second Thomas at **4989**. Measured, not remembered: `java -cp out:probes/out ArcBeats 6000`.
 
 *Black cat note:* the drift between those two columns is not nondeterminism — every Season Two mechanic that shifted the world's dynamics declared its digest move in its own PR, and each checkout replays ITS film byte-for-byte, forever. Same seed, same fate, on every platform: seed-42 digests verified byte-identical across **Apple-Silicon macOS, x86-64 Debian, and an x86-64 Ubuntu container** (third platform 2026-08-11, against the `v3.0.0` tag and current main both).
 

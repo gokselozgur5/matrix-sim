@@ -126,6 +126,14 @@ table() {
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
+  # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
+  # Its budget is written here rather than taken from $TICKS for the reason
+  # #377 measured: at 6,000 ticks the clause fires and is never asked twice, so
+  # a $TICKS row would judge half the ruling and report the other half as held.
+  # 40,000 ticks under 60 deployed daemons is the scale at which a resurrected
+  # mind dies a second time — 24 firings, 11 spent-edge refusals — and the row
+  # costs the sweep about eight seconds.
+  judge BondScenario 'VERDICT ONCE_PER_EDGE_HELD' 40000 42 60
   # The one row that reads a committed file. Its budget is written here instead of
   # taken from $TICKS because probes/beatdrift.baseline is a measurement AT a
   # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
