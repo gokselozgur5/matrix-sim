@@ -77,8 +77,14 @@ public final class Zion {
     }
 
     /**
-     * The canonical zion slot, per crown #84: absorb (the root's drain,
-     * already landed) → fleet tick → sortie scheduling. #116's scheduler:
+     * The canonical zion slot, per crown #84: fleet tick → sortie
+     * scheduling. The root's drain is NOT part of this slot and must never
+     * be moved into it (#830): this slot runs inside the node loop, ahead
+     * of the treaty block that queues liberations, so a slot-side drain
+     * would land every treaty liberation a tick late — invisibly, since
+     * {@code ZION} prints every hundred ticks and the census is outside
+     * the digest chain. What this slot sees is the census as the drain
+     * left it at the END of the previous tick. #116's scheduler:
      * hulls come off the fixed roster in boot order, one laid down each
      * time the census can man one more full board — the Nebuchadnezzar at
      * {@code RIG_CAPACITY} citizens, the Logos at twice that — up to
