@@ -63,6 +63,11 @@ import java.util.List;
 public final class DreamReader {
 
     public static void main(String[] args) throws Exception {
+        // The page owns its charset (it is encoded once, below); the verdicts
+        // and refusals did not, and a drift report that reads differently on
+        // the box that has to read it is the #836 defect one file wide.
+        matrix.Streams.utf8();
+
         String pilot = null;
         long seed = 42;
         long ticks = 6_000;

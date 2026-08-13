@@ -251,6 +251,33 @@ jobs:
           printf '%s\n' "$out"
           printf '%s\n' "$out" | grep -q '^RULERCHECK VERDICT PASS ' \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
+
+      # WHY: lock 11 — the teleprinter's golden day (D-047, #965). Locks 2, 3 and 7 pin the
+      # daemon's BYTES; nothing pinned the SENTENCES a tool writes over them, and --check-golden
+      # was written to ask that question and then never asked by anything — three grep hits, all
+      # inside the file that implements it. Unrun, it drifted from the moment it landed: the
+      # blessing was taken against a tree older than its own commit and was already 198 bytes
+      # behind at dc5bea4, and the world has moved twice more since. A golden file no lane runs
+      # is a comment (tools/README.md's own house rule), so the lane runs it.
+      # tools/ is outside the daemon build, so this step compiles the reader itself — against
+      # lock 1's out/, which is why it stands after it and not with the other tools steps by
+      # accident. Needs no token and no network: it renders one day and compares it to a file.
+      # The tool exits 1 on drift and prints the first line that moved, so the run is piped to
+      # tee rather than captured — under pipefail the exit code fails the step AND the moved
+      # line reaches the log, which is the whole point of a drift report. The verdict grep is
+      # exact-line but for the byte count, so an empty or truncated page cannot pass as OK.
+      - name: tools — the teleprinter's golden day (#965)
+        shell: bash
+        run: |
+          set -euo pipefail
+          javac -encoding UTF-8 --release 17 -cp out -d tools/dreamreader/out tools/dreamreader/*.java
+          golden=tools/dreamreader/golden/otto-aydin-seed1-6000.page
+          java -cp out:tools/dreamreader/out DreamReader \
+            --pilot "Otto Aydin" --seed 1 --ticks 6000 --check-golden "$golden" \
+            | tee "${RUNNER_TEMP:-/tmp}/golden.log"
+          grep -qE "^GOLDEN OK $golden \([0-9]+ bytes\)$" "${RUNNER_TEMP:-/tmp}/golden.log" \
+            || { echo "FATAL the teleprinter reached no GOLDEN OK verdict" >&2; exit 1; }
+
       # WHY: lock 10 — the permanent control group (D-042's ruling, #212). NEUTRAL is not a
       # migration step and this lane does not retire: it runs the flagged world at the
       # canonical seed and holds its chain against the sealed baseline, link by link, forever.
