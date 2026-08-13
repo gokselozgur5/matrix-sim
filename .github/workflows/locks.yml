@@ -20,13 +20,32 @@ jobs:
     timeout-minutes: 15
     steps:
       # WHY: the litany judges the tree as pushed — no caches, no artifacts from elsewhere.
-      # WHY fetch-depth 0: lock 9 compares this tree's seal pin against the BASE's and reads
-      # the commit messages in between. A depth-1 checkout has neither, and a gate that
-      # cannot see the base would pass every move (#884).
+      # WHY fetch-depth 0: two locks read history rather than the tree. Lock 9 compares this
+      # tree's seal pin against the BASE's and reads the commit messages in between; a
+      # depth-1 checkout has neither, and a gate that cannot see the base would pass every
+      # move (#884). Lock 0 dates the PR's evidence against main, and a shallow clone would
+      # call every honest sha unknown and blame the author for the runner's configuration.
       - name: check out the tree
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # WHY: lock 0 — the only lock that judges a claim rather than a compilation (#822).
+      # It asks the PR which main its evidence was measured against, and checks whether
+      # that is still the main underneath it. Warns on drift, fails on a declared move
+      # whose 'before' is not the tree's before.
+      #
+      # The body goes through env and a file, never through interpolation into this
+      # script: a PR body is text a stranger can write, and `${{ }}` into a `run:` block
+      # is how that stranger runs commands on the runner.
+      - name: evidence baseline
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          bash tools/baseline.sh "$RUNNER_TEMP/pr-body.md" "$BASE_SHA"
 
       # WHY: Temurin 17 is the JDK the locks are calibrated on; setup-java only puts javac/java on PATH.
       - name: put JDK 17 on PATH
