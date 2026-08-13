@@ -13,6 +13,7 @@ part of the shop.
 | `digest-move.sh` | Asks the question lock 7 cannot: the seal's pin moved — was that a decision? Silent (`VERDICT NONE`) for every unit that leaves the world's bytes alone; when the pin's sha differs from the base's it demands a commit carrying `Declared digest move: <old> -> <new>` with both shas in full and an issue number, and a reason field that names the issue. Makes the chain of heads a query: `git log --format=%B \| grep '^Declared digest move:'`. Usage: `tools/digest-move.sh [--base <ref>]`. Wired into CI as lock 9. |
 | `attribution.sh` | Asks the only question the contribution graph asks: does GitHub resolve this commit's author to the account that owns the repository? Answers per commit with a denominator, and prints the `git config` that fixes a FAIL. Usage: `tools/attribution.sh` (HEAD) · `--pr N` · `--sha SHA`. Wired into CI on every pull request. |
 | `balance.sh` | Reads a day's contribution mix from the same API the profile graph uses and judges it against D-060's four quarters — names the lagging leg and the count that clears it. Speaks both `date(1)` dialects, so it runs on the operator's macOS box and on `ubuntu-latest`. The API roots at `viewer`, so every run opens with a `SUBJECT` line naming the login it read and exits 6 unless that login owns the repository being judged — a token for the wrong account used to print a confident `verdict=EMPTY`. `contributionsCollection` is an *account* statistic, so the default verdict answers "was the account balanced" and not "was matrix-sim balanced" — every line carries `scope=`, `--repo` asks the narrower question, and a `SCOPE` line prints both readings and their delta so a green verdict can never quietly mean somewhere else. That line also carries `merge=`, the repository's own enabled merge strategies, because the merge button is a term of the law and not a detail of it (D-061) — a run whose token cannot read those settings says `merge=unreadable` rather than guessing. The default stays `account` on the record, not in the tool (D-060 errata, #821). Usage: `tools/balance.sh [--account\|--repo] [--for OWNER/NAME] [--week\|--month\|--days N] [YYYY-MM-DD]`; the window flags judge a rolling span ending on the named day and print each of its days judged alone; `tools/balance.sh --datecheck` judges the day arithmetic alone, with no token and no network. |
+| `dreamreader/` | D-047's teleprinter: one mind's whole day, folded out of the record into deterministic prose. Boots its own quiet universe, takes three feeds (the pilot's perception frames off `--follow`, the log lines that carry their name, the world's beats), and writes a page in four movements — every sentence derived from a captured line, and where the feed is silent the silence written down. Observer-only: not one domain byte moves. The only tool here written in Java, so its build is two commands and the daemon's is the first of them — it compiles against `out/`, and skipping that line gets `package matrix does not exist`, not a shorter build. Usage: `javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java') && javac -encoding UTF-8 --release 17 -cp out -d tools/dreamreader/out tools/dreamreader/*.java && java -cp out:tools/dreamreader/out DreamReader --pilot "Otto Aydin" --seed 1 --ticks 6000`. Flags: `--pilot NAME` (required), `--seed N`, `--ticks N`, `--voice cold\|none`, `--facts`, `--capture-only`, `--out FILE`, `--check-golden FILE`, `--help`. Exit 0 a day rendered · 1 the golden day drifted · 2 nobody by that name — with the caveat the tool does not yet carry (#1011): 2 is also every refused invocation, 1 is also a golden file that is not there, and under `--check-golden` a name the record does not hold reports as a drift rather than as 2. |
 
 House rules:
 
@@ -21,3 +22,19 @@ House rules:
   lines) — a half-cut release is worse than none.
 - Evidence is produced at run time, never pasted from memory. If a lock cannot
   be reproduced when the tool runs, the tool must refuse.
+- A tool that reads a running universe keeps the probe contract
+  (`probes/README.md`): its own private `Simulation`, an explicit seed, and
+  read-only on everything it touches. D-047 put the reader "OUTSIDE (`tools/`
+  or the bench)" and left the choice open; it lives here rather than on the
+  bench because `--out FILE` writes a file the user names, which clause 1 of
+  that contract forbids. Clause 6 it keeps — anything quoted as evidence comes
+  from a pinned `git archive` copy. Clause 7 it does not yet keep: its first
+  statement is not `matrix.Streams.utf8()`, so its verdict lines change bytes
+  with the locale (#965). The contract is the standard a tool is measured
+  against here, not a claim that every tool already meets it.
+- A tool whose output is PROSE carries a golden file, because a page that
+  reads well is not a page that is still true. `dreamreader/golden/` holds one
+  blessed day; `--check-golden` re-renders and prints the first line that
+  moved. Re-blessing is a diff in a PR, never a quiet overwrite. A golden file
+  no lock runs is a comment — which is what `dreamreader/golden/` is today, 198
+  bytes behind the build and unwired from `locks.yml` (#965).
