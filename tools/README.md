@@ -29,13 +29,16 @@ House rules:
   or the bench)" and left the choice open; it lives here rather than on the
   bench because `--out FILE` writes a file the user names, which clause 1 of
   that contract forbids. Clause 6 it keeps — anything quoted as evidence comes
-  from a pinned `git archive` copy. Clause 7 it does not yet keep: its first
-  statement is not `matrix.Streams.utf8()`, so its verdict lines change bytes
-  with the locale (#965). The contract is the standard a tool is measured
+  from a pinned `git archive` copy. Clause 7 it keeps since #965: the page was
+  always encoded once as UTF-8, but the verdicts and refusals printed around it
+  went out on whatever charset the JVM inherited, so `matrix.Streams.utf8()` is
+  now its first statement. The contract is the standard a tool is measured
   against here, not a claim that every tool already meets it.
 - A tool whose output is PROSE carries a golden file, because a page that
   reads well is not a page that is still true. `dreamreader/golden/` holds one
   blessed day; `--check-golden` re-renders and prints the first line that
   moved. Re-blessing is a diff in a PR, never a quiet overwrite. A golden file
-  no lock runs is a comment — which is what `dreamreader/golden/` is today, 198
-  bytes behind the build and unwired from `locks.yml` (#965).
+  no lock runs is a comment, and this one was one for its whole life: it landed
+  198 bytes behind the tree that shipped it and drifted twice more before
+  anybody re-read it. `locks.yml` now builds the reader and asks it (#965), so
+  the next page to move moves in a PR.
