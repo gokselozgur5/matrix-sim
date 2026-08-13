@@ -25,5 +25,12 @@
 #     javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 #     java -cp out:probes/out CensusBeatDrift 42,7 6000 --sha <short>
 
-BEATDRIFT sha=a7660c2 seed=42 ticks=6000 birth=1299 refusal=1525 overflow=4289 flatline=4289 peace=4309 reboot=4329 door=4329 second_birth=5229 max_delta=n/a
-BEATDRIFT sha=a7660c2 seed=7 ticks=6000 birth=1259 refusal=1525 overflow=3707 flatline=3707 peace=3727 reboot=3747 door=3747 second_birth=4659 max_delta=n/a
+# Moved by #377 (the Room 303 unwriting). A mind who was going to die does not, and the
+# whole back half of the film slides with him: at seed 42 overflow, flatline, peace, reboot
+# and the door all come 254 ticks early and the second Thomas 240 early; at seed 7 the same
+# five arrive 213 late and the second birth 220 late. Both directions, because the clause
+# does not delay the cascade — it changes who is standing in it. Six of the eight beats at
+# each seed cleared the declared 200-tick band, which is the band doing its job: this is a
+# declared move and not drift. Was sha=a7660c2 (overflow 4289 / 3707).
+BEATDRIFT sha=ea2c141 seed=42 ticks=6000 birth=1299 refusal=1525 overflow=4035 flatline=4035 peace=4055 reboot=4075 door=4075 second_birth=4989 max_delta=n/a
+BEATDRIFT sha=ea2c141 seed=7 ticks=6000 birth=1259 refusal=1525 overflow=3920 flatline=3920 peace=3940 reboot=3960 door=3960 second_birth=4879 max_delta=n/a
