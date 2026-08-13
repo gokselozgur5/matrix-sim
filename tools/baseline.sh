@@ -354,7 +354,29 @@ if git merge-base --is-ancestor "$STATED_FULL" "$BASE_FULL"; then
   N="$(git rev-list --no-merges --count "${STATED_FULL}..${BASE_FULL}")"
   verdict "STALE stated=${SHORT_S} base=${SHORT_B} intervening=${N} seal_moved=${SEAL_MOVED}"
   echo "${N} commit(s) landed on main between the measurement and this check:"
-  git log --no-merges --format='  %h  %s' "${STATED_FULL}..${BASE_FULL}" | head -40
+  # `git log … | head -40` is the obvious spelling and it kills this check on
+  # exactly the drift it exists to report — INTERMITTENTLY, which is worse than
+  # always. `head` exits at line 41 and closes the read end; if `git log` has
+  # not finished writing by then it takes SIGPIPE and exits 141, and
+  # `set -o pipefail` makes 141 the verdict, with the WARN paragraph never
+  # printed. Whether git finishes first is a pipe-buffer race, so the same
+  # command on the same tree does both.
+  #
+  # Measured on a 61-commit drift against this repository's own main, ten runs:
+  #
+  #   141 141 0 0 0 0 0 0 0 141        3 dead, 7 green, nothing else different
+  #
+  # The suite is not blind to this — `stale-far` asserts `want_exit 0` over a
+  # drift chosen to exceed the cut. It went 5/5 green because its fixture's log
+  # is short enough in BYTES that git wins the race nearly always; the case was
+  # under-loaded rather than wrong. A flaky lock is the one failure mode a lock
+  # cannot have, so the race is removed rather than made less likely.
+  #
+  # The whole log goes into a variable first, so nothing is ever handed a pipe
+  # it can close early. `head -n 40` on a here-string cannot SIGPIPE a process
+  # that has already finished.
+  DRIFT_LOG="$(git log --no-merges --format='  %h  %s' "${STATED_FULL}..${BASE_FULL}")"
+  head -n 40 <<<"$DRIFT_LOG"
   [ "$N" -gt 40 ] && echo "  … and $((N - 40)) more"
   if [ "$SEAL_MOVED" != no ]; then
     echo >&2
