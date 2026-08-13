@@ -165,7 +165,7 @@ table() {
 }
 
 PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0
-STABLE=0 DRIFTED=0 EXEMPT=0
+STABLE=0 DRIFTED=0 EXEMPT=0 UNCHECKED=0
 VARIES=''
 
 # One row's run, printed. The three verbs differ only in what they demand of
@@ -210,6 +210,7 @@ judge() {
   execute "$cls" "$@"
   if [ "$ROW_RC" -ne 0 ]; then
     FAIL=$((FAIL + 1))
+    skipped "$cls"
     echo "FAIL $cls exited $ROW_RC"
     return 0
   fi
@@ -238,6 +239,7 @@ run() {
   execute "$cls" "$@"
   if [ "$ROW_RC" -ne 0 ]; then
     FAIL=$((FAIL + 1))
+    skipped "$cls"
     echo "FAIL $cls exited $ROW_RC"
     return 0
   fi
@@ -276,6 +278,20 @@ vary() {
 # any box with no locale exported, and every row here was STABLE. The hostile
 # locale costs nothing (the probes are pinned to UTF-8 by matrix.Streams.utf8)
 # and makes the byte compare mean what the clause says it means.
+# A row whose probe died on its first run never reaches `settle`, so it was
+# never asked the determinism question at all (#970). It used to be counted in
+# `probes` and in nothing else, which broke the identity the line below rests on
+# and let INSTRUMENTS_STABLE print for a sweep that skipped an instrument — the
+# referee filing a clean sheet for a match it did not watch, which is the exact
+# failure #364 exists to prevent, one level up. Counted here rather than
+# inferred from the shortfall, because a number that says how many is worth more
+# than a verdict that says something is missing.
+skipped() {
+  [ "$TWICE" = yes ] || return 0
+  UNCHECKED=$((UNCHECKED + 1))
+  echo "UNCHECKED $1 — died on its first run, so it was never run twice"
+}
+
 settle() {
   [ "$TWICE" = yes ] || return 0
   local cls="$1" first="$2"; shift 2
@@ -434,10 +450,19 @@ echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL ran=$RAN" \
 
 # Two verdicts, because they are two facts: the world can be perfectly
 # deterministic while its instruments are not, and the sweep that noticed the
-# second must not report it as the first. probes = stable + drift + exempt.
+# second must not report it as the first.
+# probes = stable + drift + exempt + unchecked, and the identity is the point:
+# a row that died before the second run is in none of the first three, so
+# without the fourth the counters silently failed to close and the verdict was
+# computed from DRIFTED alone (#970). The field is appended rather than
+# inserted, because appending is evolution and inserting is a break (D-020).
+# Drift outranks unchecked: a moved instrument is a finding, an unrun one is
+# only an absence of findings, and the verdict names the worse of the two.
 if [ "$TWICE" = yes ]; then
-  echo "BENCH determinism probes=$PROBES stable=$STABLE drift=$DRIFTED exempt=$EXEMPT" \
-       "VERDICT $([ "$DRIFTED" -eq 0 ] && echo INSTRUMENTS_STABLE || echo INSTRUMENTS_DRIFTED)"
+  echo "BENCH determinism probes=$PROBES stable=$STABLE drift=$DRIFTED exempt=$EXEMPT unchecked=$UNCHECKED" \
+       "VERDICT $(if [ "$DRIFTED" -ne 0 ]; then echo INSTRUMENTS_DRIFTED
+                  elif [ "$UNCHECKED" -ne 0 ]; then echo INSTRUMENTS_UNPROVEN
+                  else echo INSTRUMENTS_STABLE; fi)"
 fi
 
 [ "$FAIL" -eq 0 ] && [ "$DRIFTED" -eq 0 ]
