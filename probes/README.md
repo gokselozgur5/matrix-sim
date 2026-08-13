@@ -68,9 +68,22 @@ javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 java -cp out:probes/out <Probe> [args]
 ```
 
-Compile the whole directory, not one file: seven of the twelve probes call the
-shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails on
-them with `cannot find symbol: variable Probes`.
+Compile the whole directory, not one file: seventeen of the thirty-six probes call
+the shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails
+on them with `cannot find symbol: variable Probes`. Both numbers are hand-counted,
+and both had drifted by the time #995 read them — the sentence said seven of twelve
+against a directory that already held seventeen of thirty-six — so they now carry
+the commands that produce them rather than asking to be believed:
+
+```sh
+ls probes/*.java | wc -l                            # 38 files
+grep -al 'static void main' probes/*.java | wc -l   # 36 probes; the other two are
+                                                    # the Probes and LineGrammar helpers
+grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
+```
+
+`grep -a` and not a bare `grep`: `SheetDump.java` carries a NUL byte inside a string
+literal, so a BSD grep drops it as binary and undercounts both figures by one.
 
 ## The sweep
 
@@ -181,6 +194,17 @@ judges it (#906).
 | `NeutralDiff` | Did the control group move, and at which link? | the permanent-NEUTRAL ruling's measuring stick (#212/#537): the NEUTRAL lane's chain against the sealed baseline, byte-equal link by link, `NEUTRALDIFF 60/60 byte-equal VERDICT PASS`. Its first real case was the seal on the open lane branch — `--seal` at `unit/336-neutral-forever`'s committed fixture names tick 500 as the first unequal link and 4/60 links equal, so that branch's rebase has to reseal or land a lane that is red on arrival. #528's fixture is not in `main` yet, so the bare `NeutralDiff 6000` prints `seal_missing` and exits **2** rather than passing vacuously: a referee with no fixture is red, and a length mismatch is reported only after the links the two chains share, because the moved link is the one that says where the world changed |
 | `DocLint` | Do the documents still say what the tree says? | the one probe pointed at the repository instead of at a universe. Five questions: the ADR front matter, the `DECISIONS.md` emoji and the `ROADMAP.md` gate cell agree per D-number; no accepted record still claims, unlabelled, to be awaiting a verdict; every record carries a `### Confirmation`; a missing D-number is explained; and README's pinned `main` beat column equals a live `ArcBeats.measure` — one scan, two readers, no second copy of the needles. Both hand-repairs it replaces were invisible to every other lock: #907's five decisions carried two statuses for a day, #903's four beats were 420 ticks stale. `--selfcheck` breaks a canon of its own thirteen ways and demands that each break move exactly one counter, so `DOCS_TRUE` is a verdict that has been seen to say no (`VERDICT DOCS_TRUE`) |
 | `SheetDump` | What did every soul in this universe derive, and does the same seed derive it twice? | the census, printed: 680 rows at seed 42 boot — 10 cast, 196 humans, 473 programs, the Matrix — with `--cast`, `--wing <family>`, `--system` and `--all` so a reader can ask for one wing instead of the city. Two laws ride the exit code rather than the prose: every mode renders the census TWICE from two universes and byte-compares before a line is printed (an identity hash smuggled into a derivation prints `DRIFT line=3` and exits 1), and `cached=` is a heap walk from the composition root through `matrix.*` fields, arrays, collections and maps, so the sheets-cached-nowhere law of #350 is a number and not a promise — 0 today because the domain imports nothing from `matrix.character`, and 1 the moment a `Sheet` is parked on `World`. Its own first run found the empty wing: `--wing MACHINE` prints `souls=0`, because the machine side runs on singletons that carry no identity string to mix |
+
+Thirty-three rows for thirty-six probes. `CensusCensor`, `CensusReverdict` and
+`CensusSampleSize` have no row here and none in `bench.sh` either — #816 is the unit
+that gives them both. `UnparkStorm` is the reverse and says so in its own row: a
+catalog entry with no sweep row, on purpose. Nothing reads this table, so until
+#995's `DocLint` comparison lands the gap is found by hand:
+
+```sh
+comm -23 <(grep -al 'static void main' probes/*.java | sed 's#probes/##;s#\.java##' | sort) \
+         <(grep -oE '^\| `[A-Za-z]+` \|' probes/README.md | sed 's/^| `//;s/` |$//' | sort)
+```
 
 Add a probe when an investigation demands one; leave it here when the investigation
 ends. The next skeptic starts from this bench, not from zero. (Tooling under D-030.)
