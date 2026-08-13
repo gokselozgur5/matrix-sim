@@ -26,6 +26,12 @@ final class Probes {
         return (List<NeuralLink>) open(RealWorld.class, "links").get(rw);
     }
 
+    /** The near bank of the handoff — freed Humans still waiting for the root's drain (#830's keeper reads it). */
+    @SuppressWarnings("unchecked")
+    static List<RealWorld.Liberation> pendingLiberations(RealWorld rw) throws ReflectiveOperationException {
+        return (List<RealWorld.Liberation>) open(RealWorld.class, "pendingLiberations").get(rw);
+    }
+
     static matrix.machine.Source source(Simulation sim) throws ReflectiveOperationException {
         return (matrix.machine.Source) open(Simulation.class, "source").get(sim);
     }
