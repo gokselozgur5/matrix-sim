@@ -5,7 +5,14 @@
 Sixty links: the full `DIGEST` chain of a canonical run — seed 42, 6,000 ticks,
 headless — taken from `main` at the moment this lane was established, ending at
 the sealed head
-`a2baee590d5af08608d1e2afe3a005d9c21528b49e752d525ba743a21810336d`.
+`e9c833ae59c66c93935c49faf0700f84c355890b3bee645fa5d99d81d4d6675a`.
+
+The head has moved twice before this lane could hold anything — see **Seal
+history** below, and read it before reading the law. Both moves were declared,
+both were correct, and both landed while this file was still on an unmerged
+branch. That is not a flaw in the law; it is the shape of the only window the
+law cannot cover, and it is the reason the law binds on **units** rather than
+on this file.
 
 Regenerate the file exactly the way CI reads it:
 
@@ -56,6 +63,7 @@ a move, the reason the control group's own bytes had to change, and both heads.
 |---|---|---|
 | `4d1e827f…acf0759` | `2d480a2`, pre-v6 | the original pre-v6 baseline; superseded before the lane's first build |
 | `a2baee59…10336d` | lane establishment | **#497** (`bond: the heart enters the chain — a declared move`, PR #864) put the bond book inside the digest while this lane was being built. The move was declared and correct; it simply landed first. The unit's own DoD anticipated exactly this: *"if main's seal moves before this lands, the seal's sha supersedes the literal — the invariant is byte-equality to the sealed baseline."* Two other v6 units in the same window (#525's character axes, #357's p-curve) touched the tree without moving the chain. |
+| `e9c833ae…d4d6675a` | lane merge, 2026-08-13 | **#852** (`bond: the book learns to forget`, PR #963) gave every bond edge a *runs apart* field and let a candidate 300 windows apart leave the book. Declared, argued, and gated by `tools/digest-move.sh` (`VERDICT ARGUED`) — but declared against `.github/canonical-digest`, which is a *different* instrument from this one, and it landed while this lane was still an open PR. The divergence is total rather than tail-only: the bond segment is digested from the first link, so link 1 (`tick=100`) already differs. Against **49 units merged that day** it is the only move — the other 48 held the chain byte-identical, which is the discipline this file exists to keep honest. |
 
 **What this seal is, precisely.** It is not "pre-v6 main" any more — three v6 units
 had already merged, one of them a declared digest move, before the control group
