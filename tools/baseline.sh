@@ -137,6 +137,15 @@ selftest() {
   case_ off-line           "**Baseline:** $OFFLINE"               "$HEAD_SHA"    'BASELINE OFF_LINE'                0
   case_ prose-on-the-line  "Baseline: measured on deadbeef before ${STALE_NEAR} landed" \
                                                                   "$HEAD_SHA"    "intervening=$NEAR_N"                0
+  # The body that documents this check (#1014): its first Baseline-shaped line is
+  # a fenced example of a failure, and the real field below it is fresh. Read as
+  # the example, an honest PR hard-fails on a sha its author never typed. And the
+  # mirror, so the fence is not merely skipped-until-something-matches: a body
+  # whose only field is inside a fence claims nothing, and reads as MISSING.
+  case_ fenced-example     "$(printf 'it fails like this:\n\n```\nBaseline: deadbee\n```\n\n**Baseline:** %s' "$HEAD_SHA")" \
+                                                                  "$HEAD_SHA"    'BASELINE FRESH'                   0
+  case_ fenced-only        "$(printf 'it fails like this:\n\n```\nBaseline: deadbee\n```\n')" \
+                                                                  "$HEAD_SHA"    'BASELINE MISSING seal_moved=no'   0
   # A base from before the pin existed — this branch was measured on one. The
   # run cannot tell whether the seal moved, says so in the verdict rather than
   # guessing a side, and judges strictly.
@@ -219,13 +228,22 @@ git cat-file -e "${BASE}^{commit}" 2>/dev/null || {
 # without markdown bold, because the field is for humans to type and a lock that
 # trips on `**Baseline:**` versus `Baseline:` is a lock about formatting.
 #
-# KNOWN, FILED, NOT FIXED HERE (#1014): the first matching line wins and no
-# markdown is parsed, so an example of this check's own output quoted earlier in
-# the body is read as the claim — a fenced `Baseline: deadbee` above the real
-# field hard-fails an honest PR. Every body that documents this lock has that
-# shape, including the one that shipped it, which put the field first by hand.
-field() {                       # field <label-regex> — the first matching line, or empty
-  grep -im1 -E "^[[:space:]]*[*_]{0,2}${1}[*_]{0,2}[[:space:]]*:" "$BODY" || true
+# FENCED BLOCKS ARE NOT THE BODY'S CLAIM (#1014). The first matching line used to
+# win outright, and nothing was read as markdown, so an example of this check's
+# own output quoted earlier in the body was taken as the field: a fenced
+# `Baseline: deadbee` above a real, fresh field hard-failed the PR and named a
+# sha its author never typed. Every body that documents this lock has that shape,
+# including the one that shipped it, which put the field first by hand — a lock
+# that requires the author to remember where to stand is a lock people route
+# around. So fenced blocks are stripped before the match: a demonstration of the
+# field is not an instance of it. Only the value of the field moves; a body with
+# no field outside a fence still reads as MISSING, because an example nobody
+# claimed is not provenance either.
+unfenced() {                    # the body with ``` / ~~~ fenced blocks removed
+  awk '/^[[:space:]]*(```|~~~)/ { fenced = !fenced; next } !fenced' "$BODY"
+}
+field() {                       # field <label-regex> — first matching unfenced line, or empty
+  unfenced | grep -im1 -E "^[[:space:]]*[*_]{0,2}${1}[*_]{0,2}[[:space:]]*:" || true
 }
 
 BASELINE_LINE="$(field 'baseline')"
