@@ -69,7 +69,7 @@ public final class RealWorld {
     }
 
     public Human grow() {
-        Human h = farm.grow(world.rng());
+        Human h = farm.grow(world.rng(), world.tick());
         humans.add(h);
         return h;
     }
@@ -118,7 +118,7 @@ public final class RealWorld {
         selfsubCount++;
         world.log(Severity.FATE, "self-substantiation: " + link.human.name
                 + " walked out of the dream — residue " + link.personalResidue
-                + " >= threshold " + AcceptanceLoop.threshold(link.human.name) + ", " + link.spikes
+                + " >= threshold " + AcceptanceLoop.threshold(link.human.birthKey) + ", " + link.spikes
                 + " spikes in " + link.windows + " windows; no red pill was given "
                 + Pod.opensClause(link.human));
         bank(new Liberation(link.human, Origin.SELFSUB));
@@ -301,7 +301,7 @@ public final class RealWorld {
     public void digestInto(matrix.core.StateSink sink) {
         sink.putCount(links.size());
         for (NeuralLink link : links) {
-            sink.putLong(AcceptanceLoop.threshold(link.human.name));
+            sink.putLong(AcceptanceLoop.threshold(link.human.birthKey));
             sink.putLong(link.personalResidue);
         }
     }
@@ -322,7 +322,7 @@ public final class RealWorld {
 
     /** The One is grown, not converted: a real pod, a fated name, a hardline. */
     public OneBorn birthTheOne(String name) {
-        Human h = farm.growNamed(name);
+        Human h = farm.growNamed(name, world.rng().seed(), world.tick());
         humans.add(h);
         matrix.entities.TheOne one = new matrix.entities.TheOne(
                 world.allocateId(), world.places().zones().get(0).center(), h.name);

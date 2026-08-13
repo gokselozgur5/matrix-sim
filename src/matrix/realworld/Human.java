@@ -5,8 +5,8 @@ package matrix.realworld;
  * not deletion. Owns the Brain (composition: same fate); may be hosted by a
  * Pod (aggregation: may leave, or never have entered); holds at most one
  * NeuralLink while dreaming. Since D-033 the breaking point is not stored:
- * disbelief is a pure function of the name (see AcceptanceLoop) — fate was
- * always in the name, and the rng stream never hears about it.
+ * disbelief is a pure function — of the BIRTH, since #373, not of the name
+ * (see AcceptanceLoop), and the rng stream never hears about it.
  */
 public final class Human {
     public final String name;
@@ -29,14 +29,31 @@ public final class Human {
      * name the same thing.
      */
     public final int id;
+    /**
+     * The birth event, mixed once and never again (#373, the #212 law): the
+     * seed, the tick, the rack unit, the growth ordinal and the name — one
+     * immutable long, computed here at construction so the derivation
+     * downstream stays pure and the digest honest. A rename would not move
+     * it; nothing can. The free-born carry no rack, so theirs reads the empty
+     * string in that field and differs by construction from a podded birth.
+     *
+     * <p>The five inputs are exactly the five the birth record now carries
+     * (#847 landed {@code rack} and {@code id} beside {@code tick} and
+     * {@code name}; genesis carries the seed), so the key is re-derivable
+     * from a recording by anyone who has the mixer. The key itself is not on
+     * the record and this unit does not put it there.
+     */
+    public final long birthKey;
     NeuralLink link;
 
     /** {@code pod} may be null — the free-born never had one; every reader guards. */
-    public Human(String name, Brain brain, Pod pod, int id) {
+    public Human(String name, Brain brain, Pod pod, int id, long seed, long birthTick) {
         this.name = name;
         this.brain = brain;
         this.pod = pod;
         this.id = id;
+        this.birthKey = AcceptanceLoop.birthKey(
+                seed, birthTick, pod == null ? "" : pod.rackUnit, id, name);
     }
 
     public boolean alive() {

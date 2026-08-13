@@ -92,7 +92,11 @@ table() {
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS"
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
-  judge FateAtlas    'VERDICT MONOCULTURE'
+  # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
+  # tuning as a contract so that widening the band goes red, and the count in
+  # the judged line is the pin: the band is now open, and the number of births
+  # it admits over seeds 1..20 at 600 windows is the thing a tuning moves.
+  judge FateAtlas    'VERDICT BAND_OPEN admitted=5'
   judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
   judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'
   # Seed 42 explicitly rather than $TICKS: this probe's only argument is a

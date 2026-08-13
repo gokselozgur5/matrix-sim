@@ -16,10 +16,21 @@ import java.util.Random;
  */
 public final class Rng {
     private final Random random;
+    private final long seed;
     private long draws = 0;
 
     public Rng(long seed) {
+        this.seed = seed;
         this.random = new Random(seed);
+    }
+
+    /**
+     * Which universe this is. Read-only and draw-free: the birth-event key
+     * (#373) needs to know the seed without touching the stream, and the
+     * world already owns the only legal one.
+     */
+    public long seed() {
+        return seed;
     }
 
     /** Stream position: how many primitive draws fate has consumed. Fed to the digest (skeptic finding). */
