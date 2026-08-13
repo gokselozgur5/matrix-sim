@@ -145,9 +145,14 @@ public final class Simulation {
         // a returning mind may have. DoorPolicy never learns whose.
         this.doorPolicy = new matrix.machine.DoorPolicy(world,
                 () -> Config.PODS_REFERENCE - realWorld.farm().occupiedCount(), substrate);
-        // Canonical node order (D-031, crown #122): machine, realworld, zion —
-        // zion LAST, so liberations queued this tick are absorbed this tick.
-        // The third node is the fence event: nodes.add, addition not refactor.
+        // Canonical node order (D-031, crown #122): machine, realworld, zion.
+        // What the order buys is DRAW order, and only that (#830): same-tick
+        // absorption comes from the drain's position in tickOnce, below —
+        // not from zion sitting last. And it buys draw order only against
+        // MACHINE: realworld and zion commute, so swapping those two is
+        // byte-identical over 6,000 ticks and the root door carries the
+        // table. The third node is the fence event: nodes.add, addition
+        // not refactor.
         this.nodes = List.of(
                 new MachineSystem(world, director, source, substrate, pluggedPods),
                 new RealWorldSystem(realWorld, bonds),
