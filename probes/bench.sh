@@ -115,6 +115,7 @@ table() {
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
+  judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
   # The one row that reads a committed file. Its budget is written here instead of
   # taken from $TICKS because probes/beatdrift.baseline is a measurement AT a
   # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
