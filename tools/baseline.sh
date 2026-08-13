@@ -65,9 +65,24 @@ field() {                       # field <label-regex> — the first matching lin
 BASELINE_LINE="$(field 'baseline')"
 MOVE_LINE="$(field 'declared move')"
 
-# The first 7–40 hex run on the baseline line. Anything else on that line — a
-# backtick, a link, a parenthetical — is the author's business, not ours.
-STATED="$(printf '%s' "$BASELINE_LINE" | grep -oiE '\b[0-9a-f]{7,40}\b' | head -1 || true)"
+# The hex runs on the baseline line, in order — and then the FIRST ONE THAT IS
+# ACTUALLY A COMMIT.
+#
+# Taking the first run outright looked right and failed its own review: the
+# honest body `Baseline: measured on deadbeef before 451cdab landed` picked
+# `deadbeef` and hard-failed a PR whose real sha was sitting two words away.
+# A lock that rejects honest work over word order teaches people to route
+# around it, so prose on the line is now the author's business, as intended.
+# If none of the candidates resolve, the first is reported — a body naming no
+# real commit is the UNKNOWN case, and it should read as the author wrote it.
+STATED=""
+FIRST_CANDIDATE=""
+while read -r cand; do
+  [ -z "$cand" ] && continue
+  [ -z "$FIRST_CANDIDATE" ] && FIRST_CANDIDATE="$cand"
+  if git cat-file -e "${cand}^{commit}" 2>/dev/null; then STATED="$cand"; break; fi
+done <<< "$(printf '%s' "$BASELINE_LINE" | grep -oiE '\b[0-9a-f]{7,40}\b' || true)"
+[ -z "$STATED" ] && STATED="$FIRST_CANDIDATE"
 
 # `yes` anywhere on the declared-move line means yes. The template's default is
 # `no`, so the strict path is opt-in and nobody gets failed for a field they
