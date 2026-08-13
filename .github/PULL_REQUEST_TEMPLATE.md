@@ -24,7 +24,6 @@ Closes #
 ## Evidence
 
 **Baseline:** <!-- the main sha you measured against: `git rev-parse --short HEAD` before you branched -->
-**Declared move:** no <!-- `yes` if the DIGEST chain legitimately changes here; then name the lock step above -->
 
 <!-- One line per claim: the command and the line it printed. Probes welcome (probes/README.md).
 
@@ -32,7 +31,13 @@ Closes #
      several crews merge into one main, a number measured an hour ago may be
      about a world that no longer exists — #207's whole evidence table stopped
      reproducing because #205 landed underneath it, and every lock still passed.
-     Stating the sha makes the staleness checkable instead of invisible. CI
-     warns when it has drifted and names the intervening commits; for a declared
-     move it fails, because a move whose 'before' is not the tree's before
-     cannot be verified by anyone. -->
+     Stating the sha makes the staleness checkable instead of invisible. Lock 0
+     warns when it has drifted and names the intervening commits, and fails when
+     this PR also moves the seal, because a move whose 'before' is not the
+     tree's before cannot be verified by anyone. It reads the move off
+     .github/canonical-digest, not off a field here: this section states one
+     fact once, and the argument for a move goes under the heading above.
+
+     Put this line above any example baseline you quote further down — the
+     reader takes the first `Baseline:` line in the body and cannot tell a code
+     fence from a field (#1014). -->
