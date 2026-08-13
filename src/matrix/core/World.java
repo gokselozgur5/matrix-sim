@@ -299,10 +299,62 @@ public final class World {
             regions.fold(regionId,
                     RegionMap.catalogIndex(((matrix.entities.eco.EnvironmentProgram) e).species), e.id);
         }
-        entities.removeAll(folding);
+        compactOut(folding);
         log(Severity.TRACE, "LOD: " + places.zones().get(regionId).name() + " parks — "
                 + folding.size() + " residents fold into statistics; nobody is watching");
         return folding.size();
+    }
+
+    /**
+     * Takes the folded crowd out of the walk (#1001). {@code removeAll} stood
+     * here and asked an ArrayList {@code contains} once per surviving mind —
+     * |entities| x |folding| reference compares, 4.3M on one x11 fold tick and
+     * 70M at x30, which is a quadratic term hiding inside a once-per-era event.
+     *
+     * <p>The list never needed searching. {@code folding} was built by ONE
+     * in-order walk of this same list four lines up, and nothing between that
+     * walk and this call touches it — {@link RegionMap} folds ids into its own
+     * arrays and never mutates the entity list. So the fold IS a subsequence of
+     * the walk in the walk's own order, and the removal is a merge, not a
+     * search: one read pointer, one write pointer, one cursor into the fold.
+     * References are compared, never re-evaluated, so the predicate that built
+     * the fold cannot mean something different here than it did there.
+     *
+     * <p>The survivors keep their relative order, which is the half of the
+     * contract that was always load-bearing: the stored ids were banked in walk
+     * order, and re-materialisation returns the crowd in the order the digest
+     * already fingerprints.
+     *
+     * <p>The closing {@code f == m} test is the invariant's tripwire, not a
+     * formality. One int compare per fold buys the guarantee that a future edit
+     * which permutes the list between the two loops, or builds the fold from
+     * anything but a forward walk, fails loudly here instead of parking the
+     * wrong residents into a digest that still validates — a stable wrong
+     * answer is stable, and this file has paid that bill before. There is
+     * deliberately no slow-path fallback: a fold that is not a subsequence is a
+     * determinism bug, so it dies like one.
+     */
+    private void compactOut(List<MatrixEntity> folding) {
+        int n = entities.size();
+        int m = folding.size();
+        int w = 0;
+        int f = 0;
+        for (int r = 0; r < n; r++) {
+            MatrixEntity e = entities.get(r);
+            if (f < m && e == folding.get(f)) {
+                f++;
+                continue;
+            }
+            if (w != r) {
+                entities.set(w, e);
+            }
+            w++;
+        }
+        if (f != m) {
+            throw new IllegalStateException("park: the fold is not a subsequence of the walk — "
+                    + f + " of " + m + " matched");
+        }
+        entities.subList(w, n).clear();
     }
 
     /**
