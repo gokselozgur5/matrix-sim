@@ -4,7 +4,7 @@ status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #224
-informed: milestone v6.0
+informed: milestone v7.5
 ---
 
 # D-049 — The Truce as a regime

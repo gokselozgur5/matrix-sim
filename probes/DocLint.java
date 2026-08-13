@@ -26,7 +26,7 @@ import java.util.stream.Stream;
  * published beats stale by ~420 ticks) are the same failure with different
  * subjects, and both were repaired by hand because nothing could fail.
  *
- * <p>Five questions, asked of the tree this runs in:
+ * <p>Six questions, asked of the tree this runs in:
  *
  * <ol>
  *   <li><b>One decision, one status.</b> The ADR front matter, the
@@ -34,6 +34,13 @@ import java.util.stream.Stream;
  *       gate cell must agree for every D-number that appears in more than
  *       one of them. Under Dev1/D-000 the emoji IS the permission to write
  *       code, so a contradiction leaves the gate undefined.</li>
+ *   <li><b>One decision, one gate.</b> The same three sources must also name
+ *       the same PHASE — the index Gate cell, the {@code ROADMAP.md} section
+ *       the decision's row sits under, and the milestone the record's
+ *       {@code informed:} line names. D-039 hangs scheduling on this column
+ *       ("gates before units"), so a decision gated v6.0 in the index and
+ *       v7.5 in the roadmap tells a reader both "cuttable now" and "wait two
+ *       phases".</li>
  *   <li><b>One status per record.</b> An accepted record may not also
  *       claim, unlabelled, to be awaiting a verdict — nor a proposed one
  *       claim to have been accepted. D-029 forbids rewriting a record, so
@@ -50,9 +57,15 @@ import java.util.stream.Stream;
  *       {@link ArcBeats#measure} rather than a second copy of the needles.</li>
  * </ol>
  *
- * <p>The gate column is deliberately NOT judged here: it disagrees for seven
- * decisions today and choosing a winner is a scheduling call, not a repair
- * (#957 owns it, and says this is where its comparison belongs).
+ * <p>The gate comparison needs three sources and takes the third from
+ * {@code informed:}, which two conventions share: fourteen records name a
+ * milestone ({@code informed: milestone v6.5}) and the rest name the phase
+ * tracker issue the template ships ({@code informed: phase tracker #24}). A
+ * record on the tracker convention has no third source, so it is counted out
+ * of {@code gates_compared} rather than judged — D-008, D-023, D-024, D-032
+ * and D-033 carry roadmap rows and are outside this check for that reason
+ * alone. Unifying the convention would widen the check; it is not this unit's
+ * call, and three of those five are desynced index-to-roadmap already.
  *
  * <pre>
  * java -cp out:probes/out DocLint [ticks] [seed]   lint the tree it stands in
@@ -78,12 +91,13 @@ public final class DocLint {
 
     /** What the run found, once. Every field is a count of things that are wrong. */
     public record Report(int records, int indexRows, int roadmapRows, int compared,
-                         int statusDrift, int twoStatuses, int missingConfirmation,
+                         int statusDrift, int gatesCompared, int gateDrift,
+                         int twoStatuses, int missingConfirmation,
                          int gaps, int unannotatedGaps, int beatClaims, int beatDrift) {
 
         boolean docsTrue() {
-            return statusDrift == 0 && twoStatuses == 0 && missingConfirmation == 0
-                    && unannotatedGaps == 0 && beatDrift == 0;
+            return statusDrift == 0 && gateDrift == 0 && twoStatuses == 0
+                    && missingConfirmation == 0 && unannotatedGaps == 0 && beatDrift == 0;
         }
     }
 
@@ -101,6 +115,14 @@ public final class DocLint {
     private static final Pattern RECORD_FILE = Pattern.compile("^(D-\\d{3})-.*\\.md$");
     private static final Pattern FRONT_STATUS = Pattern.compile("^status:\\s*(\\S+)\\s*$");
     private static final Pattern D_NUMBER = Pattern.compile("D-(\\d{3})");
+
+    // The gate column's three sources: a roadmap phase heading, a milestone in
+    // front matter, and whatever phases the index cell names (`v1.0 (interface)`
+    // is one phase with a note, not a second value).
+    private static final Pattern ROADMAP_PHASE = Pattern.compile("^##\\s+(v\\d+(?:\\.\\d+)?)(?![\\d.])");
+    private static final Pattern FRONT_MILESTONE =
+            Pattern.compile("^informed:.*\\bmilestone\\s+(v\\d+(?:\\.\\d+)?)(?![\\d.])");
+    private static final Pattern PHASE = Pattern.compile("v\\d+(?:\\.\\d+)?(?![\\d.])");
     private static final Pattern D_RANGE =
             Pattern.compile("D-(\\d{3})\\s*(?:[–—-]|through|to)\\s*(?:D-)?(\\d{3})");
 
@@ -150,6 +172,8 @@ public final class DocLint {
                 + " roadmap_rows=" + r.roadmapRows()
                 + " compared=" + r.compared()
                 + " status_drift=" + r.statusDrift()
+                + " gates_compared=" + r.gatesCompared()
+                + " gate_drift=" + r.gateDrift()
                 + " two_statuses=" + r.twoStatuses()
                 + " missing_confirmation=" + r.missingConfirmation()
                 + " gaps=" + r.gaps()
@@ -237,6 +261,8 @@ public final class DocLint {
             }
         }
 
+        int[] gates = gateCheck(canon, ids, print);
+
         int two = 0;
         int noConfirmation = 0;
         for (Rec rec : canon.records()) {
@@ -289,7 +315,120 @@ public final class DocLint {
         int[] beats = beatCheck(canon, arc, print);
 
         return new Report(canon.records().size(), index.size(), roadmap.size(), compared,
-                drift, two, noConfirmation, gaps, unannotated, beats[0], beats[1]);
+                drift, gates[0], gates[1], two, noConfirmation, gaps, unannotated,
+                beats[0], beats[1]);
+    }
+
+    // -------------------------------------------------------------- the gate
+
+    /**
+     * The gate column, across the same three documents the status uses.
+     *
+     * <p>The roadmap is the authority and the other two are its transcripts:
+     * the four-beat split of Season Three was the Architect's ruling in
+     * session (2026-08-11 17:32, carried by {@code 3f122ee} — "milestones cut
+     * and gates reassigned to their beats"), and it was the roadmap that the
+     * ruling was written into. So a disagreement is read as the index or the
+     * record lagging, never as a second plan.
+     *
+     * <p>A decision is only judged when it has all three: a roadmap row (its
+     * section heading is the phase), a Gate cell, and an {@code informed:}
+     * line naming a milestone. The index cell may annotate its phase —
+     * {@code v1.0 (interface)} is one phase with a note — so it is read as
+     * the set of phases it names and must contain the roadmap's.
+     *
+     * @return {@code {compared, drift}}
+     */
+    private static int[] gateCheck(Canon canon, Set<String> ids, boolean print) {
+        Map<String, String> index = indexGates(canon.index());
+        Map<String, String> roadmap = roadmapGates(canon.roadmap());
+        Map<String, String> front = new LinkedHashMap<>();
+        for (Rec rec : canon.records()) {
+            String milestone = frontMilestone(rec);
+            if (milestone != null) {
+                front.put(rec.id(), milestone);
+            }
+        }
+
+        int compared = 0;
+        int drift = 0;
+        for (String id : ids) {
+            String r = roadmap.get(id);
+            String a = front.get(id);
+            String i = index.get(id);
+            if (r == null || a == null || i == null) {
+                // A two-source comparison cannot say which one lagged, and a
+                // record with no index row at all is the status check's fault
+                // to report, not a disagreement about which phase it belongs to.
+                continue;
+            }
+            compared++;
+            boolean bad = !r.equals(a) || !phases(i).contains(r);
+            if (bad) {
+                drift++;
+            }
+            if (bad && print) {
+                System.out.println("GATE " + id + " index=" + i + " adr=" + a + " roadmap=" + r + " DRIFT");
+            }
+        }
+        return new int[] {compared, drift};
+    }
+
+    /** The Gate cell of each index row, verbatim — the annotation is part of the claim. */
+    private static Map<String, String> indexGates(List<String> index) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (String line : index) {
+            Matcher m = INDEX_ROW.matcher(line);
+            if (!m.find()) {
+                continue;
+            }
+            String[] cells = line.split("\\|", -1);
+            out.put(m.group(1), cells.length > 4 ? cells[4].trim() : "absent");
+        }
+        return out;
+    }
+
+    /** The phase whose section holds each decision's roadmap gate row. */
+    private static Map<String, String> roadmapGates(List<String> roadmap) {
+        Map<String, String> out = new LinkedHashMap<>();
+        String phase = null;
+        for (String line : roadmap) {
+            Matcher heading = ROADMAP_PHASE.matcher(line);
+            if (heading.find()) {
+                phase = heading.group(1);
+                continue;
+            }
+            String[] cells = line.split("\\|", -1);
+            if (phase == null || cells.length < 5) {
+                continue;
+            }
+            String id = cells[2].trim();
+            if (id.matches("D-\\d{3}")) {
+                out.putIfAbsent(id, phase);
+            }
+        }
+        return out;
+    }
+
+    /** The milestone a record's {@code informed:} line names, or null on the tracker convention. */
+    private static String frontMilestone(Rec rec) {
+        for (String line : rec.lines()) {
+            Matcher m = FRONT_MILESTONE.matcher(line);
+            if (m.find()) {
+                return m.group(1);
+            }
+        }
+        return null;
+    }
+
+    /** Every phase a cell names, so an annotated cell is read by its phases and not its prose. */
+    private static Set<String> phases(String cell) {
+        Set<String> out = new LinkedHashSet<>();
+        Matcher m = PHASE.matcher(cell);
+        while (m.find()) {
+            out.add(m.group());
+        }
+        return out;
     }
 
     // ------------------------------------------------------------- the beats
@@ -558,11 +697,20 @@ public final class DocLint {
         int broken = 0;
         broken += expect("true-canon", "none", lint(sample(c -> { }), arc, false));
         broken += expect("roadmap-desync", "status_drift",
-                lint(sample(c -> c.roadmap.set(1, "| Districts | D-002 | 🟡 | #223 |")), arc, false));
+                lint(sample(c -> c.roadmap.set(2, "| Districts | D-002 | 🟡 | #223 |")), arc, false));
         broken += expect("index-desync", "status_drift",
                 lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟡 | v6.0 | #2 |")), arc, false));
         broken += expect("record-desync", "status_drift",
                 lint(sample(c -> c.bodies.get(2).set(1, "status: accepted")), arc, false));
+        broken += expect("gate-index-desync", "gate_drift",
+                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟢 | v7.5 | #2 |")), arc, false));
+        broken += expect("gate-roadmap-desync", "gate_drift",
+                lint(sample(c -> c.roadmap.set(0, "## v6.5 — Program")), arc, false));
+        broken += expect("gate-record-desync", "gate_drift",
+                lint(sample(c -> c.bodies.get(1).set(3, "informed: milestone v7.5")), arc, false));
+        broken += expect("gate-cell-annotated", "none",
+                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟢 | v6.0 (interface) | #2 |")),
+                        arc, false));
         broken += expect("record-without-row", "status_drift",
                 lint(sample(c -> c.index.remove(2)), arc, false));
         broken += expect("two-statuses", "two_statuses",
@@ -585,7 +733,7 @@ public final class DocLint {
         broken += expect("stale-attribution", "beat_drift",
                 lint(sample(c -> c.architecture.add("the door is 999 at `abc1234`.")), arc, false));
 
-        System.out.println("SELFCHECK cases=13 broken=" + broken);
+        System.out.println("SELFCHECK cases=17 broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
@@ -605,6 +753,9 @@ public final class DocLint {
         List<String> names = new ArrayList<>();
         if (r.statusDrift() > 0) {
             names.add("status_drift");
+        }
+        if (r.gateDrift() > 0) {
+            names.add("gate_drift");
         }
         if (r.twoStatuses() > 0) {
             names.add("two_statuses");
@@ -638,6 +789,8 @@ public final class DocLint {
      * A canon of three records that is true in every respect the lint checks:
      * two records agreeing across all three sources, a third with a gap
      * (D-003) annotated in the index, and a README pin that matches the run.
+     * D-001 sits on the phase-tracker convention, so its gate is out of the
+     * comparison the way the tree's five older records are.
      */
     private static Canon sample(java.util.function.Consumer<Draft> mutate) {
         Draft d = new Draft();
@@ -647,20 +800,26 @@ public final class DocLint {
         d.index.add("| [D-004](adr/D-004-d.md) | Four | 🟡 | v7.0 | #4 |");
         d.index.add("D-003 was never issued: the number was claimed and the record never written.");
 
+        d.roadmap.add("## v6.0 — The Heart of the City");
         d.roadmap.add("| Gate | Decision | Status | Thread |");
         d.roadmap.add("| Districts | D-002 | 🟢 accepted 2026-08-12 | #223 |");
+        d.roadmap.add("## v7.0 — A Detective Story");
+        d.roadmap.add("| Gate | Decision | Status | Thread |");
         d.roadmap.add("| Truce | D-004 | 🟡 | #224 |");
 
         d.readme.add(pinLine("100", "200", "300"));
         d.architecture.add("the door is 300 at `abc1234`, and 250 at the tag.");
 
-        d.bodies.add(new ArrayList<>(List.of("---", "status: accepted", "---", "",
+        d.bodies.add(new ArrayList<>(List.of("---", "status: accepted",
+                "consulted: thread #1", "informed: phase tracker #20", "---", "",
                 "Accepted by the owner's verdict, 2026-08-12.", "", "### Confirmation", "",
                 "The command that proves it.")));
-        d.bodies.add(new ArrayList<>(List.of("---", "status: accepted", "---", "",
+        d.bodies.add(new ArrayList<>(List.of("---", "status: accepted",
+                "consulted: thread #2", "informed: milestone v6.0", "---", "",
                 "Accepted by the owner's verdict, 2026-08-12.", "", "### Confirmation", "",
                 "The command that proves it.")));
-        d.bodies.add(new ArrayList<>(List.of("---", "status: proposed", "---", "",
+        d.bodies.add(new ArrayList<>(List.of("---", "status: proposed",
+                "consulted: thread #4", "informed: milestone v7.0", "---", "",
                 "Final call in thread #4.", "", "### Confirmation", "",
                 "The command that proves it.")));
         mutate.accept(d);

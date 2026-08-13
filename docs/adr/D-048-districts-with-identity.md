@@ -4,7 +4,7 @@ status: accepted
 date: 2026-08-11
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #223
-informed: milestone v6.0
+informed: milestone v7.0
 ---
 
 # D-048 — Districts with identity
