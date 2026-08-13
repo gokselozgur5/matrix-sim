@@ -66,13 +66,18 @@ public final class PodOptional {
     private static int anomalies = 0;
 
     /**
-     * The growth ordinal for a mind this probe builds by hand (#847). These
-     * eight subjects stand inside a real universe that has already grown its
-     * own people with ordinals of their own, so the vise takes a number past
-     * the farm's range rather than one that would read as a claim about
-     * somebody the world grew. Nothing in the four endings reads it.
+     * The birth a mind this probe builds by hand declares for itself (#847,
+     * then #764). These eight subjects stand inside a real universe that has
+     * already grown its own people with ordinals of their own, so the vise
+     * takes a number past the farm's range rather than one that would read as
+     * a claim about somebody the world grew; the seed and the tick are zero
+     * for the same reason. Since #764 the constructor mixes all three into
+     * {@code birthKey}, so a hand-built mind carries a fate like any other —
+     * and the door test below stands its residue at THAT mind's threshold,
+     * read off its own key, instead of at a bar computed from its name.
      */
     private static final int VISE_ORDINAL = 100_000;
+    private static final long VISE_SEED = 0, VISE_TICK = 0;
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
@@ -140,10 +145,10 @@ public final class PodOptional {
      */
     private static void selfsub(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL, VISE_SEED, VISE_TICK);
         NeuralLink wire = jackIn(u, mind, Pill.BLUE);
         u.realWorld.register(wire);
-        standResidueAt(wire, AcceptanceLoop.threshold(name));
+        standResidueAt(wire, AcceptanceLoop.threshold(mind.birthKey));
 
         boolean npe = false;
         long before = u.realWorld.selfsubCount();
@@ -172,7 +177,7 @@ public final class PodOptional {
      */
     private static void treaty(String name, Pod pod) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL, VISE_SEED, VISE_TICK);
         NeuralLink wire = jackIn(u, mind, Pill.BLUE);
         u.realWorld.register(wire);
 
@@ -200,7 +205,7 @@ public final class PodOptional {
      */
     private static void rigDeath(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL, VISE_SEED, VISE_TICK);
         BroadcastRig rig = new BroadcastRig();
         rig.beginSession(u.world, u.world.places().zones().get(0));
         NeuralLink wire = rig.open(mind, u.world);
@@ -230,7 +235,7 @@ public final class PodOptional {
      */
     private static void rigCut(String name, Pod pod, String mustSay) throws Exception {
         Universe u = new Universe();
-        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL);
+        Human mind = new Human(name, new Brain(name), pod, VISE_ORDINAL, VISE_SEED, VISE_TICK);
         BroadcastRig rig = new BroadcastRig();
         rig.beginSession(u.world, u.world.places().zones().get(0));
         NeuralLink wire = rig.open(mind, u.world);

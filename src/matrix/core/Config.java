@@ -52,12 +52,42 @@ public final class Config {
     public static final long DEJA_RESIDUE_SPIKE = 250;
     // The Kid family (D-033, dossier #96 section 3): spike-only personal
     // residue on BLUE links; threshold in [KID_BASE, KID_BASE+KID_JITTER)
-    // needs 5-7 spikes at lambda ~1.17/link per 6000-tick run — measured
-    // ~once per 2-5M link-ticks over the unit PR's seed sweep. The first
-    // family tried (140/40, 4e-4, 8) needed 18+ spikes and could never
-    // fire; lowered once, per the sweep, to the dossier's own numbers.
-    // 1/512 is a power of two: the chance compare is bit-exact everywhere.
-    public static final long KID_BASE = 144;
+    // needs 5-7 spikes over a 6000-tick run's 600 accrual windows, at a
+    // spike density of 1/512 per window. The first family tried (140/40,
+    // 4e-4, 8) needed 18+ spikes and could never fire; lowered once, per
+    // the sweep, to the dossier's own numbers. 1/512 is a power of two:
+    // the chance compare is bit-exact everywhere.
+    //
+    // Re-tuned once more at #764, and the retune is FORCED by the re-key
+    // rather than chosen. When fate stopped keying to the name (#373's
+    // ruling) the population stopped being a 400-name lottery and became
+    // every birth a universe grows. Under that population the old bar of
+    // 144 cannot fire at all: FateAtlas admits 0 births of 3,920 over
+    // seeds 1..20 and 0 of 11,760 over seeds 1..60, at 600 windows —
+    // VERDICT BAND_SEALED, a door with no key rather than a rare one.
+    // Landing the re-key at 144 would have deleted the crossing from every
+    // canonical-length film in the multiverse, which is #929's defect
+    // arrived at deliberately.
+    //
+    // 112 is the only move: JITTER, SPIKE and DENOM were measured by the
+    // same sweep and stayed. The criterion is the comment above this
+    // block, not an outcome — at 144 the bar needs 6, 7 or 8 spikes, so
+    // "needs 5-7 spikes" has been false of the running code since the day
+    // it was written; at 112 the bar needs 5, 6 or 7, over 19% / 50% / 31%
+    // of births, and the sentence becomes true. Deliberately NOT the
+    // criterion: the per-link-tick rarity band D-033's Confirmation quotes.
+    // That record's third errata (#843) retired the per-link-tick rate as a
+    // unit — it presumes a hazard the mechanic does not have — so tuning to
+    // land inside it would be fitting a constant to a discredited number.
+    //
+    // What this does NOT settle: eligibility still climbs with the run
+    // length. `FateAtlas --sweep` reads ELIGIBILITY_DRIFTS 5..3920 of 3920
+    // after this change, because personalResidue is a monotone accumulator
+    // racing a fixed bar and no constant in this family bounds that slope.
+    // #373's standing recommendation is to rule that axis before the
+    // constants; this unit moves one constant only because the alternative
+    // is a sealed band, and it takes no position on the axis.
+    public static final long KID_BASE = 112;
     public static final int KID_JITTER = 48;
     public static final int KID_SPIKE_DENOM = 512;
     public static final long KID_SPIKE = 24;

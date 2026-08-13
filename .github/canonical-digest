@@ -34,4 +34,4 @@
 #
 #     git log --format=%B | grep '^Declared digest move:'
 
-e9c833ae59c66c93935c49faf0700f84c355890b3bee645fa5d99d81d4d6675a  seed 42, 6,000 ticks — moved by #852: the bond book forgets a candidate after 300 windows apart, so one edge leaves at t=4209 and two are minted the old world never had, and each edge now carries its run apart beside its accrual count. Was 421d726396ff8269f53f5e81c389c984191afda20073076e3f060ae3e0e3ce10; argued in PR #963
+5b3b7c8f9bd035f219b04b64296b8d5eccf9374747877951e7b545284a3bb32b  seed 42, 6,000 ticks — moved by #764: fate stops deriving from the name and derives from the birth event, so every open link's threshold changes value and the realworld segment feeds those thresholds into the chain. KID_BASE also moves 144 -> 112, because the old bar admits zero births of 11,760 once the key is the birth. Was e9c833ae59c66c93935c49faf0700f84c355890b3bee645fa5d99d81d4d6675a; argued in PR #787

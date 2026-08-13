@@ -45,10 +45,17 @@ import java.util.Map;
  * <i>rename</i>. Editing {@code "black cat"} to {@code "stray cat"} looks like
  * a caption change and is a digest move; today nothing in the tree says so.</li>
  * <li><b>The two doors.</b> {@link AcceptanceLoop#threshold} (outward) and
- * {@link RealWorld#petitionThreshold} (inward), over six canon names, against
- * pinned values. Both mixes are murmur3 over {@code name.hashCode()}, and they
- * are deliberately decorrelated from each other; a JLS deviation would move
- * both fates at once and this leg names which name moved.</li>
+ * {@link RealWorld#petitionThreshold} (inward), over six canon births, against
+ * pinned values. They are deliberately decorrelated from each other; a JLS
+ * deviation would move both fates at once and this leg names which birth
+ * moved.
+ *
+ * <p>The outward door stopped being a function of the name at #764 — it reads
+ * {@link AcceptanceLoop#birthKey}, which mixes seed, tick, rack unit, growth
+ * ordinal and name — so the six rows carry a whole birth each and not just a
+ * string. The leg's reason for existing is unchanged and if anything larger:
+ * the key still runs on {@code String.hashCode}, now over TWO strings, the
+ * rack unit as well as the name.</li>
  * </ol>
  *
  * <p>What this probe does <b>not</b> claim: that the sites are the right
@@ -65,7 +72,7 @@ public final class SealHygiene {
 
     private record Row(String id, int pinned) {}
 
-    private record Door(String name, long outward, long inward) {}
+    private record Door(String name, String rack, int id, long outward, long inward) {}
 
     /**
      * The Bestiary as the seal sees it. Pinned 2026-08-13 on Temurin 17
@@ -87,18 +94,32 @@ public final class SealHygiene {
             new Row("rain", 3492756));
 
     /**
-     * Six names the canonical seed-42 run actually liberates, with both door
-     * thresholds. Otto Aydin is first deliberately: #373 established he is the
-     * one name in 400 whose fate can cross inside a 6,000-tick arc, so if any
-     * pinned number in this file is going to matter, it is his.
+     * The universe and the clock the six pinned births share. Literals, not a
+     * boot: this probe reads constants and nothing else, which is why it is
+     * the one probe that cannot be flaky. Any fixed pair would do — these two
+     * are the canonical seed and the world's first tick, so a reader can see
+     * at a glance that no run produced them.
+     */
+    private static final long DOOR_SEED = 42, DOOR_TICK = 0;
+
+    /**
+     * Six canon names, each given a whole birth, with both door thresholds.
+     * Otto Aydin is first for the history: while fate keyed to the name he was
+     * the one string in 400 whose bar could be cleared inside a 6,000-tick
+     * arc, and #764 is the unit that ended that. His row is now six pinned
+     * numbers like any other — which is the change, stated as a table.
+     *
+     * <p>The rack units and ordinals are the farm's own first six slots. They
+     * are inputs to the outward mix and therefore load-bearing: editing one is
+     * a different birth and a different fate, exactly as editing a name is.
      */
     private static final List<Door> DOORS = List.of(
-            new Door("Otto Aydin", 161L, 88L),
-            new Door("Marcus Osei", 149L, 86L),
-            new Door("Noor Reyes", 152L, 91L),
-            new Door("Dario Novak", 170L, 112L),
-            new Door("Thomas Lindqvist", 182L, 62L),
-            new Door("Dario Moreau", 174L, 104L));
+            new Door("Otto Aydin", "R01/U01", 0, 143L, 88L),
+            new Door("Marcus Osei", "R01/U02", 1, 156L, 86L),
+            new Door("Noor Reyes", "R01/U03", 2, 143L, 91L),
+            new Door("Dario Novak", "R01/U04", 3, 115L, 112L),
+            new Door("Thomas Lindqvist", "R01/U05", 4, 142L, 62L),
+            new Door("Dario Moreau", "R01/U06", 5, 121L, 104L));
 
     public static void main(String[] args) {
         matrix.Streams.utf8();
@@ -134,13 +155,18 @@ public final class SealHygiene {
             breaks.add("CATALOG id=\"" + extra + "\" is in Bestiary and not pinned here");
         }
 
-        // Leg 2 — the two doors. Same input, two deliberately decorrelated
-        // mixes; both are pure functions of the name and both reach state.
+        // Leg 2 — the two doors. Two deliberately decorrelated mixes, both
+        // pure and both reaching state. They no longer take the same input:
+        // since #764 the outward door reads the whole birth and the inward one
+        // still reads the name, so a JLS deviation in String.hashCode moves
+        // both — the outward one through the rack unit and the name at once.
         for (Door d : DOORS) {
             checked += 2;
-            long out = AcceptanceLoop.threshold(d.name());
+            long key = AcceptanceLoop.birthKey(DOOR_SEED, DOOR_TICK, d.rack(), d.id(), d.name());
+            long out = AcceptanceLoop.threshold(key);
             long in = RealWorld.petitionThreshold(d.name());
-            System.out.printf("SEAL door name=\"%s\" outward=%d inward=%d %s%n", d.name(), out, in,
+            System.out.printf("SEAL door name=\"%s\" rack=\"%s\" id=%d outward=%d inward=%d %s%n",
+                    d.name(), d.rack(), d.id(), out, in,
                     (out == d.outward() && in == d.inward()) ? "OK"
                             : "BREAK want outward=" + d.outward() + " inward=" + d.inward());
             if (out != d.outward()) {
