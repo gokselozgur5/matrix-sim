@@ -301,6 +301,10 @@ public final class Simulation {
      * agreement is structural, and divergence is a chain verdict.
      */
     public void commandReload() {
+        if (world.state() == matrix.core.SystemState.NEGOTIATION) {
+            world.log(Severity.SYS, "reload refused: the world is at the table — the negotiation must land first");
+            return;
+        }
         if (chronos != null) {
             chronos.snapshot(snapshotNow());
             chronos.boundary(world.tick(), "reload");
