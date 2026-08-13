@@ -73,11 +73,22 @@ public final class Source {
                 }
             }
         } catch (DeletionRefusedException refusal) {
-            registry.register(p.purpose, world.tick());
+            // The ledger must not admit a member the log never names (#951).
+            // The quiet-survival path above reads this boolean for exactly the
+            // same reason — the log must not claim what the ledger did not do —
+            // and the refusal path used to discard it, so the loudest refusal
+            // in the tree was the one entry that walked in without a line and
+            // the cited census could not be reconstructed from the log carrying
+            // it. Smith is announced here rather than inside fork() because the
+            // registration belongs to the Source's bookkeeping, not to his
+            // choice: fork() is about what he did, this line is about what the
+            // ledger now holds.
+            boolean fresh = registry.register(p.purpose, world.tick());
+            world.log(Severity.BAD, "deletion refused by \"" + p.purpose + "\" — " + refusal.getMessage()
+                    + (fresh ? " — orphan #" + registry.count() + " registered"
+                             : " — already on the ledger, still refusing"));
             if (p instanceof AgentSmith smith) {
                 fork(smith);
-            } else {
-                world.log(Severity.BAD, "deletion refused by \"" + p.purpose + "\" — " + refusal.getMessage());
             }
         }
     }
