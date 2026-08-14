@@ -53,9 +53,7 @@ public final class FlockMovement implements Movement {
             sumY += n.snapYCm;
             headX += other.headingX;
             headY += other.headingY;
-            long ddx = (long) self.snapXCm - n.snapXCm;
-            long ddy = (long) self.snapYCm - n.snapYCm;
-            if (ddx * ddx + ddy * ddy <= sep2) {
+            if (matrix.core.Geo.withinSq(self.snapXCm, self.snapYCm, n.snapXCm, n.snapYCm, sep2)) {
                 sepX += Integer.signum(self.snapXCm - n.snapXCm);
                 sepY += Integer.signum(self.snapYCm - n.snapYCm);
             }
