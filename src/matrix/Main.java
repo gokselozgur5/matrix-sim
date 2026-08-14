@@ -124,9 +124,13 @@ public final class Main {
             System.err.println(scaleRefusal);
             System.exit(2);
         }
-        if (scale != 1 && (replayPath != null || chronosPath != null)) {
+        if (scale != 1 && (replayPath != null || chronosPath != null || auditPath != null)) {
             // The genesis line carries seed and version, not a scale: a scaled
             // recording could not be folded back. Scale is a live-run dial.
+            // --audit is the third chronos path and the plainest case (#1006):
+            // the fold at least ticks a world, so a scaled fold is a wrong
+            // universe; --audit boots none, so a scaled audit is a flag with no
+            // reader — accepted, range-checked, stored, and never read again.
             System.err.println("--scale rides live runs only — the chronos record knows no scale");
             System.exit(2);
         }
@@ -478,7 +482,7 @@ public final class Main {
                   --seed N            the fate of the universe (default 42)
                   --scale N           homecoming dial (#136): multiply every Bestiary population
                                       (x11 ~ 5,269 entities — the D-027 retargeted row's scale);
-                                      live runs only, refused with --chronos/--replay (default 1)
+                                      live runs only, refused with --chronos/--replay/--audit (default 1)
                   --follow NAME       stream one pilot's dream as JSONL every 100 ticks
                   --sink-at T         scuttle the active ship in tick T's zion slot (headless scenario, #119)
                   --sink-every N      file a sink order every N ticks (headless scenario, #905): the only
