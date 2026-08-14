@@ -154,6 +154,18 @@ table() {
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
+  # #830's other half, judged at last (#1013). Its budget is written here
+  # rather than taken from $TICKS because the table is a measurement AT a
+  # budget: zion's draws reach the seal late, so at 2,000 ticks the sweep
+  # measures a smaller and equally true table — orders=6 classes=2 silent=2,
+  # because moving the free city to the front has not diverged yet — and
+  # judging that against this row would report the argument as a break. The
+  # three counters are the contract: orders is every permutation actually run
+  # (derived from the node list, so a fourth SystemNode moves it instead of
+  # being skipped), classes is the distinct seals among them, and silent is
+  # how many non-canonical orders reproduce the canonical seal — the root
+  # door's claim, as a number that can go red.
+  judge OrderTable   'VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1' 6000
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
   # Its budget is written here rather than taken from $TICKS for the reason
   # #377 measured: at 6,000 ticks the clause fires and is never asked twice, so
