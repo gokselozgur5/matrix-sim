@@ -5,6 +5,7 @@ import matrix.character.Sheets;
 import matrix.core.NamePool;
 
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -246,7 +247,29 @@ public final class SheetBench {
                         + " max_axis_corr=%.4f pair=%s bound=%.2f VERDICT %s",
                 pool.size(), axes, meanBitflip, worstCorr, worstPair, CORR_BOUND,
                 avalancheOk && corrOk ? "PASS" : "FAIL"));
+        // The line above verdicts on two conjuncts and prints one of their
+        // bounds, which makes the mixer's own measurement unreadable: nothing
+        // in it answers |0.5001 - 0.5| <= what, and the trailing bound=0.15
+        // reads as if it covered mean_bitflip, a tolerance fifteen times
+        // looser than the one actually applied. Tightening BITFLIP_TOLERANCE
+        // moved the last word and not one number. The legs go on their own
+        // appended line rather than into that one, because bench.sh reads
+        // this mode's exit code and a mid-line insertion is a break (D-020).
+        System.out.println(String.format(Locale.ROOT,
+                        "AVALANCHE legs bitflip=%.4f/%s %s corr=%.4f/%s %s VERDICT %s",
+                meanBitflip, bound(BITFLIP_TOLERANCE), avalancheOk ? "PASS" : "FAIL",
+                worstCorr, bound(CORR_BOUND), corrOk ? "PASS" : "FAIL",
+                avalancheOk && corrOk ? "PASS" : "FAIL"));
         return avalancheOk && corrOk ? 0 : 1;
+    }
+
+    /**
+     * A bound printed at the precision it was written with. A fixed {@code %.2f}
+     * would print a 0.00001 tolerance as {@code 0.00} and hand the reader a
+     * bound the probe is not applying — the failure this line exists to end.
+     */
+    private static String bound(double value) {
+        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     /**
