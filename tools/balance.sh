@@ -46,7 +46,8 @@
 # line each, judged alone, because the inversion a window claims to fix is only
 # visible beside what the days said by themselves; a WINDOW line then re-adds
 # those days and checks the sum against the window's own totals, and refuses
-# both readings if they disagree.
+# both readings if they disagree. The days and the span totals come out of ONE
+# query, so that check cannot fire on work that lands while the tool runs.
 #
 # HOW IT MEASURES, AND AGAINST WHAT. Two separate things used to make
 # `verdict=OK` unreachable, and #828 named one of them.
@@ -476,10 +477,32 @@ if [ "$MATCH" = NO ]; then
   exit 6
 fi
 
-# One query, both readings. Asking twice would invite the two halves to be
-# measured a second apart and disagree for a reason that is not the point.
+# One query, EVERY reading. Asking twice would invite the halves to be measured
+# a second apart and disagree for a reason that is not the point.
+#
+# That rule was written for the two halves of the span reading and then broken
+# by the third reading added beside them: the per-day rows went out as their own
+# call a moment later, so a contribution landing between the two calls made the
+# days read high by exactly that work and the sum check refused both readings
+# (#982). The refusal landed on the honest run — the tool being used DURING
+# work, which is the run D-060 exists to serve. So the day aliases moved here,
+# into the same request as the span totals, and the sum check below now compares
+# two views of one instant rather than two instants.
+#
+# The days are aliases on the same `viewer` the span totals hang off, so this is
+# a merge of two query strings and not a new mechanism. The span gets an alias
+# of its own to keep it apart from the day rows when the response is read.
+DAYSEL=""
+if (( SPAN > 1 )); then
+  for ((k = SPAN - 1; k >= 0; k--)); do
+    d="$(day_minus "$DAY" "$k")" || exit 2
+    DAYSEL+=" d${k}: contributionsCollection(from:\"${d}T00:00:00Z\",to:\"${d}T23:59:59Z\")"
+    DAYSEL+="{totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions}"
+  done
+fi
 Q="{
-  viewer { contributionsCollection(from: \"${FROM}T00:00:00Z\", to: \"${DAY}T23:59:59Z\") {
+  viewer {${DAYSEL}
+    span: contributionsCollection(from: \"${FROM}T00:00:00Z\", to: \"${DAY}T23:59:59Z\") {
     totalCommitContributions
     totalIssueContributions
     totalPullRequestContributions
@@ -491,21 +514,29 @@ Q="{
   } }
 }"
 
+# One response, read twice — the span row first, then a row per day. Both come
+# out of the same filter because they come out of the same measurement, and the
+# span row leads so the nine-integer guard below still reads it with a plain
+# `read` off the first line.
+#
 # `// 0` is load-bearing: a repository absent from a breakdown contributed
 # nothing that day, which is a zero and not a missing value.
-JQ='.data.viewer.contributionsCollection as $c
+JQ='.data.viewer as $v
+| $v.span as $c
 | def mine($l): ($l | map(select(.repository.nameWithOwner == "REPOSLOT")) | (.[0].contributions.totalCount // 0));
-  [ $c.totalCommitContributions, $c.totalIssueContributions,
+  ([ $c.totalCommitContributions, $c.totalIssueContributions,
     $c.totalPullRequestContributions, $c.totalPullRequestReviewContributions,
     mine($c.commitContributionsByRepository), mine($c.issueContributionsByRepository),
     mine($c.pullRequestContributionsByRepository), mine($c.pullRequestReviewContributionsByRepository),
     ([$c.commitContributionsByRepository, $c.issueContributionsByRepository,
       $c.pullRequestContributionsByRepository, $c.pullRequestReviewContributionsByRepository]
      | map(length) | max)
-  ] | @tsv'
+  ] | @tsv),
+  ($v | to_entries | map(select(.key | test("^d[0-9]+$"))) | .[]
+   | "\(.key) \(.value.totalCommitContributions) \(.value.totalIssueContributions) \(.value.totalPullRequestContributions) \(.value.totalPullRequestReviewContributions)")'
 
-read -r A_C A_I A_P A_R R_C R_I R_P R_R MAXLIST \
-  <<<"$(gh api graphql -f query="$Q" --jq "${JQ//REPOSLOT/$REPO}" || true)"
+MEAS="$(gh api graphql -f query="$Q" --jq "${JQ//REPOSLOT/$REPO}" || true)"
+read -r A_C A_I A_P A_R R_C R_I R_P R_R MAXLIST <<<"$MEAS"
 
 # A read that failed must not become a verdict. `set -e` does not catch a
 # command substitution inside a here-string, so a bad date, an expired token or
@@ -641,26 +672,23 @@ if (( TOTAL == 0 )); then
 fi
 
 # The window's days. This read used to sit below the verdict as a cross-check on
-# it; under the day-shape ruler it IS the measurement, so it happens first and
-# the window line is computed from it. The cross-check survives unchanged at the
-# bottom — the days must still re-add to the window the API reports for the
-# whole span, and a disagreement still refuses both readings.
+# it; under the day-shape ruler it IS the measurement, so the window line is
+# computed from it. The cross-check survives unchanged at the bottom — the days
+# must still re-add to the window the API reports for the whole span — and it is
+# now a check on one measurement rather than on two, because these rows arrived
+# in the same response as the span totals.
+#
+# Everything after the span row is a day row, so the span row is dropped by
+# taking what follows the first newline. A response too short to hold one never
+# reaches here: the nine-integer guard above already refused it.
 if (( SPAN > 1 )); then
-  DQ="{ viewer {"
-  for ((k = SPAN - 1; k >= 0; k--)); do
-    d="$(day_minus "$DAY" "$k")" || exit 2
-    DQ+=" d${k}: contributionsCollection(from:\"${d}T00:00:00Z\",to:\"${d}T23:59:59Z\")"
-    DQ+="{totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions}"
-  done
-  DQ+=" } }"
+  DAYROWS="${MEAS#*$'\n'}"
   # Every row carries its own alias, and the alias IS the day offset. GraphQL
   # returns aliased fields in SORTED key order, not query order (d0 d1 d10 d11
   # d2 ...), so reading them positionally silently pairs each day's counts with
   # another day's date — and the sum still checks out, because the set of days
   # is right and only the labels are wrong. Nothing downstream can catch that,
   # so nothing downstream is asked to.
-  DAYROWS="$(gh api graphql -f query="$DQ" --jq '.data.viewer | to_entries | map("\(.key) \(.value.totalCommitContributions) \(.value.totalIssueContributions) \(.value.totalPullRequestContributions) \(.value.totalPullRequestReviewContributions)") | join("\n")' || true)"
-
   declare -a D_C D_I D_P D_R
   ROWS=0
   while read -r key c i p r; do
@@ -744,10 +772,10 @@ if (( SPAN > 1 )); then
   # these disagree, one of the two readings is wrong and neither should be
   # quoted — so say so instead of picking a favourite.
   #
-  # Left as it stands and filed rather than patched here: the two readings come
-  # from two separate calls, so a contribution landing between them produces a
-  # MISMATCH that is about the clock and not about the meter (#982). It fires on
-  # the run made DURING work, which is the run D-060 exists to serve.
+  # Both sides of this comparison came out of one response, so a contribution
+  # landing while the tool runs can no longer split them: it is either in both
+  # readings or in neither. What survives is what the branch says it catches — a
+  # real disagreement between the API's own two answers about one instant.
   S_TOTAL=$((S_C + S_I + S_P + S_R))
   if (( ROWS != SPAN )); then
     printf 'WINDOW days_returned=%d expected=%d sum_check=INCOMPLETE  (the per-day read did not come back whole; the window line above stands, the days do not)\n' \
