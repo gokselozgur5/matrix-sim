@@ -20,7 +20,7 @@ import java.util.List;
  * true the day it is written and false three units later, when someone
  * makes a quarter's character depend on who lives in it.
  *
- * <p>Four legs, because each alone is refutable:
+ * <p>Five legs, because each alone is refutable:
  *
  * <ol>
  * <li><b>Seed independence.</b> The catalog is read out of four live
@@ -46,6 +46,17 @@ import java.util.List;
  * the two boots differ only in whether an {@link matrix.core.EventLog}
  * is attached, so {@code BOOTDRAWS} catches a print path that draws and
  * nothing wider than that, which is #950's subject.</li>
+ * <li><b>The pin.</b> The six names, against literals held in this file.
+ * Legs one to four compare the city to ITSELF — four universes out of one
+ * binary in one process, and a boot print held to the catalog it quotes —
+ * so a change that renames every quarter identically moves both sides of
+ * every comparison together and passes all four, green, exit zero (#944).
+ * The seal cannot answer for the names either: a district name is not
+ * state the digest frames, so renaming the city is byte-identical at
+ * {@code DIGEST tick=6000}. An expectation recorded OUTSIDE the run is the
+ * only thing that can say no, which is what #899 gave the sha when it put
+ * it in {@code .github/canonical-digest}. This leg is that, for the
+ * city.</li>
  * </ol>
  *
  * <p>Deliberately NOT a pinned boot-draw count. The boot total moves the
@@ -56,11 +67,17 @@ import java.util.List;
  * stream: none. Leg four reads the boot total TWICE in one process and
  * compares the two, so it measures the print and never the era.
  *
- * <p>Nor is the row COUNT pinned. The city has six quarters because the
- * zone list has six entries, and D-048's open point (c) leaves redistricting
- * on the table; a probe asserting six would fail the day the Architect
- * takes it. Six is checked by the unit's own command in #539; what is
- * checked here is that whatever the catalog holds is what boot prints.
+ * <p>Nor is the row COUNT pinned as a number. The city has six quarters
+ * because the zone list has six entries, and D-048's open point (c) leaves
+ * redistricting on the table; a probe asserting six would fail the day the
+ * Architect takes it. Six is checked by the unit's own command in #539;
+ * what is checked here is that whatever the catalog holds is what boot
+ * prints. Leg five pins the NAMING and not the census: the table is keyed
+ * by the zone each quarter binds, so a redistricting goes red on the new
+ * quarter alone, by name, and the mover writes that quarter into the table
+ * in the same commit. That edit IS the declaration, in the shape #899 gave
+ * the seal — a lawful move states the new name, and an unlawful one is this
+ * leg going red on a tree nobody meant to rename.
  *
  * Usage: java -cp out:probes/out DistrictNeutral [ticks-ignored]
  */
@@ -72,17 +89,44 @@ public final class DistrictNeutral {
     private static final int CONSTRUCTIONS = 100;
     private static final int BURN = 1_000;
 
+    /**
+     * What the city is called, zone by zone, as LITERALS — the expectation
+     * leg five verdicts against. Written here rather than read out of
+     * {@link District}, because a catalog cannot vouch for itself: the
+     * mixer, the pools and the four universes are all downstream of the
+     * same salts, and the row this table is checking is the row that would
+     * move (HullRoster holds the same precedent for the film's keels).
+     *
+     * <p>The name is pinned and the character columns are not. The names
+     * are what #290's address book, #291's instrument lines and #703's
+     * scene WHERE put into shipped prose, so a silent rename is a silent
+     * rewrite of every line that names a place; the axes are lore that
+     * nothing mechanical reads yet, and the day one does is the day they
+     * earn a pin of their own.
+     */
+    private static final String[][] PINNED = {
+            {"downtown", "Felix Sato"},
+            {"industrial district", "Vera Okafor"},
+            {"chinatown", "Milo Petrov"},
+            {"financial district", "Ezra Petrov"},
+            {"old city", "Noor Iglesias"},
+            {"the loop", "Marcus Frost"},
+    };
+
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
         List<String> faults = new ArrayList<>();
 
         // Leg 1: four universes, one city.
         List<String> reference = null;
+        List<District> catalog = null;
         for (long seed : SEEDS) {
             Simulation sim = new Simulation(seed, null, null);
-            List<String> rows = rows(Probes.world(sim).places());
+            PlaceGraph places = Probes.world(sim).places();
+            List<String> rows = rows(places);
             if (reference == null) {
                 reference = rows;
+                catalog = places.districts();
                 for (String row : rows) {
                     System.out.println("CATALOG " + row);
                 }
@@ -137,12 +181,84 @@ public final class DistrictNeutral {
             faults.add("printing the catalog at boot cost " + (lit - dark) + " draws");
         }
 
+        // Leg 5: the city against the names this file holds for it.
+        int drifted = pinned(catalog);
+
         for (String fault : faults) {
             System.out.println("FAULT " + fault);
+        }
+        // Drift takes the verdict line and the exit code: a renamed city is
+        // not a stream touch, and calling it one would put the wrong words on
+        // the loudest line the probe prints. The FAULT rows above are printed
+        // either way, so nothing a stream leg found is swallowed by a rename.
+        if (drifted > 0) {
+            System.out.println("VERDICT CATALOG_DRIFTED drifted=" + drifted);
+            System.exit(1);
         }
         System.out.println(faults.isEmpty()
                 ? "VERDICT DISTRICTS_DRAW_NOTHING"
                 : "VERDICT DISTRICTS_TOUCHED_THE_STREAM faults=" + faults.size());
+    }
+
+    /**
+     * The catalog against {@link #PINNED}, quarter by quarter, keyed by the
+     * zone each one binds rather than by position — position is not
+     * identity, and the question this leg asks is what a quarter is CALLED,
+     * so every drift line can name the place it is talking about.
+     *
+     * <p>Three ways to drift, all counted and all named on their own line:
+     * a pinned zone wearing a different name, a pinned zone the catalog no
+     * longer has, and a quarter the table has never heard of. The third is
+     * drift on SealHygiene's reasoning — unpinned is not the same as
+     * unchanged, and a name nothing holds is a name that can move on a
+     * Tuesday — so a redistricting names its new quarter here rather than
+     * arriving unwatched.
+     *
+     * @return how many quarters no longer read as pinned
+     */
+    private static int pinned(List<District> catalog) {
+        int drifted = 0;
+        for (District d : catalog) {
+            String want = pinnedName(d.zoneName());
+            if (want == null) {
+                drifted++;
+                System.out.println("CATALOG DRIFT zone=\"" + d.zoneName() + "\" name=\""
+                        + d.name() + "\" pinned=- fault=unpinned_quarter");
+            } else if (!want.equals(d.name())) {
+                drifted++;
+                System.out.println("CATALOG DRIFT zone=\"" + d.zoneName() + "\" name=\""
+                        + d.name() + "\" pinned=\"" + want + "\" fault=renamed");
+            }
+        }
+        for (String[] row : PINNED) {
+            if (!bindsZone(catalog, row[0])) {
+                drifted++;
+                System.out.println("CATALOG DRIFT zone=\"" + row[0] + "\" name=- pinned=\""
+                        + row[1] + "\" fault=quarter_gone");
+            }
+        }
+        System.out.println("CATALOG PINNED names=" + PINNED.length + " drifted=" + drifted);
+        return drifted;
+    }
+
+    /** The name this file holds for one zone, or null when the table has none. */
+    private static String pinnedName(String zone) {
+        for (String[] row : PINNED) {
+            if (row[0].equals(zone)) {
+                return row[1];
+            }
+        }
+        return null;
+    }
+
+    /** Whether the catalog still has a quarter bound to one zone. */
+    private static boolean bindsZone(List<District> catalog, String zone) {
+        for (District d : catalog) {
+            if (d.zoneName().equals(zone)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
