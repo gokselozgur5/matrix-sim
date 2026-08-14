@@ -221,8 +221,8 @@ jobs:
       # locale-dependent defect cannot wait to be run on a hostile box; it makes one.
       # Three captures because the pin has three ways to be forgotten — the daemon's stdout,
       # its stderr, a probe's stdout — plus the source scan, because those three are instances
-      # and every probe main is the class. Each capture is asserted to CARRY the byte the bug
-      # destroys: a check that compares two empty files passes and proves nothing.
+      # and every Java main in the tree is the class. Each capture is asserted to CARRY the byte
+      # the bug destroys: a check that compares two empty files passes and proves nothing.
       - name: charset — an instrument line is the same bytes on every box (#836)
         shell: bash
         run: |
@@ -247,15 +247,34 @@ jobs:
           carries dn.utf8 '·'
           same probe_stdout dn.utf8 dn.ascii
           rm -f help.utf8 help.ascii err.utf8 err.ascii dn.utf8 dn.ascii
-          scanned=0 unpinned=0
-          for f in probes/*.java; do
+          # The scan reads `find probes tools`, not `probes/*.java`: tools/ is outside the
+          # daemon build but not outside D-020, and the one tool written in Java writes the
+          # page a lane now pins, with its own utf8() call guarded by nothing at all (#1042).
+          # A rule enforced in one directory and hoped for in the next is #965 one level down.
+          #
+          # The guard used to be `grep -q ...main... || continue`, and `|| continue` cannot
+          # tell a file with no main from a file grep DECLINED to read: a raw NUL makes a
+          # source binary, a grep that skips binaries answers false for it, and that skip logs
+          # exactly like a pass (#1039). So the hole is found with tr and cmp, not with grep —
+          # the judged set is then the same on every box, rather than a report on the local
+          # grep — and a file this scan cannot read is named and red, not quietly exempt.
+          # scanned floors at 1 because a widened scan that matched nothing would otherwise
+          # print a green sweep of nothing.
+          scanned=0 unpinned=0 unreadable=0
+          for f in $(find probes tools -name '*.java' | LC_ALL=C sort); do
+            if [ ! -r "$f" ] || ! tr -d '\000' < "$f" | cmp -s - "$f"; then
+              echo "FATAL $f is unreadable or holds a raw NUL — some greps decline it, so this scan cannot judge it" >&2
+              unreadable=$((unreadable + 1))
+              continue
+            fi
             grep -q 'static void main(String\[\] args)' "$f" || continue
             scanned=$((scanned + 1))
             grep -q 'matrix\.Streams\.utf8();' "$f" \
               || { echo "FATAL $f prints without pinning its streams" >&2; unpinned=$((unpinned + 1)); }
           done
-          [ "$unpinned" -eq 0 ] || exit 1
-          echo "CHARSET probe_pins OK scanned=$scanned unpinned=0"
+          [ "$scanned" -ge 1 ] || { echo "FATAL the scan found no main at all — that is a green sweep of nothing" >&2; exit 1; }
+          [ "$unpinned" -eq 0 ] && [ "$unreadable" -eq 0 ] || exit 1
+          echo "CHARSET main_pins OK scanned=$scanned unpinned=0 unreadable=0"
 
       # WHY: lock 9 — lock 7 refuses an UNDECLARED move, and there is exactly one way to
       # make it green again: paste the printed sha into the pin. That keystroke is the same
