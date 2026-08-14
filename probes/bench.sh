@@ -109,7 +109,7 @@ table() {
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=18 breaks=0'  "$TICKS"
-  # SheetBench holds two rows because it is two instruments behind one class,
+  # SheetBench holds three rows because it is three instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
   # prints a standalone verdict line and is judged like every other row.
   # --avalanche prints its measurements and its verdict on ONE line, so an
@@ -122,6 +122,20 @@ table() {
   # bound is missed), and `run` fails a row on a nonzero exit.
   judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
   run   SheetBench   --avalanche
+  # The row that loads matrix.character.Contest at all. The kernel is imported
+  # by nothing in the domain, so its class-init checks — the exchange table and
+  # the margin bands as ONE law since #988 — fire only when something reads the
+  # class, and until this row no lane did: the sweep was green on a tree whose
+  # two tables disagreed. The judged line is the law rather than a measurement,
+  # so it moves only when a verdict moves a threshold, and moving one table
+  # without the other reddens this row either as a missing line or as the
+  # class-init throw that stops the probe before it prints one. The population
+  # figures beside it are deliberately NOT pinned into this row — those are
+  # #835's and they move with the mixer — which does not leave them unjudged:
+  # --bands exits nonzero on BANDS_DRIFTED and a judged row fails on a nonzero
+  # exit, exactly the way --avalanche's bound is read one line above.
+  judge SheetBench   'BANDS LAW decisive_edge=4 exchange_opens_at=4 symmetric=true VERDICT ONE_LAW' \
+        --bands
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
