@@ -17,7 +17,19 @@ import java.util.List;
  * this probe on the bench it can never return unnoticed.
  *
  * Negative movements are resets (treaty, reload) and print as RESET
- * lines. Déjà-vu spikes had one door — the ops console, never a headless
+ * lines. A reset is not an excuse to look away (#978): the treaty and the
+ * reload both zero the ledger from the machine node, which runs AHEAD of
+ * the wheel, so whatever stands on the ledger when the tick ends accrued
+ * after the reset, from zero. The post-tick balance is therefore the
+ * tick's mirror with the subtraction already done — an ABSOLUTE check,
+ * the only one in the run — and it is compared and counted like any
+ * other. The RESET line carries both numbers so the check is visible.
+ * That tick is the busiest one several universes have: at seed 40 the
+ * treaty lands on an accrual window and 325 rebuilds inside it while six
+ * links contribute their window and close clean, which is exactly the
+ * shape #863 fixed everywhere the probe was still looking.
+ *
+ * Déjà-vu spikes had one door — the ops console, never a headless
  * run — until #133 gave them a second, mechanical one: every Unpark
  * accrues DEJA_RESIDUE_SPIKE (the D-022 precedent). The mirror models it
  * from the world's own unpark count, read through the public accessor
@@ -40,7 +52,8 @@ import java.util.List;
  * Verdict: LEDGER_ANOMALIES=0 at seeds 42, 7 and 9 over the full arc
  * (verification round, 2026-08-11; re-verified with the unpark source
  * modeled for the P2 parking film; #863 modelled the clean exit and
- * swept seeds 0..49 clean, 2026-08-13).
+ * swept seeds 0..49 clean, 2026-08-13; #978 opened the reset tick and
+ * swept seeds 0..59 clean, 2026-08-14).
  *
  * Usage: java -cp out:probes/out LedgerMirror [ticks] [seed]
  */
@@ -79,10 +92,6 @@ public final class LedgerMirror {
             long now = world.ledger().balance();
             long delta = now - prev;
             prev = now;
-            if (delta < 0) {
-                System.out.println("RESET t=" + world.tick() + " to=" + now);
-                continue;
-            }
             if (delta == 0) {
                 continue;
             }
@@ -102,6 +111,21 @@ public final class LedgerMirror {
             }
             // The second legitimate source (#133): each unpark this tick spiked the ledger.
             mirror += (world.unparks() - unparksBefore) * Config.DEJA_RESIDUE_SPIKE;
+            if (delta < 0) {
+                // The ledger was zeroed inside this tick, ahead of the wheel,
+                // so what it holds now is what accrued after the reset: the
+                // balance IS the mirror, and the check is absolute rather than
+                // differential. Both numbers on the line, so the reader can
+                // see it happened.
+                System.out.println("RESET t=" + world.tick()
+                        + " to=" + now + " mirror=" + mirror);
+                if (now != mirror) {
+                    anomalies++;
+                    System.out.println("ANOMALY t=" + world.tick()
+                            + " after_reset=" + now + " mirror=" + mirror);
+                }
+                continue;
+            }
             if (delta != mirror) {
                 anomalies++;
                 System.out.println("ANOMALY t=" + world.tick()
