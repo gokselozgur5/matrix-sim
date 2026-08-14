@@ -1,10 +1,15 @@
 import matrix.Simulation;
 import matrix.core.Config;
 import matrix.core.District;
+import matrix.core.NamePool;
 import matrix.core.PlaceGraph;
 import matrix.core.Rng;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,9 +33,19 @@ import java.util.List;
  * stream, two universes would name their quarters differently — the
  * loudest possible symptom, and the one a digest alone would never
  * name.</li>
- * <li><b>Construction neutrality.</b> A stream's draw counter is read
- * across a hundred {@link PlaceGraph} constructions. Any draw, direct or
- * transitive, moves the counter.</li>
+ * <li><b>Construction neutrality.</b> The compiled classes the catalog is
+ * built out of — {@link PlaceGraph}, {@link District}, {@link NamePool} —
+ * are read back off the classpath this probe is running on and their
+ * constant pools scanned for the name of any random source. A draw
+ * counter cannot ask this question: {@link Rng} counts per instance and
+ * the catalog is built by a constructor that receives none, so a counter
+ * read across a hundred constructions was zero whatever the catalog did,
+ * for the same reason {@code 0 - 0} is zero (#950). A class file cannot
+ * hide the same way — invoking a thing means naming it, so a catalog that
+ * rolls a die carries the roller's name in its own pool. The blind spot
+ * is stated rather than papered over: a draw reached through a class
+ * outside those three is named in THAT class's pool, and legs one and
+ * three are what stand behind the gap.</li>
  * <li><b>Order independence.</b> A catalog built after the stream has
  * been burned down is the same catalog. A mixer that had quietly grown a
  * dependency on stream POSITION rather than on the seed would pass leg
@@ -45,7 +60,8 @@ import java.util.List;
  * shipped. The row comparison is the part of this leg that can fail —
  * the two boots differ only in whether an {@link matrix.core.EventLog}
  * is attached, so {@code BOOTDRAWS} catches a print path that draws and
- * nothing wider than that, which is #950's subject.</li>
+ * nothing wider than that. Wider is leg two's job, and leg two asks the
+ * class files rather than a counter (#950).</li>
  * <li><b>The pin.</b> The six names, against literals held in this file.
  * Legs one to four compare the city to ITSELF — four universes out of one
  * binary in one process, and a boot print held to the catalog it quotes —
@@ -86,7 +102,6 @@ public final class DistrictNeutral {
     private static final long[] SEEDS = {42, 7, 1, 55};
     /** The token every catalog row opens with — the word this unit's own DoD greps for. */
     private static final String TOKEN = "DISTRICT ";
-    private static final int CONSTRUCTIONS = 100;
     private static final int BURN = 1_000;
 
     /**
@@ -113,6 +128,26 @@ public final class DistrictNeutral {
             {"the loop", "Marcus Frost"},
     };
 
+    /**
+     * The construction path, as the classpath names it: the constructor
+     * that builds the catalog, the catalog itself and the pools it reads.
+     * Loaded through this probe's own loader, so what is scanned is the
+     * code the run above just executed rather than a guessed path.
+     */
+    private static final String[] CATALOG_CLASSES = {
+        "matrix/core/PlaceGraph", "matrix/core/District", "matrix/core/NamePool"
+    };
+
+    /**
+     * What a random source is CALLED once it reaches a constant pool: our
+     * one legal stream, the JDK's generators ({@code Random},
+     * {@code SecureRandom}, {@code ThreadLocalRandom},
+     * {@code java.util.random}) and the bare method name
+     * {@code Math.random()} is invoked under. Substrings, so a descriptor
+     * carrying the type counts too.
+     */
+    private static final String[] RANDOM_NAMES = {"Rng", "Random", "random"};
+
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
         List<String> faults = new ArrayList<>();
@@ -137,19 +172,23 @@ public final class DistrictNeutral {
                     + " matches_reference=" + reference.equals(rows));
         }
 
-        // Leg 2: a hundred constructions cost the stream nothing.
-        Rng rng = new Rng(42);
-        long before = rng.draws();
-        for (int i = 0; i < CONSTRUCTIONS; i++) {
-            new PlaceGraph(Config.WORLD_W_CM, Config.WORLD_H_CM);
-        }
-        long spent = rng.draws() - before;
-        System.out.println("DRAWS constructions=" + CONSTRUCTIONS + " spent=" + spent);
-        if (spent != 0) {
-            faults.add("building the catalog spent " + spent + " draws");
+        // Leg 2: the code that builds the catalog names no random source.
+        for (String owner : CATALOG_CLASSES) {
+            byte[] classFile = compiled(owner);
+            if (classFile == null) {
+                System.out.println("BYTECODE " + owner + " unreadable");
+                faults.add(owner + " is not on the classpath this probe scans");
+                continue;
+            }
+            List<String> named = randomNamesIn(classFile);
+            System.out.println("BYTECODE " + owner + " names_random=" + named.size());
+            for (String name : named) {
+                faults.add(owner + " names a random source: " + name);
+            }
         }
 
         // Leg 3: the same city, built out of a burned-down stream.
+        Rng rng = new Rng(42);
         for (int i = 0; i < BURN; i++) {
             rng.nextInt(1_000);
         }
@@ -289,6 +328,60 @@ public final class DistrictNeutral {
      */
     private static long bootDraws(OutputStream sink) throws Exception {
         return Probes.world(new Simulation(SEEDS[0], sink, null)).rng().draws();
+    }
+
+    /** One compiled class as bytes, or null when the classpath does not carry it. */
+    private static byte[] compiled(String binaryName) throws IOException {
+        try (InputStream in = DistrictNeutral.class.getClassLoader()
+                .getResourceAsStream(binaryName + ".class")) {
+            return in == null ? null : in.readAllBytes();
+        }
+    }
+
+    /** The pool entries of one class that read as a random source, each named once. */
+    private static List<String> randomNamesIn(byte[] classFile) throws IOException {
+        List<String> named = new ArrayList<>();
+        for (String constant : constants(classFile)) {
+            for (String marker : RANDOM_NAMES) {
+                if (constant.contains(marker) && !named.contains(constant)) {
+                    named.add(constant);
+                }
+            }
+        }
+        return named;
+    }
+
+    /**
+     * Every {@code CONSTANT_Utf8} in a class file's constant pool, in pool
+     * order. The pool is the class's whole vocabulary — every type it
+     * touches, every method it calls, every string it holds — so a name
+     * absent from it is a name the class cannot use. The walk needs
+     * nothing but JVMS 4.4's tag widths, and an unrecognised tag is an
+     * error rather than a guessed width: a skip off by one byte would
+     * derail the rest of the pool and could read as neutrality.
+     */
+    private static List<String> constants(byte[] classFile) throws IOException {
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(classFile));
+        in.readInt();                                   // magic
+        in.readUnsignedShort();                         // minor
+        in.readUnsignedShort();                         // major
+        int count = in.readUnsignedShort();
+        List<String> utf8 = new ArrayList<>();
+        for (int i = 1; i < count; i++) {
+            int tag = in.readUnsignedByte();
+            switch (tag) {
+                case 1 -> utf8.add(in.readUTF());       // Utf8
+                case 7, 8, 16, 19, 20 -> in.skipBytes(2);
+                case 15 -> in.skipBytes(3);             // MethodHandle
+                case 3, 4, 9, 10, 11, 12, 17, 18 -> in.skipBytes(4);
+                case 5, 6 -> {                          // Long, Double: two slots
+                    in.skipBytes(8);
+                    i++;
+                }
+                default -> throw new IOException("constant pool tag " + tag + " at entry " + i);
+            }
+        }
+        return utf8;
     }
 
     /** One row per quarter, everything the catalog claims about it — the whole comparable surface. */
