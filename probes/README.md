@@ -87,13 +87,38 @@ literal, so a BSD grep drops it as binary and undercounts both figures by one.
 
 ## The sweep
 
-One command runs every probe and prints one verdict:
+One command runs the bench and prints one verdict:
 
 ```sh
 probes/bench.sh            # 6,000 ticks each, compile included
 probes/bench.sh --list     # the contract table, run nothing
 probes/bench.sh --twice    # the sweep, plus the determinism pass below
 probes/bench.sh --without-probes   # clause 5: does src/ still stand alone?
+```
+
+"The bench" is not "every probe" — that is what the sentence above claimed until
+#1080 counted the table: 40 rows over 34 of the 38 probes, and four probes with
+no row at all. `UnparkStorm`'s absence is a decision its own catalog row states —
+a 6,000-tick x11 run is a laboratory's wall clock, not a lane's. `CensusCensor`,
+`CensusReverdict` and `CensusSampleSize` are the gap #816 exists to close, and
+they are missing from the catalog below for the same reason. These are hand
+counts, like the build note's, so they carry the commands that produce them
+rather than asking to be believed:
+
+```sh
+# CONTRACT probes=39 judged=32 ticks=6000
+probes/bench.sh --list | tail -1
+
+# 34 classes behind those 40 rows; the sed takes a row's class and not the
+# trailer's, whose second field carries an '=' and so matches nothing here
+probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort -u | wc -l
+
+# AllocMeter, DocLint, SheetBench — the three that hold two rows each
+probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort | uniq -d
+
+# CensusCensor, CensusReverdict, CensusSampleSize, UnparkStorm — the four with no row
+comm -23 <(grep -al 'static void main' probes/*.java | sed 's#probes/##;s#\.java##' | sort) \
+         <(probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort -u)
 ```
 
 The contract table lives in that script, one row per invocation — `judge
@@ -103,12 +128,16 @@ output may legitimately move. A judged probe is judged by exact-line grep
 (`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
 sweep; a reporting probe fails only by crashing or exiting nonzero. Adding a
 probe is a one-row change here, beside the probe — one row per probe, and one
-row per mode where a probe verdicts in more than one. `SheetBench` is the only
-one that does today, and its `--avalanche` row is `run` rather than `judge` on
-purpose: that mode prints its measurements and its verdict on the same line,
-so judging it by exact line would pin `mean_bitflip` and `max_axis_corr` into
-the runner beside the bound the probe already prints and already checks. Its
-exit code is its verdict instead, which is what `run` reads.
+row per mode where a probe verdicts in more than one. Three classes do today —
+`AllocMeter` (the budget row and `--selfcheck`), `DocLint` (the scan and
+`--selfcheck`) and `SheetBench` (`--discipline` and `--avalanche`) — which is
+the arithmetic between 36 rows and 33 classes, and the `uniq -d` line above is
+what lists them rather than this sentence. `SheetBench`'s `--avalanche` row is
+`run` rather than `judge` on purpose: that mode prints its measurements and its
+verdict on the same line, so judging it by exact line would pin `mean_bitflip`
+and `max_axis_corr` into the runner beside the bound the probe already prints
+and already checks. Its exit code is its verdict instead, which is what `run`
+reads.
 
 One row reads a committed file. `CensusBeatDrift` judges today's beat ticks against
 `probes/beatdrift.baseline` — two rows, one per standard seed, verbatim as the probe
@@ -130,12 +159,33 @@ The probes referee the daemon. `--twice` is what referees the probes: every row
 runs a second time at the same seed and budget, the two outputs are byte-compared,
 and the first line that moved is printed with its number.
 
+The four line shapes are **illustrative — hand-built, not a transcript**. A green
+tree prints no `DRIFT` and no `UNCHECKED`, which is what green means, so no run
+can show all four at once. `NameCensus` does not drift and has not; it stands in
+for a probe that would:
+
 ```
 STABLE LineLint
 DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
 EXEMPT AllocMeter reason="prints its own instrument noise: steady_max is a cold …"
-BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
+UNCHECKED SomeProbe — died on its first run, so it was never run twice
 ```
+
+The trailer is a measurement rather than a shape, so it is quoted from a run.
+`probes/bench.sh --twice` at `602af54` closed with:
+
+```
+BENCH probes=36 judged=29 pass=29 fail=0 ran=7 ticks=6000 secs=108 VERDICT BENCH_GREEN
+BENCH determinism probes=36 stable=35 drift=0 exempt=1 unchecked=0 VERDICT INSTRUMENTS_STABLE
+```
+
+36 and not 33, because the determinism pass asks its question of every row: a
+class holding two rows is byte-compared twice. Until #1080 the illustration
+ended in `BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT
+INSTRUMENTS_DRIFTED` — a count from a bench less than half this size, in a line
+shape that gained its `unchecked=` field at #970 — with nothing saying it was
+composed. Two fenced blocks, one transcript and one illustration, and no way to
+tell which was which: that is the failure this section is now split to avoid.
 
 The digest leash proves the *world* is deterministic and says nothing about the
 instruments pointed at it — and a drifting instrument is worse than none, because
