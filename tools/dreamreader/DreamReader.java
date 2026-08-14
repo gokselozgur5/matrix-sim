@@ -47,39 +47,20 @@ import java.util.List;
  *       for every case change, explicit {@code \n} — never
  *       {@code System.lineSeparator()}, never a default charset.</li>
  *   <li><b>The exit grammar is part of the contract:</b> 0 a day rendered,
- *       2 the record holds nobody by that name, 1 the golden day drifted, 3
- *       the invocation was refused, 4 there is no golden day at that path. A
+ *       2 the record holds nobody by that name, 1 the golden day drifted. A
  *       typo in a pilot's name must be a refusal, not an empty page that
- *       reads like a quiet life — and it must not be the same number as a
- *       typo in a FLAG, or a sweep that skips the names this seed did not
- *       grow skips a misspelled flag with it and renders nobody.</li>
+ *       reads like a quiet life.</li>
  *   <li><b>{@code --check-golden FILE}</b> pins the SENTENCES. Determinism
  *       only promises that one build renders one day the same way twice; it
  *       says nothing about the next edit to the voice, which would change
  *       every rendered day in silence. The golden day is the guard, and it
- *       is a plain file so the drift is readable as a diff. It answers the
- *       golden question only — the page still goes to {@code --out} when both
- *       are given, because the bytes exist either way and a caller who asked
- *       for both used to get one.</li>
+ *       is a plain file so the drift is readable as a diff.</li>
  * </ul>
  *
  * Exit codes: 0 a day rendered · 1 the golden day drifted · 2 nobody by that
- * name · 3 the invocation was refused · 4 no golden day at that path. The
- * grammar is checked, not merely published: tools/dreamreader/exitgrammar.sh
- * runs one invocation per code and prints a verdict line.
+ * name.
  */
 public final class DreamReader {
-
-    /** A day rendered, or the golden day held. */
-    private static final int EXIT_OK = 0;
-    /** The sentences moved: this build no longer writes the blessed page. */
-    private static final int EXIT_GOLDEN_DRIFT = 1;
-    /** The record holds nobody by that name. */
-    private static final int EXIT_NO_SUCH_PILOT = 2;
-    /** A flag, a value or a voice the tool has no reading for. */
-    private static final int EXIT_USAGE = 3;
-    /** There is no golden day at that path — a typo in an argument, not a drift. */
-    private static final int EXIT_NO_GOLDEN_FILE = 4;
 
     public static void main(String[] args) throws Exception {
         // The page owns its charset (it is encoded once, below); the verdicts
@@ -99,8 +80,8 @@ public final class DreamReader {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--pilot" -> pilot = value(args, ++i);
-                case "--seed" -> seed = number(args, ++i);
-                case "--ticks" -> ticks = number(args, ++i);
+                case "--seed" -> seed = Long.parseLong(value(args, ++i));
+                case "--ticks" -> ticks = Long.parseLong(value(args, ++i));
                 case "--out" -> outPath = value(args, ++i);
                 case "--check-golden" -> goldenPath = value(args, ++i);
                 case "--capture-only" -> captureOnly = true;
@@ -110,7 +91,7 @@ public final class DreamReader {
                     voice = Voice.named(name);
                     if (voice == null) {
                         System.err.println("unknown voice: " + name + " (cold, none)");
-                        System.exit(EXIT_USAGE);
+                        System.exit(2);
                     }
                 }
                 case "--help" -> {
@@ -120,14 +101,14 @@ public final class DreamReader {
                 default -> {
                     System.err.println("unknown flag: " + args[i]);
                     usage();
-                    System.exit(EXIT_USAGE);
+                    System.exit(2);
                 }
             }
         }
         if (pilot == null || pilot.isBlank()) {
             System.err.println("--pilot NAME is required — a teleprinter prints somebody");
             usage();
-            System.exit(EXIT_USAGE);
+            System.exit(2);
         }
 
         Capture capture = Capture.of(pilot, seed, ticks);
@@ -154,28 +135,17 @@ public final class DreamReader {
         // One string, encoded once: stdout and --out cannot disagree because
         // there is nothing for them to disagree about.
         byte[] bytes = page.getBytes(StandardCharsets.UTF_8);
-        if (goldenPath == null) {
-            PrintStream stdout = new PrintStream(
-                    new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
-            stdout.write(bytes, 0, bytes.length);
-            stdout.flush();
-        }
-        if (outPath != null) {
-            Files.write(Path.of(outPath), bytes);
-        }
-        // The record's answer is read before the golden day's, and it outranks
-        // it: a name nobody carries used to reach checkGolden first and report
-        // as a DRIFT in somebody else's page, so the lane's verdict line blamed
-        // the voice for a typo in --pilot. It also says so out loud now — this
-        // was the one refusal the tool made in silence.
-        if (capture.resolvedName == null) {
-            System.err.println("the record holds nobody by that name: " + pilot);
-            System.exit(EXIT_NO_SUCH_PILOT);
-        }
         if (goldenPath != null) {
             System.exit(checkGolden(goldenPath, bytes));
         }
-        System.exit(EXIT_OK);
+        PrintStream stdout = new PrintStream(
+                new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+        stdout.write(bytes, 0, bytes.length);
+        stdout.flush();
+        if (outPath != null) {
+            Files.write(Path.of(outPath), bytes);
+        }
+        System.exit(capture.resolvedName == null ? 2 : 0);
     }
 
     /**
@@ -183,21 +153,17 @@ public final class DreamReader {
      * writing? Determinism guards one build against itself; this guards the
      * repo against the next edit to the voice. Prints the first line that
      * moved, because "something changed" is not a finding.
-     *
-     * A path with no file at it is not a drift and no longer returns the drift
-     * code: a mistyped argument that exits like the condition the flag exists
-     * to detect is a red build nobody can read.
      */
     private static int checkGolden(String path, byte[] rendered) throws Exception {
         Path file = Path.of(path);
         if (!Files.exists(file)) {
             System.err.println("FATAL no golden day at " + path);
-            return EXIT_NO_GOLDEN_FILE;
+            return 1;
         }
         byte[] blessed = Files.readAllBytes(file);
         if (java.util.Arrays.equals(blessed, rendered)) {
             System.out.println("GOLDEN OK " + path + " (" + blessed.length + " bytes)");
-            return EXIT_OK;
+            return 0;
         }
         String[] want = new String(blessed, StandardCharsets.UTF_8).split("\n", -1);
         String[] got = new String(rendered, StandardCharsets.UTF_8).split("\n", -1);
@@ -212,31 +178,15 @@ public final class DreamReader {
                 break;
             }
         }
-        return EXIT_GOLDEN_DRIFT;
+        return 1;
     }
 
     private static String value(String[] args, int i) {
         if (i >= args.length) {
             System.err.println("flag " + args[i - 1] + " wants a value");
-            System.exit(EXIT_USAGE);
+            System.exit(2);
         }
         return args[i];
-    }
-
-    /**
-     * A count, or a refusal. An unreadable one used to leave by
-     * {@code NumberFormatException}, and an uncaught throw exits 1 — the
-     * grammar's word for "the golden day drifted", printed as a stack trace.
-     */
-    private static long number(String[] args, int i) {
-        String raw = value(args, i);
-        try {
-            return Long.parseLong(raw);
-        } catch (NumberFormatException e) {
-            System.err.println("flag " + args[i - 1] + " wants a number: " + raw);
-            System.exit(EXIT_USAGE);
-            return 0;
-        }
     }
 
     private static void usage() {
@@ -248,13 +198,9 @@ public final class DreamReader {
                   --voice V        cold (default) or none — the fold, stated flatly
                   --facts          print the fact stream itself; no voice ever touches it
                   --capture-only   report the three feeds and stop, one greppable line last
-                  --out FILE       also write the page to FILE — the same bytes stdout got,
-                                   and written under --check-golden too, where stdout has
-                                   only the verdict
+                  --out FILE       also write the page to FILE — the same bytes stdout got
                   --check-golden F verdict only: does this build still write F's sentences?
-                exit: 0 a day rendered · 1 the golden day drifted · 2 the record holds
-                      nobody by that name · 3 the invocation was refused · 4 no golden
-                      day at that path.  (tools/dreamreader/exitgrammar.sh checks these)
+                exit: 0 a day rendered · 1 the golden day drifted · 2 nobody by that name.
                 observer-only: the tool runs its own quiet universe and mutates nothing.
                 """);
     }

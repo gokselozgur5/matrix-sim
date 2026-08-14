@@ -103,7 +103,9 @@ public final class SpatialHash {
         for (int cy = minY; cy <= maxY; cy++) {
             for (int cx = minX; cx <= maxX; cx++) {
                 for (MatrixEntity e : buckets[cy * cellsX + cx]) {
-                    if (Geo.withinSq(e.snapXCm, e.snapYCm, fx, fy, r2)) {
+                    long dx = (long) e.snapXCm - fx;
+                    long dy = (long) e.snapYCm - fy;
+                    if (dx * dx + dy * dy <= r2) {
                         out.add(e);
                     }
                 }
