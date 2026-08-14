@@ -379,6 +379,7 @@ jobs:
           grep -q '^RULERCHECK VERDICT PASS ' "${RUNNER_TEMP:-/tmp}/rulercheck.log" \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
 
+<<<<<<< ours
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
       # solve one leg with the other three standing still, so acting on two of them leaves a leg
@@ -394,6 +395,23 @@ jobs:
           printf '%s\n' "$out"
           printf '%s\n' "$out" | grep -q '^JUDGECHECK VERDICT PASS cases=' \
             || { echo "FATAL the deficit advice did not reach a passing verdict" >&2; exit 1; }
+=======
+      # WHY ONLY THE SUITE: prstate.sh judges the pull requests this lane cannot see. A branch
+      # that conflicts with main builds no merge ref, so GitHub creates no run at all — and a
+      # step inside the run that does not exist judges nothing (#1004). That reader therefore
+      # lives outside CI and is run by hand instead of `gh pr checks`; what CAN be held here is
+      # its judge, which is an argument about counts and needs no token and no network. The
+      # four states are the whole claim of the tool, so the suite refuses itself unless its
+      # cases reach all four — a row that only ever proves GREEN is the defect one level up.
+      - name: tools — the four states a pull request can be in (#1004)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(bash tools/prstate.sh --selftest)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -qxE 'PRSTATE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0' \
+            || { echo "FATAL the judge does not separate the four states it publishes" >&2; exit 1; }
+>>>>>>> theirs
 
       # WHY: lock 11 — the teleprinter's golden day (D-047, #965). Locks 2, 3 and 7 pin the
       # daemon's BYTES; nothing pinned the SENTENCES a tool writes over them, and --check-golden
