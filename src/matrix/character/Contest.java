@@ -220,8 +220,11 @@ public final class Contest {
      * <p><b>Why the mutual outcomes open with the GAP.</b> The rows are zero
      * until the gap reaches 4 — precisely where {@link #band(int)} starts
      * saying DECISIVE, so the exchange table and the margin bands share one
-     * law rather than inventing a second. This is deliberately the opposite of
-     * the intuition that evenly matched fighters tangle most: the neutral row
+     * law rather than inventing a second. That sentence was the whole joint
+     * until #988: the class init below reads the edge out of {@code band} and
+     * the opening row out of this table, and refuses a tree where the two
+     * have stopped agreeing. This is deliberately the opposite of the
+     * intuition that evenly matched fighters tangle most: the neutral row
      * MUST be zero-width or the pin is broken, because a zero-width neutral
      * row is exactly what collapses this table back to the legacy two faces.
      * The mutual outcomes are the flourish a real capability gap buys — the
@@ -240,6 +243,21 @@ public final class Contest {
             new ExchangeBand(8, 0.10, 0.10),
             new ExchangeBand(9, 0.12, 0.12));
 
+    /**
+     * Where {@link #band(int)} starts saying DECISIVE — the smallest margin it
+     * bands DECISIVE_A. Read out of the function rather than transcribed
+     * beside it, so a moved threshold moves this number with it and the class
+     * init below stays a check instead of becoming a second copy of the law.
+     */
+    public static final int DECISIVE_EDGE = decisiveEdge();
+
+    /**
+     * Where {@link #EXCHANGE_BANDS} opens its exotic outcomes — the first row
+     * that is not the legacy two faces. The other half of the same law, read
+     * the same way, out of the table.
+     */
+    public static final int EXCHANGE_OPENS_AT = exchangeOpensAt();
+
     static {
         if (EXCHANGE_BANDS.size() != SPAN + 1) {
             throw new AssertionError("the band table must cover every gap 0.." + SPAN);
@@ -256,6 +274,53 @@ public final class Contest {
                 throw new AssertionError("band row leaves no decisive share: gap=" + gap);
             }
         }
+        if (EXCHANGE_OPENS_AT != DECISIVE_EDGE) {
+            throw new AssertionError("the exchange table opens at gap " + EXCHANGE_OPENS_AT
+                    + " and band() turns DECISIVE at " + DECISIVE_EDGE + " — one law, two tables");
+        }
+        int asymmetric = firstAsymmetry();
+        if (asymmetric != 0) {
+            throw new AssertionError("band() reads +" + asymmetric + " as " + band(asymmetric)
+                    + " and -" + asymmetric + " as " + band(-asymmetric) + ", and Outcome says symmetric");
+        }
+    }
+
+    /** The smallest margin {@link #band(int)} calls DECISIVE_A, or one past {@link #SPAN} if none is. */
+    private static int decisiveEdge() {
+        for (int margin = 0; margin <= SPAN; margin++) {
+            if (band(margin) == Outcome.DECISIVE_A) {
+                return margin;
+            }
+        }
+        return SPAN + 1;
+    }
+
+    /** The first gap whose row opens a mutual outcome, or one past {@link #SPAN} if none does. */
+    private static int exchangeOpensAt() {
+        for (ExchangeBand row : EXCHANGE_BANDS) {
+            if (row.mutual() > 0.0 || row.parry() > 0.0) {
+                return row.gap();
+            }
+        }
+        return SPAN + 1;
+    }
+
+    /**
+     * The first margin at which {@link #band(int)} does not read the same on
+     * both sides, or 0 when it never does. {@link Outcome} is declared
+     * symmetric and ordered A-side first, which makes the mirror of a band its
+     * reversed ordinal — so the enum's own sentence is the test, checked here
+     * rather than quoted. Public because the bench prints the answer: one
+     * derivation, two readers, no second copy of it in a probe.
+     */
+    public static int firstAsymmetry() {
+        Outcome[] outcomes = Outcome.values();
+        for (int margin = 1; margin <= SPAN; margin++) {
+            if (band(-margin) != outcomes[outcomes.length - 1 - band(margin).ordinal()]) {
+                return margin;
+            }
+        }
+        return 0;
     }
 
     /** The row governing this matchup — the table read by the magnitude of the margin. */

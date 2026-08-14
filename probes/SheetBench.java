@@ -412,6 +412,22 @@ public final class SheetBench {
         double delta = measured - analytic[tie];
         boolean agree = Math.abs(delta) <= tolerance;
 
+        // The law, read against itself. Everything else here measures the
+        // POPULATION against Contest.band, and the analytic table is derived
+        // from that same function on purpose — which means it follows an
+        // illegitimate move of the thresholds as obediently as a legitimate
+        // one. This line asks the other question: do the kernel's two tables
+        // still say the same thing, and does band still mirror? It is an
+        // exhibit and not the gate — Contest's class init refuses to load a
+        // tree where they disagree, so a broken law throws before this probe
+        // prints a line — and probes/bench.sh judges this row so that a lane,
+        // rather than a person running the command, is the one who finds out.
+        boolean symmetric = Contest.firstAsymmetry() == 0;
+        boolean oneLaw = Contest.EXCHANGE_OPENS_AT == Contest.DECISIVE_EDGE && symmetric;
+        System.out.println(String.format(Locale.ROOT,
+                "BANDS LAW decisive_edge=%d exchange_opens_at=%d symmetric=%s VERDICT %s",
+                Contest.DECISIVE_EDGE, Contest.EXCHANGE_OPENS_AT, symmetric,
+                oneLaw ? "ONE_LAW" : "TWO_LAWS"));
         System.out.println("BANDS ANALYTIC " + shares(analytic)
                 + " (uniform 1..10, banded by Contest.band)");
         double sameAxisFloor = (pool.size() / (double) STAT_VALUES - 1.0) / (pool.size() - 1.0);
@@ -426,7 +442,7 @@ public final class SheetBench {
                 "BANDS pairs=%d contests=%d %s analytic_TIE=%.2f%% delta=%+.3fpp tol=%.3fpp VERDICT %s",
                 pairs, total(sweep), shares(sweep), 100.0 * analytic[tie], 100.0 * delta,
                 100.0 * tolerance, agree ? "BANDS_AS_DERIVED" : "BANDS_DRIFTED"));
-        return agree ? 0 : 1;
+        return agree && oneLaw ? 0 : 1;
     }
 
     /** The five matchups {@link #cast()} stages, and the only cross-family pairs the record names. */
