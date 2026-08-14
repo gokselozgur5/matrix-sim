@@ -60,9 +60,10 @@ import java.util.Set;
  * Until they do, this probe decides for them, in one place, out loud:
  * humans derive from {@code Human.name}, programs from {@code Program.purpose}
  * (which is where {@code SmithPrime} keeps "purpose: I decide for myself"),
- * and the Matrix from its own name. When #350 lands, this probe must read
- * the adapters instead, and the census it prints today is the fixture that
- * says whether the adapters agreed with it.
+ * and the Matrix and the Machine City from their own names — the two wings
+ * that have no residents to read a name off answer for themselves. When
+ * #350 lands, this probe must read the adapters instead, and the census it
+ * prints today is the fixture that says whether the adapters agreed with it.
  *
  * Usage:
  *   java -cp out:probes/out SheetDump [selector] [seed] [ticks]
@@ -82,6 +83,22 @@ public final class SheetDump {
      * and this row is where that change becomes visible.
      */
     private static final String THE_MATRIX = "the Matrix";
+
+    /**
+     * The Machine City, minted here (#1010) and spelled once and forever.
+     * The wing has nobody to derive from — {@code Source} holds a world and
+     * a registry, {@code Architect} is {@code enum … INSTANCE},
+     * {@code MachineCity} is static methods, {@code SubstrateBudget} is two
+     * ints, and not one of them carries an identity string — so the city
+     * answers for itself, one row, the way the Matrix answers the SYSTEM
+     * row above. Capitalization is identity: these bytes ARE the MACHINE
+     * row's fate, and respelling them afterwards re-rolls the sheet
+     * attached to them, which is why the string is quoted in exactly one
+     * place. If a later verdict gives the wing residents — sentinels,
+     * harvesters, as catalog data under D-015 — they APPEND to this wing;
+     * they do not replace this row, and this row's numbers do not move.
+     */
+    private static final String THE_MACHINE_CITY = "the Machine City";
 
     /** Safety stop on the reachability walk: a census must not become a heap dump. */
     private static final int WALK_CEILING = 5_000_000;
@@ -232,12 +249,12 @@ public final class SheetDump {
         Set<String> resident = new LinkedHashSet<>();
         for (Wing population : wings.values()) {
             for (Sheet sheet : population.sheets()) {
-                resident.add(sheet.family() + " " + sheet.name());
+                resident.add(sheet.family() + "\0" + sheet.name());
             }
         }
         int held = 0;
         for (Sheet sheet : cast) {
-            if (resident.contains(sheet.family() + " " + sheet.name())) {
+            if (resident.contains(sheet.family() + "\0" + sheet.name())) {
                 held++;
             }
         }
@@ -286,15 +303,15 @@ public final class SheetDump {
                     }
                 }
             }
-            case MACHINE -> {
-                // Nothing. The machine wing runs on singletons — the Source,
-                // the Architect, the city itself — and not one of them carries
-                // an identity string to mix, so there is nothing here to
-                // derive from. The wing prints souls=0 rather than being
-                // omitted: an empty wing is a finding, and a census that
-                // hides its empty wing is how a missing population becomes
-                // invisible.
-            }
+            // The wing that never sleeps has no population to walk: the
+            // machine side is singletons and statics, and a sheet derives
+            // from an identity string that none of them carries. So the city
+            // answers for itself. souls=0 was a finding with a keeper, and
+            // this is the keeper cashed: one row, so that
+            // `power · precision · relentlessness` has somebody to speak it
+            // and #659's WING machine souls=<N> stops being 0 by
+            // construction.
+            case MACHINE -> sheets.add(Sheets.derive(THE_MACHINE_CITY, Family.MACHINE));
             case SYSTEM -> sheets.add(Sheets.derive(THE_MATRIX, Family.SYSTEM));
         }
         return new Wing(sheets, skipped);

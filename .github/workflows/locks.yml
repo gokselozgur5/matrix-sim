@@ -259,6 +259,13 @@ jobs:
       # operator proves the BSD dialect by running it, the runner proves the GNU one, and
       # the asserted `dialect=gnu` is what stops this from re-proving the same half twice.
       # Needs no token and no network — it judges the calendar, not the account.
+      # The run is piped to tee rather than captured, for the same reason the sweep and the
+      # golden day are: `out="$(...)"` under set -e dies ON THE ASSIGNMENT when the script
+      # exits 5, so the printf that would have shown the eleven executed cases never ran, and
+      # neither did the FATAL two lines below it — the one lock built to catch a dialect bug
+      # reported one as a red step with an empty log (#983). Through the pipe, tee has already
+      # put the failing offsets in the log by the time pipefail fails the step, and an executed
+      # case is the only thing that tells the two boxes apart.
       # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
       # shipped, because they carried an address GitHub resolves to the owner's OTHER account
       # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
@@ -274,9 +281,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out="$(bash tools/balance.sh --datecheck)"
-          printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -q '^DATECHECK VERDICT PASS dialect=gnu ' \
+          bash tools/balance.sh --datecheck | tee "${RUNNER_TEMP:-/tmp}/datecheck.log"
+          grep -q '^DATECHECK VERDICT PASS dialect=gnu ' "${RUNNER_TEMP:-/tmp}/datecheck.log" \
             || { echo "FATAL the runner did not reach a passing GNU-dialect verdict" >&2; exit 1; }
 
       # WHY: #828's complaint is a claim about what the meter CAN say — that no window could
@@ -319,6 +325,23 @@ jobs:
             | tee "${RUNNER_TEMP:-/tmp}/golden.log"
           grep -qE "^GOLDEN OK $golden \([0-9]+ bytes\)$" "${RUNNER_TEMP:-/tmp}/golden.log" \
             || { echo "FATAL the teleprinter reached no GOLDEN OK verdict" >&2; exit 1; }
+
+      # WHY: the blessing above is one question the tool answers; the NUMBER it answers with
+      # is the other (#1011). The reader publishes an exit grammar in three places and used
+      # to obey none of them: five conditions reached 2 and three reached 1, so a caller
+      # could not tell a refused invocation from a name the record does not hold from a page
+      # that drifted. This suite runs one invocation per code. Its fixtures are blessed in a
+      # temp directory rather than read from golden/, so it judges the GRAMMAR only — a page
+      # that legitimately moves goes red in the step above, once, under its own name. Piped
+      # to tee for that step's reason: under pipefail a red suite fails the lane AND its rows
+      # reach the log, which is the whole point of a per-case report.
+      - name: tools — the teleprinter's exit grammar (#1011)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/dreamreader/exitgrammar.sh | tee "${RUNNER_TEMP:-/tmp}/exitgrammar.log"
+          grep -qxE 'EXIT VERDICT PASS cases=[1-9][0-9]* fail=0' "${RUNNER_TEMP:-/tmp}/exitgrammar.log" \
+            || { echo "FATAL the teleprinter's grammar is not the one it publishes" >&2; exit 1; }
 
       # WHY: lock 10 — the permanent control group (D-042's ruling, #212). NEUTRAL is not a
       # migration step and this lane does not retire: it runs the flagged world at the
