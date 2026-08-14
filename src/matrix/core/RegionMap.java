@@ -91,15 +91,17 @@ public final class RegionMap {
         List<PlaceGraph.Zone> zones = places.zones();
         this.regionOfCell = new int[hash.cellCount()];
         for (int c = 0; c < regionOfCell.length; c++) {
-            long cx = hash.cellCenterXCm(c);
-            long cy = hash.cellCenterYCm(c);
+            // Held as int and widened inside Geo (#945): the long here was the
+            // third spelling of the same law, widening at the assignment rather
+            // than inside the subtraction. Both are correct at these magnitudes;
+            // one of them is the law.
+            int cx = hash.cellCenterXCm(c);
+            int cy = hash.cellCenterYCm(c);
             int best = 0;
             long bestD = Long.MAX_VALUE;
             for (int z = 0; z < zones.size(); z++) {
                 Position center = zones.get(z).center();
-                long dx = cx - center.xCm();
-                long dy = cy - center.yCm();
-                long d = dx * dx + dy * dy;
+                long d = Geo.distSqCm(cx, cy, center.xCm(), center.yCm());
                 if (d < bestD) { // ties keep the lower zone index — the map is not a dice roll
                     bestD = d;
                     best = z;
