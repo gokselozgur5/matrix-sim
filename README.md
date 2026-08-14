@@ -36,6 +36,121 @@ flowchart LR
     ARC --> M
 ```
 
+## How the world works
+
+**A tick is four steps, always in this order.** The spatial index freezes every
+entity's position — that snapshot is what everyone *perceives*, so a mind that
+dies this tick can still be seen alive, because the news has not reached you yet.
+Then every living entity decides, reading the frozen world. Decisions do not take
+effect: they queue as events. At the end of the tick the queue flushes in order,
+and only then has anything happened (D-005). Nothing in this world mutates while
+something else is looking at it.
+
+**The One is arithmetic, not a script.** Every ten ticks each open link pays
+*residue* into one uncapped counter — the anomaly ledger — priced by how much the
+mind resists the dream:
+
+| source | per window | what it is |
+|---|---|---|
+| a blue pill | `1` | the ordinary friction of a life that is not real |
+| a red pill | `8` | someone who knows |
+| déjà vu | `250` | a parked region re-materialising: cache invalidation, made visible |
+| the Kid | `24` | one mind's personal breaking point, derived from its name — no dice at all |
+
+When the balance crosses `LEDGER_BOUND = 30_000`, the very next tick births The
+One. Nobody wrote *"Neo appears at 1299"* — the counter reached a number and the
+world answered. Seed 42, at HEAD:
+
+```sh
+java -cp out matrix.Main --headless --ticks 6000 --seed 42 | grep -E 'One is born|I DIDN|OVERFLOW|Peace|REBOOT|open door'
+# [001299] FATE  The One is born — Thomas A. Anderson, grown for a debt of 30107 (the ledger does not forgive; it balances)
+# [001525] BAD   Smith: "I knew what I was supposed to do. I DIDN'T."
+# [004035] BAD   SMITH OVERFLOW — 62% assimilated; the old playbook is impossible
+# [004055] FATE  The One: "Peace."
+# [004075] FATE  REBOOT v7.0 — peace protocol active, the door stays open
+# [004075] OK    open door tally: 6 walked out; the census keeps them
+```
+
+The debt is 30,107 rather than 30,000 because accrual runs every ten ticks and the
+check fires the tick after the crossing. The overshoot is the ledger's, not a
+tuning constant — and the arc's timing is emergent: nothing anywhere states when
+Smith overflows.
+
+**Deletion is a protocol, and the trilogy is one assumption collapsing.** The
+Source does not delete a program; it *offers* deletion. SIGTERM, then
+`GRACE_TICKS = 25` to comply, then collection. Three answers exist:
+
+- an ordinary program dies — `GC: "purpose" returned to the Source, deleted`
+- an exile **hides** — teleports somewhere else and the log says *swallowed the
+  SIGTERM, gone to ground*
+- agent Smith **refuses** — throws `DeletionRefusedException`, and the immune
+  system becomes autoimmune
+
+The assumption `processes accept SIGTERM` is recorded in the code on purpose, with
+the note that it will age badly. Everything after v2.0 is that line failing.
+
+**Reality is lazy.** Regions nobody is looking at fold into statistics and stop
+thinking; when attention returns they re-materialise — same crowd, different
+faces — and the world pays 250 residue for the seam (D-024). Déjà vu is not a
+metaphor here. It is a cache miss with a price.
+
+**The seal is the referee.** Every 100 ticks the whole world is hashed into a
+chain: tick, the RNG's *draw count*, every entity's state, the ledger, the links.
+Same seed, same film, byte for byte — and the draw count is in the hash, so a die
+rolled and thrown away still moves the seal. That is what makes every claim in
+this repository falsifiable by one command:
+
+```sh
+java -cp out matrix.Main --headless --ticks 6000 --seed 42 | grep '^DIGEST tick=6000'
+# DIGEST tick=6000 sha=be383798973dfe15006edaf96884e2ea4472e22142ada7518fc85d6f60cfa969
+```
+
+That value is pinned in [`.github/canonical-digest`](.github/canonical-digest)
+with the argument for the last time it moved. It is the only thing in the project
+that cannot be argued with.
+
+## What it does not do
+
+The naked version, because a reader deserves the gaps as plainly as the features.
+Every line here is a live measurement, not a caveat.
+
+**A program's purpose is a name, not a lifecycle.** `Program.purpose` is a
+`final String`, and the only thing that reads it besides log lines is the orphan
+registry, which uses it as a key — an identity, never a condition. Nothing asks
+whether a purpose has been *served*. Collection fires on a cadence and picks at
+random — `t % EXILE_COLLECT_EVERY_TICKS == 0`, then `collectRandomExile()`.
+**No program is ever deleted because its work is done**,
+which is a strange thing to say about citizens D-025 calls purpose-bound. A
+traffic light never finishes; the Keymaker's whole existence is one door. Today
+they share one lifecycle and it is a timer.
+
+**The city runs out of people.** `BLUE_START = 192` plus `RED_START = 4` is every
+mind the world will ever hold. Deaths, awakenings and the open door are all
+withdrawals; nothing is ever grown. At seed 42 `blue=0` first prints at tick
+**51,400** and never recovers (#927). The machines' one line about a fresh crop
+inbound is printed by `Architect.reload` and delivered by nothing.
+
+**The world does not grow with the dial.** `--scale` multiplies population and
+leaves the map at 3,200 fixed buckets, so the neighbour query degrades from an
+index into a scan as the city fills. Measured across two doublings, the per-tick
+cost exponent climbs **1.46 → 1.86** (#1023) — and `ECO_SCALE_MAX = 100` refuses
+the ladder at 46,208 entities, 21.6x below the 1,000,000 the roadmap names. The
+cap is load-bearing, not timid (#1028).
+
+**One seed is the whole guarantee.** The canonical seal watches seed 42 alone.
+That proves *determinism* perfectly and proves a *property* not at all — three
+defects this week were green at 42 and wrong elsewhere: a tolerance twenty times
+the drift it was hiding (#1002), a median that never settled (#979), and a ledger
+that disagrees with its own mirror on seven of the first sixty universes (#1090).
+#1094 asks for the rule that separates the two kinds of row.
+
+**And you cannot play it.** There is an ops console and a per-mind perception feed
+(`--follow NAME`), but no path by which a human decides what one avatar does on a
+given tick. The Merovingian is in there — he wanders, and he swallows SIGTERMs —
+and there is nothing to say to him: the favor economy that would let a program buy
+shelter is an accepted decision with no code (D-053), as is the allegiance ledger
+behind it (D-051).
+
 ## Quickstart
 
 Requires **JDK 17+**. On macOS with an older default JDK:
