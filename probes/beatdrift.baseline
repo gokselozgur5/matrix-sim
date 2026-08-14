@@ -3,7 +3,8 @@
 # One BEATDRIFT row per seed, verbatim as `probes/CensusBeatDrift` printed it, at the tree
 # the row's own `sha=` names. `probes/bench.sh` hands this file to the probe with
 # --baseline-file, so the judged row compares today's ticks against these and the sweep goes
-# red when a beat slides further than the declared band.
+# red the moment a beat moves at all: the band is 0 since #1002, so these rows are a pin and
+# not a tolerance, and the only way past a red sweep is re-measuring them here.
 #
 # Blank lines and lines opening with `#` are ignored. Every other line must open with
 # `BEATDRIFT ` and must carry the `ticks=` the sweep runs at: a row measured at another
@@ -31,6 +32,23 @@
 # five arrive 213 late and the second birth 220 late. Both directions, because the clause
 # does not delay the cascade — it changes who is standing in it. Six of the eight beats at
 # each seed cleared the declared 200-tick band, which is the band doing its job: this is a
-# declared move and not drift. Was sha=a7660c2 (overflow 4289 / 3707).
-BEATDRIFT sha=ea2c141 seed=42 ticks=6000 birth=1299 refusal=1525 overflow=4035 flatline=4035 peace=4055 reboot=4075 door=4075 second_birth=4989 max_delta=n/a
-BEATDRIFT sha=ea2c141 seed=7 ticks=6000 birth=1259 refusal=1525 overflow=3920 flatline=3920 peace=3940 reboot=3960 door=3960 second_birth=4879 max_delta=n/a
+# declared move and not drift. Was sha=a7660c2 (overflow 4289 / 3707). The band was 200 when
+# that move was judged; it is 0 from the rows below down.
+#
+# Re-measured by #1002 at 8f41b30, main's head, and unchanged tick for tick — the film has not
+# moved since #377's export, so this commit moves the band and not the rows. The band it moves
+# is the one docs/ARCHITECTURE.md census entry 2 declared and never measured. Here is the
+# measurement: across the 142 commits from 0cad45b (entry 2's last recorded row) to a7660c2
+# (the pin #377 replaced) the film drifted ten ticks — seed 42's second birth, with overflow,
+# flatline, peace, reboot and the door one tick early apiece, and seed 7 not moving at all —
+# and the row judging that slide said DRIFT_WITHIN_BAND, with no reading in between because
+# nothing in the tree ever recorded one. A band twenty times a drift it was pointed at is not
+# a tolerance, it is silence: it prints the identical line over a tree that did not move and
+# over one that moved 199 ticks. Entry 2's table holds the other half of the argument — seed
+# 7's beats slid 119 ticks between 2b49550 and 62e12ac and that step is recorded as
+# WITHIN_BAND, so the largest undeclared move on record was absorbed with no reason written
+# anywhere. And seed 7 has no other witness in this repository at all, since
+# the canonical seal watches seed 42 alone. At 0 a beat that slides one tick re-pins here with
+# its reason attached, which is what .github/canonical-digest has always demanded of the seal.
+BEATDRIFT sha=8f41b30 seed=42 ticks=6000 birth=1299 refusal=1525 overflow=4035 flatline=4035 peace=4055 reboot=4075 door=4075 second_birth=4989 max_delta=n/a
+BEATDRIFT sha=8f41b30 seed=7 ticks=6000 birth=1259 refusal=1525 overflow=3920 flatline=3920 peace=3940 reboot=3960 door=3960 second_birth=4879 max_delta=n/a
