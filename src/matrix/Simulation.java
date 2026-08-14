@@ -574,11 +574,22 @@ public final class Simulation {
         }
     }
 
+    /**
+     * Ticks the world forward and hands back the determinism chain as it
+     * stands at the tick this call stopped on — a copy, not the field (#996).
+     * The chain is D-010's sacred object and D-012 puts it in exactly one
+     * pair of hands, so a caller gets a reading and not the instrument: the
+     * list it holds cannot grow under it when the world ticks on, two calls
+     * on one universe hand back two objects, and {@code clear()} on a return
+     * value empties nothing the world is keeping. Nothing inside this class
+     * reads the field back — {@code chain.add} on the digest beat is its only
+     * other use — so the copy costs the world nothing it was relying on.
+     */
     public List<Digest> run(long ticks) {
         for (long i = 0; i < ticks; i++) {
             tickOnce();
         }
-        return chain;
+        return List.copyOf(chain);
     }
 
     public long tick() {

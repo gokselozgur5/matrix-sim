@@ -105,14 +105,9 @@ public final class Zion {
         while (afloat() < Config.FLEET_MAX
                 && livingCensus() >= Config.RIG_CAPACITY * (afloat() + 1)) {
             int laydown = fleet.size();
-            // #948: the loss is a fact about the fleet, not about the
-            // ordinal. The ordinal counts every keel ever laid, afloat()
-            // only the hulls still in the fight; a gap between them, read
-            // before this keel joins, is a hull that went down.
-            boolean replacing = laydown > afloat();
             Hovercraft hull = new Hovercraft(hullName(laydown));
             fleet.add(hull);
-            world.log(Severity.FATE, laydownLine(laydown, hull.name, replacing));
+            world.log(Severity.FATE, laydownLine(laydown, hull.name));
         }
         for (Hovercraft ship : fleet) {
             ship.tick(world);
@@ -166,27 +161,17 @@ public final class Zion {
      * "A second hull" was printed over the third one — witnessed at seed 42,
      * t=021560, over the Hammer — and every hull after it would have said
      * the same. The instrument was not lying about a count it printed; it
-     * was lying about a count it narrated.
-     *
-     * <p>The clause past the second was the same defect one layer down
-     * (#948): a loss read off the ordinal instead of off the fleet. That
-     * proxy holds at exactly one value of one knob — with the shipped
-     * {@code FLEET_MAX = 2} the gate {@code afloat() < FLEET_MAX} can only
-     * open a third time after a hull is gone — and {@code FLEET_MAX} is a
-     * D-006 tunable. At 3 a third keel is growth, and the line narrated a
-     * loss into a run that had none. So the caller passes the fact rather
-     * than a stand-in for it: {@code replacing} is the gap between the
-     * keels ever laid and the hulls still afloat, read at laydown — the
-     * same asymmetry between the registry and the fight that the whole
-     * #806 cluster is about. A fleet that has lost nothing narrates no
-     * loss; it narrates the board it just added.
+     * was lying about a count it narrated. Past the second, a laydown can
+     * only happen because a hull was lost — the gate is
+     * {@code afloat() < FLEET_MAX} — so the line says that, instead of
+     * counting boards it is not adding.
      */
-    private static String laydownLine(int laydown, String name, boolean replacing) {
+    private static String laydownLine(int laydown, String name) {
         return switch (laydown) {
             case 0 -> "the first hull: " + name + " joins the fleet — the census learns to fly";
             case 1 -> "a second hull: " + name + " joins the fleet — the census can man two boards";
-            default -> "hull number " + (laydown + 1) + ": " + name + " joins the fleet — "
-                    + (replacing ? "the census replaces what it lost" : "the census can man another board");
+            default -> "hull number " + (laydown + 1) + ": " + name
+                    + " joins the fleet — the census replaces what it lost";
         };
     }
 

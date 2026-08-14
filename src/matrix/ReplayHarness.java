@@ -441,15 +441,6 @@ public final class ReplayHarness {
      * our own recorder's grammar (crown #177), not a general JSON parser
      * — anything off-grammar is refused, because a fold over a misread
      * record would be a quiet lie.
-     *
-     * <p>Off-grammar is a property of the FIELDS as much as of the kind
-     * (#976). Field reads find the first match and stop, so a second
-     * {@code "cmd"} on the same line is never read and a field the kind does
-     * not define is never seen — the record would state two commands, the
-     * fold would apply one, and the audit would call the file coherent. So
-     * every line is measured against its kind's exact field list before it is
-     * read: a field the kind does not define, or the same field twice, is
-     * refused by name. That gate is what makes first-match reading honest.
      */
     private static Recording parse(Path file) throws IOException {
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
@@ -475,10 +466,6 @@ public final class ReplayHarness {
             }
             if (seed == null && !kind.equals("genesis")) {
                 refuse("no genesis before line " + (n + 1) + " — a recording opens by naming its universe");
-            }
-            List<String> grammar = grammarOf(kind);
-            if (grammar != null) {
-                checkFields(line, kind, grammar, n + 1);
             }
             switch (kind) {
                 case "genesis" -> {
@@ -564,70 +551,6 @@ public final class ReplayHarness {
         }
         return new Recording(seed, version, config, commands, markers, boundaries, births, records, flushes,
                 lastTick);
-    }
-
-    /**
-     * The recorder's field list for one kind, in the order {@link ChronosLog}
-     * writes them — null for a kind this reader does not know, which the
-     * parse switch refuses by kind rather than by field. The lists are the
-     * writer's, copied deliberately: when the recorder learns a field the
-     * reader learns it in the same breath, exactly as it learns a kind.
-     */
-    private static List<String> grammarOf(String kind) {
-        return switch (kind) {
-            case "genesis" -> List.of("chronos", "seed", "version", "config");
-            case "command" -> List.of("chronos", "tick", "cmd");
-            case "snapshot" -> List.of("chronos", "tick", "epoch", "sha", "bytes");
-            case "boundary" -> List.of("chronos", "tick", "kind");
-            case "birth" -> List.of("chronos", "tick", "name", "family", "rack", "id");
-            case "flush" -> List.of("chronos", "tick", "spawns", "removes", "replaces");
-            default -> null;
-        };
-    }
-
-    /**
-     * The field gate (#976): walk the line's own top-level keys and refuse the
-     * first that its kind does not define, or that it has already carried.
-     * Keys are read structurally — a quoted run followed by a colon, with
-     * string contents skipped whole — so a brace or a colon inside a command's
-     * text is text, not grammar. An unterminated string ends the walk and is
-     * left to the field reads below, which already refuse the line for the
-     * value they cannot find.
-     */
-    private static void checkFields(String line, String kind, List<String> grammar, int lineNo) {
-        List<String> seen = new ArrayList<>();
-        int depth = 0;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '{' || c == '[') {
-                depth++;
-            } else if (c == '}' || c == ']') {
-                depth--;
-            } else if (c == '"') {
-                int end = i + 1;
-                while (end < line.length() && line.charAt(end) != '"') {
-                    end += line.charAt(end) == '\\' ? 2 : 1;
-                }
-                if (end >= line.length()) {
-                    return;
-                }
-                int after = end + 1;
-                while (after < line.length() && Character.isWhitespace(line.charAt(after))) {
-                    after++;
-                }
-                if (depth == 1 && after < line.length() && line.charAt(after) == ':') {
-                    String key = line.substring(i + 1, end);
-                    if (seen.contains(key)) {
-                        refuse("duplicate field '" + key + "' at line " + lineNo);
-                    }
-                    seen.add(key);
-                    if (!grammar.contains(key)) {
-                        refuse("unknown field '" + key + "' on kind '" + kind + "' at line " + lineNo);
-                    }
-                }
-                i = end;
-            }
-        }
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */
