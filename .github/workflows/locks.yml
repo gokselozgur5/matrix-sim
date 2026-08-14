@@ -278,6 +278,23 @@ jobs:
           grep -qE "^GOLDEN OK $golden \([0-9]+ bytes\)$" "${RUNNER_TEMP:-/tmp}/golden.log" \
             || { echo "FATAL the teleprinter reached no GOLDEN OK verdict" >&2; exit 1; }
 
+      # WHY: the blessing above is one question the tool answers; the NUMBER it answers with
+      # is the other (#1011). The reader publishes an exit grammar in three places and used
+      # to obey none of them: five conditions reached 2 and three reached 1, so a caller
+      # could not tell a refused invocation from a name the record does not hold from a page
+      # that drifted. This suite runs one invocation per code. Its fixtures are blessed in a
+      # temp directory rather than read from golden/, so it judges the GRAMMAR only — a page
+      # that legitimately moves goes red in the step above, once, under its own name. Piped
+      # to tee for that step's reason: under pipefail a red suite fails the lane AND its rows
+      # reach the log, which is the whole point of a per-case report.
+      - name: tools — the teleprinter's exit grammar (#1011)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/dreamreader/exitgrammar.sh | tee "${RUNNER_TEMP:-/tmp}/exitgrammar.log"
+          grep -qxE 'EXIT VERDICT PASS cases=[1-9][0-9]* fail=0' "${RUNNER_TEMP:-/tmp}/exitgrammar.log" \
+            || { echo "FATAL the teleprinter's grammar is not the one it publishes" >&2; exit 1; }
+
       # WHY: lock 10 — the permanent control group (D-042's ruling, #212). NEUTRAL is not a
       # migration step and this lane does not retire: it runs the flagged world at the
       # canonical seed and holds its chain against the sealed baseline, link by link, forever.
