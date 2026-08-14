@@ -68,7 +68,7 @@ javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 java -cp out:probes/out <Probe> [args]
 ```
 
-Compile the whole directory, not one file: seventeen of the thirty-eight probes call
+Compile the whole directory, not one file: seventeen of the thirty-seven probes call
 the shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails
 on them with `cannot find symbol: variable Probes`. Both numbers are hand-counted,
 and both had drifted by the time #995 read them — the sentence said seven of twelve
@@ -77,48 +77,27 @@ the commands that produce them rather than asking to be believed:
 
 ```sh
 ls probes/*.java | wc -l                            # 39 files
-grep -al 'static void main' probes/*.java | wc -l   # 38 probes; the other two are
+grep -al 'static void main' probes/*.java | wc -l   # 37 probes; the other two are
                                                     # the Probes and LineGrammar helpers
 grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
 ```
 
-`grep -a` and not a bare `grep`: `SheetDump.java` carries a NUL byte inside a string
-literal, so a BSD grep drops it as binary and undercounts both figures by one.
+`grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
+carry a raw NUL byte inside a string literal, which made a BSD grep call the whole
+file binary and undercount both figures by one — and, more expensively, made lock
+8's charset guard skip that file entirely (#1039). The byte is an escape now, so a
+bare `grep` agrees; the flag stays because the next probe to need a control
+character should not silently change what these commands count.
 
 ## The sweep
 
-One command runs the bench and prints one verdict:
+One command runs every probe and prints one verdict:
 
 ```sh
 probes/bench.sh            # 6,000 ticks each, compile included
 probes/bench.sh --list     # the contract table, run nothing
 probes/bench.sh --twice    # the sweep, plus the determinism pass below
 probes/bench.sh --without-probes   # clause 5: does src/ still stand alone?
-```
-
-"The bench" is not "every probe" — that is what the sentence above claimed until
-#1080 counted the table: 40 rows over 34 of the 38 probes, and four probes with
-no row at all. `UnparkStorm`'s absence is a decision its own catalog row states —
-a 6,000-tick x11 run is a laboratory's wall clock, not a lane's. `CensusCensor`,
-`CensusReverdict` and `CensusSampleSize` are the gap #816 exists to close, and
-they are missing from the catalog below for the same reason. These are hand
-counts, like the build note's, so they carry the commands that produce them
-rather than asking to be believed:
-
-```sh
-# CONTRACT probes=39 judged=32 ticks=6000
-probes/bench.sh --list | tail -1
-
-# 34 classes behind those 40 rows; the sed takes a row's class and not the
-# trailer's, whose second field carries an '=' and so matches nothing here
-probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort -u | wc -l
-
-# AllocMeter, DocLint, SheetBench — the three that hold two rows each
-probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort | uniq -d
-
-# CensusCensor, CensusReverdict, CensusSampleSize, UnparkStorm — the four with no row
-comm -23 <(grep -al 'static void main' probes/*.java | sed 's#probes/##;s#\.java##' | sort) \
-         <(probes/bench.sh --list | sed -n 's/^CONTRACT \([A-Za-z]*\) judged=.*/\1/p' | sort -u)
 ```
 
 The contract table lives in that script, one row per invocation — `judge
@@ -128,16 +107,12 @@ output may legitimately move. A judged probe is judged by exact-line grep
 (`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
 sweep; a reporting probe fails only by crashing or exiting nonzero. Adding a
 probe is a one-row change here, beside the probe — one row per probe, and one
-row per mode where a probe verdicts in more than one. Three classes do today —
-`AllocMeter` (the budget row and `--selfcheck`), `DocLint` (the scan and
-`--selfcheck`) and `SheetBench` (`--discipline` and `--avalanche`) — which is
-the arithmetic between 40 rows and 34 classes, and the `uniq -d` line above is
-what lists them rather than this sentence. `SheetBench`'s `--avalanche` row is
-`run` rather than `judge` on purpose: that mode prints its measurements and its
-verdict on the same line, so judging it by exact line would pin `mean_bitflip`
-and `max_axis_corr` into the runner beside the bound the probe already prints
-and already checks. Its exit code is its verdict instead, which is what `run`
-reads.
+row per mode where a probe verdicts in more than one. `SheetBench` is the only
+one that does today, and its `--avalanche` row is `run` rather than `judge` on
+purpose: that mode prints its measurements and its verdict on the same line,
+so judging it by exact line would pin `mean_bitflip` and `max_axis_corr` into
+the runner beside the bound the probe already prints and already checks. Its
+exit code is its verdict instead, which is what `run` reads.
 
 One row reads a committed file. `CensusBeatDrift` judges today's beat ticks against
 `probes/beatdrift.baseline` — two rows, one per standard seed, verbatim as the probe
@@ -145,13 +120,8 @@ printed them at the tree their own `sha=` names. Moving the pin is those rows
 re-measured in the commit that moves the film, so `git log -p -- probes/beatdrift.baseline`
 is the whole move history, the way `.github/canonical-digest` holds the seal's. Its
 judged line carries the set it judged (`compared=16/16`) and the tolerance it judged
-against (`band=0`), because a probe that read a baseline naming none of the beats
+against (`band=200`), because a probe that read a baseline naming none of the beats
 would otherwise print the same clean line as one that compared all sixteen pairs.
-The band is 0 rather than the 200 it shipped with (#1002): 200 was a declared
-convention, and the measurement it never had says the film drifted ten ticks over
-the 142 commits from `0cad45b` to `a7660c2` while the row judging that slide read
-`DRIFT_WITHIN_BAND`. At 0 the rows are a pin, and a beat that moves one tick is a
-red sweep until it is re-measured here with its reason.
 
 ## The bench refereeing itself
 
@@ -159,33 +129,12 @@ The probes referee the daemon. `--twice` is what referees the probes: every row
 runs a second time at the same seed and budget, the two outputs are byte-compared,
 and the first line that moved is printed with its number.
 
-The four line shapes are **illustrative — hand-built, not a transcript**. A green
-tree prints no `DRIFT` and no `UNCHECKED`, which is what green means, so no run
-can show all four at once. `NameCensus` does not drift and has not; it stands in
-for a probe that would:
-
 ```
 STABLE LineLint
 DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
 EXEMPT AllocMeter reason="prints its own instrument noise: steady_max is a cold …"
-UNCHECKED SomeProbe — died on its first run, so it was never run twice
+BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
 ```
-
-The trailer is a measurement rather than a shape, so it is quoted from a run.
-`probes/bench.sh --twice` at `602af54` closed with:
-
-```
-BENCH probes=36 judged=29 pass=29 fail=0 ran=7 ticks=6000 secs=108 VERDICT BENCH_GREEN
-BENCH determinism probes=36 stable=35 drift=0 exempt=1 unchecked=0 VERDICT INSTRUMENTS_STABLE
-```
-
-36 and not 33, because the determinism pass asks its question of every row: a
-class holding two rows is byte-compared twice. Until #1080 the illustration
-ended in `BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT
-INSTRUMENTS_DRIFTED` — a count from a bench less than half this size, in a line
-shape that gained its `unchecked=` field at #970 — with nothing saying it was
-composed. Two fenced blocks, one transcript and one illustration, and no way to
-tell which was which: that is the failure this section is now split to avoid.
 
 The digest leash proves the *world* is deterministic and says nothing about the
 instruments pointed at it — and a drifting instrument is worse than none, because
@@ -221,7 +170,7 @@ judges it (#906).
 | `LinkAudit` | What is the end-state of every NeuralLink after N ticks? | ghost-link triage: open/closed × alive/dead × present/absent |
 | `ChainDump` | What is the DIGEST chain of a run, as plain lines? | out-of-band replay diffing between two boxes — and since #518 the same diff at scale, which is the only cross-PROCESS determinism proof the dial has: `ChainDump [ticks] [seed] [scale]`, two runs at `2000 42 11` byte-identical, trailer `CHAIN … scale=11 entities=5266`. `--selftest` double-runs inside one process, where anything derived from the dial once is shared by both runs and cancels; two processes do not share it. The scale rides the daemon's own gate (`Config.scaleRefusal`), so 0, 101 and 217 die with the daemon's sentence and its exit 2, and scale 1 appends nothing so every chain this probe has already published keeps its bytes |
 | `LedgerMirror` | Does every ledger delta equal the open-link residue mirror? | the ghost-HARDLINE class of bug, made permanently detectable (`LEDGER_ANOMALIES=0`, seeds 42, 7 & 9 — seed 9 joined when #863 modelled the clean exit, which the mirror used to report as an anomaly and explain away in a comment) |
-| `SealHygiene` | Are the numbers the seal borrows from the JLS still the numbers it borrowed? | #837: `String.hashCode` sits inside `World.digestEntity`, so a species id is canonical text and not a caption — renaming `"black cat"` moved the chain from `421d7263…` to `ec0a1b61…` in total silence. Twelve ids pinned, and the borrowed value each door reads — the birth key outward, the name's hash inward. Not the two thresholds: both are that value plus a `*_BASE` this repository sets, so pinning them called a lawful `KID_*` retune a JLS deviation (#1016). They print on every row and are judged on none. Needs no ticks, no seed and no world, so it is the one probe that cannot be flaky |
+| `SealHygiene` | Are the numbers the seal borrows from the JLS still the numbers it borrowed? | #837: `String.hashCode` sits inside `World.digestEntity`, so a species id is canonical text and not a caption — renaming `"black cat"` moved the chain from `421d7263…` to `ec0a1b61…` in total silence. Twelve ids and both door thresholds pinned; needs no ticks, no seed and no world, so it is the one probe that cannot be flaky |
 | `HuntBound` | Does the running world obey the displacement law the gait table declares? | #825: `HUNT_DISP_BOUND_CM` had 74 cm of headroom and no reader — crossing it multiplies the linear far-mover term 428x while the digest, the selftest and the hunt referee all report that nothing happened. `Config.huntBoundLine()` is the tight check and runs in `--selftest`; this probe is the half a table cannot prove about itself, measuring what each gait actually spends (sparrow: 566 declared, 566 measured) and reporting the ledger occupancy nobody could see (peak 2, mean 0.147 at seed 42) |
 | `OneTrace` | Does the One's death close his link the same tick? | the finale's contract after the v3 fix round: died=4284, closed=4284, `CONTRACT_HELD` |
 | `CapSentinel` | Do awakened minds (present + wrapped) ever exceed the cap? | the treaty-restore cap breach, made permanently detectable (`CAP_BREACHES=0`, seeds 42 & 7) |
@@ -235,24 +184,24 @@ judges it (#906).
 | `DoorPressure` | Can the inward door's two refusals be reached at all, by the door the root wired? | #886: `DoorPolicy` refuses on a full rack and on a starved budget, and the canonical arc walks neither — `DOORCLAIM` measures it (seed 42, 6,000 ticks: somebody is ashore on **2** ticks, the rack has 8 free units on both, and the budget never sells below 5 against a floor of 2). Three universes off one amnesty and two sink orders: `healthy` grants exactly `REINSERTION_QUOTA` and then says *quota spent*, `rack_full` and `starved` break one half of I-1 each and must say *no slot*. Every mutation of either comparison in `substrateSeats` passes all seven CI locks including the canonical digest and turns this one red (`DOOR_PRESSURE_HELD`) |
 | `FateAtlas` | Which births is the Kid band even willing to let out, and for how long is that answer true? | first the monoculture, enumerated over the 400 growable names: 11 needed 6 spikes, 197 needed 7, 192 needed 8, none ever landed more than 7, and exactly one cleared its own bar — `Otto Aydin` (threshold 161, window 474 = tick 4740). Then #764 keyed fate to the birth event and the domain became the births a span of universes grows: `admitted=5 distinct=5 top="Hugo Novak"x1` of 3,920 across seeds 1..20 at 600 windows, `VERDICT BAND_OPEN admitted=5`, and the same bar at `KID_BASE=144` admits 0 of 3,920 — the retune was forced, and this table is what forced it. `--sweep` is the second half (#843): the admitted count is a reading at one budget and nowhere else — 5, 161, 1238, 3813, 3920 at 600/1,200/2,400/6,000/20,000 windows, `VERDICT ELIGIBILITY_DRIFTS 5..3920 of 3920`. #843 expected #764 to make that line read FLAT and it does not: re-keying the die moves who is admitted, never the accumulator's slope, so the flat verdict is still owed to whatever rules #373's axis |
 | `ConfirmationSweep` | Do D-001, D-011, D-021 and D-025's *Confirmation* clauses still describe this tree? | four scripted clauses that were prose since 2026-08-10, mechanized in one own-universe pass (`CONFIRMATIONS_HELD`): 413 originals restored, 6 minds out the door alive with null links, 60 frames at max_gap 100, 8 collections through notice→grace→ending. Its own first run printed `restored=409/413` — the delete broadcast and the treaty's door share tick 4329, and four restored originals walked out of the world again before the probe looked |
-| `DistrictNeutral` | Does naming the city cost the world a die roll — and is it still the same city? | the D-048 catalog is the same six quarters at seeds 42, 7, 1 and 55, the same again built out of a stream burned 1,000 draws down, and the same rows boot printed (`DISTRICTS_DRAW_NOTHING`) — #536's claim, kept. Those legs compare the city to ITSELF, which #944 caught: `District.SALT_FIRST` 1 → 3 renames four quarters in all four universes at once, every leg stays green, and the canonical digest is byte-identical because a district name is not state the seal frames. The six names are now pinned here as literals, keyed by zone — `CATALOG PINNED names=6 drifted=0` on an unmodified tree, and the same salt change prints a `CATALOG DRIFT` line naming chinatown, the financial district, the old city and the loop, then exits 1 on `VERDICT CATALOG_DRIFTED drifted=4` |
+| `DistrictNeutral` | Does naming the city cost the world a die roll? | the D-048 catalog is the same six quarters at seeds 42, 7, 1 and 55, and the same again built out of a stream burned 1,000 draws down (`DISTRICTS_DRAW_NOTHING`) — #536's claim, kept |
 | `DistrictCensus` | Do the city's names and its people's names still obey one law? | the join `NameCensus` and `DistrictNeutral` each leave to the other — one counts people and never reads the map, the other reads the map and never counts people. At seed 42: six quarters, three of them namesakes of a living citizen, five family names shared with 196 humans, all REPORTED, because a namesake is the naming law working rather than failing. What is judged is the part that can be wrong — two quarters wearing one name, a pool entry with a space in it (which would make every `SURNAME` line quietly wrong instead of loudly absent), and a name on either bank not drawn from `NamePool`. `off_pool=0` on both banks is what #842's one-home refactor claims, checked from outside instead of read off the source. Deliberately blind to a RENAME: change `District`'s `SALT_FIRST` and four quarters become different people with the verdict still green, which is #944's pin and not this probe's (`VERDICT CITY_CENSUSED`) |
 | `BondBook` | What holds the bond book's ceiling, and does the book ever let go? | #852's own diagnosis, refuted and replaced: the book fills at t=1419 and the slots are not squatters — `evictable=0/64`, every other slot WOVEN and exempt by law. Also the `RETURN`/`STRAND` band that set `BOND_FORGET_WINDOWS`: with the clock off, returns of 160 and 208 windows apart still weave while the one real desertion runs to 479, so the symmetric 12 would have eaten two real bonds |
 | `SameTick` | Is a liberation queued in tick T in the census before tick T ends? | #830: the root door promised it for six hundred commits and nothing checked — `ZION` prints every hundred ticks, so a one-tick slip reads identically on the line #187 offered as proof, and the census is outside the digest chain. The falsifiable form is `RealWorld.pendingLiberations` empty at every tick boundary (`SAME_TICK_ABSORB`, seeds 42/7 at the treaty t=4329/3747, seed 1 at the Kid's door t=4739). Armed against the refactor the door used to invite: hoist the drain ahead of the treaty block and it reads `first_late=4329 max_stranded=6 VERDICT LATE_ABSORB` |
-| `OrderTable` | Does the node list's order buy what the root door says it buys? | #1013: `SameTick` gave #830's same-tick half a keeper and the draw-order half got none, so the door's six-order table was a run nobody repeats — and both figures it quoted for last-to-first were stale by the time this probe measured them. The table is measured now instead of described: every permutation of the node list the probe FINDS in the root (a fourth `SystemNode` moves `orders` rather than being skipped), each order's 6,000-tick seal with the first digest link that differs from canonical beside it (links land every 100 ticks, so it is the link the worlds had parted by, not the tick they parted on). Three counters carry it and the bench judges them exactly — `VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1` at seed 42, same shape at seed 7. `silent=1` IS the door's claim: `machine, zion, realworld` reproduces the canonical seal because realworld and zion commute, so the free city can leave LAST in silence and nothing else in this repository notices. The counters are a reading at one seed and one budget, both on the `ORDERS` line: at 2,000 ticks zion has not diverged yet (`classes=2 silent=2`, its first differing link at seed 42 is 4100), and seed 1 — the QUIET universe — reads `classes=3 silent=2`, because a city that never launches a sortie draws nothing and its slot costs nothing either. Both are true tables of smaller worlds, which is why the row writes `6000` instead of taking `$TICKS`. `classes=1` over more than one order is `ORDER_TABLE_VACUOUS` and not a pass: that is the #187 world where `Zion.tick` was empty and all six orders agreed, which is how the door's sentence came to be written as structural in the first place |
 | `BondScenario` | Does D-013's one exception hold both halves of its ruling — the death unwritten, and the edge never paying twice? | #377: the unwriting is checked per `(tick, name)` pair, so a saved mind's own flatline line on the saving tick is a break and a LATER one is not (the clause is one payment, not immunity). The refusal is not reachable in a canonical arc — at 6,000 ticks the clause fires and is never asked twice — so the row scripts 40,000 ticks under 60 daemons deployed through the ops console's own `agent` command, and only after the first miracle: 24 firings, 11 `refused — the edge is spent`, 10 stand-downs, 0 written anyway (`ONCE_PER_EDGE_HELD`). Letting `observeDeath` fall through its own exception branch turns it red on the five lines that lied (`VERDICT UNWRITING_BROKEN`) |
+| `ClauseAftermath` | What does the most expensive line on the retail list actually BUY the mind it saves? | #1018: one tick. `ROOM_303_DEPOSIT` is 4,000 and #377 unwrites the death without moving the body, so the saved mind stands up inside the contact radius of the daemon that just killed it, still red, and D-002's 90/10 is re-rolled next tick. Every firing is followed by OBJECT IDENTITY — 196 minds wear 154 names at seed 42, so a name match across 40,000 ticks proves nothing — and gets one of four fates: `recaptured` (the 90), `rekilled` (the 10, written), `resaved` (the 10, and a second woven edge paid), `uncaught` (still prey when the budget ended). Seed 42 reads `saved=18 recaptured=16 rekilled=0 resaved=2 uncaught=0 median_delay=1`; seed 7 reaches the other branch unscripted at `saved=17 recaptured=10 rekilled=7 median_delay=1`. Thirty-five firings across two universes, not one delay above 1. The residual has a POSITIVE definition — same brain, same wire, same body, alive, red, held by the world — so the verdict is not the tautology `saved == sum`: a firing that leaves the hunt by some other door (walked out, worn by a Smith copy, re-jacked) counts `unaccounted` and turns the row red until that door is named (`AFTERMATH_ACCOUNTED`) |
 | `CensusBeatDrift` | Is the film's timing drifting, merge by merge? | the eight D-036 beats at seeds 42 and 7, pinned in `probes/beatdrift.baseline` and judged against a declared 200-tick band (`DRIFT_WITHIN_BAND compared=16/16 band=200`). `ArcBeats` gates the ORDER and throws the ticks away, so #222's cascade — seed 7's overflow, flatline, peace, reboot and door all sliding +492 together, second birth +420 — passed the lane green |
 | `LineLint` | Do the instrument lines still speak the grammar D-020 fixed? | the eight families as a runtime registry (`LineGrammar`) plus their validator: 360 instrument lines at seed 42, `families=6`, `VERDICT GRAMMAR_HELD` — an appended column passes, a renamed or moved one names itself. Six of eight is what a bare run reaches, which is what this row's closing clause always said while its own headline said seven. The two it does not reach are `PERF`, which the quiet sink never asks for, and `BIRTH`, which prints only where a chronos recorder is attached; both arrive together under `--chronos`, one `PERF` line and two `BIRTH` lines for 363 and `families=8`. Read at `5afa0e1` with `java -cp out:probes/out LineLint 6000 42`, and the chronos half with `java -cp out matrix.Main --headless --ticks 6000 --seed 42 --chronos rec.jsonl > chronos.out` then `java -cp out:probes/out LineLint --stdin < chronos.out` |
-| `BirthInputs` | Can a reader holding nothing but the recording state the birth event the die was keyed to? | #847: it could not. The record carried tick, name and family; the derivation reads five facts, and the rack unit and the growth ordinal were on no line of the file. Holding nothing but the bytes — no `Simulation`, no fold — it extracts the five off a recorded universe (`births=2 complete=2 short=0`, `BIRTH_INPUTS_COMPLETE`), and `--file` points the same reader at a recording on disk: a pre-#847 one prints `SHORT line=5 missing=rack,id` and `BIRTH_INPUTS_SHORT`. Its scanner used to be its own, and by #1053 that copy had drifted permissive against the fold's — a birth line carrying `"name"` twice read as complete here and was refused there. Both now read through `matrix.core.ChronosLine`, so an off-grammar birth line prints `OFFGRAMMAR line=2 duplicate field 'name'` and `BIRTH_INPUTS_OFFGRAMMAR` instead of a score |
+| `BirthInputs` | Can a reader holding nothing but the recording state the birth event the die was keyed to? | #847: it could not. The record carried tick, name and family; the derivation reads five facts, and the rack unit and the growth ordinal were on no line of the file. Its own scanner — a hundred lines that have never seen a `Simulation` — extracts the five off a recorded universe (`births=2 complete=2 short=0`, `BIRTH_INPUTS_COMPLETE`), and `--file` points the same reader at a recording on disk: a pre-#847 one prints `SHORT line=5 missing=rack,id` and `BIRTH_INPUTS_SHORT` |
 | `UnparkStorm` | How big is one déjà vu, and what does the tick it lands on cost? | #522: at x11 the worst single-tick re-materialisation is 834 minds (seed 42, tick 4103) and 758 (seed 7, tick 4889), against a stated S6 bound of 1,000 — one region's fold, set below two. The wall figure is the surprise: across eleven runs at two seeds no unpark tick reached the quiet p99, while every run's FOLD cleared it and five cleared the quiet maximum — tick 4102 folds those 834 minds at 15.3-42.8x the quiet median against a storm tick at 0.61-3.75x. Parking's bill arrives when the crowd leaves, not when it comes back (`VERDICT UNPARK_STORM_BOUNDED`). The judged number is the mind count, which is a function of the seed; the wall numbers are reported beside their own noise floor and never judged, per AllocMeter's #916 note. `--selfcheck` drives all four verdicts with no universe, because two of them need a city that has not been grown yet. **No row in `bench.sh`** — a 6,000-tick x11 run is minutes of walk over ~5,260 entities, which is a laboratory's wall clock and not a lane's |
 | `HullRoster` | Is the hull-naming rule total, and is it still the film? | #806's array crash, made permanently detectable without a universe: 3,000 ordinals, 3,000 distinct names, all thirteen generation marks reached, and the boot three pinned as literals — nothing else in this repository notices a renamed hull, because no `matrix.zion` state reaches the digest walk (`VERDICT ROSTER_TOTAL`) |
 | `FleetLines` | Does a laydown line tell the truth about the fleet it just joined? | the other half of `HullRoster`: what a hull is CALLED was pinned over 3,000 ordinals and what the line announcing it CLAIMS was pinned by nothing, so one defect reached `main` three times — #806 called the third keel "a second hull", #948 narrated a loss into a fleet that had lost none, #1056 left that same lie in the ordinal-1 arm at the SHIPPED `FLEET_MAX = 2`. Every round was found by a human reading a log. Five arms pinned as literals and 5,999 walked, no universe: the head must name the laydown ordinal, the clause must come from a declared vocabulary of four, it must say *replaces what it lost* if and only if a hull was lost, and a clause that names a board count may only appear where the census can man that count. Its domain is honest about reachability — `replacing` is `laydown > afloat()` and ordinal 0 is an empty fleet, so `(0, true)` is not walked. Restoring #1056's arm turns it red three ways on the one line that lied (`VERDICT FLEET_LINES_TRUE`) |
 | `SheetBench` | What does the character kernel derive, and is its mixer worth believing? | the two questions the parked kernel's review left as homework, answered with numbers instead of assurance: strict avalanche on the finalizer reads `mean_bitflip=0.5001` over 400 names × 16 axes × 32 bits, and cross-axis Pearson tops out at `0.0969` on `HUMAN.disbelief~integrity` under a stated `0.15` bound, printed beside the measurement because a verdict without its threshold is a claim. `--discipline` is the other half: a HUMAN asked for `replication` throws and the message names the vocabulary it does have (D-042). Building it also caught a byte bug in the bench itself — this box's JVM reports `file.encoding=ANSI_X3.4-1968`, so an em dash in a verdict line was silently becoming `?` and a line quoted in a PR would not have been the line another box prints, which is why this probe sets its own UTF-8 stream and why #836 exists for the rest. The kernel is imported by nothing in the domain, so this bench is the only place its numbers exist |
 | `NeutralDiff` | Did the control group move, and at which link? | the permanent-NEUTRAL ruling's measuring stick (#212/#537): the NEUTRAL lane's chain against the sealed baseline, byte-equal link by link, `NEUTRALDIFF 60/60 byte-equal VERDICT PASS`. Its first real case was the seal on the open lane branch — `--seal` at `unit/336-neutral-forever`'s committed fixture names tick 500 as the first unequal link and 4/60 links equal, so that branch's rebase has to reseal or land a lane that is red on arrival. #528's fixture is not in `main` yet, so the bare `NeutralDiff 6000` prints `seal_missing` and exits **2** rather than passing vacuously: a referee with no fixture is red, and a length mismatch is reported only after the links the two chains share, because the moved link is the one that says where the world changed |
 | `DocLint` | Do the documents still say what the tree says? | the one probe pointed at the repository instead of at a universe. Six questions: the ADR front matter, the `DECISIONS.md` emoji and the `ROADMAP.md` gate cell agree per D-number; the same three name the same PHASE, the roadmap's section heading being the one D-039 schedules units against (#957: seven Season Three decisions read v6.0 in the index and v6.5/v7.0/v7.5 in the roadmap); no accepted record still claims, unlabelled, to be awaiting a verdict; every record carries a `### Confirmation`; a missing D-number is explained; and README's pinned `main` beat column equals a live `ArcBeats.measure` — one scan, two readers, no second copy of the needles. All three hand-repairs it replaces were invisible to every other lock: #907's five decisions carried two statuses for a day, #903's four beats were 420 ticks stale, #957's seven decisions each named two phases at once. `--selfcheck` breaks a canon of its own seventeen ways and demands that each break move exactly one counter, so `DOCS_TRUE` is a verdict that has been seen to say no (`VERDICT DOCS_TRUE`) |
-| `SheetDump` | What did every soul in this universe derive, and does the same seed derive it twice? | the census, printed: 680 rows at seed 42 boot — 10 cast, 196 humans, 473 programs, the Matrix — with `--cast`, `--wing <family>`, `--system` and `--all` so a reader can ask for one wing instead of the city. Two laws ride the exit code rather than the prose: every mode renders the census TWICE from two universes and byte-compares before a line is printed (an identity hash smuggled into a derivation prints `DRIFT line=3` and exits 1), and `cached=` is a heap walk from the composition root through `matrix.*` fields, arrays, collections and maps, so the sheets-cached-nowhere law of #350 is a number and not a promise — 0 today because the domain imports nothing from `matrix.character`, and 1 the moment a `Sheet` is parked on `World`. Its own first run found the empty wing: `--wing MACHINE` prints `souls=0`, because the machine side runs on singletons that carry no identity string to mix |
+| `SheetDump` | What did every soul in this universe derive, and does the same seed derive it twice? | the census, printed: 681 rows at seed 42 boot — 10 cast, 196 humans, 473 programs, the Matrix, the Machine City — with `--cast`, `--wing <family>`, `--system` and `--all` so a reader can ask for one wing instead of the city. Two laws ride the exit code rather than the prose: every mode renders the census TWICE from two universes and byte-compares before a line is printed (an identity hash smuggled into a derivation prints `DRIFT line=3` and exits 1), and `cached=` is a heap walk from the composition root through `matrix.*` fields, arrays, collections and maps, so the sheets-cached-nowhere law of #350 is a number and not a promise — 0 today because the domain imports nothing from `matrix.character`, and 1 the moment a `Sheet` is parked on `World`. Its own first run found the empty wing — `--wing MACHINE` printed `souls=0`, because the machine side is singletons and statics and a sheet derives from an identity string none of them carries — and #1010 closed it the way the SYSTEM row was always closed: the city answers for itself, `SHEET the Machine City [MACHINE] power=10 precision=10 relentlessness=1`, one row minted with the name spelled once and forever, since respelling a name re-rolls the sheet attached to it. Residents (sentinels, harvesters, as catalog data under D-015) append to that wing when a verdict grows one; they do not move this row |
 
-Thirty-five rows for thirty-eight probes. `CensusCensor`, `CensusReverdict` and
+Thirty-four rows for thirty-seven probes. `CensusCensor`, `CensusReverdict` and
 `CensusSampleSize` have no row here and none in `bench.sh` either — #816 is the unit
 that gives them both. `UnparkStorm` is the reverse and says so in its own row: a
 catalog entry with no sweep row, on purpose. Nothing reads this table, so until

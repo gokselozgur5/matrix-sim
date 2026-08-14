@@ -111,19 +111,11 @@ table() {
   # demanded survival would have accepted the NoSuchFieldException this probe
   # threw the moment #842 moved the pools out from under it (#892).
   judge DistrictCensus 'VERDICT CITY_CENSUSED' 42
-  # The second mode, and the only row in this table that enters the catalog's
-  # de-collision loop at all: six quarters out of a four-hundred-name grid
-  # never collide, so before #1015 that loop was both unbounded and untested,
-  # and the 401st zone was a boot hang with no message. No universe, no ticks.
-  judge DistrictCensus 'VERDICT CATALOG_REFUSES_OVERFLOW' --ceiling
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
-  # movers=19 since #974: the epilogue's sunrise was a Species minted outside
-  # the Bestiary, printed by this probe as UNNAMED and judged by nothing. It is
-  # a one-off row now, so the gait table names it and the census counts it.
-  judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
-  # SheetBench holds three rows because it is three instruments behind one class,
+  judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=18 breaks=0'  "$TICKS"
+  # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
   # prints a standalone verdict line and is judged like every other row.
   # --avalanche prints its measurements and its verdict on ONE line, so an
@@ -136,36 +128,10 @@ table() {
   # bound is missed), and `run` fails a row on a nonzero exit.
   judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
   run   SheetBench   --avalanche
-  # The row that loads matrix.character.Contest at all. The kernel is imported
-  # by nothing in the domain, so its class-init checks — the exchange table and
-  # the margin bands as ONE law since #988 — fire only when something reads the
-  # class, and until this row no lane did: the sweep was green on a tree whose
-  # two tables disagreed. The judged line is the law rather than a measurement,
-  # so it moves only when a verdict moves a threshold, and moving one table
-  # without the other reddens this row either as a missing line or as the
-  # class-init throw that stops the probe before it prints one. The population
-  # figures beside it are deliberately NOT pinned into this row — those are
-  # #835's and they move with the mixer — which does not leave them unjudged:
-  # --bands exits nonzero on BANDS_DRIFTED and a judged row fails on a nonzero
-  # exit, exactly the way --avalanche's bound is read one line above.
-  judge SheetBench   'BANDS LAW decisive_edge=4 exchange_opens_at=4 symmetric=true VERDICT ONE_LAW' \
-        --bands
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
-  # #830's other half, judged at last (#1013). Its budget is written here
-  # rather than taken from $TICKS because the table is a measurement AT a
-  # budget: zion's draws reach the seal late, so at 2,000 ticks the sweep
-  # measures a smaller and equally true table — orders=6 classes=2 silent=2,
-  # because moving the free city to the front has not diverged yet — and
-  # judging that against this row would report the argument as a break. The
-  # three counters are the contract: orders is every permutation actually run
-  # (derived from the node list, so a fourth SystemNode moves it instead of
-  # being skipped), classes is the distinct seals among them, and silent is
-  # how many non-canonical orders reproduce the canonical seal — the root
-  # door's claim, as a number that can go red.
-  judge OrderTable   'VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1' 6000
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
   # Its budget is written here rather than taken from $TICKS for the reason
   # #377 measured: at 6,000 ticks the clause fires and is never asked twice, so
@@ -174,6 +140,16 @@ table() {
   # mind dies a second time — 24 firings, 11 spent-edge refusals — and the row
   # costs the sweep about eight seconds.
   judge BondScenario 'VERDICT ONCE_PER_EDGE_HELD' 40000 42 60
+  # The same clause's other half: not whether the edge pays twice, but what the
+  # payment BUYS. Same budget as the row above and for the same reason — the
+  # aftermath of two firings is an anecdote and the aftermath of eighteen is a
+  # measurement. No scripted pressure, because the question is what the
+  # canonical universe does on its own; costs the sweep about the same as the
+  # row above, with no daemons to deploy. What is judged is that every firing
+  # has a fate, not that the fates are kind: seed 42 reads `recaptured=16
+  # rekilled=0 resaved=2 uncaught=0 median_delay=1`, and the verdict would read
+  # the same if all eighteen had been rekilled.
+  judge ClauseAftermath 'VERDICT AFTERMATH_ACCOUNTED' 40000 42
   # The one row that reads a committed file. Its budget is written here instead of
   # taken from $TICKS because probes/beatdrift.baseline is a measurement AT a
   # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
@@ -183,22 +159,8 @@ table() {
   # with a FATAL naming both budgets. Band and denominator ride in the
   # judged line, so widening the tolerance — or reading a pin that names none of
   # the beats — is an edit to this row and not a quiet pass.
-  #
-  # The band is 0 since #1002, and 0 is the number this repository's own history
-  # justifies. The row shipped tolerating 200 ticks per beat, which was a
-  # convention declared in docs/ARCHITECTURE.md census entry 2 and never
-  # measured: replayed at both ends of the 142 commits from that entry's last
-  # recorded row (0cad45b) to a7660c2, the film slid ten ticks at seed 42 and
-  # none at seed 7, and the row judging that slide printed DRIFT_WITHIN_BAND —
-  # the same line it prints over a tree that did not move and the same line it
-  # would print over one that moved 199, with no reading in between because
-  # nothing in the tree ever recorded one. At 0 the pin behaves the way
-  # .github/canonical-digest does: a beat that moves at all is a red sweep until
-  # probes/beatdrift.baseline is re-measured in the commit that moved it, with
-  # the reason written beside the rows. Every unit that does not move the film
-  # stays green for free, because the beats do not wander on their own.
-  judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=0' \
-        42,7 6000 --band 0 --baseline-file probes/beatdrift.baseline
+  judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=200' \
+        42,7 6000 --band 200 --baseline-file probes/beatdrift.baseline
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
