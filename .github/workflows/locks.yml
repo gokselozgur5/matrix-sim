@@ -217,6 +217,13 @@ jobs:
       # operator proves the BSD dialect by running it, the runner proves the GNU one, and
       # the asserted `dialect=gnu` is what stops this from re-proving the same half twice.
       # Needs no token and no network — it judges the calendar, not the account.
+      # The run is piped to tee rather than captured, for the same reason the sweep and the
+      # golden day are: `out="$(...)"` under set -e dies ON THE ASSIGNMENT when the script
+      # exits 5, so the printf that would have shown the eleven executed cases never ran, and
+      # neither did the FATAL two lines below it — the one lock built to catch a dialect bug
+      # reported one as a red step with an empty log (#983). Through the pipe, tee has already
+      # put the failing offsets in the log by the time pipefail fails the step, and an executed
+      # case is the only thing that tells the two boxes apart.
       # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
       # shipped, because they carried an address GitHub resolves to the owner's OTHER account
       # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
@@ -232,9 +239,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out="$(bash tools/balance.sh --datecheck)"
-          printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -q '^DATECHECK VERDICT PASS dialect=gnu ' \
+          bash tools/balance.sh --datecheck | tee "${RUNNER_TEMP:-/tmp}/datecheck.log"
+          grep -q '^DATECHECK VERDICT PASS dialect=gnu ' "${RUNNER_TEMP:-/tmp}/datecheck.log" \
             || { echo "FATAL the runner did not reach a passing GNU-dialect verdict" >&2; exit 1; }
 
       # WHY: #828's complaint is a claim about what the meter CAN say — that no window could
