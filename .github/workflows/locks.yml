@@ -131,18 +131,36 @@ jobs:
       #
       # The law is unchanged, one level down: each judged row is grep -qxF against its exact
       # verdict line inside the script. What this step judges is the summary, which carries
-      # elapsed seconds and so is matched anchored rather than exactly — judged=[1-9] is
-      # there so an emptied table cannot report a green sweep of nothing. --no-build reuses
+      # elapsed seconds and so is matched anchored rather than exactly. --no-build reuses
       # locks 1 and 5 rather than compiling the tree twice; tee keeps the log on a red run,
       # where the failing rows are the reason to have one.
+      #
+      # The count in that summary is judged against a FLOOR, because `judged=[1-9][0-9]*`
+      # asserted that SOME rows were judged and nothing about how many (#1073). A table
+      # that quietly lost half its rows — a deleted judge line, a rename, a merge that
+      # took the wrong side — still prints a green summary at its new size, and nothing
+      # else in the lane compares that size to yesterday's: #1040's argument for the
+      # baseline suite, one gate over in the file that made it. The bench went from
+      # fifteen judged rows to twenty-nine this season, so the number is live and moves
+      # with real work. A number rather than a roster of class names, for the reason this
+      # step exists at all (#789): a roster here is a second copy of a list that lives in
+      # probes/bench.sh, and the two copies drifting apart is the defect this step was
+      # built to end. What a floor cannot do is name the row that went missing or refuse a
+      # swap of one row for another — the PROBE/PASS rows printed above it are for that.
       - name: probe sweep (probes/bench.sh — every judged row, 6,000 ticks each)
         shell: bash
         run: |
           set -euo pipefail
+          floor=29   # raise it in the PR that adds a judged row; lowering it is a claim, not a bump
           bash probes/bench.sh --no-build | tee "${RUNNER_TEMP:-/tmp}/sweep.log"
-          grep -qE '^BENCH .* judged=[1-9][0-9]* .* fail=0 .* VERDICT BENCH_GREEN$' \
-            "${RUNNER_TEMP:-/tmp}/sweep.log" \
+          summary="$(grep -E '^BENCH .* judged=[0-9]+ .* fail=0 .* VERDICT BENCH_GREEN$' \
+            "${RUNNER_TEMP:-/tmp}/sweep.log" || true)"
+          [ -n "$summary" ] \
             || { echo "FATAL the sweep printed no green summary line" >&2; exit 1; }
+          judged="${summary##*judged=}"; judged="${judged%% *}"
+          [ "$judged" -ge "$floor" ] \
+            || { echo "FATAL the sweep judged $judged rows and the floor is $floor — rows went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "PROBE SWEEP FLOOR OK judged=$judged floor=$floor"
 
       # WHY: lock 7 — the one question locks 1-6 cannot ask. Locks 2 and 3 compare a run to
       # another run of the same binary, and a seal that got smaller weakens both sides
@@ -152,6 +170,15 @@ jobs:
       # move is one data line edited with its reason attached and `git log -p` on that file
       # is the whole move history. Exact string compare, not a substring match: a pin that
       # matched a prefix would accept a longer sha.
+      # The run is STREAMED through tee rather than captured, for the reason the GNU-dialect
+      # step further down already gives (#983): `out="$(...)"` under set -e dies ON THE
+      # ASSIGNMENT, so a daemon that throws mid-arc takes its own output with it and the one
+      # lock that watches the seal reports a failure with nothing to read. A daemon made to
+      # throw on tick 4,812 gives this step three lines — the stack trace, on stderr — and
+      # none of the 48 chain links it had already printed; through the pipe the same run
+      # leaves 918 lines ending at DIGEST tick=4800, which is where a reader would start
+      # (#1073). Under pipefail the daemon's exit code still fails the step, and tee has put
+      # the chain in the log before it does.
       - name: canonical digest (seed 42, 6,000 ticks)
         shell: bash
         run: |
@@ -167,8 +194,9 @@ jobs:
           [ "$(printf '%s\n' "$payload" | awk '{print NF}')" -ge 2 ] \
             || { echo "FATAL $pin gives a sha and no reason; the payload is <sha> then why it is the sha" >&2; exit 1; }
           want="DIGEST tick=6000 sha=$sha"
-          out="$(java -cp out matrix.Main --headless --ticks 6000 --seed 42)"
-          got="$(printf '%s\n' "$out" | grep -E '^DIGEST tick=6000 ' || true)"
+          java -cp out matrix.Main --headless --ticks 6000 --seed 42 \
+            | tee "${RUNNER_TEMP:-/tmp}/canonical.log"
+          got="$(grep -E '^DIGEST tick=6000 ' "${RUNNER_TEMP:-/tmp}/canonical.log" || true)"
           printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no DIGEST tick=6000 line at all>}"
           [ "$got" = "$want" ] || { echo "FATAL the seal moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
 
@@ -397,13 +425,24 @@ jobs:
       # that legitimately moves goes red in the step above, once, under its own name. Piped
       # to tee for that step's reason: under pipefail a red suite fails the lane AND its rows
       # reach the log, which is the whole point of a per-case report.
+      # The case count carries a floor for the sweep's reason (#1073): `cases=[1-9][0-9]*`
+      # passes a suite of one, and this suite exists precisely because the five codes were
+      # once indistinguishable — a run that lost the rows for 1 and 4 would report a
+      # grammar it no longer checks, in the tool's own words, and go green.
       - name: tools — the teleprinter's exit grammar (#1011)
         shell: bash
         run: |
           set -euo pipefail
+          floor=12   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/dreamreader/exitgrammar.sh | tee "${RUNNER_TEMP:-/tmp}/exitgrammar.log"
-          grep -qxE 'EXIT VERDICT PASS cases=[1-9][0-9]* fail=0' "${RUNNER_TEMP:-/tmp}/exitgrammar.log" \
+          verdict="$(grep -xE 'EXIT VERDICT PASS cases=[0-9]+ fail=0' \
+            "${RUNNER_TEMP:-/tmp}/exitgrammar.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL the teleprinter's grammar is not the one it publishes" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the grammar suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "EXIT GRAMMAR FLOOR OK cases=$ran floor=$floor"
 
       # WHY: lock 10 — the permanent control group (D-042's ruling, #212). NEUTRAL is not a
       # migration step and this lane does not retire: it runs the flagged world at the
