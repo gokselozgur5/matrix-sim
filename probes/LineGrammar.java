@@ -122,6 +122,14 @@ final class LineGrammar {
      * {@link matrix.realworld.Origin} generates the columns, so a third
      * door grows the line by one column and this list must grow with it.
      *
+     * <p>ZION's {@code living} (#1007) is the third mandatory column and the
+     * second arity move on this family, 9 and 11, made the same way for the
+     * third time: at the end of the mandatory block, behind the doors,
+     * pushing the trace pair one place right. It reads beside {@code census}
+     * — the registry counts the fallen by law, this counts who can still
+     * crew a hull — and it is not written there, because the sequence is
+     * positional and the alternative renames five shipped columns.
+     *
      * <p>BIRTH is the eighth and the first that D-020 did not grow: it is
      * D-023's, the stdout echo of the chronos birth record (#553), and it is
      * registered here while it still prints only where a recorder is attached
@@ -162,8 +170,9 @@ final class LineGrammar {
                     count("census"), count("fleet"), count("links"), count("traced"),
                     count("deferred"),
                     count("treaty"), count("selfsub"),
+                    count("living"),
                     cm("trace_mnn_cm"), cm("red_baseline_cm")),
-                    List.of(8, 10), 100),
+                    List.of(9, 11), 100),
             new Family("ATTN", List.of(
                     TICK,
                     count("regions"), count("hot"), count("cold"),
