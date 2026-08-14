@@ -1,6 +1,8 @@
 import matrix.Simulation;
 import matrix.core.District;
 import matrix.core.NamePool;
+import matrix.core.PlaceGraph;
+import matrix.core.Position;
 import matrix.realworld.RealWorld;
 
 import java.util.ArrayList;
@@ -43,12 +45,24 @@ import java.util.TreeMap;
  * 42 has three, seed 7 has four — which is why the CENSUS line says
  * {@code seed=} before it says anything else.
  *
+ * <p><b>{@code --ceiling}</b> is the other mode, and it needs no universe:
+ * it walks {@link District#catalogOf} up to the name grid's edge and one
+ * zone past it. The city has six quarters and the grid holds four hundred
+ * names, so the de-collision loop is dead code in every run this repository
+ * has ever taken — and dead code is exactly where a hang lives unnoticed
+ * (#1015). This mode is the only thing that enters it.
+ *
  * Usage: java -cp out:probes/out DistrictCensus [seed]
+ *        java -cp out:probes/out DistrictCensus --ceiling
  */
 public final class DistrictCensus {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        if (args.length > 0 && args[0].equals("--ceiling")) {
+            ceiling();
+            return;
+        }
         long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
         Simulation sim = new Simulation(seed, null, null);
         RealWorld rw = Probes.realWorld(sim);
@@ -121,6 +135,69 @@ public final class DistrictCensus {
         }
         System.out.println("VERDICT CITY_MISCOUNTED faults=" + faults.size());
         System.exit(1);
+    }
+
+    /**
+     * The naming ceiling, reached from both sides.
+     *
+     * <p>Zone names are synthetic and distinct, so the mix that keys a
+     * quarter's name is a different read for every one of them: this is the
+     * catalog's own de-collision under the only pressure that can reach it.
+     * At the grid's edge every zone must still get a name of its own — 400
+     * zones, 400 distinct names — and one zone past it the pigeonhole is
+     * arithmetic, so the only two honest answers are a refusal and a hang.
+     * The refusal is judged by its sentence, quoted whole, because a
+     * refusal that names neither number is the thing an operator gets
+     * instead of a stack trace and it has to say what went wrong.
+     */
+    private static void ceiling() {
+        int grid = NamePool.firstNames().size() * NamePool.familyNames().size();
+        List<String> faults = new ArrayList<>();
+
+        List<District> full = District.catalogOf(zones(grid));
+        Map<String, Integer> distinct = new TreeMap<>();
+        for (District d : full) {
+            distinct.merge(d.name(), 1, Integer::sum);
+        }
+        System.out.println("CEILING grid=" + grid + " zones=" + grid
+                + " named=" + distinct.size());
+        if (distinct.size() != grid) {
+            faults.add("the grid seats " + grid + " zones under only "
+                    + distinct.size() + " distinct names");
+        }
+
+        String refusal = null;
+        try {
+            District.catalogOf(zones(grid + 1));
+        } catch (IllegalArgumentException e) {
+            refusal = e.getMessage();
+        }
+        if (refusal == null) {
+            System.out.println("CEILING grid=" + grid + " zones=" + (grid + 1) + " named=?");
+            faults.add((grid + 1) + " zones were catalogued out of a " + grid + "-name grid");
+        } else {
+            System.out.println("CEILING grid=" + grid + " zones=" + (grid + 1)
+                    + " refused=\"" + refusal + "\"");
+        }
+
+        for (String fault : faults) {
+            System.out.println("FAULT " + fault);
+        }
+        if (faults.isEmpty()) {
+            System.out.println("VERDICT CATALOG_REFUSES_OVERFLOW");
+            return;
+        }
+        System.out.println("VERDICT CATALOG_UNBOUNDED faults=" + faults.size());
+        System.exit(1);
+    }
+
+    /** N zones with distinct names and no map behind them — the catalog reads the name and nothing else. */
+    private static List<PlaceGraph.Zone> zones(int count) {
+        List<PlaceGraph.Zone> zones = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            zones.add(new PlaceGraph.Zone("ceiling zone " + i, new Position(i, i)));
+        }
+        return zones;
     }
 
     /**
