@@ -157,8 +157,22 @@ table() {
   # with a FATAL naming both budgets. Band and denominator ride in the
   # judged line, so widening the tolerance — or reading a pin that names none of
   # the beats — is an edit to this row and not a quiet pass.
-  judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=200' \
-        42,7 6000 --band 200 --baseline-file probes/beatdrift.baseline
+  #
+  # The band is 0 since #1002, and 0 is the number this repository's own history
+  # justifies. The row shipped tolerating 200 ticks per beat, which was a
+  # convention declared in docs/ARCHITECTURE.md census entry 2 and never
+  # measured: replayed at both ends of the 142 commits from that entry's last
+  # recorded row (0cad45b) to a7660c2, the film slid ten ticks at seed 42 and
+  # none at seed 7, and the row judging that slide printed DRIFT_WITHIN_BAND —
+  # the same line it prints over a tree that did not move and the same line it
+  # would print over one that moved 199, with no reading in between because
+  # nothing in the tree ever recorded one. At 0 the pin behaves the way
+  # .github/canonical-digest does: a beat that moves at all is a red sweep until
+  # probes/beatdrift.baseline is re-measured in the commit that moved it, with
+  # the reason written beside the rows. Every unit that does not move the film
+  # stays green for free, because the beats do not wander on their own.
+  judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=0' \
+        42,7 6000 --band 0 --baseline-file probes/beatdrift.baseline
   run   DrawMeter    "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"

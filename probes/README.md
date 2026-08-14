@@ -82,12 +82,8 @@ grep -al 'static void main' probes/*.java | wc -l   # 36 probes; the other two a
 grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
 ```
 
-`grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
-carry a raw NUL byte inside a string literal, which made a BSD grep call the whole
-file binary and undercount both figures by one — and, more expensively, made lock
-8's charset guard skip that file entirely (#1039). The byte is an escape now, so a
-bare `grep` agrees; the flag stays because the next probe to need a control
-character should not silently change what these commands count.
+`grep -a` and not a bare `grep`: `SheetDump.java` carries a NUL byte inside a string
+literal, so a BSD grep drops it as binary and undercounts both figures by one.
 
 ## The sweep
 
@@ -120,8 +116,13 @@ printed them at the tree their own `sha=` names. Moving the pin is those rows
 re-measured in the commit that moves the film, so `git log -p -- probes/beatdrift.baseline`
 is the whole move history, the way `.github/canonical-digest` holds the seal's. Its
 judged line carries the set it judged (`compared=16/16`) and the tolerance it judged
-against (`band=200`), because a probe that read a baseline naming none of the beats
+against (`band=0`), because a probe that read a baseline naming none of the beats
 would otherwise print the same clean line as one that compared all sixteen pairs.
+The band is 0 rather than the 200 it shipped with (#1002): 200 was a declared
+convention, and the measurement it never had says the film drifted ten ticks over
+the 142 commits from `0cad45b` to `a7660c2` while the row judging that slide read
+`DRIFT_WITHIN_BAND`. At 0 the rows are a pin, and a beat that moves one tick is a
+red sweep until it is re-measured here with its reason.
 
 ## The bench refereeing itself
 
@@ -189,7 +190,7 @@ judges it (#906).
 | `BondBook` | What holds the bond book's ceiling, and does the book ever let go? | #852's own diagnosis, refuted and replaced: the book fills at t=1419 and the slots are not squatters — `evictable=0/64`, every other slot WOVEN and exempt by law. Also the `RETURN`/`STRAND` band that set `BOND_FORGET_WINDOWS`: with the clock off, returns of 160 and 208 windows apart still weave while the one real desertion runs to 479, so the symmetric 12 would have eaten two real bonds |
 | `SameTick` | Is a liberation queued in tick T in the census before tick T ends? | #830: the root door promised it for six hundred commits and nothing checked — `ZION` prints every hundred ticks, so a one-tick slip reads identically on the line #187 offered as proof, and the census is outside the digest chain. The falsifiable form is `RealWorld.pendingLiberations` empty at every tick boundary (`SAME_TICK_ABSORB`, seeds 42/7 at the treaty t=4329/3747, seed 1 at the Kid's door t=4739). Armed against the refactor the door used to invite: hoist the drain ahead of the treaty block and it reads `first_late=4329 max_stranded=6 VERDICT LATE_ABSORB` |
 | `BondScenario` | Does D-013's one exception hold both halves of its ruling — the death unwritten, and the edge never paying twice? | #377: the unwriting is checked per `(tick, name)` pair, so a saved mind's own flatline line on the saving tick is a break and a LATER one is not (the clause is one payment, not immunity). The refusal is not reachable in a canonical arc — at 6,000 ticks the clause fires and is never asked twice — so the row scripts 40,000 ticks under 60 daemons deployed through the ops console's own `agent` command, and only after the first miracle: 24 firings, 11 `refused — the edge is spent`, 10 stand-downs, 0 written anyway (`ONCE_PER_EDGE_HELD`). Letting `observeDeath` fall through its own exception branch turns it red on the five lines that lied (`VERDICT UNWRITING_BROKEN`) |
-| `CensusBeatDrift` | Is the film's timing drifting, merge by merge? | the eight D-036 beats at seeds 42 and 7, pinned in `probes/beatdrift.baseline` and judged against a declared 200-tick band (`DRIFT_WITHIN_BAND compared=16/16 band=200`). `ArcBeats` gates the ORDER and throws the ticks away, so #222's cascade — seed 7's overflow, flatline, peace, reboot and door all sliding +492 together, second birth +420 — passed the lane green |
+| `CensusBeatDrift` | Is the film's timing drifting, merge by merge? | the eight D-036 beats at seeds 42 and 7, pinned in `probes/beatdrift.baseline` and judged at a band of **0** (`DRIFT_WITHIN_BAND compared=16/16 band=0`), so a beat that moves one tick re-pins with its reason or the sweep stays red. `ArcBeats` gates the ORDER and throws the ticks away, so #222's cascade — seed 7's overflow, flatline, peace, reboot and door all sliding +492 together, second birth +420 — passed the lane green. The band shipped at 200 and #1002 measured what that bought: `0cad45b` → `a7660c2` is 142 commits, the film slid ten ticks across them, and every reading said `DRIFT_WITHIN_BAND` |
 | `LineLint` | Do the instrument lines still speak the grammar D-020 fixed? | the eight families as a runtime registry (`LineGrammar`) plus their validator: 361 instrument lines at seed 42, `families=7`, `VERDICT GRAMMAR_HELD` — an appended column passes, a renamed or moved one names itself. The eighth is `BIRTH`, which prints only where a chronos recorder is attached: the same run under `--chronos` carries 363 lines and `families=8`, and the judged bench row (no recorder, no `PERF`) reaches six of the eight |
 | `BirthInputs` | Can a reader holding nothing but the recording state the birth event the die was keyed to? | #847: it could not. The record carried tick, name and family; the derivation reads five facts, and the rack unit and the growth ordinal were on no line of the file. Its own scanner — a hundred lines that have never seen a `Simulation` — extracts the five off a recorded universe (`births=2 complete=2 short=0`, `BIRTH_INPUTS_COMPLETE`), and `--file` points the same reader at a recording on disk: a pre-#847 one prints `SHORT line=5 missing=rack,id` and `BIRTH_INPUTS_SHORT` |
 | `UnparkStorm` | How big is one déjà vu, and what does the tick it lands on cost? | #522: at x11 the worst single-tick re-materialisation is 834 minds (seed 42, tick 4103) and 758 (seed 7, tick 4889), against a stated S6 bound of 1,000 — one region's fold, set below two. The wall figure is the surprise: across eleven runs at two seeds no unpark tick reached the quiet p99, while every run's FOLD cleared it and five cleared the quiet maximum — tick 4102 folds those 834 minds at 15.3-42.8x the quiet median against a storm tick at 0.61-3.75x. Parking's bill arrives when the crowd leaves, not when it comes back (`VERDICT UNPARK_STORM_BOUNDED`). The judged number is the mind count, which is a function of the seed; the wall numbers are reported beside their own noise floor and never judged, per AllocMeter's #916 note. `--selfcheck` drives all four verdicts with no universe, because two of them need a city that has not been grown yet. **No row in `bench.sh`** — a 6,000-tick x11 run is minutes of walk over ~5,260 entities, which is a laboratory's wall clock and not a lane's |
