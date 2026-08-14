@@ -180,11 +180,26 @@ public final class Zion {
      * same asymmetry between the registry and the fight that the whole
      * #806 cluster is about. A fleet that has lost nothing narrates no
      * loss; it narrates the board it just added.
+     *
+     * <p>That fix took the general case and left the specific one (#1056),
+     * and the specific one is wrong at the SHIPPED {@code FLEET_MAX = 2}
+     * rather than at a tuned value of it: a second keel laid after the first
+     * hull sank leaves exactly one board manned, and the arm said two. Both
+     * arms past the first read {@code replacing} now. The first cannot need
+     * it — {@code laydown} is {@code fleet.size()} and no hull afloat is
+     * missing from that list, so ordinal 0 is an empty fleet and an empty
+     * fleet has lost nothing.
+     *
+     * <p>Public for the reason {@link #hullName} is (#832): the names were
+     * checked over three thousand ordinals and what these sentences CLAIM
+     * was checked by nothing, which is how both halves of one defect reached
+     * main. {@code FleetLines} walks this function, no universe booted.
      */
-    private static String laydownLine(int laydown, String name, boolean replacing) {
+    public static String laydownLine(int laydown, String name, boolean replacing) {
         return switch (laydown) {
             case 0 -> "the first hull: " + name + " joins the fleet — the census learns to fly";
-            case 1 -> "a second hull: " + name + " joins the fleet — the census can man two boards";
+            case 1 -> "a second hull: " + name + " joins the fleet — "
+                    + (replacing ? "the census replaces what it lost" : "the census can man two boards");
             default -> "hull number " + (laydown + 1) + ": " + name + " joins the fleet — "
                     + (replacing ? "the census replaces what it lost" : "the census can man another board");
         };
