@@ -134,11 +134,14 @@ public final class Config {
      * Every bounded gait in the world, widest first — the derivation
      * {@link #HUNT_DISP_BOUND_CM} used to state in prose (#825).
      *
-     * <p>The eco half reads the catalog, so adding a species is covered for
-     * free; the named half is the program society, whose gaits spend the
-     * speed constants above through {@code MatrixEntity.stepToward} and
-     * {@code wander}. Both doors are Chebyshev — a clamped step per axis —
-     * so a gait's reach is its per-axis step on the diagonal.
+     * <p>The eco half reads {@link Bestiary#EVERY} and not the catalog, so
+     * adding a species is covered for free and so is minting a one-off
+     * (#974): the ledger is reached by displacement, and a row's provenance
+     * is not one of its fields. The named half is the program society, whose
+     * gaits spend the speed constants above through {@code
+     * MatrixEntity.stepToward} and {@code wander}. Both doors are Chebyshev
+     * — a clamped step per axis — so a gait's reach is its per-axis step on
+     * the diagonal.
      *
      * <p>{@code Avatar} carries the RED speed rather than the BLUE one
      * because a pill is a field, not a type: the same object commutes at 120
@@ -147,7 +150,7 @@ public final class Config {
      */
     public static List<GaitReach> huntGaitReaches() {
         List<GaitReach> reaches = new ArrayList<>();
-        for (Species s : Bestiary.ALL) {
+        for (Species s : Bestiary.EVERY) {
             int axis = gaitAxisStepCm(s);
             if (axis != GAIT_TELEPORTS) {
                 reaches.add(new GaitReach("eco:" + s.id(), diagonalCm(axis)));
@@ -174,7 +177,7 @@ public final class Config {
      */
     public static List<String> huntTeleporters() {
         List<String> out = new ArrayList<>();
-        for (Species s : Bestiary.ALL) {
+        for (Species s : Bestiary.EVERY) {
             if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
                 out.add("eco:" + s.id());
             }
@@ -190,13 +193,23 @@ public final class Config {
      * the tight check. The tight check is {@link #huntBoundLine()}, which
      * reads the gait table and needs no run at all; this one catches what a
      * table cannot see, namely a mover that reaches the ledger through a door
-     * nobody declared. Scales with {@code --scale}, because its tenants do.
+     * nobody declared. Scales with {@code --scale}, because its seeded tenants
+     * do — a one-off is minted once whatever the dial says.
      */
     public static int huntLedgerCeiling() {
         int tenants = EXILE_COUNT;
-        for (Species s : Bestiary.ALL) {
+        for (Species s : Bestiary.CATALOG) {
             if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
                 tenants += s.populationCap() * ecoScale();
+            }
+        }
+        // A one-off is minted by the arc and never by seeding, and the dial
+        // multiplies what seeding spends — so its cap is its own, unscaled
+        // (#974). Counted here rather than left out: the ledger is reached
+        // by a gait, and a one-off has one.
+        for (Species s : Bestiary.ONE_OFFS) {
+            if (gaitAxisStepCm(s) == GAIT_TELEPORTS) {
+                tenants += s.populationCap();
             }
         }
         return tenants;

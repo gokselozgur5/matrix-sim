@@ -136,9 +136,9 @@ public final class RegionMap {
         this.refusalLogged = new boolean[zones.size()];
         this.parkDeferredAt = new int[zones.size()];
         Arrays.fill(parkDeferredAt, ARMED);
-        this.parkedIds = new List[zones.size()][Bestiary.ALL.size()];
+        this.parkedIds = new List[zones.size()][Bestiary.CATALOG.size()];
         for (int r = 0; r < zones.size(); r++) {
-            for (int s = 0; s < Bestiary.ALL.size(); s++) {
+            for (int s = 0; s < Bestiary.CATALOG.size(); s++) {
                 parkedIds[r][s] = new ArrayList<>();
             }
         }
@@ -286,9 +286,13 @@ public final class RegionMap {
         return true;
     }
 
-    /** Catalog row of a species, or -1 for one-off rows (the sunrise): only the catalog parks. */
+    /**
+     * Catalog row of a species, or -1 for a {@link Bestiary#ONE_OFFS} row
+     * (the sunrise): only the catalog parks, because only the catalog has a
+     * column in the aggregate below.
+     */
     static int catalogIndex(Species species) {
-        return Bestiary.ALL.indexOf(species);
+        return Bestiary.CATALOG.indexOf(species);
     }
 
     /** Opens the aggregate at the flush point; the World then folds residents one by one. */
@@ -373,7 +377,7 @@ public final class RegionMap {
 
     private boolean roomFor(int region, int s) {
         int size = parkedIds[region][s].size();
-        return size > 0 && size < Bestiary.ALL.get(s).populationCap();
+        return size > 0 && size < Bestiary.CATALOG.get(s).populationCap();
     }
 
     /**
@@ -397,7 +401,7 @@ public final class RegionMap {
                         hash.cellCenterXCm(cell) - half + rng.nextInt(Config.HASH_CELL_CM));
                 int y = Math.min(Config.WORLD_H_CM,
                         hash.cellCenterYCm(cell) - half + rng.nextInt(Config.HASH_CELL_CM));
-                back.add(new EnvironmentProgram(ids.get(i), new Position(x, y), Bestiary.ALL.get(s)));
+                back.add(new EnvironmentProgram(ids.get(i), new Position(x, y), Bestiary.CATALOG.get(s)));
             }
             ids.clear();
         }

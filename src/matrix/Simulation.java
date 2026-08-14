@@ -189,7 +189,7 @@ public final class Simulation {
             world.queue(new WorldEvent.Spawn(
                     new ExileProgram(world.allocateId(), randomPosition(), kinds[i % kinds.length])));
         }
-        for (matrix.entities.eco.Species species : matrix.entities.eco.Bestiary.ALL) {
+        for (matrix.entities.eco.Species species : matrix.entities.eco.Bestiary.CATALOG) {
             // The homecoming dial (#136): caps multiply, spawn order does not
             // change — at scale 1 this loop is bit-for-bit the canonical one.
             int population = species.populationCap() * Config.ecoScale();
@@ -230,7 +230,7 @@ public final class Simulation {
         world.log(Severity.SYS, bonds.line() + " — nobody has mattered to anybody yet");
         world.log(Severity.SYS, "program society online: the Oracle and "
                 + Config.EXILE_COUNT + " exiles walk among the sleepers");
-        world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.ALL.size()
+        world.log(Severity.SYS, "ecosystem online: " + matrix.entities.eco.Bestiary.CATALOG.size()
                 + " species rendered — a healthy program is invisible"
                 + (Config.ecoScale() == 1 ? ""
                         : " (homecoming x" + Config.ecoScale() + ": every population multiplied)"));
