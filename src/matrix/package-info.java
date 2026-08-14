@@ -46,13 +46,27 @@
  * <p>So the free city can be taken off LAST silently — the exact move the
  * old sentence called a declared break, and the one a maintainer reading
  * "zion LAST" is most likely to make. The four that do move are declared
- * breaks: last to first takes {@code DIGEST tick=6000} to
- * {@code b2c0085a…}, 270 event lines with it, first divergence at tick
- * 4330. Measure the move you are making, not the class of moves — and note
- * that this table has no keeper, unlike the paragraph above it. At #187's
+ * breaks. Measure the move you are making, not the class of moves: this
+ * table has a keeper now (#1013), {@code probes/OrderTable}, which runs
+ * every permutation of the node list it FINDS — a fourth {@code SystemNode}
+ * is measured, not skipped — and prints each order's seal beside the first
+ * digest link that differs from canonical, so those figures live in a run
+ * instead of in this paragraph. The shape is three counters and the bench
+ * judges them exactly: {@code orders=6 classes=4 silent=1} at seed 42 over
+ * 6,000 ticks. A node that starts drawing splits a class, one that stops
+ * merges two, and the day {@code silent} is not 1 this door is wrong on the
+ * number that moved. The seal and the divergence tick this paragraph used to
+ * quote for last-to-first were right when they were written and were re-rolled
+ * by the next declared digest move — which is not a scandal, it is what a
+ * declared move does to every row of this table at once, and it is exactly the
+ * thing no run re-measured. The counters are also a reading at ONE seed: in
+ * the QUIET universe at seed 1 the free city never launches, so it draws
+ * nothing, its slot costs nothing and TWO of the six are silent. At #187's
  * merge {@code Zion.tick} was an empty method and every one of the six was
- * identical, which is how the old sentence's second half came to be
- * written as structural when it is contingent on some node drawing.
+ * identical, which is how the old sentence's second half came to be written
+ * as structural when it is contingent on some node drawing — the probe
+ * calls that world
+ * {@code ORDER_TABLE_VACUOUS} rather than passing it.
  *
  * <p>Invariants you must not break here:
  * <ul>
