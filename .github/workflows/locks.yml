@@ -55,14 +55,36 @@ jobs:
       # before. Every fixture is built out of git rather than hardcoded, so the suite dates
       # no better and no worse than the tree it runs in. Not PR-only: the cases are about
       # history, which a push to main also has.
+      #
+      # The gate names a FLOOR, because `cases=[1-9][0-9]*` asserted that SOME cases ran
+      # and nothing about how many (#1040). A suite that silently lost half of them — a
+      # dropped case_ line, a helper that returns early, a rename that stops matching —
+      # still printed VERDICT PASS and still went green: #898's argument one instrument
+      # over, where an instrument that shrinks reports success at its new size and
+      # nothing compares that size to yesterday's. The suite went 15 → 17 in #1014, so
+      # the number is live and moves with real work.
+      # A number rather than a roster of case names: a roster guards only the names
+      # typed here and stays silent about every other case, and a roster of ALL of them
+      # is a second copy of a list that lives in tools/baseline.sh — the shape this file
+      # already deleted once, when the sweep kept five of the bench's fifteen judged rows
+      # and the two drifted apart (#789). The floor covers every case including ones
+      # added after this line was written, and costs one digit in the PR that changes the
+      # suite's size. What it cannot do is name the case that went missing, or refuse a
+      # swap of one case for another — the per-case rows printed above it are for that.
       - name: evidence baseline — the checker's own cases
         shell: bash
         run: |
           set -euo pipefail
+          floor=17   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           out="$(bash tools/baseline.sh --selftest)"
           printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -qE '^BASELINE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+          verdict="$(printf '%s\n' "$out" | grep -E '^BASELINE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL the baseline suite reached no passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the baseline suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "BASELINE SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: Temurin 17 is the JDK the locks are calibrated on; setup-java only puts javac/java on PATH.
       - name: put JDK 17 on PATH
