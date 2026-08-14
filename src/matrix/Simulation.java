@@ -100,6 +100,12 @@ public final class Simulation {
     private int agentsSpawned = 0;
     private int patchesDeployed = 0;
     private boolean optOutDone = false;
+    /**
+     * Whether anybody stood in the census lane on the previous tick — the
+     * whole state behind #994's line, and observation only: no draw, no
+     * digest field, no branch the world can take because this boolean exists.
+     */
+    private boolean laneHeldSomebody = false;
 
     public Simulation(long seed, OutputStream sink, String followName) {
         this(seed, sink, followName, null);
@@ -448,6 +454,31 @@ public final class Simulation {
         return followingTheOne ? realWorld.theOneLink() : realWorld.linkOf(followedMind);
     }
 
+    /**
+     * The census lane's closing line (#994). Runs on the falling edge only,
+     * so the walk over the registry is paid once per closing and never on a
+     * quiet tick; the fleet's seats are the CEILING the knobs declare
+     * ({@code RIG_CAPACITY * FLEET_MAX}), not the boards afloat right now,
+     * because the ceiling is the number the registry is being weighed
+     * against. The living count rides along because the census counts its
+     * dead on purpose (#202) and a lane can be empty for two very different
+     * reasons — everybody crewed, or nobody left breathing.
+     */
+    private void sayNobodyIsAshore() {
+        List<Human> census = zion.census();
+        int living = 0;
+        for (Human h : census) {
+            if (h.alive()) {
+                living++;
+            }
+        }
+        int berths = Config.RIG_CAPACITY * Config.FLEET_MAX;
+        world.log(Severity.SYS, "nobody is ashore: the census lane is empty — "
+                + census.size() + " on the registry, " + living + " of them alive,"
+                + " and the fleet's boards seat " + berths
+                + "; the inward door reads this lane and no other");
+    }
+
     public void tickOnce() {
         for (SystemNode node : nodes) {
             node.tick(world.tick() + 1);
@@ -472,7 +503,19 @@ public final class Simulation {
         // ashore roster to the door path — the census lane, and no other.
         // After the drain on purpose: a mind freed THIS tick joins the census
         // first and can be offered the door no earlier than the next one.
-        realWorld.doorTick(zion.ashore());
+        List<Human> lane = zion.ashore();
+        realWorld.doorTick(lane);
+        // #994, the STATED branch: the tick the lane closes is said out loud.
+        // The roster the door was just offered is the one read here — one walk,
+        // not a second one — and the falling edge is the event: everybody who
+        // could have petitioned took a berth, a wire or a grave, so from this
+        // tick the door has nobody to ask. Silence used to mean both "nobody
+        // ashore" and "no door", which is how 6 freed against 6 berths shipped
+        // three times unnoticed.
+        if (laneHeldSomebody && lane.isEmpty()) {
+            sayNobodyIsAshore();
+        }
+        laneHeldSomebody = !lane.isEmpty();
         // Step two (#338): the names cross the bridge. A String goes out, a
         // boolean comes back, and neither half of the door has learned a type
         // belonging to the other (A1). The grant has no consumer until #340
