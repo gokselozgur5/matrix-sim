@@ -97,9 +97,36 @@ import java.util.Arrays;
  * daemon refuses, with the daemon's sentence and the daemon's exit code
  * (#826). A budget row is evidence people paste into PR bodies; a row for
  * a city that was never seeded is well-formed, greppable and false.
- * Repeats divide by the scale, because a scaled arc costs what it costs
- * and twenty-four of them is not a bench row. The count is on the line
- * either way, and a scaled run is unjudged for the reason it always was.
+ * The repeat count does not divide by the scale, and #979 is why: the ramp
+ * is the compiler's and not the city's. Printing every repeat in order at
+ * one seed, the floor arrives at repeat 10 at scale 1, repeat 9 at scale
+ * 2, repeat 8 at scale 4 and repeat 6 at scale 11 — eight to ten repeats
+ * whatever the population, because C2 counts invocations and a bigger city
+ * spends more of them per tick, which buys a repeat or two off the ramp
+ * and not a factor of the dial. Dividing 24 by the scale cut the budget by
+ * the whole factor while the ramp stayed where it was, and the median
+ * moved onto it: at scale 2 the twelve repeats printed 763 against a floor
+ * of 475, and at scale 11 the three printed 1,110 against a floor —
+ * measured over 24 — of 725-757. That second line is also why the count is
+ * fixed rather than adaptive: those three cold samples agree with each
+ * other to 0.09%, so a run that stops before the floor cannot be caught by
+ * comparing its median to the floor it never found. The count is on the
+ * line as {@code steady_runs}, and a scaled run is unjudged for the reason
+ * it always was.
+ *
+ * <p>Beside the count, the check: a median more than {@link
+ * #STEADY_SETTLE_PCT}% above the same run's {@code steady_min} is still on
+ * the ramp, and the line says {@code steady_settled=no} with the distance,
+ * rather than publishing a JIT trace as a measurement. A settled run
+ * prints neither field, so every ALLOC line already in the record keeps
+ * its bytes, and the absence is the claim only where the presence would
+ * be a warning. Twelve consecutive runs at scale 1 and twelve at scale 2
+ * are all settled — 0 to 1.5% above their floors — and the rare run that
+ * is not is the tail this class documents above: one run in about twenty
+ * here printed 415 against a floor of 370, and it now says {@code
+ * steady_settled=no steady_over_floor_pct=12} instead of publishing 415 as
+ * the daemon's figure. A band nobody has watched say no is a claim, so
+ * {@code --selfcheck} drives both its sides too.
  */
 public final class AllocMeter {
 
@@ -109,11 +136,11 @@ public final class AllocMeter {
     /** D-027 errata (2026-08-11): <= 5 GC collections per full arc. */
     static final long GC_BUDGET_PER_ARC = 5;
 
-    /** Steady-window repeats at scale 1; the denominator on the line (#817). */
+    /** Steady-window repeats, at every scale; the denominator on the line (#817, #979). */
     static final int STEADY_RUNS = 24;
 
-    /** Floor on the repeat count, so a scaled run still has a median. */
-    static final int STEADY_RUNS_MIN = 3;
+    /** A median further than this above its own floor, in percent, is still on the ramp (#979). */
+    static final int STEADY_SETTLE_PCT = 5;
 
     public static void main(String[] args) {
         matrix.Streams.utf8();
@@ -135,7 +162,7 @@ public final class AllocMeter {
                 (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         long self = Thread.currentThread().getId();
 
-        int runs = Math.max(STEADY_RUNS_MIN, STEADY_RUNS / matrix.core.Config.ecoScale());
+        int runs = STEADY_RUNS; // the ramp is the compiler's, not the city's (#979)
         long[] samples = new long[runs];
         for (int r = 0; r < runs; r++) {
             Simulation repeat = new Simulation(seed, null, null);
@@ -186,7 +213,13 @@ public final class AllocMeter {
                 // much of it to believe.
                 + " steady_runs=" + runs
                 + " steady_min=" + steadyMin
-                + " steady_max=" + steadyMax);
+                + " steady_max=" + steadyMax
+                // Said only when it needs saying: an unsettled median cannot be
+                // quoted as a measurement by accident, and a settled line keeps
+                // the bytes every published ALLOC row already has.
+                + (settled(steady, steadyMin) ? ""
+                        : " steady_settled=no steady_over_floor_pct="
+                                + overFloorPct(steady, steadyMin)));
         System.out.println("ALLOC_NOTE window_steady=500-1000 window_cascade=3500-4000 ticks_total=6000"
                 + " steady_stat=median_of_fresh_sims gc_window=arc");
 
@@ -219,6 +252,21 @@ public final class AllocMeter {
         return gcCount;
     }
 
+    /** How far the median sits above the floor the same run measured, in whole percent. */
+    static long overFloorPct(long median, long floor) {
+        return floor > 0 ? (median - floor) * 100 / floor : 0;
+    }
+
+    /**
+     * Has the steady window settled? The floor only ever falls — compiler
+     * allocation adds and never subtracts — so the run's own minimum is the
+     * best estimate of the daemon's figure it has, and a median near it means
+     * most of the repeats are on the floor rather than on the way down.
+     */
+    static boolean settled(long median, long floor) {
+        return overFloorPct(median, floor) <= STEADY_SETTLE_PCT;
+    }
+
     /**
      * D-027's two allocation bounds, compared. Returns the breached rows in
      * table order, comma-joined, empty when the run is inside both. The
@@ -236,7 +284,7 @@ public final class AllocMeter {
     }
 
     /**
-     * Both sides of both bounds, executed with no universe at all.
+     * Both sides of all three bounds, executed with no universe at all.
      *
      * <p>A guard that never fails is indistinguishable from a guard that
      * cannot — and at today's figures (365-425 B/tick against 32 KB, 0
@@ -244,7 +292,11 @@ public final class AllocMeter {
      * branch. That is exactly the shape of unmeasured promise this probe was
      * written to retire, so the breach branch gets a run of its own: the bound
      * itself passes, the bound plus one breaches, and the sweep judges the
-     * line. Four cases, no {@code Simulation}, no seed, milliseconds.
+     * line. The settle band beside them is nearly as rare — twenty-four
+     * repeats settle every seed and scale measured, bar one run in twenty on
+     * the JIT tail (#979) — so it is driven here too, at the band and one
+     * percent past it. Six cases, no {@code Simulation}, no seed,
+     * milliseconds.
      */
     private static void selfcheck() {
         boolean ok = true;
@@ -256,8 +308,11 @@ public final class AllocMeter {
                 breaches(STEADY_BUDGET_BYTES_PER_TICK, GC_BUDGET_PER_ARC + 1));
         ok &= verdictCase("both_over_by_one", "steady,gc",
                 breaches(STEADY_BUDGET_BYTES_PER_TICK + 1, GC_BUDGET_PER_ARC + 1));
+        ok &= verdictCase("settled_at_band", "yes", settled(105, 100) ? "yes" : "no");
+        ok &= verdictCase("unsettled_over_band", "no", settled(106, 100) ? "yes" : "no");
         System.out.println("SELFCHECK steady_budget=" + STEADY_BUDGET_BYTES_PER_TICK
-                + " gc_budget=" + GC_BUDGET_PER_ARC + " cases=4");
+                + " gc_budget=" + GC_BUDGET_PER_ARC
+                + " settle_band_pct=" + STEADY_SETTLE_PCT + " cases=6");
         System.out.println(ok ? "SELFCHECK VERDICT GUARD_FIRES" : "SELFCHECK VERDICT GUARD_DEAD");
     }
 
