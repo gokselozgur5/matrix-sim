@@ -144,7 +144,7 @@ public final class SealHygiene {
         // RENAMED species is a break rather than a silently skipped row: the
         // whole point of this leg is that a rename is a digest move.
         Map<String, Species> live = new LinkedHashMap<>();
-        for (Species s : Bestiary.ALL) {
+        for (Species s : Bestiary.CATALOG) {
             live.put(s.id(), s);
         }
         for (Row r : CATALOG) {

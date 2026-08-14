@@ -42,7 +42,11 @@ import java.util.TreeMap;
  * <li><b>Census.</b> A mover the run produced that the table does not name is
  * an {@code UNDECLARED} — the shape a new entity class arrives in. Something
  * outside the table that never displaces is reported as {@code UNNAMED} and
- * not judged: only a displacement can reach the ledger.</li>
+ * not judged: only a displacement can reach the ledger. This leg's first
+ * catch was the epilogue's sunrise, a {@code Species} minted at the reboot
+ * outside the catalog; since #974 it is a {@link matrix.entities.eco.Bestiary}
+ * one-off, so it arrives here as a declared row like any other and the mover
+ * count is 19.</li>
  * <li><b>Ledger.</b> The occupancy #825 found nobody could see: peak, mean,
  * and the stated ceiling. Reported here, judged by {@code --bench}.</li>
  * </ol>
@@ -118,10 +122,11 @@ public final class HuntBound {
         // What is left is in the world and not in the table. The rule is the
         // law's own: the table must name everything that MOVES, because only
         // a displacement can reach the ledger. A row that never displaces is
-        // reported and not judged — the epilogue's sunrise is one, a Species
-        // minted at the reboot outside Bestiary (MachineCity), rooted at
-        // speed 0. It is still printed, because the reason it is harmless is
-        // its speed, not its provenance, and the next one-off may have one.
+        // reported and not judged. The sunrise used to land here — a Species
+        // minted at the reboot outside the catalog, rooted at speed 0 — and
+        // it was harmless for its speed, not for its provenance; #974 moved
+        // it into the Bestiary so the table judges it. What lands here now is
+        // a thing that is neither a catalog row nor a named class.
         for (Map.Entry<String, Integer> orphan : measured.entrySet()) {
             if (orphan.getValue() > 0) {
                 breaks.add("UNDECLARED " + orphan.getKey() + " measured=" + orphan.getValue()

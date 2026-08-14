@@ -8,10 +8,8 @@ import matrix.core.WorldEvent;
 import matrix.entities.MatrixEntity;
 import matrix.entities.SmithCopy;
 import matrix.entities.SmithPrime;
+import matrix.entities.eco.Bestiary;
 import matrix.entities.eco.EnvironmentProgram;
-import matrix.entities.eco.Kingdom;
-import matrix.entities.eco.MovementKind;
-import matrix.entities.eco.Species;
 
 import java.util.List;
 
@@ -48,8 +46,10 @@ public final class MachineCity {
         w.log(Severity.FATE, "The One is carried to the Source — he deleted, and was deleted; the equation reads zero");
         w.log(Severity.FATE, "REBOOT v" + w.version() + ".0 — peace protocol active, the door stays open");
         Position sky = new Position(w.places().zones().get(0).center().xCm(), 0);
-        w.queue(new WorldEvent.Spawn(new EnvironmentProgram(w.allocateId(), sky,
-                new Species("sunrise", Kingdom.OBJECT, MovementKind.ROOTED, 16, 1, 0))));
+        // The row is Bestiary.SUNRISE and not a Species written here (#974):
+        // a species minted at a call site is a species no budget can count.
+        w.queue(new WorldEvent.Spawn(
+                new EnvironmentProgram(w.allocateId(), sky, Bestiary.SUNRISE)));
         w.flush();
         w.log(Severity.FATE, "Sati paints the sunrise — it was never in the spec, and nobody will delete it");
     }

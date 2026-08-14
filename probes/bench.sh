@@ -119,7 +119,10 @@ table() {
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
-  judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=18 breaks=0'  "$TICKS"
+  # movers=19 since #974: the epilogue's sunrise was a Species minted outside
+  # the Bestiary, printed by this probe as UNNAMED and judged by nothing. It is
+  # a one-off row now, so the gait table names it and the census counts it.
+  judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds three rows because it is three instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
   # prints a standalone verdict line and is judged like every other row.
