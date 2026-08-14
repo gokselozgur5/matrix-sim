@@ -34,6 +34,17 @@ House rules:
   went out on whatever charset the JVM inherited, so `matrix.Streams.utf8()` is
   now its first statement. The contract is the standard a tool is measured
   against here, not a claim that every tool already meets it.
+- A capture that can fail carries a handler, or does not capture. `X="$(cmd)"`
+  under `set -euo pipefail` dies ON THE ASSIGNMENT, so a tool that prints its
+  failing cases and then exits nonzero has that report thrown away at the moment
+  it became worth reading — the step goes red with an empty log, which is how
+  #983 reported a dialect bug. Either write the handler,
+  `out="$(cmd)" || { printf '%s\n' "$out"; echo "FATAL …" >&2; exit 1; }`, the
+  shape `release.sh` already uses around `--bench`; or drop the variable, pipe
+  the run through `tee "$LOG"`, and judge `$LOG`. Streaming is the default in a
+  lane: under `pipefail` the tool's own exit code still fails the step, and by
+  then `tee` has put the rows that say WHY into the log. The rule is about the
+  capture and not about the caller — `tools/*.sh` and `locks.yml` steps alike.
 - A tool whose output is PROSE carries a golden file, because a page that
   reads well is not a page that is still true. `dreamreader/golden/` holds one
   blessed day; `--check-golden` re-renders and prints the first line that

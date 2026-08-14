@@ -71,14 +71,16 @@ jobs:
       # added after this line was written, and costs one digit in the PR that changes the
       # suite's size. What it cannot do is name the case that went missing, or refuse a
       # swap of one case for another — the per-case rows printed above it are for that.
+      # Streamed through tee rather than captured, under tools/README.md's capture rule: the
+      # suite prints one CASE row per fixture and then returns nonzero, so `out="$(...)"` died
+      # on the assignment and took every row with it — the failing cases ARE the report.
       - name: evidence baseline — the checker's own cases
         shell: bash
         run: |
           set -euo pipefail
           floor=17   # raise it in the PR that adds a case; lowering it is a claim, not a bump
-          out="$(bash tools/baseline.sh --selftest)"
-          printf '%s\n' "$out"
-          verdict="$(printf '%s\n' "$out" | grep -E '^BASELINE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' || true)"
+          bash tools/baseline.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/baseline-selftest.log"
+          verdict="$(grep -E '^BASELINE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' "${RUNNER_TEMP:-/tmp}/baseline-selftest.log" || true)"
           [ -n "$verdict" ] \
             || { echo "FATAL the baseline suite reached no passing verdict" >&2; exit 1; }
           ran="${verdict##*cases=}"; ran="${ran%% *}"
@@ -294,6 +296,17 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: bash tools/digest-move.sh --base "origin/$BASE_REF"
 
+      # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
+      # shipped, because they carried an address GitHub resolves to the owner's OTHER account
+      # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
+      # gets a reader rather than a note. PR-only: a push to main has no pull request to read,
+      # and by then the commit is already in the history this is meant to keep clean.
+      - name: tools — every commit on this PR is attributed to the owner (#910)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/attribution.sh --pr ${{ github.event.pull_request.number }}
+
       # WHY: tools/ had no runner at all, and #901 is the bug that hides exactly there —
       # a GNU-only `date -d` idiom, green on this box and dead on the macOS box that is the
       # only one to ever type the command. This step owns the LINUX half of that unit: the
@@ -306,18 +319,8 @@ jobs:
       # neither did the FATAL two lines below it — the one lock built to catch a dialect bug
       # reported one as a red step with an empty log (#983). Through the pipe, tee has already
       # put the failing offsets in the log by the time pipefail fails the step, and an executed
-      # case is the only thing that tells the two boxes apart.
-      # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
-      # shipped, because they carried an address GitHub resolves to the owner's OTHER account
-      # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
-      # gets a reader rather than a note. PR-only: a push to main has no pull request to read,
-      # and by then the commit is already in the history this is meant to keep clean.
-      - name: tools — every commit on this PR is attributed to the owner (#910)
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash tools/attribution.sh --pr ${{ github.event.pull_request.number }}
-
+      # case is the only thing that tells the two boxes apart. That is now the shop's rule
+      # rather than this step's habit: tools/README.md, the capture rule.
       - name: tools — balance.sh day arithmetic, GNU dialect (#901)
         shell: bash
         run: |
@@ -332,13 +335,15 @@ jobs:
       # answers arithmetic already settled, including the pair that IS the unit: one sweep day
       # beside six ordinary ones reads LAGGING:review by events and OK by day-shape. Needs no
       # token and no network — it judges the arithmetic, not the account.
+      # Streamed through tee rather than captured, under tools/README.md's capture rule: a case
+      # the ruler gets wrong prints its row with the reading it wanted and then exits 5, and a
+      # capture threw that row away — a wrong verdict without its case is unactionable.
       - name: tools — balance.sh ruler and floor (#828)
         shell: bash
         run: |
           set -euo pipefail
-          out="$(bash tools/balance.sh --rulercheck)"
-          printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -q '^RULERCHECK VERDICT PASS ' \
+          bash tools/balance.sh --rulercheck | tee "${RUNNER_TEMP:-/tmp}/rulercheck.log"
+          grep -q '^RULERCHECK VERDICT PASS ' "${RUNNER_TEMP:-/tmp}/rulercheck.log" \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
 
       # WHY: lock 11 — the teleprinter's golden day (D-047, #965). Locks 2, 3 and 7 pin the
@@ -398,12 +403,16 @@ jobs:
       # the referee landed on 2026-08-13, reads this exact fixture, and #532's DoD is its
       # verdict line and not ours. A lane that keeps a second implementation of the referee's
       # job is a second thing to keep in step — so the inline awk is deleted rather than kept
-      # beside it. Probes exit 0 by house rule, so the exact-line grep is the contract.
+      # beside it. The exact-line grep is the contract, as it is for every judged probe.
+      # The referee is the probe that does NOT exit 0, which is why the run is streamed through
+      # tee rather than captured (tools/README.md's capture rule): it prints the first unequal
+      # link and exits 1, or refuses with seal_missing and exits 2, so `out="$(...)"` died on the
+      # assignment and threw away the one line in the run that carries information.
       - name: neutral lane (control group vs the sealed baseline, refereed)
         shell: bash
         run: |
           set -euo pipefail
-          out="$(java -cp out:probes/out NeutralDiff)"
-          printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -qxF 'NEUTRALDIFF 60/60 byte-equal VERDICT PASS' \
+          java -cp out:probes/out NeutralDiff | tee "${RUNNER_TEMP:-/tmp}/neutraldiff.log"
+          grep -qxF 'NEUTRALDIFF 60/60 byte-equal VERDICT PASS' \
+            "${RUNNER_TEMP:-/tmp}/neutraldiff.log" \
             || { echo "FATAL the control group moved, or the referee did not judge it" >&2; exit 1; }
