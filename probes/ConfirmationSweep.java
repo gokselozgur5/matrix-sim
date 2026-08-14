@@ -14,8 +14,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Probe: the four Confirmation clauses that were only ever prose (#819).
@@ -444,16 +446,38 @@ public final class ConfirmationSweep {
      * <p>"The mythology event cites the registry count" is checked against
      * the live registry: the number in the MYTH line must equal
      * {@code registry.count()} read at the end of that same tick. It does.
-     * What the row REPORTS rather than judges is the gap on the other side
-     * of that equality — the registry gains an entry on the refusal path and
-     * prints no line, so the cited numbers run 1, 3, 4, 5 and nothing in the
-     * log ever accounts for #2. That is a finding, filed separately; making
-     * it a verdict here would land a probe red on main.
+     *
+     * <p>The other side of that equality is whether every citation that was
+     * DUE was made, and the {@code cite} column could not ask it while one
+     * blank stood for three unrelated situations: an ending with no ledger
+     * number to cite (gc, voided), an ending that added nothing to the ledger
+     * (a name already on it), and an ending that added an entry and cited
+     * nothing. Only the third is a defect, and it is #951 — which survived a
+     * full run of this probe because its row was indistinguishable from its
+     * two lawful neighbours. The column now separates them: {@code -} is
+     * nothing was due, {@code repeat} is nothing NEW was due, and
+     * {@code MISSING} is the defect, wearing a word rather than a blank.
+     *
+     * <p>Due-ness is read from the ENDING and not from the citation whose
+     * absence it is asking about: orphan and refusal are the two paths that
+     * register, and the ledger admits a name once ({@code OrphanRegistry} is
+     * a census, not an event tally), so this probe keeps its own copy of that
+     * rule and a name already in it is due nothing. The summary then counts
+     * citations due against citations made. It used to subtract citations
+     * from the FINAL registry size, which a repeat is invisible to in both
+     * terms — that difference reached zero on this film by arithmetic rather
+     * than by construction, and would have kept reaching zero on a run where
+     * a repeat masked a genuinely uncited fresh registration. {@code orphans}
+     * and {@code due} printed side by side are the same question asked of the
+     * live ledger and of this probe's model of it, and the row demands they
+     * agree.
      */
     private static final class Lifecycle {
         private record Notice(String purpose, long tick, int announced) {}
 
         private final List<Notice> pending = new ArrayList<>();
+        /** This probe's copy of the ledger's own rule: one entry per name, however often it survives. */
+        private final Set<String> ledger = new LinkedHashSet<>();
         int collections;
         private int gc;
         private int orphans;
@@ -462,6 +486,8 @@ public final class ConfirmationSweep {
         private int graceWrong;
         private int cites;
         private int citesOk;
+        private int repeats;
+        private int missing;
         private long registryEnd;
 
         void read(List<String> emitted, long t, Source source) {
@@ -497,7 +523,12 @@ public final class ConfirmationSweep {
                     graceWrong++;
                 }
                 long registry = source.registry().count();
-                String cite = "-";
+                // Which blank this is, decided before the citation is looked
+                // for: the two registering endings owe a number the first time
+                // they name a target and owe nothing every time after.
+                boolean registers = ending.equals("orphan") || ending.equals("refusal");
+                boolean fresh = registers && ledger.add(n.purpose());
+                String cite;
                 if (msg.contains("orphan #")) {
                     cites++;
                     long cited = intBefore(msg, " registered");
@@ -505,6 +536,14 @@ public final class ConfirmationSweep {
                     if (cited == registry) {
                         citesOk++;
                     }
+                } else if (fresh) {
+                    cite = "MISSING";
+                    missing++;
+                } else if (registers) {
+                    cite = "repeat";
+                    repeats++;
+                } else {
+                    cite = "-";
                 }
                 switch (ending) {
                     case "gc" -> gc++;
@@ -547,18 +586,26 @@ public final class ConfirmationSweep {
         }
 
         void report() {
-            System.out.println("REGISTRY orphans=" + registryEnd + " cited=" + cites
-                    + " uncited=" + (registryEnd - cites));
+            System.out.println("REGISTRY orphans=" + registryEnd + " due=" + ledger.size()
+                    + " cited=" + cites + " repeat=" + repeats + " missing=" + missing);
         }
 
         boolean print() {
+            // Citations due against citations made, and both against the live
+            // ledger. The two directions are demanded separately rather than as
+            // one difference: a repeat that printed a number would inflate
+            // `cited` exactly as far as a missing one deflates it, which is how
+            // a single subtraction can read zero over two defects.
+            boolean citations = missing == 0 && cites == ledger.size()
+                    && registryEnd == ledger.size() && citesOk == cites;
             boolean held = collections > 0 && pending.isEmpty() && graceWrong == 0
-                    && cites > 0 && citesOk == cites;
+                    && cites > 0 && citations;
             System.out.println("CONFIRM clause=D-025 collections=" + collections
                     + " order=notice,grace,outcome gc=" + gc + " orphan=" + orphans
                     + " refusal=" + refusals + " voided=" + voided
                     + " unmatched=" + pending.size() + " grace_wrong=" + graceWrong
-                    + " cites=" + citesOk + "/" + cites + " " + status(collections > 0, held));
+                    + " cites=" + citesOk + "/" + cites + " missing=" + missing
+                    + " " + status(collections > 0, held));
             return held;
         }
     }
