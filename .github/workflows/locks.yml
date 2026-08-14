@@ -148,6 +148,48 @@ jobs:
           printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no DIGEST tick=6000 line at all>}"
           [ "$got" = "$want" ] || { echo "FATAL the seal moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
 
+      # WHY: lock 12 — the other half of `DIGEST = hash(snapshot bytes)`, and it stands here
+      # because lock 7 pins the same walk from the other end. `--snapshot-at` is the surface
+      # that proves that sentence holds by construction, and until #967 it had two readers in
+      # the whole tree: the parser that accepts the flag and the README that describes it.
+      # Main printed SNAPSHOT_MATCHES_DIGEST and no automated reader ever looked at the value,
+      # so a build that printed `false` passed every lock this repository had.
+      # Two refusals, because the claim has two ways to be wrong. A `false` verdict says the
+      # retained walk and the hashed walk have drifted apart — #794 reports one Snapshot.of
+      # overload that is structurally a frame short, and this is the step that would name it at
+      # the tick it broke rather than by reading. A moved sha beside a `true` verdict says the
+      # two walks agree about a world that is no longer the pinned one: the README's hand-cut
+      # pair had exactly that failure twice, stale on the front page while the litany was green
+      # (#865, #961). The pin lives in .github/canonical-snapshot for lock 7's reason — one data
+      # line, its reason attached, `git log -p` on the file as the move history — and it carries
+      # the byte count as well as the sha, because the byte count is the half a shrinking seal
+      # moves first. The command is the README's, character for character, seed left to its
+      # default: what this step guards is the line a stranger types to check their own build.
+      - name: canonical snapshot (the retained walk certifies the chain, tick 500 of 600)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pin=.github/canonical-snapshot
+          [ -f "$pin" ] || { echo "FATAL $pin is missing — the certificate has no home" >&2; exit 1; }
+          payload="$(grep -vE '^[[:space:]]*(#|$)' "$pin" || true)"
+          n="$(printf '%s\n' "$payload" | grep -c '[^[:space:]]' || true)"
+          [ "$n" = 1 ] || { echo "FATAL $pin holds $n payload lines, want exactly 1" >&2; exit 1; }
+          sha="$(printf '%s\n' "$payload" | awk '{print $1}')"
+          bytes="$(printf '%s\n' "$payload" | awk '{print $2}')"
+          printf '%s\n' "$sha" | grep -qxE '[0-9a-f]{64}' \
+            || { echo "FATAL $pin does not open with a 64-hex sha: $sha" >&2; exit 1; }
+          printf '%s\n' "$bytes" | grep -qxE '[0-9]+' \
+            || { echo "FATAL $pin gives no byte count after the sha: $bytes" >&2; exit 1; }
+          [ "$(printf '%s\n' "$payload" | awk '{print NF}')" -ge 3 ] \
+            || { echo "FATAL $pin gives a sha and a count and no reason; the payload is <sha> <bytes> then why they are the values" >&2; exit 1; }
+          want="SNAPSHOT tick=500 sha=$sha bytes=$bytes"
+          out="$(java -cp out matrix.Main --headless --ticks 600 --snapshot-at 500)"
+          got="$(printf '%s\n' "$out" | grep -E '^SNAPSHOT tick=500 ' || true)"
+          printf 'pinned %s\nprinted %s\n' "$want" "${got:-<no SNAPSHOT tick=500 line at all>}"
+          printf '%s\n' "$out" | grep -qxF 'SNAPSHOT_MATCHES_DIGEST=true' \
+            || { echo "FATAL the retained walk does not certify the chain's own line for tick 500" >&2; exit 1; }
+          [ "$got" = "$want" ] || { echo "FATAL the snapshot pin moved — if that was deliberate, edit $pin in this PR and say why" >&2; exit 1; }
+
       # WHY: lock 8 — D-020's line grammar is a BYTE contract, and nothing owned the charset
       # those bytes were written in (#836): with no locale exported JDK 17 resolves the
       # default charset to ANSI_X3.4-1968 and every em dash a main() printed became '?'.

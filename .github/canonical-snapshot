@@ -1,0 +1,28 @@
+# The canonical snapshot — the certificate's one home in the tree.
+#
+# `DIGEST = hash(snapshot bytes)` is stated to hold by construction, never by discipline
+# (crown #179, matrix.core.Snapshot). `--snapshot-at` is the surface that proves it: it
+# retakes the walk at tick T into the retaining sink, hashes the bytes it kept, and asks
+# whether that sha is the chain's own line for that tick. This file is the outside witness
+# for the pair that
+#
+#     java -cp out matrix.Main --headless --ticks 600 --snapshot-at 500
+#
+# must print on its `SNAPSHOT tick=500` line, beside the `SNAPSHOT_MATCHES_DIGEST=true`
+# verdict the same run prints. `.github/workflows/locks.yml` reads the values from here and
+# from nowhere else; before #967 nothing in this repository ran the command at all, so a
+# build printing `false` passed every lock the tree had.
+#
+# Exactly one payload line: <64 lowercase hex> <byte count> <why these values>. Blank lines
+# and lines starting with `#` are ignored; a second payload line is refused rather than
+# silently ignored, because a silently ignored pin is worse than no pin. The byte count is
+# pinned with the sha because it is the other half of what README publishes, and because a
+# seal that got smaller moves it.
+#
+# This pin rides with the seal: the digest walk is the walk being hashed, so every declared
+# digest move (A10, D-020) rewrites this line too, in the commit that edits
+# `.github/canonical-digest`. Forgetting it is red before the merge button rather than a
+# stale number on the front page — which is what it was, twice, while every lock stayed
+# green (#865, #961). The move history is `git log -p -- .github/canonical-snapshot`.
+
+e942d744ba8e4722068f667a50e3567421c592677c702b8b2f743f77ea009334 31024  seed 42 (the default), 600 ticks, walk retaken at tick 500 — first pinned by #967 against the tree at 1e0e236, where the chain's `DIGEST tick=500` line carries the same sha. Not a move: the value this tree already printed, given a reader
