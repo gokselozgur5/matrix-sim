@@ -119,11 +119,12 @@ public final class Main {
             }
         }
 
-        String scaleRefusal = matrix.core.Config.scaleRefusal(scale);
-        if (scaleRefusal != null) {
-            System.err.println(scaleRefusal);
-            System.exit(2);
-        }
+        // The mode gate outranks the range law (#1054). A value the mode will
+        // never read has no bound worth stating: --audit rec.jsonl --scale 217
+        // used to die on "1..100 — the city is large, not infinite", which
+        // tells the operator a scaled audit exists at 50 and it does not. The
+        // dial's own gate is the informative refusal, so it goes first — for
+        // the fold and the recorder as much as for the audit.
         if (scale != 1 && (replayPath != null || chronosPath != null || auditPath != null)) {
             // The genesis line carries seed and version, not a scale: a scaled
             // recording could not be folded back. Scale is a live-run dial.
@@ -134,7 +135,11 @@ public final class Main {
             System.err.println("--scale rides live runs only — the chronos record knows no scale");
             System.exit(2);
         }
-        matrix.core.Config.setEcoScale(scale);
+        String scaleRefusal = matrix.core.Config.scaleRefusal(scale);
+        if (scaleRefusal != null) {
+            System.err.println(scaleRefusal);
+            System.exit(2);
+        }
         if (expectPath != null && replayPath == null) {
             System.err.println("--expect rides with --replay");
             usage();
@@ -144,9 +149,26 @@ public final class Main {
             System.err.println("--chronos records live runs; the fold replays with the recorder off");
             System.exit(2);
         }
-        if (auditPath != null && (replayPath != null || expectPath != null || chronosPath != null || headless)) {
+        // The rule #1006 closed one dial of (#1054): every flag that reaches
+        // --audit either has a reader or is refused here. The audit walks
+        // bytes — no universe is booted — so nothing that configures a
+        // universe can be honoured: not a second mode, not a scenario door,
+        // not a lane, not a stream. A flag that cannot be honoured is refused,
+        // because the exit code is the only place the operator learns their
+        // argument was dropped, and exit 0 says it was not.
+        if (auditPath != null && (replayPath != null || expectPath != null || chronosPath != null
+                || headless || selftest || bench || neutral || follow != null
+                || sinkAt >= 0 || sinkEvery > 0 || reloadAt >= 0 || snapshotAt != null)) {
             System.err.println("--audit walks the record alone — it boots no universe and folds nothing");
             System.exit(2);
+        }
+        // The dial belongs to a world, and this is the one path that boots
+        // none (#1054): the write is a seal on global mutable state taken on
+        // the way to a run that cannot read it. Harmless while the audit sits
+        // below the seal, and exactly the kind of harmless that stops being so
+        // when the path moves. Every other path writes it as it always did.
+        if (auditPath == null) {
+            matrix.core.Config.setEcoScale(scale);
         }
         if (snapshotAt != null && (replayPath != null || !headless)) {
             System.err.println("--snapshot-at rides with --headless — a live run, not the fold");
@@ -507,11 +529,14 @@ public final class Main {
                                       monotone ticks, seals paired with boundaries in
                                       write-before-purge order, epoch arithmetic, config
                                       fingerprint vs this build (drift named, not failed);
-                                      exits 0 consistent / 1 inconsistent / 2 unreadable
+                                      exits 0 consistent / 1 inconsistent / 2 unreadable;
+                                      takes no flag that configures a universe — every one
+                                      of them is refused rather than accepted unread (#1054)
                   --neutral           run the control group: the legacy path, no character
                                       coupling, no new token, no banner (D-042 ruling, #212).
-                                      Permanent, not a migration step — rides with every other
-                                      flag, and its chain is CI-pinned to the sealed baseline
+                                      Permanent, not a migration step — rides with every flag
+                                      that boots a world, refused with --audit which boots
+                                      none, and its chain is CI-pinned to the sealed baseline
                                       in ci/fixtures/neutral-baseline.chain
                   --selftest          in-process digest double-run; exit 0 iff chains match.
                                       Honors --scale, and since #518 says so: the verdict
