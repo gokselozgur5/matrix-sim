@@ -423,6 +423,40 @@ public final class Zion {
      * ADMITTED on Zion's, and the whole of #200 is the claim that the tag
      * survives the crossing. Equal is the assertion; unequal names a
      * liberation the root drained and the city did not keep.
+     *
+     * <p>{@code living=} is #1007's, and it is the number this class
+     * actually schedules on: {@link #livingCensus} is the laydown gate
+     * ({@code livingCensus() >= RIG_CAPACITY * (afloat() + 1)}) and its
+     * aliveness test is the first of the three {@link #drawCrew} takes a
+     * berth from. {@code census=} is cumulative by law — the fallen stay on
+     * the registry, liberation is not deletion (D-011) — so it keeps
+     * counting a city after the city can no longer fly, and at seed 2 the
+     * run ends {@code census=6 treaty=6} over six corpses. The per-door
+     * columns partition the same registry and inherit the same blindness:
+     * {@code treaty=6} there is six dead treaty walkers, and seed 4 prints
+     * the same six numbers over three citizens who are still breathing.
+     * Grouping by door was one half; this is the other, and it is the half
+     * the gate reads.
+     *
+     * <p>Not derivable from what was already on the line. {@code traced=}
+     * counts hard endings the RIGS saw, and the two numbers happen to
+     * satisfy {@code census - traced == living} on every canonical seed
+     * measured (1..30 at 6,000 ticks) — a coincidence of the runs where
+     * every citizen who dies dies on a wire, not an identity.
+     * {@link Hovercraft#destroy} flatlines a crew that is aboard with no
+     * wire open, and {@code traced} never sees those: seed 42 under
+     * {@code --sink-at 5000} ends {@code census=6 traced=3 living=0}, three
+     * souls lost with the hull in TRANSIT and the subtraction off by three.
+     * Counted off the registry on the spot for the same reason
+     * {@code admittedThrough} is, and a gauge, not a tally: it falls as the
+     * city dies.
+     *
+     * <p>Mandatory, so it lands at the END of the mandatory block, after the
+     * doors and before the optional trace rider — the same road
+     * {@code treaty=}/{@code selfsub=} took and for the registry's reason,
+     * not politeness: a reader keys on position, so writing it beside
+     * {@code census=} where it belongs by meaning would rename five shipped
+     * columns. The ZION arities become 9 and 11 in {@code probes/LineGrammar}.
      */
     public String zionLine(long tick) {
         int links = 0;
@@ -442,6 +476,7 @@ public final class Zion {
         for (Origin door : DOORS) {
             line.append(' ').append(door.tag()).append('=').append(admittedThrough(door));
         }
+        line.append(" living=").append(livingCensus());
         return line.toString();
     }
 
