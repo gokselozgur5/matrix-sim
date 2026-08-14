@@ -17,7 +17,12 @@ jobs:
   locks:
     runs-on: ubuntu-latest
     # WHY: backstop only — the litany finishes in minutes; a hung JVM must not eat the meter.
-    timeout-minutes: 15
+    # 15 until #1052 put the release gate in the lane. That step runs this lane's own floor a
+    # second time, from a clean out/, because a release gate that reused someone else's build
+    # would not be the gate an operator runs — so the litany's work roughly doubles: 76 s for
+    # the steps below and 103 s for `release.sh --check` on the box the patch was written on,
+    # the probe sweep being most of both. This number is still a hang-guard and not the bound.
+    timeout-minutes: 25
     steps:
       # WHY: the litany judges the tree as pushed — no caches, no artifacts from elsewhere.
       # WHY fetch-depth 0: two locks read history rather than the tree. Lock 9 compares this
@@ -471,3 +476,31 @@ jobs:
           grep -qxF 'NEUTRALDIFF 60/60 byte-equal VERDICT PASS' \
             "${RUNNER_TEMP:-/tmp}/neutraldiff.log" \
             || { echo "FATAL the control group moved, or the referee did not judge it" >&2; exit 1; }
+
+      # WHY: the gate on the artifact that LEAVES this repository was the weaker of the two
+      # gates, and nothing said so (#1052). `tools/release.sh` ran compile, --selftest at the
+      # standard budget and --bench: it never read the seal pin, never ran the full arc, never
+      # swept the probes — so a tree this lane would refuse on a pull request could still be
+      # tagged and published. It now runs locks 1-7 above, and this step is the runner that
+      # keeps it that way. Same shape as #965 and #901: a path only a release exercises is a
+      # path nobody exercises, and that is exactly how the divergence opened unseen — --check
+      # was itself written to fix a lock that had been unrunnable for 62 commits (#972).
+      # Which locks a release still skips, and why, is written in tools/README.md.
+      #
+      # LAST on purpose: --check rebuilds from a clean out/ and a clean probes/out, so it
+      # deletes what the steps above compiled. Nothing may follow it that expects those trees.
+      # Needs no token and no network — --check tags nothing, pushes nothing, and skips the
+      # release preflight (main, clean tree, in step with origin), which guards the TAG and
+      # not the locks. Piped to tee for the sweep's reason: under pipefail a red release gate
+      # fails the lane AND its rows reach the log. The verdict's lock COUNT is matched loosely
+      # rather than pinned at 7/7, so the next lock the release gains is one edit in the
+      # script and no edit here — the script exits before printing this line if any lock is
+      # red, so its exit code is what judges the count.
+      - name: tools — the release gate reaches this lane's floor (#1052)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/release.sh --check | tee "${RUNNER_TEMP:-/tmp}/release.log"
+          grep -qE '^RELEASE CHECK [1-9][0-9]*/[1-9][0-9]* locks green VERDICT PASS commit=[0-9a-f]{12} tagged=none$' \
+            "${RUNNER_TEMP:-/tmp}/release.log" \
+            || { echo "FATAL the release gate reached no passing verdict" >&2; exit 1; }
