@@ -18,36 +18,188 @@ public final class MetricsCollector {
     }
 
     public String ecoLine(long tick) {
-        java.util.List<matrix.entities.MatrixEntity> birds = new java.util.ArrayList<>();
+        int birds = 0;
         for (var e : world.entities()) {
             if (e.alive && e instanceof matrix.entities.eco.EnvironmentProgram p
                     && p.species.kingdom() == matrix.entities.eco.Kingdom.FAUNA_BIRD) {
-                birds.add(e);
-            }
-        }
-        if (birds.size() < 2) {
-            return String.format(java.util.Locale.ROOT, "ECO tick=%d birds=%d", tick, birds.size());
-        }
-        long sum = 0;
-        for (var b : birds) {
-            long best = Long.MAX_VALUE;
-            for (var o : birds) {
-                if (o != b) {
-                    best = Math.min(best, Geo.distSqCm(b.xCm(), b.yCm(), o.xCm(), o.yCm()));
+                if (birds == birdXCm.length) {
+                    int cap = Math.max(64, birds * 2);
+                    birdXCm = java.util.Arrays.copyOf(birdXCm, cap);
+                    birdYCm = java.util.Arrays.copyOf(birdYCm, cap);
                 }
+                birdXCm[birds] = e.xCm();
+                birdYCm[birds] = e.yCm();
+                birds++;
             }
-            sum += Math.round(Math.sqrt((double) best));
         }
-        long meanNn = sum / birds.size();
-        double density = birds.size() / ((double) matrix.core.Config.WORLD_W_CM * matrix.core.Config.WORLD_H_CM);
+        if (birds < 2) {
+            return String.format(java.util.Locale.ROOT, "ECO tick=%d birds=%d", tick, birds);
+        }
+        long meanNn = flockMeanNearestCm(birds);
+        double density = birds / ((double) matrix.core.Config.WORLD_W_CM * matrix.core.Config.WORLD_H_CM);
         long baseline = Math.round(0.5 / Math.sqrt(density));
         return String.format(java.util.Locale.ROOT,
                 "ECO tick=%d birds=%d flock_mnn_cm=%d random_baseline_cm=%d insects=%d flora=%d mammals=%d weather=%d",
-                tick, birds.size(), meanNn, baseline,
+                tick, birds, meanNn, baseline,
                 kingdomCount(matrix.entities.eco.Kingdom.FAUNA_INSECT),
                 kingdomCount(matrix.entities.eco.Kingdom.FLORA),
                 kingdomCount(matrix.entities.eco.Kingdom.FAUNA_MAMMAL),
                 kingdomCount(matrix.entities.eco.Kingdom.WEATHER));
+    }
+
+    // The ECO line's own index (#1026), and why the observer does not simply
+    // borrow the world's. The flock the SIMULATION steers by is a snapshot
+    // flock: SpatialHash freezes perception coordinates at rebuild and both
+    // sides of every query use them (D-017), because a mid-tick rebuild would
+    // let a bird perceive the future. The flock the OBSERVER reports on is the
+    // live one — ecoLine runs at the METRIC boundary, after the walk and after
+    // the flush, and reads xCm()/yCm(). Those are the same values only when
+    // nothing has moved since rebuild, so reading the steering index here
+    // would silently republish flock_mnn_cm as a different statistic. The
+    // observer therefore indexes the positions it is actually reporting, and
+    // the published figure does not move.
+    //
+    // Buffers are fields, not locals: an instrument that fires every
+    // ECO_EVERY_TICKS ticks allocates once and refills afterwards (D-027),
+    // exactly as the hash's buckets do. Single-threaded engine, and every one
+    // of these is dead between two ecoLine calls.
+    private int[] birdXCm = new int[0];
+    private int[] birdYCm = new int[0];
+    private int[] cellHead = new int[0];
+    private int[] cellNext = new int[0];
+
+    /**
+     * Mean nearest-neighbour distance in centimetres over the {@code n} birds
+     * already loaded into {@code birdXCm}/{@code birdYCm}.
+     *
+     * <p>The arithmetic is the all-pairs loop's, unchanged: for each bird the
+     * squared distance to the nearest OTHER bird, rounded to cm, summed and
+     * divided by the count. A minimum over a set does not depend on the order
+     * the set is visited, so each bird's term — and therefore the printed
+     * figure — is identical to the nested loop's. Pure read either way: no
+     * draw, no state, nothing the digest can notice.
+     *
+     * <p>The index is a uniform grid over the birds' own bounding box, so no
+     * coordinate is ever clamped into a cell it does not lie in, and the ring
+     * floor is therefore exact: nothing in a cell {@code d} rings out from
+     * the anchor can be nearer than {@code (d-1)} cells, so the search stops
+     * exactly one ring past the best it holds — never sooner. That is the
+     * ring hunts' argument (#135) without their displacement term, because
+     * here the index and the distances read the same coordinates.
+     *
+     * <p>The grain is the world's own, {@link Config#HASH_CELL_CM}. A grain
+     * fitted to the flock instead — a cell sized from the bounding box so a
+     * couple of birds share it — was written, measured against this one and
+     * removed: at {@code --scale 100} it wins while the flock is spread (9.0
+     * ms against 14.4 ms at tick 300) and loses once the flock has condensed
+     * (165 ms against 148 ms at tick 1,000), because a bounding box says
+     * nothing about where inside it 14,000 birds actually are. Two lines of
+     * arithmetic for a wash. The floor argument above holds at ANY cell size
+     * and the answer is a minimum either way, so the grain is a speed knob
+     * only — and this one is the knob the rest of the world is already set
+     * to.
+     */
+    private long flockMeanNearestCm(int n) {
+        int cell = Config.HASH_CELL_CM;
+        int minX = birdXCm[0];
+        int minY = birdYCm[0];
+        int maxX = minX;
+        int maxY = minY;
+        for (int i = 1; i < n; i++) {
+            minX = Math.min(minX, birdXCm[i]);
+            maxX = Math.max(maxX, birdXCm[i]);
+            minY = Math.min(minY, birdYCm[i]);
+            maxY = Math.max(maxY, birdYCm[i]);
+        }
+        int nx = (int) (((long) maxX - minX) / cell) + 1;
+        int ny = (int) (((long) maxY - minY) / cell) + 1;
+        int cells = nx * ny;
+        if (cellHead.length < cells) {
+            // Grown to the CEILING, not to the need. nx and ny follow the
+            // flock's bounding box, and that box breathes every hundred ticks
+            // — sized to the need, this buffer is reallocated whenever the
+            // flock widens, which is a per-tick allocation with a slow
+            // heartbeat and AllocMeter measures it as one: 371 B/tick before
+            // this unit, 402 with the buffer grown to the need, 351 with it
+            // grown to the ceiling (D-027). Birds are in-world, so the box's
+            // grid can never outgrow the hash's own, and one allocation
+            // covers every later call.
+            cellHead = new int[Math.max(cells,
+                    (Config.WORLD_W_CM / cell + 1) * (Config.WORLD_H_CM / cell + 1))];
+        }
+        java.util.Arrays.fill(cellHead, 0, cells, -1);
+        if (cellNext.length < n) {
+            cellNext = new int[n];
+        }
+        for (int i = 0; i < n; i++) {
+            int c = ((birdYCm[i] - minY) / cell) * nx + (birdXCm[i] - minX) / cell;
+            cellNext[i] = cellHead[c];
+            cellHead[c] = i;
+        }
+        long sum = 0;
+        for (int i = 0; i < n; i++) {
+            sum += Math.round(Math.sqrt((double) nearestSqCm(i, minX, minY, nx, ny, cell)));
+        }
+        return sum / n;
+    }
+
+    /** One bird's nearest-other squared distance, by rings out of its own cell. */
+    private long nearestSqCm(int i, int minX, int minY, int nx, int ny, int cell) {
+        int ax = (birdXCm[i] - minX) / cell;
+        int ay = (birdYCm[i] - minY) / cell;
+        long best = Long.MAX_VALUE;
+        int maxRing = Math.max(Math.max(ax, nx - 1 - ax), Math.max(ay, ny - 1 - ay));
+        for (int d = 0; d <= maxRing; d++) {
+            if (best != Long.MAX_VALUE) {
+                long floor = (long) (d - 1) * cell;
+                if (floor > 0 && floor * floor > best) {
+                    break; // nothing at ring >= d can beat the best already held
+                }
+            }
+            if (d == 0) {
+                best = cellBest(ay * nx + ax, i, best);
+                continue;
+            }
+            int x0 = Math.max(0, ax - d);
+            int x1 = Math.min(nx - 1, ax + d);
+            if (ay - d >= 0) {
+                for (int gx = x0; gx <= x1; gx++) {
+                    best = cellBest((ay - d) * nx + gx, i, best);
+                }
+            }
+            if (ay + d < ny) {
+                for (int gx = x0; gx <= x1; gx++) {
+                    best = cellBest((ay + d) * nx + gx, i, best);
+                }
+            }
+            int y0 = Math.max(0, ay - d + 1);
+            int y1 = Math.min(ny - 1, ay + d - 1);
+            if (ax - d >= 0) {
+                for (int gy = y0; gy <= y1; gy++) {
+                    best = cellBest(gy * nx + ax - d, i, best);
+                }
+            }
+            if (ax + d < nx) {
+                for (int gy = y0; gy <= y1; gy++) {
+                    best = cellBest(gy * nx + ax + d, i, best);
+                }
+            }
+        }
+        return best;
+    }
+
+    /** One cell's chain against the running best — self skipped, live coordinates both sides. */
+    private long cellBest(int cellIndex, int self, long best) {
+        for (int j = cellHead[cellIndex]; j >= 0; j = cellNext[j]) {
+            if (j == self) {
+                continue;
+            }
+            long d = Geo.distSqCm(birdXCm[self], birdYCm[self], birdXCm[j], birdYCm[j]);
+            if (d < best) {
+                best = d;
+            }
+        }
+        return best;
     }
 
     /**
