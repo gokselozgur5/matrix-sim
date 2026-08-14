@@ -1,5 +1,6 @@
 package matrix;
 
+import matrix.core.ChronosLine;
 import matrix.core.ChronosLog;
 import matrix.core.Digest;
 import matrix.core.Snapshot;
@@ -493,7 +494,9 @@ public final class ReplayHarness {
      * fold would apply one, and the audit would call the file coherent. So
      * every line is measured against its kind's exact field list before it is
      * read: a field the kind does not define, or the same field twice, is
-     * refused by name. That gate is what makes first-match reading honest.
+     * refused by name. That gate is what makes first-match reading honest,
+     * and since #1053 it is {@link ChronosLine}'s rather than this file's —
+     * the bench reads the same records and had its own permissive copy.
      */
     private static Recording parse(Path file) throws IOException {
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
@@ -513,16 +516,16 @@ public final class ReplayHarness {
                 continue;
             }
             records++;
-            String kind = stringField(line, "chronos");
+            String kind = ChronosLine.string(line, "chronos");
             if (kind == null) {
                 refuse("line " + (n + 1) + " is not a chronos record");
             }
             if (seed == null && !kind.equals("genesis")) {
                 refuse("no genesis before line " + (n + 1) + " — a recording opens by naming its universe");
             }
-            List<String> grammar = grammarOf(kind);
-            if (grammar != null) {
-                checkFields(line, kind, grammar, n + 1);
+            String offGrammar = ChronosLine.offGrammar(line, kind);
+            if (offGrammar != null) {
+                refuse(offGrammar + " at line " + (n + 1));
             }
             switch (kind) {
                 case "genesis" -> {
@@ -531,7 +534,7 @@ public final class ReplayHarness {
                     }
                     seed = longField(line, "seed", n + 1);
                     version = (int) longField(line, "version", n + 1);
-                    config = stringField(line, "config");
+                    config = ChronosLine.string(line, "config");
                     if (config == null) {
                         refuse("genesis without a config fingerprint at line " + (n + 1));
                     }
@@ -539,7 +542,7 @@ public final class ReplayHarness {
                 case "command" -> {
                     long tick = tickField(line, n + 1, lastTick);
                     lastTick = tick;
-                    String cmd = stringField(line, "cmd");
+                    String cmd = ChronosLine.string(line, "cmd");
                     if (cmd == null) {
                         refuse("command without a cmd at line " + (n + 1));
                     }
@@ -548,7 +551,7 @@ public final class ReplayHarness {
                 case "snapshot" -> {
                     long tick = tickField(line, n + 1, lastTick);
                     lastTick = tick;
-                    String sha = stringField(line, "sha");
+                    String sha = ChronosLine.string(line, "sha");
                     if (sha == null || !sha.matches("[0-9a-f]{64}")) {
                         refuse("snapshot marker without a sha256 at line " + (n + 1)
                                 + " — a seal that names no certificate seals nothing");
@@ -559,7 +562,7 @@ public final class ReplayHarness {
                 case "boundary" -> {
                     long tick = tickField(line, n + 1, lastTick);
                     lastTick = tick;
-                    String bKind = stringField(line, "kind");
+                    String bKind = ChronosLine.string(line, "kind");
                     if (bKind == null) {
                         refuse("boundary without a kind at line " + (n + 1));
                     }
@@ -568,12 +571,12 @@ public final class ReplayHarness {
                 case "birth" -> {
                     long tick = tickField(line, n + 1, lastTick);
                     lastTick = tick;
-                    String name = stringField(line, "name");
+                    String name = ChronosLine.string(line, "name");
                     if (name == null || name.isEmpty()) {
                         refuse("birth without a name-at-birth at line " + (n + 1)
                                 + " — the die keys to this field; a birth that names nobody keys nothing");
                     }
-                    String family = stringField(line, "family");
+                    String family = ChronosLine.string(line, "family");
                     if (family == null || family.isEmpty()) {
                         refuse("birth without a family at line " + (n + 1)
                                 + " — who came to exist is half the record");
@@ -581,9 +584,9 @@ public final class ReplayHarness {
                     // Absent is refused; EMPTY is accepted and means "no rack
                     // unit", which is what the derivation reads for a mind
                     // grown without a slot. The two cases are distinguished
-                    // because stringField returns null only when the key is
-                    // not on the line at all (#847).
-                    String rack = stringField(line, "rack");
+                    // because ChronosLine.string returns null only when the key
+                    // is not on the line at all (#847).
+                    String rack = ChronosLine.string(line, "rack");
                     if (rack == null) {
                         refuse("birth without a rack unit at line " + (n + 1)
                                 + " — the die keys to the birth event, and a birth that says"
@@ -608,70 +611,6 @@ public final class ReplayHarness {
         }
         return new Recording(seed, version, config, commands, markers, boundaries, births, records, flushes,
                 lastTick);
-    }
-
-    /**
-     * The recorder's field list for one kind, in the order {@link ChronosLog}
-     * writes them — null for a kind this reader does not know, which the
-     * parse switch refuses by kind rather than by field. The lists are the
-     * writer's, copied deliberately: when the recorder learns a field the
-     * reader learns it in the same breath, exactly as it learns a kind.
-     */
-    private static List<String> grammarOf(String kind) {
-        return switch (kind) {
-            case "genesis" -> List.of("chronos", "seed", "version", "config");
-            case "command" -> List.of("chronos", "tick", "cmd");
-            case "snapshot" -> List.of("chronos", "tick", "epoch", "sha", "bytes");
-            case "boundary" -> List.of("chronos", "tick", "kind");
-            case "birth" -> List.of("chronos", "tick", "name", "family", "rack", "id");
-            case "flush" -> List.of("chronos", "tick", "spawns", "removes", "replaces");
-            default -> null;
-        };
-    }
-
-    /**
-     * The field gate (#976): walk the line's own top-level keys and refuse the
-     * first that its kind does not define, or that it has already carried.
-     * Keys are read structurally — a quoted run followed by a colon, with
-     * string contents skipped whole — so a brace or a colon inside a command's
-     * text is text, not grammar. An unterminated string ends the walk and is
-     * left to the field reads below, which already refuse the line for the
-     * value they cannot find.
-     */
-    private static void checkFields(String line, String kind, List<String> grammar, int lineNo) {
-        List<String> seen = new ArrayList<>();
-        int depth = 0;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '{' || c == '[') {
-                depth++;
-            } else if (c == '}' || c == ']') {
-                depth--;
-            } else if (c == '"') {
-                int end = i + 1;
-                while (end < line.length() && line.charAt(end) != '"') {
-                    end += line.charAt(end) == '\\' ? 2 : 1;
-                }
-                if (end >= line.length()) {
-                    return;
-                }
-                int after = end + 1;
-                while (after < line.length() && Character.isWhitespace(line.charAt(after))) {
-                    after++;
-                }
-                if (depth == 1 && after < line.length() && line.charAt(after) == ':') {
-                    String key = line.substring(i + 1, end);
-                    if (seen.contains(key)) {
-                        refuse("duplicate field '" + key + "' at line " + lineNo);
-                    }
-                    seen.add(key);
-                    if (!grammar.contains(key)) {
-                        refuse("unknown field '" + key + "' on kind '" + kind + "' at line " + lineNo);
-                    }
-                }
-                i = end;
-            }
-        }
     }
 
     /** The reference chain: DIGEST lines of a ChainDump-format file; its CHAIN trailer is tolerated, anything else refused. */
@@ -715,52 +654,15 @@ public final class ReplayHarness {
         return tick;
     }
 
+    /** {@link ChronosLine#number} with the fold's voice: an absent key and an unreadable one are named apart. */
     private static long longField(String line, String key, int lineNo) {
-        String needle = "\"" + key + "\":";
-        int i = line.indexOf(needle);
-        if (i < 0) {
-            refuse("line " + lineNo + " lacks \"" + key + "\"");
+        String value = ChronosLine.number(line, key);
+        if (value == null) {
+            refuse(ChronosLine.has(line, key)
+                    ? "line " + lineNo + ": \"" + key + "\" is not a number"
+                    : "line " + lineNo + " lacks \"" + key + "\"");
         }
-        int start = i + needle.length();
-        int end = start;
-        if (end < line.length() && line.charAt(end) == '-') {
-            end++;
-        }
-        while (end < line.length() && Character.isDigit(line.charAt(end))) {
-            end++;
-        }
-        if (end == start) {
-            refuse("line " + lineNo + ": \"" + key + "\" is not a number");
-        }
-        return Long.parseLong(line.substring(start, end));
-    }
-
-    /** First string field named {@code key}, unescaped per the writer's grammar; null when absent. */
-    private static String stringField(String line, String key) {
-        String needle = "\"" + key + "\":\"";
-        int i = line.indexOf(needle);
-        if (i < 0) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int j = i + needle.length(); j < line.length(); j++) {
-            char c = line.charAt(j);
-            if (c == '"') {
-                return sb.toString();
-            }
-            if (c == '\\' && j + 1 < line.length()) {
-                char e = line.charAt(++j);
-                if (e == 'u' && j + 4 < line.length()) {
-                    sb.append((char) Integer.parseInt(line.substring(j + 1, j + 5), 16));
-                    j += 4;
-                } else {
-                    sb.append(e);
-                }
-            } else {
-                sb.append(c);
-            }
-        }
-        return null; // unterminated string — treated as absent, callers refuse
+        return Long.parseLong(value);
     }
 
     private static void refuse(String why) {

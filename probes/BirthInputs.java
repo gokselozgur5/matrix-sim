@@ -1,4 +1,5 @@
 import matrix.Simulation;
+import matrix.core.ChronosLine;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,11 +26,22 @@ import java.util.List;
  * birth line. A field that is not there is named, by line, and the verdict
  * says the record is short.
  *
- * <p>It reads the file with its own scanner rather than {@code ReplayHarness}'s
- * for the reason D-058 opened the shelf: a record whose only reader is the
- * implementation that wrote it is not a record, it is a cache. This is the
- * stranger — a hundred lines that have never seen a {@code Simulation} — and
- * what it can extract is what a foreign implementation can extract.
+ * <p>It holds nothing but the file: no {@code Simulation}, no fold, no
+ * replay. That is the reason D-058 opened the shelf — a record whose only
+ * reader is the implementation that wrote it is not a record, it is a cache
+ * — and what this probe can extract off the bytes is what a foreign reader
+ * can extract.
+ *
+ * <p>Until #1053 it did that with a private copy of the fold's field
+ * helpers, and the copy had gone permissive: #976 taught {@code
+ * ReplayHarness} to refuse a line carrying a field twice, and this probe went
+ * on reading the first occurrence and calling the record whole. It now reads
+ * through {@link ChronosLine}, the grammar's one statement, so the two cannot
+ * disagree about what a line says. The trade is deliberate and worth naming:
+ * a second, independently written scanner no longer corroborates the first.
+ * What survives is the question this probe exists to ask — are the five facts
+ * ON the file, readable by someone holding only the file — and the drift that
+ * cost is the drift that made the answer wrong.
  *
  * <p>What it does <b>not</b> check: that the five facts mix into the right
  * long. They cannot be mixed on this build, because the mixer is {@code
@@ -86,12 +98,24 @@ public final class BirthInputs {
             if (line.isEmpty()) {
                 continue;
             }
-            String kind = str(line, "chronos");
-            if ("genesis".equals(kind)) {
-                seed = num(line, "seed");
+            String kind = ChronosLine.string(line, "chronos");
+            if (!"genesis".equals(kind) && !"birth".equals(kind)) {
+                // Every other kind is somebody else's question; --audit is the
+                // whole-file gate. These two are the ones this probe READS, so
+                // these two are the ones it must not misread.
                 continue;
             }
-            if (!"birth".equals(kind)) {
+            String offGrammar = ChronosLine.offGrammar(line, kind);
+            if (offGrammar != null) {
+                // Refused, not counted short: a line the reader cannot trust
+                // to say one thing says nothing, and a probe that scored it
+                // would be publishing a number it read off a coin toss.
+                System.out.println("OFFGRAMMAR line=" + (n + 1) + " " + offGrammar);
+                System.out.println("VERDICT BIRTH_INPUTS_OFFGRAMMAR");
+                return;
+            }
+            if ("genesis".equals(kind)) {
+                seed = ChronosLine.number(line, "seed");
                 continue;
             }
             // The seed is a fact about the universe, not about the birth, so a
@@ -102,26 +126,26 @@ public final class BirthInputs {
             if (seed == null) {
                 missing.add("seed");
             }
-            String tick = num(line, "tick");
+            String tick = ChronosLine.number(line, "tick");
             if (tick == null) {
                 missing.add("tick");
             }
-            String name = str(line, "name");
+            String name = ChronosLine.string(line, "name");
             if (name == null || name.isEmpty()) {
                 missing.add("name");
             }
-            String family = str(line, "family");
+            String family = ChronosLine.string(line, "family");
             if (family == null || family.isEmpty()) {
                 missing.add("family");
             }
             // An EMPTY rack is a complete answer and not a missing one: it is
             // what a mind grown with no slot puts into the derivation. Only an
             // absent key is short.
-            String rack = str(line, "rack");
+            String rack = ChronosLine.string(line, "rack");
             if (rack == null) {
                 missing.add("rack");
             }
-            String id = num(line, "id");
+            String id = ChronosLine.number(line, "id");
             if (id == null) {
                 missing.add("id");
             }
@@ -171,56 +195,6 @@ public final class BirthInputs {
         OutputStream quiet = OutputStream.nullOutputStream();
         new Simulation(seed, quiet, null, chronos).run(ticks);
         return List.of(chronos.toString(StandardCharsets.UTF_8).split("\n"));
-    }
-
-    /**
-     * The string value of {@code "key":"..."}, or null when the key is not on
-     * the line. Deliberately the smallest thing that reads our own writer's
-     * grammar — the escapes the recorder emits, and nothing else.
-     */
-    private static String str(String line, String key) {
-        String needle = "\"" + key + "\":\"";
-        int i = line.indexOf(needle);
-        if (i < 0) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int j = i + needle.length(); j < line.length(); j++) {
-            char c = line.charAt(j);
-            if (c == '"') {
-                return sb.toString();
-            }
-            if (c == '\\' && j + 1 < line.length()) {
-                char e = line.charAt(++j);
-                if (e == 'u' && j + 4 < line.length()) {
-                    sb.append((char) Integer.parseInt(line.substring(j + 1, j + 5), 16));
-                    j += 4;
-                } else {
-                    sb.append(e);
-                }
-            } else {
-                sb.append(c);
-            }
-        }
-        return null; // unterminated — the reader cannot state it, so it is missing
-    }
-
-    /** The numeric value of {@code "key":N}, or null when the key is absent or not a number. */
-    private static String num(String line, String key) {
-        String needle = "\"" + key + "\":";
-        int i = line.indexOf(needle);
-        if (i < 0) {
-            return null;
-        }
-        int start = i + needle.length();
-        int end = start;
-        if (end < line.length() && line.charAt(end) == '-') {
-            end++;
-        }
-        while (end < line.length() && Character.isDigit(line.charAt(end))) {
-            end++;
-        }
-        return end == start ? null : line.substring(start, end);
     }
 
     private BirthInputs() {}
