@@ -137,6 +137,17 @@ public final class ReplayHarness {
      * contradicts its own writer. Mid-tick boundaries (emergency reload,
      * treaty) legally stand alone: no console command, no seal.
      *
+     * <p>Since #999 the births are READ and not merely counted (#847 put
+     * enough on the line to read). A slot holds one mind and an ordinal
+     * names one mind, so two births claiming either are two lines of one
+     * file contradicting each other; the ordinal counts the minds already
+     * grown, so it climbs and never falls; and a rack unit either names a
+     * slot or is the empty string of a mind grown without one. All four are
+     * settled between lines of the same file, which is the whole scope: what
+     * the audit still does not ask is whether THIS ordinal is the one this
+     * seed would have produced, or which slot the farm would have racked it
+     * into. Those need a world, and the fold re-grows one to answer them.
+     *
      * Exit grammar: 0 internally consistent, 1 inconsistent (the first
      * offense named), 2 unreadable.
      */
@@ -180,7 +191,7 @@ public final class ReplayHarness {
         return 0;
     }
 
-    /** The pairing and arithmetic laws, walked in record order; the first broken one is the verdict. */
+    /** The pairing, arithmetic and birth laws, walked in record order; the first broken one is the verdict. */
     private static String firstOffense(Recording rec) {
         // every seal: its reload boundary follows at the same tick, no second
         // seal stacked before it, and its console command precedes it — the
@@ -251,6 +262,39 @@ public final class ReplayHarness {
             if (!sealed) {
                 return "unsealed_reload tick=" + b.tick() + " line=" + b.line()
                         + " — the stage-4 recorder seals before the purge; this record did not";
+            }
+        }
+        // every birth, against its own grammar and against every birth before
+        // it (#999). The rack unit is checked first because a line that cannot
+        // state a slot cannot be held against another line's slot; then the
+        // ordinal, which is the offense the title names, before the slot it
+        // implies; then the climb. The rack number is two digits or more
+        // because the recorder pads to two and does not truncate: a farm past
+        // its 99th rack writes R100/U01, and a reader that called that
+        // malformed would refuse a record its own writer produced.
+        for (int i = 0; i < rec.births().size(); i++) {
+            Birth b = rec.births().get(i);
+            if (!b.rack().isEmpty() && !b.rack().matches("R\\d{2,}/U\\d{2}")) {
+                return "malformed_rack_unit line=" + b.line() + " rack=\"" + b.rack()
+                        + "\" — a rack unit reads R__/U__, or is empty for a mind grown without a slot";
+            }
+            for (int j = 0; j < i; j++) {
+                Birth earlier = rec.births().get(j);
+                if (earlier.id() == b.id()) {
+                    return "duplicate_birth_ordinal id=" + b.id()
+                            + " lines=" + earlier.line() + "," + b.line()
+                            + " — two minds cannot be grown into one slot";
+                }
+                if (!b.rack().isEmpty() && earlier.rack().equals(b.rack())) {
+                    return "duplicate_rack_unit rack=" + b.rack()
+                            + " lines=" + earlier.line() + "," + b.line()
+                            + " — one slot, two minds";
+                }
+            }
+            if (i > 0 && b.id() < rec.births().get(i - 1).id()) {
+                return "birth_ordinal_backward line=" + b.line() + " id=" + b.id()
+                        + " after=" + rec.births().get(i - 1).id()
+                        + " — the ordinal counts the minds already grown; it cannot fall";
             }
         }
         return null;
