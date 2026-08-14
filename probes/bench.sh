@@ -98,6 +98,12 @@ table() {
   # it admits over seeds 1..20 at 600 windows is the thing a tuning moves.
   judge FateAtlas    'VERDICT BAND_OPEN admitted=5'
   judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
+  # The sentence beside the name. HullRoster pins what a hull is CALLED and
+  # nothing pinned what the line announcing it CLAIMS, which is how one defect
+  # reached main three times (#806, #948, #1056). Same shape as its neighbour:
+  # a pure function walked over the ordinals, no universe, both values of the
+  # loss flag at every ordinal that can carry one.
+  judge FleetLines   'VERDICT FLEET_LINES_TRUE'  3000
   judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'
   # Seed 42 explicitly rather than $TICKS: this probe's only argument is a
   # seed, and its cost is one boot, not an arc. Judged rather than run — the
