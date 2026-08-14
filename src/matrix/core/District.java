@@ -50,8 +50,6 @@ public record District(int index, String zoneName, String name,
     private static final int SALT_DENSITY = 11;
     private static final int SALT_WEALTH = 12;
     private static final int SALT_GLITCH = 13;
-    /** De-collision step: a taken name re-mixes with a shifted salt — deterministic, bounded, zero draws. */
-    private static final int SALT_RETRY = 64;
 
     /** A row outside its own declared range is a broken catalog, and it says so at boot or never. */
     public District {
@@ -72,8 +70,25 @@ public record District(int index, String zoneName, String name,
      * list it binds to. The same six zones give the same six districts on
      * every machine and in every universe, seed included, because no seed
      * is ever consulted.
+     *
+     * <p>It refuses a zone list it cannot name, and it refuses it before it
+     * names anything (#1015). Two quarters may not wear one name, so the
+     * grid — every first name against every family name — is a hard ceiling
+     * on how many quarters this city can have, and a caller one zone past it
+     * is not asking for a slow catalog but for an impossible one. Before this
+     * refusal existed the de-collision loop simply never returned, and
+     * {@code PlaceGraph} builds the catalog in its constructor, so the 401st
+     * zone was a boot hang with no message at all. {@code Config.scaleRefusal}
+     * is the shape borrowed: a sentence naming both numbers, in finite time.
+     *
+     * @throws IllegalArgumentException when there are more zones than names
      */
     public static List<District> catalogOf(List<PlaceGraph.Zone> zones) {
+        int grid = NamePool.firstNames().size() * NamePool.familyNames().size();
+        if (zones.size() > grid) {
+            throw new IllegalArgumentException("the name grid holds " + grid
+                    + " names; " + zones.size() + " zones cannot all be named");
+        }
         List<District> catalog = new ArrayList<>(zones.size());
         List<String> taken = new ArrayList<>(zones.size());
         for (int i = 0; i < zones.size(); i++) {
@@ -102,21 +117,41 @@ public record District(int index, String zoneName, String name,
      * and a citizen are expected and are the census's business — that is
      * the law working, not failing — but two quarters may not wear one
      * name, or every instrument line naming a district would be ambiguous.
-     * A taken name re-mixes with a shifted salt until the city is
-     * unambiguous; the loop terminates because each shift is a fresh read
-     * of a 400-name grid and only six seats are ever filled.
+     *
+     * <p>The mixer chooses a SEAT in the name grid — first names down,
+     * family names across — and a taken seat walks to the next one, the
+     * walk wrapping through the whole grid and stopping when it returns to
+     * where it started. That bound is the point (#1015). The de-collision
+     * this replaces re-mixed with a shifted salt and had no ceiling: it was
+     * a coupon collector whose only exit was a free seat, so it took some
+     * four thousand re-mixes to reach the last name of four hundred and
+     * never returned at all for a caller who wanted four hundred and one.
+     * A walk visits each of the grid's seats exactly once, so it finds a
+     * free one whenever there is a free one, in at most grid steps.
+     *
+     * <p>Step zero is the mixer's own seat, untouched, which is why the six
+     * quarters are the six quarters they have always been: no run in this
+     * repository has ever taken step one.
      */
     private static String nameFor(String zone, List<String> taken) {
         List<String> first = NamePool.firstNames();
         List<String> family = NamePool.familyNames();
-        for (int retry = 0; ; retry++) {
-            int shift = retry * SALT_RETRY;
-            String name = first.get(Math.floorMod(mix(zone, SALT_FIRST + shift), first.size()))
-                    + " " + family.get(Math.floorMod(mix(zone, SALT_LAST + shift), family.size()));
+        int seats = first.size() * family.size();
+        int seat = Math.floorMod(mix(zone, SALT_FIRST), first.size()) * family.size()
+                + Math.floorMod(mix(zone, SALT_LAST), family.size());
+        for (int step = 0; step < seats; step++) {
+            int s = (seat + step) % seats;
+            String name = first.get(s / family.size()) + " " + family.get(s % family.size());
             if (!taken.contains(name)) {
                 return name;
             }
         }
+        // Unreachable through catalogOf, which refuses more zones than seats
+        // before it names anything. Kept because a helper that cannot answer
+        // must not answer quietly, and because the bound above is what makes
+        // the hang impossible rather than merely guarded against.
+        throw new IllegalStateException("every one of the " + seats
+                + " names is taken; " + zone + " cannot be named");
     }
 
     /**

@@ -105,6 +105,11 @@ table() {
   # demanded survival would have accepted the NoSuchFieldException this probe
   # threw the moment #842 moved the pools out from under it (#892).
   judge DistrictCensus 'VERDICT CITY_CENSUSED' 42
+  # The second mode, and the only row in this table that enters the catalog's
+  # de-collision loop at all: six quarters out of a four-hundred-name grid
+  # never collide, so before #1015 that loop was both unbounded and untested,
+  # and the 401st zone was a boot hang with no message. No universe, no ticks.
+  judge DistrictCensus 'VERDICT CATALOG_REFUSES_OVERFLOW' --ceiling
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
