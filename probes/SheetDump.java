@@ -249,12 +249,12 @@ public final class SheetDump {
         Set<String> resident = new LinkedHashSet<>();
         for (Wing population : wings.values()) {
             for (Sheet sheet : population.sheets()) {
-                resident.add(sheet.family() + " " + sheet.name());
+                resident.add(sheet.family() + "\0" + sheet.name());
             }
         }
         int held = 0;
         for (Sheet sheet : cast) {
-            if (resident.contains(sheet.family() + " " + sheet.name())) {
+            if (resident.contains(sheet.family() + "\0" + sheet.name())) {
                 held++;
             }
         }

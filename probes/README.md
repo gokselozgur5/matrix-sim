@@ -82,8 +82,12 @@ grep -al 'static void main' probes/*.java | wc -l   # 36 probes; the other two a
 grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
 ```
 
-`grep -a` and not a bare `grep`: `SheetDump.java` carries a NUL byte inside a string
-literal, so a BSD grep drops it as binary and undercounts both figures by one.
+`grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
+carry a raw NUL byte inside a string literal, which made a BSD grep call the whole
+file binary and undercount both figures by one — and, more expensively, made lock
+8's charset guard skip that file entirely (#1039). The byte is an escape now, so a
+bare `grep` agrees; the flag stays because the next probe to need a control
+character should not silently change what these commands count.
 
 ## The sweep
 
