@@ -68,7 +68,7 @@ javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 java -cp out:probes/out <Probe> [args]
 ```
 
-Compile the whole directory, not one file: seventeen of the thirty-seven probes call
+Compile the whole directory, not one file: seventeen of the thirty-eight probes call
 the shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails
 on them with `cannot find symbol: variable Probes`. Both numbers are hand-counted,
 and both had drifted by the time #995 read them — the sentence said seven of twelve
@@ -77,7 +77,7 @@ the commands that produce them rather than asking to be believed:
 
 ```sh
 ls probes/*.java | wc -l                            # 39 files
-grep -al 'static void main' probes/*.java | wc -l   # 37 probes; the other two are
+grep -al 'static void main' probes/*.java | wc -l   # 38 probes; the other two are
                                                     # the Probes and LineGrammar helpers
 grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
 ```
@@ -131,7 +131,7 @@ probe is a one-row change here, beside the probe — one row per probe, and one
 row per mode where a probe verdicts in more than one. Three classes do today —
 `AllocMeter` (the budget row and `--selfcheck`), `DocLint` (the scan and
 `--selfcheck`) and `SheetBench` (`--discipline` and `--avalanche`) — which is
-the arithmetic between 36 rows and 33 classes, and the `uniq -d` line above is
+the arithmetic between 40 rows and 34 classes, and the `uniq -d` line above is
 what lists them rather than this sentence. `SheetBench`'s `--avalanche` row is
 `run` rather than `judge` on purpose: that mode prints its measurements and its
 verdict on the same line, so judging it by exact line would pin `mean_bitflip`
@@ -252,7 +252,7 @@ judges it (#906).
 | `DocLint` | Do the documents still say what the tree says? | the one probe pointed at the repository instead of at a universe. Six questions: the ADR front matter, the `DECISIONS.md` emoji and the `ROADMAP.md` gate cell agree per D-number; the same three name the same PHASE, the roadmap's section heading being the one D-039 schedules units against (#957: seven Season Three decisions read v6.0 in the index and v6.5/v7.0/v7.5 in the roadmap); no accepted record still claims, unlabelled, to be awaiting a verdict; every record carries a `### Confirmation`; a missing D-number is explained; and README's pinned `main` beat column equals a live `ArcBeats.measure` — one scan, two readers, no second copy of the needles. All three hand-repairs it replaces were invisible to every other lock: #907's five decisions carried two statuses for a day, #903's four beats were 420 ticks stale, #957's seven decisions each named two phases at once. `--selfcheck` breaks a canon of its own seventeen ways and demands that each break move exactly one counter, so `DOCS_TRUE` is a verdict that has been seen to say no (`VERDICT DOCS_TRUE`) |
 | `SheetDump` | What did every soul in this universe derive, and does the same seed derive it twice? | the census, printed: 680 rows at seed 42 boot — 10 cast, 196 humans, 473 programs, the Matrix — with `--cast`, `--wing <family>`, `--system` and `--all` so a reader can ask for one wing instead of the city. Two laws ride the exit code rather than the prose: every mode renders the census TWICE from two universes and byte-compares before a line is printed (an identity hash smuggled into a derivation prints `DRIFT line=3` and exits 1), and `cached=` is a heap walk from the composition root through `matrix.*` fields, arrays, collections and maps, so the sheets-cached-nowhere law of #350 is a number and not a promise — 0 today because the domain imports nothing from `matrix.character`, and 1 the moment a `Sheet` is parked on `World`. Its own first run found the empty wing: `--wing MACHINE` prints `souls=0`, because the machine side runs on singletons that carry no identity string to mix |
 
-Thirty-four rows for thirty-seven probes. `CensusCensor`, `CensusReverdict` and
+Thirty-five rows for thirty-eight probes. `CensusCensor`, `CensusReverdict` and
 `CensusSampleSize` have no row here and none in `bench.sh` either — #816 is the unit
 that gives them both. `UnparkStorm` is the reverse and says so in its own row: a
 catalog entry with no sweep row, on purpose. Nothing reads this table, so until
