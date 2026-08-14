@@ -5,6 +5,16 @@
 #        tools/attribution.sh --pr N          judge every commit on pull request N
 #        tools/attribution.sh --sha SHA       judge one commit
 #        tools/attribution.sh --for OWNER/NAME    name the repository (default: origin)
+#        tools/attribution.sh --fix-cmd      print the repair for this branch, and nothing else
+#
+# A REPAIR THAT CHANGES WHEN THE WORK HAPPENED IS NOT A REPAIR (#1012). This tool
+# printed `--reset-author` for two hundred commits worth of advice, and that flag
+# resets the author DATE along with the identity: run it on a six-commit branch and
+# all six collapse onto the instant of the repair, including the ones that needed
+# nothing done to them. Yesterday work then claims to have happened tonight — the
+# same class of defect this tool exists to catch, a number that looks right and is
+# not, and it degrades the very graph the tool serves. `--author=` sets the identity
+# and leaves GIT_AUTHOR_DATE alone.
 #
 # WHAT THIS EXISTS FOR. `totalCommitContributions` — the number D-060's commit leg is
 # read from, and the number the profile graph draws — credits a commit only when the
@@ -43,6 +53,7 @@ for arg in "$@"; do
     --pr)  MODE=pr;  PR="__next__" ;;
     --sha) MODE=sha; SHA="__next__" ;;
     --for) REPO="__next__" ;;
+    --fix-cmd) MODE=fixcmd ;;
     -*)    echo "FATAL unknown flag: $arg" >&2; exit 2 ;;
     *)
       if   [ "$PR"   = "__next__" ]; then PR="$arg"
@@ -65,6 +76,35 @@ fi
 # rather than split off the path — an organisation-owned fork would make the path lie.
 OWNER="$(gh api "repos/$REPO" --jq '.owner.login' 2>/dev/null || true)"
 [ -n "$OWNER" ] || { echo "FATAL cannot read the owner of $REPO (token? network?)" >&2; exit 3; }
+
+# The address the repair should write, built rather than left as a placeholder
+# (#1012). GitHub's noreply form is <id>+<login>@users.noreply.github.com and is
+# verified on the account by construction, so it is the one address this tool can
+# name without asking anyone which of theirs they have verified.
+OWNER_ID="$(gh api "users/$OWNER" --jq '.id' 2>/dev/null || true)"
+if [ -n "$OWNER_ID" ]; then
+  OWNER_ADDR="${OWNER_ID}+${OWNER}@users.noreply.github.com"
+else
+  OWNER_ADDR="<an address verified on $OWNER>"
+fi
+
+# The display name is cosmetic — GitHub resolves on the address, not on this — so it
+# takes the configured name first, then the last author, then the login. Read rather
+# than hardcoded: this repository's history already carries two spellings.
+OWNER_NAME="$(git config user.name 2>/dev/null || true)"
+[ -n "$OWNER_NAME" ] || OWNER_NAME="$(git log -1 --format=%an 2>/dev/null || true)"
+[ -n "$OWNER_NAME" ] || OWNER_NAME="$OWNER"
+
+# The repair, in one place, so the printed advice and --fix-cmd cannot disagree.
+fix_command() {
+  printf 'git rebase -x '\''git commit --amend --no-edit --author="%s <%s>"'\'' %s\n' \
+    "$OWNER_NAME" "$OWNER_ADDR" "${1:-<base>}"
+}
+
+if [ "$MODE" = fixcmd ]; then
+  fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
+  exit 0
+fi
 
 # One row per commit. `.author.login` is GitHub's own resolution of the author address
 # to an account, which is exactly the resolution the contribution count uses — asking
@@ -124,6 +164,7 @@ if (( WRONG == 0 )); then
 fi
 
 printf 'ATTRIBUTION VERDICT FAIL owner=%s commits=%d misattributed=%d\n' "$OWNER" "$TOTAL" "$WRONG"
-printf '  fix: git config user.email <an address verified on %s>, then rewrite the branch:\n' "$OWNER"
-printf '       git rebase -x "git commit --amend --no-edit --reset-author" <base>\n'
+printf '  fix: git config user.email %s, then rewrite the branch:\n' "$OWNER_ADDR"
+printf '       '; fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
+printf '       (the same line, for a script: tools/attribution.sh --fix-cmd)\n'
 exit 5
