@@ -64,8 +64,12 @@ import java.util.stream.Stream;
  * record on the tracker convention has no third source, so it is counted out
  * of {@code gates_compared} rather than judged — D-008, D-023, D-024, D-032
  * and D-033 carry roadmap rows and are outside this check for that reason
- * alone. Unifying the convention would widen the check; it is not this unit's
- * call, and three of those five are desynced index-to-roadmap already.
+ * alone. #1041 repaired the three of those five that were desynced
+ * index-to-roadmap (D-008, D-023, D-024) by hand, for the same reason #957
+ * repaired Season Three by hand: the check cannot see them. It still cannot.
+ * Unifying the convention — or giving the gate its own front-matter key and
+ * letting {@code informed:} mean what MADR means by it — would widen the
+ * check to all nineteen roadmap rows, and that is the Architect's call.
  *
  * <pre>
  * java -cp out:probes/out DocLint [ticks] [seed]   lint the tree it stands in
