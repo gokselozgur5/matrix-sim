@@ -319,45 +319,8 @@ jobs:
       # neither did the FATAL two lines below it — the one lock built to catch a dialect bug
       # reported one as a red step with an empty log (#983). Through the pipe, tee has already
       # put the failing offsets in the log by the time pipefail fails the step, and an executed
-<<<<<<< ours
       # case is the only thing that tells the two boxes apart. That is now the shop's rule
       # rather than this step's habit: tools/README.md, the capture rule.
-=======
-      # case is the only thing that tells the two boxes apart.
-      # WHY: the commit leg of D-060 counted zero of the 258 unit commits this repository had
-      # shipped, because they carried an address GitHub resolves to the owner's OTHER account
-      # (#910). A global `git config` is invisible to everyone who did not type it, so the rule
-      # gets a reader rather than a note. PR-only: a push to main has no pull request to read,
-      # and by then the commit is already in the history this is meant to keep clean.
-      - name: tools — every commit on this PR is attributed to the owner (#910)
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash tools/attribution.sh --pr ${{ github.event.pull_request.number }}
-
-      # WHY: this lane's own green has a shelf life (#1017). A head that does not move keeps
-      # the run it already has, and that run stays green after the litany it passed has been
-      # rewritten underneath it — PR #889 displayed `locks pass` from a run that predated
-      # twenty-two edits to this file and had met six of its locks never. The live reading
-      # cannot be taken from inside the run that IS the green: a run judging itself started
-      # a moment ago and would always answer CURRENT. So the lane runs the half that needs
-      # no token and no network — the ordering rule, its exact second, the refusal to compare
-      # a stamp whose shape is unknown, and the picker faced with a head carrying other
-      # workflows' runs — and the live question belongs to the merge motion, where the answer
-      # is `tools/checkage.sh --pr N` and not a glance at the page (CLAUDE.md, clause 8).
-      # Piped to tee rather than captured, for the reason the two steps below are: under
-      # pipefail a red suite fails the lane AND its rows reach the log, and a per-case report
-      # nobody can read is not one.
-      - name: tools — a green check names the litany it ran (#1017)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash tools/checkage.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/checkage.log"
-          grep -qxE 'CHECKAGE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0' \
-            "${RUNNER_TEMP:-/tmp}/checkage.log" \
-            || { echo "FATAL the check-age arithmetic reached no passing verdict" >&2; exit 1; }
-
->>>>>>> theirs
       - name: tools — balance.sh day arithmetic, GNU dialect (#901)
         shell: bash
         run: |
