@@ -346,6 +346,22 @@ jobs:
           grep -q '^RULERCHECK VERDICT PASS ' "${RUNNER_TEMP:-/tmp}/rulercheck.log" \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
 
+      # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
+      # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
+      # solve one leg with the other three standing still, so acting on two of them leaves a leg
+      # thinner than it started, and one of them can push a leg the line printed 0 for under the
+      # floor. --judgecheck does what the line says and reads the day that comes back: every row
+      # asserts that the PLAN set leaves no leg thin, and the rows where the alternatives do NOT
+      # survive being taken together are executed rather than described. No token, no network.
+      - name: tools — balance.sh deficit advice (#952)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(bash tools/balance.sh --judgecheck)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q '^JUDGECHECK VERDICT PASS cases=' \
+            || { echo "FATAL the deficit advice did not reach a passing verdict" >&2; exit 1; }
+
       # WHY: lock 11 — the teleprinter's golden day (D-047, #965). Locks 2, 3 and 7 pin the
       # daemon's BYTES; nothing pinned the SENTENCES a tool writes over them, and --check-golden
       # was written to ask that question and then never asked by anything — three grep hits, all

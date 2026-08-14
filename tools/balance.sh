@@ -5,6 +5,7 @@
 #                         [--week|--month|--days N] [--events] [YYYY-MM-DD]
 #        tools/balance.sh --datecheck          (the day arithmetic, no token needed)
 #        tools/balance.sh --rulercheck         (the ruler, no token needed)
+#        tools/balance.sh --judgecheck         (the deficit advice, no token needed)
 #
 # The law: the four contribution kinds GitHub counts — commits, issues, pull
 # requests, reviews — each hold a quarter of the day. The reasoning, not the
@@ -94,6 +95,17 @@
 # hit. Every run therefore reads the repository's own merge settings and prints
 # them on the SCOPE line: a verdict can be read wrong for a hundred reasons, but
 # never again without the button that shaped it being on the same screen.
+#
+# WHAT THE ADVICE IS AN ANSWER TO. The DEFICIT line's four numbers each solve
+# ONE leg with the other three standing still, so under the artifact ruler they
+# are four answers to four different days and adding two of them is not a plan
+# (#952): every artifact added enlarges the day the other legs are measured
+# against, and work done on a lagging leg can push a leg that was ABOVE the floor
+# under it. The line now says that about itself, and a second line — PLAN —
+# carries the set that does compose: all four solved against the day they create
+# together, which is a fixed point where no leg is thin and therefore reaches
+# verdict=OK by construction. `--judgecheck` executes both readings over pinned
+# day vectors, so the difference between them is a run and not a claim.
 
 set -euo pipefail
 
@@ -104,12 +116,14 @@ SPAN=1
 SPAN_NAME=day
 DATECHECK=0
 RULERCHECK=0
+JUDGECHECK=0
 EVENTS=0
 for arg in "$@"; do
   case "$arg" in
     --account)   SCOPE=account ;;
     --datecheck) DATECHECK=1 ;;
     --rulercheck) RULERCHECK=1 ;;
+    --judgecheck) JUDGECHECK=1 ;;
     --events)    EVENTS=1 ;;
     --repo)    SCOPE=repo ;;
     --week)    SPAN=7;  SPAN_NAME=week ;;
@@ -251,7 +265,9 @@ FLOOR_DIV=8            # a leg is thin below total/FLOOR_DIV — half of a quart
 #           with (have+n)*8 >= total+n, i.e. ceil((total - 8*have)/7). This is
 #           the reading a single day and the --events ruler get. It solves one
 #           leg with the other three standing still, which is an alternatives
-#           list and not a shopping list (#952, unchanged by this unit).
+#           list and not a shopping list — `together` below is the shopping
+#           list, and the DEFICIT line says which of the two it is printing
+#           (#952).
 #   fixed   the day-shape ruler moves per mille around inside a total that is
 #           fixed at 1000 per working day, so the shortfall is a plain distance:
 #           ceil(total/8) - have. Nothing grows, so nothing has to be solved for.
@@ -281,6 +297,47 @@ judge() {                       # judge <c> <i> <p> <r> <grow|fixed>
   done
   (( gap > 0 )) && v="LAGGING:$lag"
   echo "$v ${lag:--} $gap $nc $ni $np $nr"
+}
+
+# The set that composes, under the grow ruler. `short_by grow` answers "this leg,
+# with the other three standing still", and four such answers are four answers to
+# four different days: acting on one of them enlarges the day the others were
+# measured against, so a second number goes stale the moment the first is acted
+# on, and a leg that was ABOVE the floor can be pushed under it by work done
+# somewhere else (#952).
+#
+# This solves all four at once. Each round takes the floor of the day the plan so
+# far creates and lifts every leg sitting under it; the day grows, the floor
+# grows with it, and the round repeats until nothing moves. Where it stops is a
+# day in which no leg is thin — that IS the fixed point's definition — so the set
+# it prints reaches verdict=OK by construction rather than by hope, and lifting
+# only the legs that are under the floor makes it the smallest such set.
+#
+# It terminates because a plan cannot outrun the day it is added to: every leg
+# ends a round at most at F = ceil((total+S)/FLOOR_DIV), so with four legs and a
+# floor of an eighth S <= 4F <= (total+S)/2 + 4, i.e. S <= total + 8, while every
+# round that changes anything adds at least 1. That bound is a property of the
+# floor, not of this loop: a floor above a quarter has no fixed point at all and
+# the legs would run away until they overflowed. So both exits are guarded, and
+# both echo NOTHING rather than a set this function has not proved — the caller
+# prints a WARN in place of a plan it was not given. Echoes: n_c n_i n_p n_r
+together() {                    # together <c> <i> <p> <r> -> the four taken at once
+  local ac="$1" ai="$2" ap="$3" ar="$4" t f k moved
+  (( ac + ai + ap + ar > 0 )) || { echo "0 0 0 0"; return; }   # no day, nothing to plan
+  for ((k = 0; k < 64; k++)); do
+    t=$((ac + ai + ap + ar))
+    (( t > 0 )) || return                      # only reachable by runaway: say nothing
+    f=$(( (t + FLOOR_DIV - 1) / FLOOR_DIV ))   # have < F is exactly FLOOR_DIV*have < total
+    moved=0
+    if (( ac < f )); then ac=$f; moved=1; fi
+    if (( ai < f )); then ai=$f; moved=1; fi
+    if (( ap < f )); then ap=$f; moved=1; fi
+    if (( ar < f )); then ar=$f; moved=1; fi
+    if (( moved == 0 )); then
+      echo "$((ac - $1)) $((ai - $2)) $((ap - $3)) $((ar - $4))"
+      return
+    fi
+  done
 }
 
 pct() { printf '%d' $(( ($1 * 1000 + $2 / 2) / $2 )); }   # per mille, rounded
@@ -369,6 +426,106 @@ CASES
     exit 0
   fi
   printf 'RULERCHECK VERDICT FAIL floor=%d‰ cases=%d failed=%d\n' $((1000 / FLOOR_DIV)) "$CASES" "$FAILED"
+  exit 5
+fi
+
+# --judgecheck: the ADVICE, judged the way an operator judges it — by doing what
+# the line says and reading the day that comes back. --rulercheck asks whether
+# the verdict is right about the day it was given; nothing asked whether the
+# remedy printed under that verdict survives being taken (#952).
+#
+# Three things are executed per row. `alone=` is what the DEFICIT line prints:
+# each leg solved with the other three standing still. `all-at-once=` is the
+# verdict the day reads after ALL of those numbers are acted on — the reading
+# that makes them alternatives, because acting on one enlarges the day the rest
+# were measured against. `together=` is the PLAN line's set, and the row fails
+# unless the day it creates reads OK.
+#
+# The rows are chosen so the check cannot be satisfied by a slogan. Two of them
+# show the alternatives holding — one where nothing knocks anything under, one
+# where the rounding slack absorbs the other leg's number — so "alternatives
+# never compose" is not what is being asserted here; the fault is that the line
+# never said WHICH kind of day it was printing. The row that carries the unit is
+# `30,8,25,1`: one leg is thin, its number is 8, and taking that 8 leaves the
+# ISSUE leg — the leg the line printed as 0 — thin by 2. That is the zero the
+# issue calls the misleading part, executed.
+#
+# Under the fixed ruler nothing grows: the day-shape total is 1000‰ per working
+# day whatever is done, so a leg is lifted by ‰ taken from a leg above the floor.
+# There the four numbers ARE a sum, and what has to be checked is that the day
+# has the room — the deficits below the floor against the surplus above it.
+#
+# No token, no network, no repository, so CI runs it and so does a pinned tree.
+if (( JUDGECHECK )); then
+  FAILED=0 CASES=0
+  while IFS='|' read -r name mode vec want_alone want_after want_plan; do
+    case "${name// /}" in ''|'#'*) continue ;; esac
+    CASES=$((CASES + 1))
+    IFS=',' read -r c i p r <<<"${vec// /}"
+    read -r _v _l _g a_c a_i a_p a_r <<<"$(judge "$c" "$i" "$p" "$r" "$mode")"
+    got_alone="$a_c,$a_i,$a_p,$a_r"
+    t=$((c + i + p + r))
+    BAD=""
+    if [ "$mode" = grow ]; then
+      read -r t_c t_i t_p t_r <<<"$(together "$c" "$i" "$p" "$r")"
+      read -r after _rest <<<"$(judge $((c + a_c)) $((i + a_i)) $((p + a_p)) $((r + a_r)) grow)"
+      read -r plan_v _rest <<<"$(judge $((c + t_c)) $((i + t_i)) $((p + t_p)) $((r + t_r)) grow)"
+    else
+      # The plan is the four deficits themselves; the question is whether the
+      # fixed total holds them. It does when the ‰ above the floor cover the ‰
+      # below it, which is what a floor of an eighth is for: four floors are half
+      # a day, so half a day is always available to reach them.
+      t_c=$a_c; t_i=$a_i; t_p=$a_p; t_r=$a_r
+      f=$(( (t + FLOOR_DIV - 1) / FLOOR_DIV ))
+      need=$((a_c + a_i + a_p + a_r)); room=0
+      for h in "$c" "$i" "$p" "$r"; do
+        if (( h > f )); then room=$((room + h - f)); fi
+      done
+      if (( need <= room )); then after=OK; else after="NOROOM(need=$need room=$room)"; fi
+      plan_v="$after"
+    fi
+    got_plan="$t_c,$t_i,$t_p,$t_r"
+    # The assertion the unit exists for: the set the PLAN line prints must leave
+    # a day with no thin leg. Everything else on the row is a pin on the numbers.
+    [ "$plan_v" = OK ] || [ "$plan_v" = EMPTY ] || BAD="${BAD} the together set leaves ${plan_v};"
+    [ "$got_alone" = "${want_alone// /}" ] || BAD="${BAD} alone WANT ${want_alone};"
+    [ "$after" = "${want_after// /}" ]     || BAD="${BAD} all-at-once WANT ${want_after};"
+    [ "$got_plan" = "${want_plan// /}" ]   || BAD="${BAD} together WANT ${want_plan};"
+    if [ -z "$BAD" ]; then
+      printf 'JUDGECHECK %-42s %-5s alone=%-12s all-at-once=%-14s together=%-12s => %-6s OK\n' \
+        "$name" "$mode" "$got_alone" "$after" "$got_plan" "$plan_v"
+    else
+      printf 'JUDGECHECK %-42s %-5s alone=%-12s all-at-once=%-14s together=%-12s => %-6s FAIL%s\n' \
+        "$name" "$mode" "$got_alone" "$after" "$got_plan" "$plan_v" "$BAD"
+      FAILED=$((FAILED + 1))
+    fi
+  done <<'CASES'
+# the reading that opened #952. Under the eighth floor it is thin nowhere, so the
+# line it quoted no longer prints at all on that day — the fault it named is not
+# a property of that day's numbers, and the rows under it carry it to days that
+# still print a DEFICIT.
+the reading of #952|grow|13,19,18,16|0,0,0,0|OK|0,0,0,0
+# two thin legs: each asks for 2 alone, and both taken leaves both thin again
+two thin legs, 2 each alone|grow|10,10,1,1|0,0,2,2|LAGGING:pr|0,0,3,3
+# the sweep day of 2026-08-11, the real vector --rulercheck also pins
+the sweep day of 2026-08-11|grow|47,603,49,0|47,0,44,100|LAGGING:pr|74,0,72,121
+# alternatives that DO compose: the rounding slack covers the other leg's 1
+two thin legs whose numbers compose|grow|8,8,24,25|1,1,0,0|OK|1,1,0,0
+# the unit: ONE thin leg, and the leg the line printed 0 for goes thin on its fix
+one thin leg, and a 0 that is not|grow|30,8,25,1|0,0,0,8|LAGGING:issue|0,2,0,9
+# one thin leg with nothing marginal beside it: alone and together agree
+one thin leg, nothing knocked under|grow|10,10,10,1|0,0,0,4|OK|0,0,0,4
+# an already balanced day asks for nothing under either reading
+a day that is thin nowhere|grow|5,5,5,4|0,0,0,0|OK|0,0,0,0
+# day-shape windows: seven working days, so the total is fixed at 7000‰
+a 7-day window, one leg thin by 146|fixed|729,2500,2200,1571|146,0,0,0|OK|146,0,0,0
+a 7-day window, two legs thin|fixed|500,4000,1900,600|375,0,0,275|OK|375,0,0,275
+CASES
+  if (( FAILED == 0 )); then
+    printf 'JUDGECHECK VERDICT PASS cases=%d floor=%d‰\n' "$CASES" $((1000 / FLOOR_DIV))
+    exit 0
+  fi
+  printf 'JUDGECHECK VERDICT FAIL cases=%d floor=%d‰ failed=%d\n' "$CASES" $((1000 / FLOOR_DIV)) "$FAILED"
   exit 5
 fi
 
@@ -796,12 +953,26 @@ fi
 # nothing grows — the total is fixed at 1000 per working day — so the shortfall
 # is a distance, and the readable form of that distance is days: 1000‰-days is
 # one whole day given to nothing but that leg.
+#
+# It also carries what KIND of list it is, which is the whole of #952. Under the
+# fixed ruler the four are a sum: the total does not move, so a leg is lifted by
+# ‰ taken from a leg above the floor and no number here enlarges another's
+# denominator. Under the grow ruler they are alternatives — four answers to four
+# different days — so the set that can actually be acted on goes on its own line
+# rather than being left for the reader to derive.
 if (( GAP > 0 )); then
   if [ "$MODE" = fixed ]; then
-    printf 'DEFICIT unit=permille-days commits=%d issues=%d prs=%d reviews=%d  (the %s leg is furthest below the floor: %d‰-days, %d.%03d of a day given entirely to it)\n' \
+    printf 'DEFICIT unit=permille-days commits=%d issues=%d prs=%d reviews=%d  (a sum, not alternatives: the total is fixed at 1000‰ per working day, so these are distances inside it — the %s leg is furthest below the floor: %d‰-days, %d.%03d of a day given entirely to it)\n' \
       "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP" $((GAP / 1000)) $((GAP % 1000))
   else
-    printf 'DEFICIT unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (the %s leg is furthest below the floor: %d to clear it)\n' \
+    printf 'DEFICIT unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (alternatives, not a sum: each number clears its own leg with the other three standing still, and every artifact added enlarges the day the others are measured against — the %s leg is furthest below the floor at %d)\n' \
       "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP"
+    read -r T_C T_I T_P T_R <<<"$(together "$J_C" "$J_I" "$J_P" "$J_R")"
+    if [[ "$T_C" =~ ^[0-9]+$ && "$T_I" =~ ^[0-9]+$ && "$T_P" =~ ^[0-9]+$ && "$T_R" =~ ^[0-9]+$ ]]; then
+      printf 'PLAN unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (this one IS a sum: all four solved against the day they create together, which is the smallest set that reaches verdict=OK — a leg printed 0 above can appear here, because work on a lagging leg can push a leg that was above the floor under it)\n' \
+        "$T_C" "$T_I" "$T_P" "$T_R"
+    else
+      printf 'PLAN WARN the set that composes did not settle in 64 rounds, so it is not printed: the DEFICIT numbers above are alternatives and this run has no plan to offer\n'
+    fi
   fi
 fi
