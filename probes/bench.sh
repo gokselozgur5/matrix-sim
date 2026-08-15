@@ -569,8 +569,26 @@ roster_check() {
     missing=$((missing + 1))
     echo "UNTABLED $cls has no row and does not say it is one-off — it runs on nobody's push"
   done
-  echo "ROSTER probes_on_disk=$(ls probes/*.java | wc -l | tr -d ' ') untabled=$missing"
-  [ "$missing" -eq 0 ]
+  # The second absence, and it is a different one (#1177). A probe with no BENCH row runs
+  # on nobody's push, which a green sweep tolerates. A probe with no CATALOG row cannot be
+  # found at all: probes/README.md is the only document that says what an instrument is
+  # FOR, and this file's own header calls it the catalog. Five probes had a main, a bench
+  # row and no catalog row — four of them landed the same day, and OrderTable had been
+  # there since #1013.
+  #
+  # Counted separately rather than folded into `untabled`: one is a lock gap and one is a
+  # documentation gap, and conflating them hides the cheaper one behind the louder.
+  local uncatalogued=0
+  for f in probes/*.java; do
+    cls="$(basename "$f" .java)"
+    grep -q 'static void main(String\[\] args)' "$f" || continue
+    grep -q "\`$cls\`" probes/README.md && continue
+    uncatalogued=$((uncatalogued + 1))
+    echo "UNCATALOGUED $cls has no row in probes/README.md — nobody can find out what it is for"
+  done
+  echo "ROSTER probes_on_disk=$(ls probes/*.java | wc -l | tr -d ' ')" \
+       "untabled=$missing uncatalogued=$uncatalogued"
+  [ "$missing" -eq 0 ] && [ "$uncatalogued" -eq 0 ]
 }
 
 
