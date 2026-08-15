@@ -135,7 +135,21 @@ table() {
   # prints no verdict without arguments, the other REFUSES for want of a fixture.
   judge CensusSampleSize 'VERDICT SAMPLE_LAWS_PRICED'
   judge OrderTable   'VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1'
-  judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
+  # `vary`, and it took --twice to find out (#1184). #1175 measured this probe's cost and
+  # its verdict's stability across two runs and made it a judge row — but a judge row's
+  # verdict is only half of what the sweep asks of it. The OTHER half is --twice, which
+  # byte-compares the whole output, and this probe prints a QUIET line of nanosecond
+  # percentiles beside its verdict:
+  #
+  #   a="QUIET ticks=4998 median_ns=2769875 … max_ns=15504958"
+  #   b="QUIET ticks=4998 median_ns=2549125 … max_ns=12081916"
+  #
+  # Same world, same seed, different JIT. That is AllocMeter's situation exactly (#906,
+  # #817) and it earns the same modifier for the same reason: the verdict is fixed, the
+  # instrument noise printed beside it is not, and the exemption is DECLARED here rather
+  # than discovered by whoever next runs the determinism pass.
+  vary  'prints its own timing noise: the QUIET line carries nanosecond percentiles of the tick it measures, which move with the JIT while the bound they are judged against does not' \
+        judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
   # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
