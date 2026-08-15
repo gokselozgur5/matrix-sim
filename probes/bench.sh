@@ -308,6 +308,9 @@ PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0 UNEXERCISED=0
 STABLE=0 DRIFTED=0 EXEMPT=0 UNCHECKED=0
 VARIES=''
 VARY_LINES=''
+# Set by `known` around its call to `settle`, which otherwise reads a declared
+# break's nonzero second run as an instrument that drifted (#1231).
+KNOWN_ROW=no
 
 # One row's run, printed. The three verbs differ only in what they demand of
 # the output afterwards, so the invocation itself is written once: the class,
@@ -374,7 +377,12 @@ known() {                       # known <Class> '<verdict>' '<#issue>' [args...]
     FAIL=$((FAIL + 1))
     echo "FAIL $cls broke differently: wanted $want"
   fi
+  # Set around the call rather than passed as an argument, because `settle` takes
+  # the probe's own args as "$@" and cannot grow a parameter without every caller
+  # changing. Same shape as `VARIES`, which the `vary` modifier sets the same way.
+  KNOWN_ROW=yes
   settle "$cls" "$ROW_OUT" "$@"
+  KNOWN_ROW=no
 }
 
 judge() {
@@ -546,7 +554,23 @@ settle() {
   again="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
   rc=$?
   set -e
-  if [ "$rc" -ne 0 ]; then
+  # A `known` row's probe is SUPPOSED to exit nonzero, twice. The determinism
+  # pass did not know that: it read the second run's code, saw 1, and reported
+  # `FAIL KnownFixture second run exited 1` — a declared break counted as an
+  # instrument that drifted (#1231's own CI run found this, which is the whole
+  # argument for exercising the verb).
+  #
+  # The expectation inverts with the row rather than being waived: a known row
+  # whose probe exits 0 on the SECOND run has healed between two runs of the
+  # same tree, and that is a drift worth a red line — the same reasoning the
+  # verb itself uses when it refuses a probe that starts passing.
+  if [ "${KNOWN_ROW:-no}" = yes ]; then
+    if [ "$rc" -eq 0 ]; then
+      FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
+      echo "FAIL $cls second run exited 0 — a declared break healed between two runs"
+      return 0
+    fi
+  elif [ "$rc" -ne 0 ]; then
     # Ran, then did not: a failure of the bench AND a difference between the
     # two runs. Both counters move, because both statements are true.
     FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
