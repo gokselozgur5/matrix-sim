@@ -128,6 +128,25 @@ line the bench greps and leaves with 0 or 1 to match. A **reporting** probe must
 not call it — a `run` row fails on a nonzero exit, so adopting an exit code
 there changes what the row means.
 
+**Three codes, and the third one is named rather than positional.**
+`Probes.leave(verdict, Probes.Outcome.NEVER_AROSE)` is how a probe says the run
+never reached the situation it judges — no births, no liberations, no firing.
+Silence is not testimony, and a probe that printed a passing verdict there would
+be certifying a question nobody asked.
+
+    HELD         0
+    BROKE        1
+    NEVER_AROSE  2
+
+It is an enum because the shape it replaced was two adjacent booleans:
+`leave(v, false, true)` meant *broke* and `leave(v, true, false)` meant *never
+arose*, one transposition apart, same types, compiling identically. The entire
+purpose of the third code is that a sweep can tell those two apart — so an
+argument order that could swap them silently swapped the green sweep with the
+red one (#1204). A **refused invocation** has no code of its own: it lands on 1,
+and the probes that do it say so at the call site rather than pretending
+otherwise.
+
 **A known break is declared, not deleted and not tolerated.** `known <Class>
 '<verdict>' '<#issue>' [args]` is the third verb, and it exists because #1093's
 honest exit codes made "expected broken" unsayable: `judge` fails a row whose
