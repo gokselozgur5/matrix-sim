@@ -64,9 +64,43 @@ final class Probes {
      * @param held       true when the contract this probe judges was kept
      * @param exercised  false when the scenario never arose in this run
      */
-    static void leave(String verdict, boolean held, boolean exercised) {
+    /**
+     * The three things a probe can report, each carrying the exit code that
+     * says it. One argument rather than two booleans, because the two-boolean
+     * form was one transposition away from inverting the sweep (#1204):
+     * {@code leave(v, false, true)} is "the contract broke" and
+     * {@code leave(v, true, false)} is "the scenario never arose" — adjacent,
+     * same types, compile identically, and the whole point of the three-valued
+     * exit is that a sweep tells those two apart by exit code.
+     *
+     * <p>The codes are the probe grammar and not this enum's invention:
+     * 0 held · 1 broken · 2 the scenario never arose. A refused invocation has
+     * no code of its own here and lands on 1 — see {@code BirthInputs}, which
+     * says so at its call site rather than pretending otherwise.
+     */
+    enum Outcome {
+        /** The contract this probe judges was kept. */
+        HELD(0),
+        /** It was exercised and it broke. */
+        BROKE(1),
+        /**
+         * The run never reached the situation the probe judges — no births, no
+         * liberations, no firing. Silence is not testimony: a probe that prints
+         * a passing verdict here would be certifying a question nobody asked.
+         */
+        NEVER_AROSE(2);
+
+        private final int code;
+
+        Outcome(int code) {
+            this.code = code;
+        }
+    }
+
+    /** Print the verdict and leave with the code that outcome means. */
+    static void leave(String verdict, Outcome outcome) {
         System.out.println(verdict);
-        System.exit(!exercised ? 2 : held ? 0 : 1);
+        System.exit(outcome.code);
     }
 
     static RealWorld realWorld(Simulation sim) throws ReflectiveOperationException {

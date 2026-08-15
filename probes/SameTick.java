@@ -92,11 +92,12 @@ public final class SameTick {
         if (census == 0) {
             // Not a pass and not a failure: no mind was freed in this run, so the
             // absorb rule was never asked. Exit 2 (#1138).
-            Probes.leave("VERDICT NO_LIBERATIONS", false, false);
+            Probes.leave("VERDICT NO_LIBERATIONS", Probes.Outcome.NEVER_AROSE);
         }
         Probes.leave(lateTicks == 0
                 ? "VERDICT SAME_TICK_ABSORB"
-                : "VERDICT LATE_ABSORB", lateTicks == 0, true);
+                : "VERDICT LATE_ABSORB",
+                lateTicks == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /** The door named by this tick's own lines, or nothing — context, never the verdict. */

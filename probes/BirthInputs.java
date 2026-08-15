@@ -81,7 +81,7 @@ public final class BirthInputs {
                 // spends 3 on (#1011), and a run with no births is a scenario that never
                 // arose, which is 2. Collapsing them would tell a sweep that a typo is a
                 // world without births.
-                Probes.leave("VERDICT BIRTH_INPUTS_NONE no_file", false, true);
+                Probes.leave("VERDICT BIRTH_INPUTS_NONE no_file", Probes.Outcome.BROKE);
             }
             Path file = Path.of(args[1]);
             source = file.getFileName().toString();
@@ -182,12 +182,12 @@ public final class BirthInputs {
             // Silence is not testimony: a file with no births proves nothing
             // about whether a birth is fully recorded, and must not print the
             // line a passing run prints.
-            Probes.leave("VERDICT BIRTH_INPUTS_NONE", false, false);
+            Probes.leave("VERDICT BIRTH_INPUTS_NONE", Probes.Outcome.NEVER_AROSE);
         }
         Probes.leave(shortRecords == 0
                 ? "VERDICT BIRTH_INPUTS_COMPLETE"
                 : "VERDICT BIRTH_INPUTS_SHORT missing=" + firstMissing,
-                shortRecords == 0, true);
+                shortRecords == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /**
