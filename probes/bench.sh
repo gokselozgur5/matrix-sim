@@ -88,13 +88,19 @@ table() {
   # that goes red for a known defect gets switched off — but it is regenerated
   # on every push, so a NEW break, a FIXED seed, and a range that silently
   # shrinks are all three the same red row. When #1090 lands, this line becomes
-  # `clean=20 broken=0 at -` in the PR that fixes it.
+  # `clean=60 broken=0 at -` in the PR that fixes it.
+  #
+  # The range is 0..59 rather than 0..19 since #1150: the serial sweep cost 43 s over
+  # sixty seeds and the row was narrowed to twenty to afford it, which left three known
+  # breaks (34, 49, 52) outside the only thing watching. #1147 removed the constraint that
+  # forced serial, and sixty seeds in parallel now cost 16 s — three times the coverage
+  # for less than the old twenty took.
   # The budget is pinned at the full arc rather than inherited from $TICKS: the
   # row names the seeds that break AT 6,000 ticks, and a shorter run would name
   # a different set — a row whose claim changes with the caller's argument is
   # not a lock. `bench.sh 2000` still runs it, and still runs it over the arc.
-  judge LedgerMirror 'LEDGER_SWEEP seeds=0..19 ticks=6000 clean=16 broken=4 at 4,7,8,13' \
-                                               --sweep 0..19 6000
+  judge LedgerMirror 'LEDGER_SWEEP seeds=0..59 ticks=6000 clean=53 broken=7 at 4,7,8,13,34,49,52' \
+                                               --sweep 0..59 6000
   judge OneTrace     'VERDICT CONTRACT_HELD'   "$TICKS"
   judge CapSentinel  'CAP_BREACHES=0'          "$TICKS"
   judge ArcBeats     'VERDICT BEATS_IN_ORDER'  "$TICKS"
