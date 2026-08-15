@@ -176,12 +176,28 @@ public final class DocLint {
 
     // The same pin without its backticks. Two of the four `ea2c141` citations #1131 counted are
     // inside a mermaid Note, where a backtick would render as one — so the form that misses them
-    // would have called the tree clean after repairing half of it. Bare hex needs the guard the
+    // would have called the tree clean after repairing half of it. Bare hex needs a guard the
     // backticked form gets for free: `at 1299000` is a tick count and `at 6000000` is a budget,
-    // both perfectly good short hex, so a bare citation is only read as one when it carries a
-    // letter. That rejects no real sha here (all 24 carry one) and no digits-only prose.
+    // both perfectly good short hex.
     private static final Pattern CITE_AT_BARE = Pattern.compile("\\bat\\s+([0-9a-f]{7,40})\\b");
+
+    // Two guards, either of which is enough, because one of them alone had a computable hole.
+    //
+    // #1131 shipped only the first: a bare citation carries a LETTER. A seven-character sha is
+    // all digits with probability (10/16)^7, about one pin in twenty-seven, and such a pin cited
+    // in a Note would die to a rebase with this lint saying nothing (#1133) — the exact silence
+    // it was written to end, restored for a measurable slice. The repair #1131 chose was to
+    // lengthen the pin until its eighth character happened to be a letter, which is editing the
+    // document to satisfy the lint.
+    //
+    // The second guard is CONTEXT, and it is the honest one: a bare pin is only ever written in
+    // a sentence that says what it is — `t=1299 at <sha>, seed 42`, `measured at <sha>`. A line
+    // carrying one of those words is making a provenance claim whatever its hex looks like. The
+    // word list is printed with the count, so a phrasing nobody thought of is visible as a
+    // number rather than invisible as a pass.
     private static final Pattern HAS_LETTER = Pattern.compile("[a-f]");
+    private static final Pattern MEASUREMENT_CONTEXT =
+            Pattern.compile("(?i)\\b(seed|measured|pinned|re-?run|reproduces?|as of|tick)\\b");
 
     // `abc1234` is this repository's stand-in sha: D-061 quotes it inside a sentence ABOUT
     // dead pins, and DocLint's own selfcheck canon is built on it. It is hex, it is in the
@@ -467,6 +483,7 @@ public final class DocLint {
         int scanned = 0;
         int placeholder = 0;
         int dead = 0;
+        int bareCites = 0;
         for (Object[] doc : docs) {
             String name = (String) doc[0];
             @SuppressWarnings("unchecked")
@@ -477,13 +494,18 @@ public final class DocLint {
                     Matcher m = form.matcher(lines.get(n));
                     while (m.find()) {
                         String sha = m.group(1);
-                        if (form == CITE_AT_BARE && !HAS_LETTER.matcher(sha).find()) {
-                            continue; // digits-only: a tick count, a budget, a year — not a tree
+                        boolean bare = form == CITE_AT_BARE;
+                        if (bare && !HAS_LETTER.matcher(sha).find()
+                                && !MEASUREMENT_CONTEXT.matcher(lines.get(n)).find()) {
+                            continue; // digits-only AND no claim on the line: a count, not a tree
                         }
                         if (!seen.add(sha)) {
                             continue; // the backticked form already counted this one on this line
                         }
                         scanned++;
+                        if (bare) {
+                            bareCites++;
+                        }
                         if (PLACEHOLDERS.contains(sha)) {
                             placeholder++;
                             if (print) {
@@ -503,6 +525,7 @@ public final class DocLint {
         }
         if (print) {
             System.out.println("PIN_SCAN scanned=" + scanned
+                    + " bare=" + bareCites
                     + " placeholders=" + placeholder + " dead=" + dead);
         }
         return new int[] {scanned, placeholder, dead};
@@ -991,6 +1014,15 @@ public final class DocLint {
         broken += expect("bare-digits-are-not-a-pin", "none",
                 lint(sample(c -> c.architecture.add("the corridor was held at 1299000 ticks.")),
                         arc, RESOLVING, false));
+        // #1133: the letter guard alone has a computable hole — a seven-character sha is
+        // all digits about one time in twenty-seven, and such a pin in a Note used to be
+        // invisible. Context closes it: the line says what the number IS.
+        broken += expect("bare-digits-in-a-measurement", "dead_pins",
+                lint(sample(c -> c.architecture.add("    Note over RW,S: t=1299 at 0123456, seed 42.")),
+                        arc, RESOLVING, false));
+        broken += expect("bare-digits-with-no-claim", "none",
+                lint(sample(c -> c.architecture.add("the corridor held at 1234567 for a while.")),
+                        arc, RESOLVING, false));
         broken += expect("digest-fragment-is-not-a-pin", "none",
                 lint(sample(c -> c.architecture.add("DIGEST tick=6000 sha=0000000adeadc0de.")),
                         arc, RESOLVING, false));
@@ -1011,7 +1043,7 @@ public final class DocLint {
                         "Not applicable until the verdict lands."))),
                         arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=29 broken=" + broken);
+        System.out.println("SELFCHECK cases=31 broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
