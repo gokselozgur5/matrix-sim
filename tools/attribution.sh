@@ -66,58 +66,6 @@ done
 [ "$PR"   = "__next__" ] && { echo "FATAL --pr wants a number after it" >&2; exit 2; }
 [ "$SHA"  = "__next__" ] && { echo "FATAL --sha wants a commit after it" >&2; exit 2; }
 [ "$REPO" = "__next__" ] && { echo "FATAL --for wants OWNER/NAME after it" >&2; exit 2; }
-
-if [ -z "$REPO" ]; then
-  REPO="$(git remote get-url origin 2>/dev/null | sed -E 's#.*github\.com[/:]##; s#\.git$##' || true)"
-fi
-[[ "$REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || {
-  echo "FATAL cannot tell which repository this is; pass --for OWNER/NAME" >&2; exit 2; }
-
-# The account the commits must resolve to is the repository's owner, read from the API
-# rather than split off the path — an organisation-owned fork would make the path lie.
-OWNER="$(gh api "repos/$REPO" --jq '.owner.login' 2>/dev/null || true)"
-[ -n "$OWNER" ] || { echo "FATAL cannot read the owner of $REPO (token? network?)" >&2; exit 3; }
-
-# The address the repair should write, built rather than left as a placeholder
-# (#1012). GitHub's noreply form is <id>+<login>@users.noreply.github.com and is
-# verified on the account by construction, so it is the one address this tool can
-# name without asking anyone which of theirs they have verified.
-OWNER_ID="$(gh api "users/$OWNER" --jq '.id' 2>/dev/null || true)"
-if [ -n "$OWNER_ID" ]; then
-  OWNER_ADDR="${OWNER_ID}+${OWNER}@users.noreply.github.com"
-else
-  OWNER_ADDR="<an address verified on $OWNER>"
-fi
-
-# The display name is cosmetic — GitHub resolves on the address, not on this — so it
-# takes the configured name first, then the last author, then the login. Read rather
-# than hardcoded: this repository's history already carries two spellings.
-OWNER_NAME="$(git config user.name 2>/dev/null || true)"
-[ -n "$OWNER_NAME" ] || OWNER_NAME="$(git log -1 --format=%an 2>/dev/null || true)"
-[ -n "$OWNER_NAME" ] || OWNER_NAME="$OWNER"
-
-# The repair, in one place, so the printed advice and --fix-cmd cannot disagree.
-fix_command() {
-  printf 'git rebase -x '\''git commit --amend --no-edit --author="%s <%s>"'\'' %s\n' \
-    "$OWNER_NAME" "$OWNER_ADDR" "${1:-<base>}"
-}
-
-if [ "$MODE" = fixcmd ]; then
-  fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
-  exit 0
-fi
-
-# --selftest EXECUTES the advice, which is the only way this tool's central claim can be
-# checked (#1164, from #1160's rule and #1012's defect).
-#
-# The claim is not "the repair works". It is "the repair does not destroy the evidence" —
-# `--reset-author` collapses every author date it touches onto the instant of the repair,
-# and this tool exists because history is evidence. That is a statement about DATES, and no
-# amount of reading the command tells you what it does to them. It has to be run.
-#
-# It runs in a scratch clone, on commits nothing will ever push, with three commits so the
-# case that matters is reachable: the repair walks a range, and the commit that needed
-# NOTHING done to it is the one `--reset-author` used to damage.
 if [ "$MODE" = selftest ]; then
   work="$(mktemp -d "${TMPDIR:-/tmp}/attribution-selftest.XXXXXX")"
   trap 'rm -rf "$work"' EXIT
@@ -184,6 +132,59 @@ if [ "$MODE" = selftest ]; then
   cd "$root" || exit 1
   printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
+
+
+if [ -z "$REPO" ]; then
+  REPO="$(git remote get-url origin 2>/dev/null | sed -E 's#.*github\.com[/:]##; s#\.git$##' || true)"
+fi
+[[ "$REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || {
+  echo "FATAL cannot tell which repository this is; pass --for OWNER/NAME" >&2; exit 2; }
+
+# The account the commits must resolve to is the repository's owner, read from the API
+# rather than split off the path — an organisation-owned fork would make the path lie.
+OWNER="$(gh api "repos/$REPO" --jq '.owner.login' 2>/dev/null || true)"
+[ -n "$OWNER" ] || { echo "FATAL cannot read the owner of $REPO (token? network?)" >&2; exit 3; }
+
+# The address the repair should write, built rather than left as a placeholder
+# (#1012). GitHub's noreply form is <id>+<login>@users.noreply.github.com and is
+# verified on the account by construction, so it is the one address this tool can
+# name without asking anyone which of theirs they have verified.
+OWNER_ID="$(gh api "users/$OWNER" --jq '.id' 2>/dev/null || true)"
+if [ -n "$OWNER_ID" ]; then
+  OWNER_ADDR="${OWNER_ID}+${OWNER}@users.noreply.github.com"
+else
+  OWNER_ADDR="<an address verified on $OWNER>"
+fi
+
+# The display name is cosmetic — GitHub resolves on the address, not on this — so it
+# takes the configured name first, then the last author, then the login. Read rather
+# than hardcoded: this repository's history already carries two spellings.
+OWNER_NAME="$(git config user.name 2>/dev/null || true)"
+[ -n "$OWNER_NAME" ] || OWNER_NAME="$(git log -1 --format=%an 2>/dev/null || true)"
+[ -n "$OWNER_NAME" ] || OWNER_NAME="$OWNER"
+
+# The repair, in one place, so the printed advice and --fix-cmd cannot disagree.
+fix_command() {
+  printf 'git rebase -x '\''git commit --amend --no-edit --author="%s <%s>"'\'' %s\n' \
+    "$OWNER_NAME" "$OWNER_ADDR" "${1:-<base>}"
+}
+
+if [ "$MODE" = fixcmd ]; then
+  fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
+  exit 0
+fi
+
+# --selftest EXECUTES the advice, which is the only way this tool's central claim can be
+# checked (#1164, from #1160's rule and #1012's defect).
+#
+# The claim is not "the repair works". It is "the repair does not destroy the evidence" —
+# `--reset-author` collapses every author date it touches onto the instant of the repair,
+# and this tool exists because history is evidence. That is a statement about DATES, and no
+# amount of reading the command tells you what it does to them. It has to be run.
+#
+# It runs in a scratch clone, on commits nothing will ever push, with three commits so the
+# case that matters is reachable: the repair walks a range, and the commit that needed
+# NOTHING done to it is the one `--reset-author` used to damage.
   [ "$fail" = 0 ]
   exit $?
 fi
