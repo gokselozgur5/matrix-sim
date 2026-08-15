@@ -162,8 +162,16 @@ if [ "$MODE" = selftest ]; then
     "$(verdict_of '[]' | awk '{print $2}')"
   # And the other side of the field: a run with no fixture says api. Without this row the
   # marker could be hardcoded to `fixture` and every case above would still pass.
-  check source-says-api         "source=api" \
-    "$(cd "$root" && bash tools/attribution.sh 2>/dev/null | grep -oE 'source=[a-z]+' | head -1)"
+  # The other side of the marker: without it, `SOURCE=fixture` could be a constant and
+  # every case above would still pass. Asked of the SOURCE line rather than of a run,
+  # because a run in the default mode needs the network — CI found that the hard way, with
+  # this case reading empty because the runner's HEAD is not a commit GitHub has resolved
+  # yet and the tool refuses rather than guessing. A static read is weaker and it is the
+  # strongest thing available without a token.
+  check source-defaults-to-api  "SOURCE=api" \
+    "$(grep -m1 -oE '^SOURCE=api$' "$root/tools/attribution.sh" || true)"
+  check source-flips-on-fixture "1" \
+    "$(grep -c 'ATTRIBUTION_FIXTURE:-}" \] || SOURCE=fixture' "$root/tools/attribution.sh" || true)"
 
   cd "$root" || exit 1
   printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
