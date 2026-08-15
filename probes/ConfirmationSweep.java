@@ -378,6 +378,7 @@ public final class ConfirmationSweep {
         private long maxGap;
         private int signals;
         private int malformed;
+        private int noAgent;
         private String subject = "-";
 
         Stream(long ticks) {
@@ -397,10 +398,25 @@ public final class ConfirmationSweep {
                 if (subject.equals("-")) {
                     subject = between(line, "\"who\":\"", "\"");
                 }
+                // Four fields are unconditional; the fifth is not, and counting it as a
+                // malformation was this probe's own defect (#1155). PerceptionFrame OMITS
+                // `nearestAgentCm` when the world holds no agent, which is a fact about
+                // the world and not a broken frame — at seed 7, seventeen of fifty-four
+                // frames say so, and the clause read them as seventeen malformations.
+                //
+                // The distinction was invisible for one reason: seed 42 always has an
+                // agent, so `malformed=0` there and nobody asked which of the five fields
+                // it was counting. The second seed (#1094) is what made it visible.
+                //
+                // Reported as its own number rather than dropped, because "the world had
+                // no agent for a third of this run" is a real thing to know about a feed
+                // whose whole subject is what the mind can perceive.
                 if (!(line.contains("\"who\":\"") && line.contains("\"pill\":\"")
-                        && line.contains("\"pos\":[") && line.contains("\"nearestAgentCm\":")
+                        && line.contains("\"pos\":[")
                         && line.contains("\"nearestExitCm\":"))) {
                     malformed++;
+                } else if (!line.contains("\"nearestAgentCm\":")) {
+                    noAgent++;
                 }
                 long tick = Long.parseLong(between(line, "{\"tick\":", ","));
                 maxGap = Math.max(maxGap, tick - last);
@@ -412,7 +428,7 @@ public final class ConfirmationSweep {
             long gap = Math.max(maxGap, ticks - last);
             boolean held = frames > 0 && malformed == 0 && gap <= Config.FOLLOW_EVERY_TICKS;
             System.out.println("CONFIRM clause=D-021 frames=" + frames + " max_gap=" + gap
-                    + " signals=" + signals + " malformed=" + malformed
+                    + " signals=" + signals + " malformed=" + malformed + " no_agent=" + noAgent
                     + " subject=\"" + subject + "\" " + status(frames > 0, held));
             return held;
         }
