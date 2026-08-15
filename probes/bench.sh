@@ -83,6 +83,18 @@ done
 # ---------------------------------------------------------------------------
 table() {
   judge LedgerMirror 'LEDGER_ANOMALIES=0'      "$TICKS"
+  # The sweep the javadoc used to assert in prose (#1130). The row names the
+  # broken seeds rather than demanding zero, because #1090 is open and a lane
+  # that goes red for a known defect gets switched off — but it is regenerated
+  # on every push, so a NEW break, a FIXED seed, and a range that silently
+  # shrinks are all three the same red row. When #1090 lands, this line becomes
+  # `clean=20 broken=0 at -` in the PR that fixes it.
+  # The budget is pinned at the full arc rather than inherited from $TICKS: the
+  # row names the seeds that break AT 6,000 ticks, and a shorter run would name
+  # a different set — a row whose claim changes with the caller's argument is
+  # not a lock. `bench.sh 2000` still runs it, and still runs it over the arc.
+  judge LedgerMirror 'LEDGER_SWEEP seeds=0..19 ticks=6000 clean=16 broken=4 at 4,7,8,13' \
+                                               --sweep 0..19 6000
   judge OneTrace     'VERDICT CONTRACT_HELD'   "$TICKS"
   judge CapSentinel  'CAP_BREACHES=0'          "$TICKS"
   judge ArcBeats     'VERDICT BEATS_IN_ORDER'  "$TICKS"
