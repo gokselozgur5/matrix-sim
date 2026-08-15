@@ -58,4 +58,16 @@ Not applicable while parked; on unparking, the first milestone is a two-region w
 
 Related: [D-008](D-008-processor-mode.md), [D-018](D-018-tick-budgets.md), [D-023](D-023-chronos-event-sourcing.md). Vision: L2.
 
+**Errata (2026-08-15, #1128 — unparked; the city folds and unfolds on its own):** The parking condition is spent. `RegionMap` parks a region that has been un-HOT for `LOD_PARK_AFTER_TICKS` consecutive ticks and retries every `LOD_PARK_RETRY_TICKS`; `LOD_LINGER_TICKS`, `LOD_COLD_STRETCH`, `LOD_AGG_EVENT_DENOM` and `LOD_AGG_SPECIES_BOUND` are all read. The outcome ("Parked until v4.0; D-018's budgets are the embryo") and the Confirmation's "Not applicable while parked" are kept as written under D-029.
+
+*The Confirmation that replaces "not applicable":* a park is observable in a live run —
+
+```
+java -cp out matrix.Main --headless --ticks 6000 --seed 42 | grep -i park
+  → [005010] TRACE LOD: old city parks — 91 residents fold into statistics;
+    nobody is watching
+```
+
+— which is this record's own milestone in the world's own words: an unwatched region degrades to statistics. The unpark side rides `LOD_PARK_RETRY_TICKS` and is the same mechanism read backwards; what the seed-42 arc does not do inside 6,000 ticks is look at that region again.
+
 Referenced by: [D-004](D-004-field-model.md), [D-008](D-008-processor-mode.md), [D-018](D-018-tick-budgets.md), [D-026](D-026-language-java17.md), [D-038](D-038-season-two.md).

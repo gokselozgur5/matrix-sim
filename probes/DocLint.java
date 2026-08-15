@@ -107,12 +107,13 @@ public final class DocLint {
                          int statusDrift, int gatesCompared, int gateDrift,
                          int twoStatuses, int missingConfirmation,
                          int gaps, int unannotatedGaps, int beatClaims, int beatDrift,
-                         int pinsScanned, int pinsPlaceholder, int deadPins) {
+                         int pinsScanned, int pinsPlaceholder, int deadPins,
+                         int staleConfirmations) {
 
         boolean docsTrue() {
             return statusDrift == 0 && gateDrift == 0 && twoStatuses == 0
                     && missingConfirmation == 0 && unannotatedGaps == 0 && beatDrift == 0
-                    && deadPins == 0;
+                    && deadPins == 0 && staleConfirmations == 0;
         }
     }
 
@@ -225,6 +226,7 @@ public final class DocLint {
                 + " gate_drift=" + r.gateDrift()
                 + " two_statuses=" + r.twoStatuses()
                 + " missing_confirmation=" + r.missingConfirmation()
+                + " confirmation_stale=" + r.staleConfirmations()
                 + " gaps=" + r.gaps()
                 + " unannotated_gaps=" + r.unannotatedGaps()
                 + " beat_claims=" + r.beatClaims()
@@ -374,6 +376,7 @@ public final class DocLint {
 
         int two = 0;
         int noConfirmation = 0;
+        int staleConfirmation = 0;
         for (Rec rec : canon.records()) {
             String status = frontStatus(rec);
             String contradiction = contradiction(rec, status);
@@ -388,6 +391,13 @@ public final class DocLint {
                 noConfirmation++;
                 if (print) {
                     System.out.println("NO_CONFIRMATION " + rec.id() + " file=" + rec.file());
+                }
+            }
+            if (staleConfirmation(rec, status)) {
+                staleConfirmation++;
+                if (print) {
+                    System.out.println("STALE_CONFIRMATION " + rec.id() + " file=" + rec.file()
+                            + " (accepted, Confirmation not applicable, no errata)");
                 }
             }
         }
@@ -426,7 +436,7 @@ public final class DocLint {
 
         return new Report(canon.records().size(), index.size(), roadmap.size(), compared,
                 drift, gates[0], gates[1], two, noConfirmation, gaps, unannotated,
-                beats[0], beats[1], pins[0], pins[1], pins[2]);
+                beats[0], beats[1], pins[0], pins[1], pins[2], staleConfirmation);
     }
 
     // -------------------------------------------------------------- the pins
@@ -778,6 +788,44 @@ public final class DocLint {
         return "unknown";
     }
 
+    /**
+     * An accepted record whose Confirmation says it does not apply, and which
+     * says nothing about having been overtaken.
+     *
+     * <p>The narrowest honest reading of "stale", and the one #1128 asked for.
+     * D-008, D-023 and D-024 each parked a mechanism, wrote "Not applicable
+     * while parked", and then the mechanism SHIPPED — the processor coupling is
+     * `COMPUTE_MODEL`, the chronos log is three command-line flags, the LOD park
+     * is a TRACE line in every long run — while the record kept saying it had
+     * not been built. Nothing compared a Confirmation against `src/`, and the
+     * three sat wrong for days.
+     *
+     * <p>What this check does NOT do is read `src/`: it cannot tell whether the
+     * parked option is reachable, and a lint that tried would be guessing at
+     * which identifier corresponds to which decision. It asks the cheaper
+     * question that catches the same class — a record cannot both be ACCEPTED
+     * and permanently excused from proving itself. Records are immutable
+     * (D-029), so the answer is never an edit to the outcome: it is an errata,
+     * which is exactly what D-033 already carries and why D-033 is not flagged.
+     */
+    private static boolean staleConfirmation(Rec rec, String status) {
+        if (!status.equals("accepted")) {
+            return false;
+        }
+        boolean excused = false;
+        boolean errata = false;
+        for (String line : rec.lines()) {
+            String lower = line.toLowerCase(java.util.Locale.ROOT);
+            if (lower.contains("not applicable")) {
+                excused = true;
+            }
+            if (lower.contains("errata")) {
+                errata = true;
+            }
+        }
+        return excused && !errata;
+    }
+
     private static boolean hasHeading(Rec rec, String heading) {
         for (String line : rec.lines()) {
             if (line.trim().equals(heading)) {
@@ -949,8 +997,21 @@ public final class DocLint {
         broken += expect("placeholder-is-named-not-judged", "none",
                 lint(sample(c -> c.architecture.add("a body saying \"measured at `abc1234`\" pins nothing.")),
                         arc, RESOLVING, false));
+        broken += expect("stale-confirmation", "confirmation_stale",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("",
+                        "Not applicable until unparked; the trigger is D-002 entering design."))),
+                        arc, RESOLVING, false));
+        broken += expect("errata-excuses-the-confirmation", "none",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("",
+                        "Not applicable until unparked; the trigger is D-002 entering design.",
+                        "", "**Errata (2026-08-15):** unparked, and here is the command that proves it."))),
+                        arc, RESOLVING, false));
+        broken += expect("a-proposed-record-may-be-excused", "none",
+                lint(sample(c -> c.bodies.get(2).addAll(List.of("",
+                        "Not applicable until the verdict lands."))),
+                        arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=26 broken=" + broken);
+        System.out.println("SELFCHECK cases=29 broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
@@ -988,6 +1049,9 @@ public final class DocLint {
         }
         if (r.deadPins() > 0) {
             names.add("dead_pins");
+        }
+        if (r.staleConfirmations() > 0) {
+            names.add("confirmation_stale");
         }
         return names.isEmpty() ? "none" : names.size() == 1 ? names.get(0) : String.join("+", names);
     }
