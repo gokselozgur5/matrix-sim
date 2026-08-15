@@ -168,6 +168,7 @@ table() {
   # instrument noise printed beside it is not, and the exemption is DECLARED here rather
   # than discovered by whoever next runs the determinism pass.
   vary  'prints its own timing noise: the QUIET line carries nanosecond percentiles of the tick it measures, which move with the JIT while the bound they are judged against does not' \
+        --lines '^(QUIET|STORM|TICKCOST) ' \
         judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
@@ -274,6 +275,7 @@ table() {
   run   NameCensus   42
   run   SheetDump    --all
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
+        --lines '^ALLOC(_NOTE)? ' \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   # The referee's own referee, not the referee. `NeutralDiff <ticks>` needs
@@ -290,6 +292,7 @@ table() {
 PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0
 STABLE=0 DRIFTED=0 EXEMPT=0 UNCHECKED=0
 VARIES=''
+VARY_LINES=''
 
 # One row's run, printed. The three verbs differ only in what they demand of
 # the output afterwards, so the invocation itself is written once: the class,
@@ -414,8 +417,17 @@ run() {
 # `contract` prints it, and both verbs are unaware they were wrapped.
 vary() {
   VARIES="$1"; shift
+  # An optional `--lines <ERE>` narrows the exemption to the lines that actually move
+  # (#1187). Optional rather than required, because a row that genuinely cannot say which
+  # of its lines drift is still better off declaring the drift than hiding it — but a row
+  # that CAN say should, and both of today's two can.
+  VARY_LINES=''
+  if [ "${1:-}" = "--lines" ]; then
+    VARY_LINES="$2"; shift 2
+  fi
   "$@"
   VARIES=''
+  VARY_LINES=''
 }
 
 # The determinism pass (#364). The probes referee the daemon; nothing referees
@@ -464,9 +476,44 @@ settle() {
     UNCHECKED=$((UNCHECKED + 1))
     return 0
   fi
+  # An exemption is per-LINE when the row names a pattern, and per-ROW only when it does
+  # not (#1187). `vary` was line-blind: it saw VARIES set, printed EXEMPT and returned, so
+  # a row whose VERDICT started flickering would have been exempted along with the noise it
+  # was exempted for. Both rows that wear the modifier name the line in their own reason
+  # — "the QUIET line carries…", "steady_max is a cold uncompiled sample" — and the
+  # mechanism ignored what the row said.
+  #
+  # With a pattern, the two runs are compared with the matching lines removed, and the
+  # count of removed lines is on the row: `EXEMPT lines=1` and `EXEMPT lines=12` are the
+  # difference between an instrument with a noisy field and an instrument that is mostly
+  # noise. Without one, the old behaviour, so an unpatterned `vary` still works and still
+  # says nothing.
   if [ -n "$VARIES" ]; then
     EXEMPT=$((EXEMPT + 1))
-    printf 'EXEMPT %s reason="%s"\n' "$cls" "$VARIES"
+    if [ -z "$VARY_LINES" ]; then
+      printf 'EXEMPT %s whole-row reason="%s"\n' "$cls" "$VARIES"
+      return 0
+    fi
+    local again2 rc2 cut_a cut_b n_cut
+    set +e
+    again2="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
+    rc2=$?
+    set -e
+    if [ "$rc2" -ne 0 ] && [ "$rc2" -ne 1 ]; then
+      DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+      echo "DRIFT $cls second run exited $rc2"
+      return 0
+    fi
+    n_cut="$(printf '%s\n' "$first" | grep -cE "$VARY_LINES" || true)"
+    cut_a="$(printf '%s\n' "$first"  | grep -vE "$VARY_LINES" || true)"
+    cut_b="$(printf '%s\n' "$again2" | grep -vE "$VARY_LINES" || true)"
+    if [ "$cut_a" = "$cut_b" ]; then
+      printf 'EXEMPT %s lines=%s reason="%s"\n' "$cls" "$n_cut" "$VARIES"
+    else
+      DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+      echo "DRIFT $cls outside its declared exemption — the verdict moved, not the noise"
+      diff <(printf '%s\n' "$cut_a") <(printf '%s\n' "$cut_b") | head -4 | sed 's/^/  /'
+    fi
     return 0
   fi
   local again rc
