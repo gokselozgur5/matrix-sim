@@ -159,16 +159,57 @@ for tool in tools/*.sh; do
   echo "UNCATALOGUED $name has no row in tools/README.md — nobody can find out what it is for"
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued lines=$found flags_checked=$checked" \
+# A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
+# readers added today catch a MISSING row; a WRONG row is prose about a program written by
+# the person who wrote the program, and nothing compares the two ever again — which is
+# exactly the shape #1130 found in LedgerMirror's javadoc.
+#
+# What is checkable without inventing a language is the quotable part. Each row opens with
+# the tool it describes, so every `--flag` on that row is a promise about THAT tool, and a
+# flag the tool does not mention is a promise it cannot keep. The prose around it is not
+# judged and could not be.
+catalog_wrong=0
+while IFS= read -r row; do
+  [ -z "$row" ] && continue
+  rowtool="tools/$(printf '%s' "$row" | grep -oE '^\| `[a-z-]+\.sh`' | grep -oE '[a-z-]+\.sh' | head -1)"
+  [ -f "$rowtool" ] || continue
+  # The body searched is every tool the ROW names, not only the one it is about. A row
+  # legitimately mentions another tool's flags: `release.sh`'s explains which locks a cut
+  # skips, and names `balance.sh --datecheck` and `--rulercheck` among them. The first run
+  # of this check reported that as a broken promise, which it is not — a row describing a
+  # neighbour is describing a neighbour.
+  rowbody="$(cat "$rowtool")"
+  while IFS= read -r other; do
+    [ -z "$other" ] && continue
+    [ -f "tools/$other" ] && rowbody="$rowbody
+$(cat "tools/$other")"
+  done <<< "$(printf '%s' "$row" | grep -oE '[a-z-]+\.sh' | sort -u)"
+  while IFS= read -r flag; do
+    [ -z "$flag" ] && continue
+    case "$rowbody" in
+      *"$flag"*) ;;
+      *)
+        catalog_wrong=$((catalog_wrong + 1))
+        BREAKS=$((BREAKS + 1))
+        echo "CATALOG_CLAIM $rowtool's row promises '$flag' and the tool does not mention it"
+        ;;
+    esac
+  done <<< "$(printf '%s' "$row" | grep -oE '`\-\-[a-z][a-z-]+`' | tr -d '`' | sort -u)"
+done <<< "$(grep -E '^\| `[a-z-]+\.sh`' tools/README.md)"
+
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
   echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
-else
-  # Two failures, two words. A catalog gap reported as "advises a flag nobody implements"
-  # sends the reader to the wrong file, which is the same class of error as a defect
-  # report that names the wrong defect (#1170).
+elif [ "$uncatalogued" -gt 0 ]; then
+  # Three failures, three words. A catalog gap reported as "advises a flag nobody
+  # implements" sends the reader to the wrong file, which is the same class of error as a
+  # defect report that names the wrong defect (#1170) — and a catalog row that promises a
+  # flag is a third thing again: the tool is fine, the document is lying about it.
   echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FIND uncatalogued=$uncatalogued"
+else
+  echo "ADVICE VERDICT A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=$catalog_wrong"
 fi
 [ "$BREAKS" -eq 0 ]
