@@ -99,6 +99,19 @@ case_ unknown_voice             3 - --pilot "$PILOT"      --seed "$SEED" --voice
 case_ dangling_flag             3 - --pilot "$PILOT"      --seed "$SEED" --ticks
 case_ no_pilot                  3 -                       --seed "$SEED" --ticks "$TICKS"
 case_ unreadable_number         3 - --pilot "$PILOT"      --seed "$SEED" --ticks twelve
+# A budget of zero was the last way to get a confident success out of an empty
+# run (#1112): the reader folded a day of nothing and exited 0, the grammar's
+# word for "a day rendered". Negative is the same refusal one step further, and
+# it is listed separately because a guard written as `== 0` passes it.
+case_ zero_ticks                3 - --pilot "$PILOT"      --seed "$SEED" --ticks 0
+case_ negative_ticks            3 - --pilot "$PILOT"      --seed "$SEED" --ticks -5
+# --seed keeps the whole of long, and this row is what stops the guard above
+# from spreading to a flag that does not want it: seed 0 is a universe, and the
+# answer that comes back is 2 — "nobody by that name in THAT world", the pilot
+# simply is not born there — and not 3, which would mean the flag was refused.
+# The distinction is the whole row: a guard copied onto --seed would print
+# usage here instead of reading a real and empty universe.
+case_ zero_seed                 2 - --pilot "$PILOT"      --seed 0        --ticks "$TICKS"
 case_ golden_ok                 0 - --pilot "$PILOT"      --seed "$SEED" --ticks "$TICKS" --check-golden "$BLESSED"
 case_ golden_drifted            1 - --pilot "$PILOT"      --seed "$SEED" --ticks "$TICKS" --check-golden "$DRIFTED"
 case_ golden_missing            4 - --pilot "$PILOT"      --seed "$SEED" --ticks "$TICKS" --check-golden "$ABSENT"

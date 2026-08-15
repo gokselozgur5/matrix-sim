@@ -100,7 +100,7 @@ public final class DreamReader {
             switch (args[i]) {
                 case "--pilot" -> pilot = value(args, ++i);
                 case "--seed" -> seed = number(args, ++i);
-                case "--ticks" -> ticks = number(args, ++i);
+                case "--ticks" -> ticks = positive(args, ++i);
                 case "--out" -> outPath = value(args, ++i);
                 case "--check-golden" -> goldenPath = value(args, ++i);
                 case "--capture-only" -> captureOnly = true;
@@ -237,6 +237,28 @@ public final class DreamReader {
             System.exit(EXIT_USAGE);
             return 0;
         }
+    }
+
+    /**
+     * A budget, or a refusal.
+     *
+     * <p>Separate from {@link #number} because the two flags mean different
+     * things by a number: any {@code long} is a legitimate {@code --seed},
+     * including 0 and negatives, while a non-positive {@code --ticks} is a day
+     * that never happened. The reader used to render one — "folded from 0
+     * frames, 0 lines naming them" — and exit 0, which is the grammar's word
+     * for "a day rendered" (#1112). A caller sweeping a roster and branching on
+     * the exit code handled four failures correctly and silently collected the
+     * fifth as prose, because it IS prose; it just says nothing happened.
+     */
+    private static long positive(String[] args, int i) {
+        String flag = args[i - 1];
+        long n = number(args, i);
+        if (n <= 0) {
+            System.err.println("flag " + flag + " wants a positive count: " + n);
+            System.exit(EXIT_USAGE);
+        }
+        return n;
     }
 
     private static void usage() {
