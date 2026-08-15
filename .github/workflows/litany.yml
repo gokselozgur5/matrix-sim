@@ -38,10 +38,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          floor=15   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
-          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
-            "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
+          verdict="$(grep -E '^LITANY SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/litany-selftest.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the litany suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "LITANY SUITE FLOOR OK cases=$ran floor=$floor"
           bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
           grep -q '^LITANY VERDICT PASS$' "${RUNNER_TEMP:-/tmp}/litany.log" \
             || { echo "FATAL the litany did not reach a passing verdict" >&2; exit 1; }
@@ -58,3 +64,15 @@ jobs:
           grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0 unguarded=0$' \
             "${RUNNER_TEMP:-/tmp}/shellcheck.log" \
             || { echo "FATAL a run: block the shell cannot parse, or one with no guard" >&2; exit 1; }
+
+      # A gate that asserts SOME cases ran, and nothing about how many, is a gate
+      # a shrinking suite walks through (#1213). Two gates already carried a
+      # floor; five did not, and the five include every judge added today.
+      - name: tools — every suite gate carries a floor (#1213)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/litany.sh --floorcheck | tee "${RUNNER_TEMP:-/tmp}/floorcheck.log"
+          grep -q '^LITANY FLOOR VERDICT PASS gates=[1-9][0-9]* unfloored=0$' \
+            "${RUNNER_TEMP:-/tmp}/floorcheck.log" \
+            || { echo "FATAL a suite gate asserts that SOME cases ran and nothing about how many" >&2; exit 1; }

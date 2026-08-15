@@ -384,10 +384,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          floor=5    # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/digest-move.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log"
-          grep -qE '^DIGEST MOVE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
-            "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log" \
+          verdict="$(grep -E '^DIGEST MOVE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL the seal gate reached no passing verdict over its own paths" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the seal suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "DIGEST MOVE SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: #1164 — this tool's central claim is about DATES ("a repair that changes when
       # the work happened is not a repair", #1012) and no amount of reading a git command
@@ -399,10 +405,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          floor=10   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/attribution.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/attribution-selftest.log"
-          grep -qE '^ATTRIBUTION SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
-            "${RUNNER_TEMP:-/tmp}/attribution-selftest.log" \
+          verdict="$(grep -E '^ATTRIBUTION SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/attribution-selftest.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL the attribution repair reached no passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the attribution suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "ATTRIBUTION SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: #1185 — `--twice` byte-compares every probe's output against a second run of
       # itself, and no lane had ever run it: `INSTRUMENTS_DRIFTED` was a verdict nothing
@@ -456,10 +468,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          floor=14   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/checkage.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/checkage.log"
-          grep -q '^CHECKAGE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
-            "${RUNNER_TEMP:-/tmp}/checkage.log" \
+          verdict="$(grep -E '^CHECKAGE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/checkage.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL checkage's judge cannot separate its own verdicts" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the checkage suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "CHECKAGE SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: #1210 — `prstate.sh`'s catalog row says "only its judge runs in the lane",
       # and its judge did not. The tool itself cannot be a step (the run that would carry
@@ -471,10 +489,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          floor=19   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/prstate.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/prstate.log"
-          grep -q '^PRSTATE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
-            "${RUNNER_TEMP:-/tmp}/prstate.log" \
+          verdict="$(grep -E '^PRSTATE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/prstate.log" || true)"
+          [ -n "$verdict" ] \
             || { echo "FATAL prstate's judge cannot separate its own verdicts" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the prstate suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "PRSTATE SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: #1095 — three tools in one day printed advice that was wrong in a way only
       # executing it revealed, and advice is the most expensive prose in a tool to be wrong
