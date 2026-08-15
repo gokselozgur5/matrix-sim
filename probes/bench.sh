@@ -277,7 +277,7 @@ table() {
   # The census against the prose that reports it. Its four numbers are the
   # only counts left in `probes/README.md` with a producer to run; the three
   # that had none were deleted rather than re-derived (#1192).
-  judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4 unproducible=0' --catalog
+  judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4' --catalog
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
         --lines '^ALLOC(_NOTE)? ' \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42

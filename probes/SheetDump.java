@@ -254,7 +254,6 @@ public final class SheetDump {
         List<String> lines = boot.lines();
         StringBuilder wrong = new StringBuilder();
         int checked = 0;
-        int unproducible = 0;
 
         Matcher m = QUOTED_COUNT.matcher(row);
         while (m.find()) {
@@ -262,7 +261,11 @@ public final class SheetDump {
             String noun = m.group(2);
             Long derived = "rows".equals(noun) ? (long) boot.souls() : derive(lines, noun);
             if (derived == null) {
-                unproducible++;
+                // The census stopped printing the line this noun reads. Not
+                // counted as checked, which `checked=N of=4` then reports —
+                // the same red as a row that stopped quoting the noun, for the
+                // same reason: four numbers were promised and fewer were read.
+                wrong.append(' ').append(noun).append("=unproduced");
                 continue;
             }
             checked++;
@@ -272,10 +275,16 @@ public final class SheetDump {
             }
         }
 
-        boolean held = wrong.length() == 0 && checked == NOUNS.length && unproducible == 0;
+        // There is deliberately no `unproducible=` counter. The first draft had
+        // one, and it could never be nonzero: it incremented only when a matched
+        // noun had no producer, while the pattern matches exactly the four nouns
+        // that have producers by construction. A counter that cannot move reads
+        // as coverage and provides none. What is NOT checked — a fifth noun the
+        // row might add, which this pattern cannot see — is #1202, and a dead
+        // counter was not making it any more checked.
+        boolean held = wrong.length() == 0 && checked == NOUNS.length;
         Probes.leave("VERDICT " + (held ? "SHEETDUMP_CATALOG_MATCHES" : "SHEETDUMP_CATALOG_STALE")
-                + " checked=" + checked + " of=" + NOUNS.length
-                + " unproducible=" + unproducible + wrong, held);
+                + " checked=" + checked + " of=" + NOUNS.length + wrong, held);
     }
 
     /** The census's own number for one noun, or null when nothing produces it. */
