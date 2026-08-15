@@ -39,17 +39,36 @@ TICKS=6000
 BUILD=yes
 LIST=no
 TWICE=no
+TWICE_ONLY=""
 WITHOUT=no
 for arg in "$@"; do
   case "$arg" in
     --list) LIST=yes ;;
     --no-build) BUILD=no ;;
     --twice) TWICE=yes ;;
+    # The determinism pass, narrowed to the probes a change touches (#1185). --twice
+    # doubles a 208 s sweep against a 300 s ceiling, so it has never been in a lane and
+    # `INSTRUMENTS_DRIFTED` was a verdict nothing read — until it was run by hand and
+    # immediately found one (#1184). This is the shape that matches how the defect
+    # arrives: a probe added or edited without its author running the pass. The rest of
+    # the bench is not re-run, because a probe nobody touched cannot have started drifting
+    # for a reason this pull request is responsible for.
+    --twice-changed) TWICE=yes; TWICE_ONLY="__next__" ;;
     --without-probes) WITHOUT=yes ;;
-    ''|*[!0-9]*) echo "FATAL unknown argument: $arg" >&2; exit 2 ;;
-    *) TICKS="$arg" ;;
+    *)
+      # A positional argument is the tick budget, unless --twice-changed is waiting for
+      # its class list, in which case it is that.
+      if [ "$TWICE_ONLY" = "__next__" ]; then
+        TWICE_ONLY="$arg"
+      else
+        case "$arg" in
+          ''|*[!0-9]*) echo "FATAL unknown argument: $arg" >&2; exit 2 ;;
+          *) TICKS="$arg" ;;
+        esac
+      fi ;;
   esac
 done
+[ "$TWICE_ONLY" = "__next__" ] && { echo "FATAL --twice-changed wants a comma-separated class list" >&2; exit 2; }
 
 # ---------------------------------------------------------------------------
 # The contract table. One row per probe:
@@ -437,6 +456,14 @@ skipped() {
 settle() {
   [ "$TWICE" = yes ] || return 0
   local cls="$1" first="$2"; shift 2
+  # Narrowed to a named set when --twice-changed supplied one. Skipped rows are counted
+  # as UNCHECKED rather than STABLE — the identity `probes = stable + drift + exempt +
+  # unchecked` is #970's, and it exists precisely so a pass over a subset cannot report
+  # itself as a pass over the whole (#1185).
+  if [ -n "$TWICE_ONLY" ] && ! printf ',%s,' "$TWICE_ONLY" | grep -qF ",$cls,"; then
+    UNCHECKED=$((UNCHECKED + 1))
+    return 0
+  fi
   if [ -n "$VARIES" ]; then
     EXEMPT=$((EXEMPT + 1))
     printf 'EXEMPT %s reason="%s"\n' "$cls" "$VARIES"
