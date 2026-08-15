@@ -197,7 +197,41 @@ $(cat "tools/$other")"
   done <<< "$(printf '%s' "$row" | grep -oE '`\-\-[a-z][a-z-]+`' | tr -d '`' | sort -u)"
 done <<< "$(grep -E '^\| `[a-z-]+\.sh`' tools/README.md)"
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong lines=$found flags_checked=$checked" \
+# A shell verdict is bytes too (#1196, #836). Lock 8 exists because with no locale
+# exported, JDK 17 resolves the default charset to ANSI_X3.4-1968 and every em dash a
+# main() printed became `?`. It forces LC_ALL=C, compares the bytes, and scans all 45
+# probes for their `Streams.utf8()` pin. The TOOLS were in none of that — and their
+# verdict lines carry em dashes, arrows and bullets that CI greps.
+#
+# Only the tools with a --selftest are run: that mode is no-token, no-network and finishes
+# in seconds by the rule tools/README.md sets for it, which makes it the one invocation
+# safe to make twice from inside an audit. The rest are counted, not skipped in silence.
+#
+# `carries` is the guard lock 8 learned the hard way: a comparison of two ASCII outputs
+# passes and proves nothing. A tool whose selftest prints no byte above 0x7f is reported
+# as `nothing-to-prove` rather than as a pass.
+charset_checked=0
+charset_nothing=0
+charset_drift=0
+for tool in tools/*.sh; do
+  [ "$tool" = "tools/advice.sh" ] && continue
+  grep -qE '\-\-selftest\b' "$tool" || continue
+  utf8="$(timeout 60 bash "$tool" --selftest 2>&1 || true)"
+  ascii="$(LC_ALL=C timeout 60 bash "$tool" --selftest 2>&1 || true)"
+  if ! printf '%s' "$utf8" | LC_ALL=C grep -q '[^ -~]'; then
+    charset_nothing=$((charset_nothing + 1))
+    echo "CHARSET $tool nothing-to-prove: its selftest prints no byte above 0x7f"
+    continue
+  fi
+  charset_checked=$((charset_checked + 1))
+  if [ "$utf8" != "$ascii" ]; then
+    charset_drift=$((charset_drift + 1))
+    BREAKS=$((BREAKS + 1))
+    echo "CHARSET_DRIFT $tool differs between UTF-8 and LC_ALL=C"
+  fi
+done
+
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
