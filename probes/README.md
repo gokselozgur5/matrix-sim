@@ -117,6 +117,16 @@ line the bench greps and leaves with 0 or 1 to match. A **reporting** probe must
 not call it — a `run` row fails on a nonzero exit, so adopting an exit code
 there changes what the row means.
 
+**The lane has a budget of its own (#1115).** The summary line carries
+`secs=<measured> budget=<ceiling> WITHIN|OVER`, because `--bench` judges the
+*daemon* against D-027's table and nothing judged the sweep that runs it — so
+every unit adding an instrument made the lane longer for every unit after it,
+unbounded by construction. The ceiling is `BENCH_BUDGET_SECS`, 300 s by default
+against a measured 147 s, and it is deliberately loose: wall clock on shared
+hardware moves 20% between runs, and `OVER` **prints without failing**. The
+thing being prevented is a lane growing tenfold over a season, which a human
+reads; a bound that reddens under load is a bound that gets switched off.
+
 Adding a
 probe is a one-row change here, beside the probe — one row per probe, and one
 row per mode where a probe verdicts in more than one. `SheetBench` is the only
