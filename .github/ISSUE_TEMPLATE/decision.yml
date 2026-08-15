@@ -36,3 +36,20 @@ body:
       value: "The Architect's verdict as a comment in this thread. One word suffices; the record quotes it."
     validations:
       required: false
+  - type: textarea
+    id: reading
+    attributes:
+      label: The reading behind the concern
+      description: >-
+        A Y-statement's "facing <concern>" is usually an empirical claim — the sweep costs
+        too much, the API is unreliable, the seed diverges. Put the run here. D-060 was
+        argued from a measured day and nothing in this template asked for it. A decision is
+        more expensive to get wrong than a build unit: it becomes a record that is immutable
+        under D-029, so an unmeasured premise costs a second ADR rather than an edit.
+        "Not measured, and why" is a valid answer — some concerns are about what a shape
+        will do, not what it has done.
+      placeholder: |
+        tools/balance.sh --repo 2026-08-12
+        BALANCE commits=603 issues=0 prs=0 reviews=0 verdict=THIN — the day that opened D-060
+    validations:
+      required: true
