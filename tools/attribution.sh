@@ -129,11 +129,49 @@ if [ "$MODE" = selftest ]; then
   distinct="$(printf '%s' "$reset_dates" | wc -w | tr -d ' ')"
   check reset-author-destroys-dates 1 "$distinct"
 
+  # The --pr path, against a recorded response (#1174). What is exercised is the half
+  # that has no token in it: a GitHub payload → rows → the judgement → the verdict line.
+  # Three shapes, and the third is the one that matters — a response with no commits used
+  # to be the state this tool is most afraid of, and it already refuses it, so the case
+  # pins the refusal rather than discovering it.
+  verdict_of() {                # verdict_of <fixture-json>
+    printf '%s' "$1" > "$work/fixture.json"
+    ATTRIBUTION_FIXTURE="$work/fixture.json" \
+      bash "$root/tools/attribution.sh" 2>/dev/null \
+      | grep -oE 'VERDICT [A-Z]+ .*' | head -1 || true
+  }
+  owner_row='{"sha":"aaaaaaaaaaaa","author":{"login":"selftest"},"commit":{"author":{"email":"ok@invalid"}}}'
+  other_row='{"sha":"bbbbbbbbbbbb","author":{"login":"somebody-else"},"commit":{"author":{"email":"no@invalid"}}}'
+  null_row='{"sha":"cccccccccccc","author":null,"commit":{"author":{"email":"none@invalid"}}}'
+  # The fixture seam fixes the owner to `selftest` as well as the rows, because replacing
+  # only the rows left two more network calls in the path — see the block that sets REPO.
+  ok_row="$owner_row"
+
+  check pr-range-all-owned      "commits=2 misattributed=0" \
+    "$(verdict_of "[$ok_row,$ok_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
+  check pr-range-one-wrong      "commits=2 misattributed=1" \
+    "$(verdict_of "[$ok_row,$other_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
+  check pr-range-null-author    "commits=2 misattributed=1" \
+    "$(verdict_of "[$ok_row,$null_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
+  check pr-range-empty-refuses  "FAIL" \
+    "$(verdict_of '[]' | awk '{print $2}')"
+
   cd "$root" || exit 1
   printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
   [ "$fail" -eq 0 ]
   exit $?
+fi
+
+# The recorded-response seam replaces the NETWORK, and the network is three calls: the
+# commit rows, the repository's owner, and the owner's numeric id. Replacing only the
+# first leaves the other two reaching for a token, which is how the first draft of this
+# seam failed — a clone whose origin is a local path has no owner to read, so the run
+# died before it reached the fixture it was handed (#1174).
+if [ -n "${ATTRIBUTION_FIXTURE:-}" ]; then
+  REPO="${REPO:-selftest/selftest}"
+  OWNER="${ATTRIBUTION_OWNER:-selftest}"
+  OWNER_ID=""
 fi
 
 if [ -z "$REPO" ]; then
@@ -144,14 +182,15 @@ fi
 
 # The account the commits must resolve to is the repository's owner, read from the API
 # rather than split off the path — an organisation-owned fork would make the path lie.
-OWNER="$(gh api "repos/$REPO" --jq '.owner.login' 2>/dev/null || true)"
+[ -n "${OWNER:-}" ] || OWNER="$(gh api "repos/$REPO" --jq '.owner.login' 2>/dev/null || true)"
 [ -n "$OWNER" ] || { echo "FATAL cannot read the owner of $REPO (token? network?)" >&2; exit 3; }
 
 # The address the repair should write, built rather than left as a placeholder
 # (#1012). GitHub's noreply form is <id>+<login>@users.noreply.github.com and is
 # verified on the account by construction, so it is the one address this tool can
 # name without asking anyone which of theirs they have verified.
-OWNER_ID="$(gh api "users/$OWNER" --jq '.id' 2>/dev/null || true)"
+[ -n "${ATTRIBUTION_FIXTURE:-}" ] \
+  || OWNER_ID="$(gh api "users/$OWNER" --jq '.id' 2>/dev/null || true)"
 if [ -n "$OWNER_ID" ]; then
   OWNER_ADDR="${OWNER_ID}+${OWNER}@users.noreply.github.com"
 else
@@ -192,6 +231,21 @@ fi
 # to an account, which is exactly the resolution the contribution count uses — asking
 # anything else here would be measuring a different question and calling it this one.
 rows() {
+  # A recorded response stands in for the network, and only for the network (#1174).
+  # `--pr` is the mode CI runs on every pull request and the one mode nothing could
+  # exercise: it needs a token and a real PR, so every green lane was evidence that the
+  # step RAN, never that it would have refused. What the fixture replaces is the API call;
+  # the jq that turns a response into rows, the loop that judges them, and the
+  # zero-commit refusal are all the same code the lane runs.
+  #
+  # An environment variable rather than a flag, because it is a test seam and not a
+  # feature: nobody should be able to pass a repository's attribution report in on the
+  # command line.
+  if [ -n "${ATTRIBUTION_FIXTURE:-}" ]; then
+    jq -r '.[] | [.sha, (.author.login // "-"), .commit.author.email] | @tsv' \
+      < "$ATTRIBUTION_FIXTURE"
+    return
+  fi
   case "$MODE" in
     pr)  gh api --paginate "repos/$REPO/pulls/$PR/commits" \
            --jq '.[] | [.sha, (.author.login // "-"), .commit.author.email] | @tsv' ;;
@@ -208,7 +262,7 @@ rows() {
 # were. The resolution this tool reads lives on GitHub's side, so a commit GitHub has
 # never seen has no answer — and "no answer" said plainly beats a 404 followed by a
 # confident zero.
-if [ "$MODE" = head ]; then
+if [ "$MODE" = head ] && [ -z "${ATTRIBUTION_FIXTURE:-}" ]; then
   probe_sha="$(git rev-parse HEAD)"
   gh api "repos/$REPO/commits/$probe_sha" --jq '.sha' >/dev/null 2>&1 || {
     echo "FATAL $REPO has never seen ${probe_sha:0:7} — this commit is local only." >&2
