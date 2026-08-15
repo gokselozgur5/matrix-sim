@@ -217,6 +217,13 @@ table() {
   # honest half of the count: those probes exit with their own code, which is
   # not a lie, only a second place the contract lives (#1214).
   judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=11'
+  # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
+  # and it is the verb the tree reaches for when a defect is real and the fix is
+  # not ready, which is the worst moment to discover it stopped working. This
+  # break will never be fixed: the probe exists to be broken, so the row runs on
+  # every sweep and the pass-is-a-failure inversion is exercised rather than
+  # believed. Its issue is itself, which is stated in the probe rather than hidden.
+  known KnownFixture 'VERDICT KNOWN_FIXTURE_BROKEN by_design=yes issue=1231' '#1231'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   # The second seed found a defect (#1155) and this row was a `known` break for four hours.
   # Both halves turned out to be the PROBE describing truthfully-measured things wrongly:
