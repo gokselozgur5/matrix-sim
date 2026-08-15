@@ -1,0 +1,78 @@
+# .github/workflows/determinism.yml — the full determinism pass, on a cadence (#1194).
+#
+# WHY THIS IS NOT A STEP IN locks.yml. `--twice` doubles a 208 s sweep against the 300 s
+# ceiling that lane set itself (#1115), and #1185 already put the narrow version where it
+# belongs: the probes a pull request TOUCHED, on every push, costing nothing on the units
+# that touch none. This is the other half — everything else, on a schedule, because
+# determinism drift does not arrive with a commit. It arrives with a JVM upgrade, a
+# runner image change, or a probe somebody added months ago that has been quietly noisy
+# since.
+#
+# WHY IT RUNS HERE AND NOT ON A LAPTOP. `--twice` had never run at all until 2026-08-15,
+# and when it did it found one immediately (#1184). What it found, it found on ONE Apple
+# Silicon box, on one JDK build, in one afternoon — which is not evidence about the
+# architecture CI uses, and the tree already knows that distinction matters: SealHygiene's
+# pinned hashes are recorded as "Temurin 17 (Apple Silicon) and re-read on ubuntu-latest
+# by the same run of this probe in CI". The probes' own determinism had nothing like it.
+#
+# WEEKLY, not nightly. The pass costs about seven minutes and the thing it watches for
+# moves on the order of a release. A schedule nobody reads is worse than none; a weekly
+# row in the Actions list is a thing a person can scan.
+
+name: determinism
+
+on:
+  schedule:
+    # Sundays, 04:00 UTC — off the working day for every timezone this repository is read
+    # in, and far from the hour a release would be cut.
+    - cron: '0 4 * * 0'
+  # So the pass can be demanded rather than waited for: after a JDK bump, after a new
+  # probe, after any change to the runner image.
+  workflow_dispatch:
+
+jobs:
+  determinism:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: put JDK 17 on PATH
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The whole sweep, twice, with nothing narrowed. `unchecked=0` is the field that
+      # separates this from #1185's per-PR pass: there, 52 probes go unchecked and the
+      # verdict is correctly INSTRUMENTS_UNPROVEN; here every probe is compared and the
+      # verdict word means what it says.
+      #
+      # Streamed through tee under tools/README.md's capture rule: the pass prints one
+      # DRIFT row per unstable probe and then returns nonzero, so a capture would take the
+      # rows with it — and the rows ARE the report.
+      - name: probes — every instrument reproduces its own output
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash probes/bench.sh --twice | tee "${RUNNER_TEMP:-/tmp}/twice.log"
+          grep -qE '^BENCH determinism .* drift=0 .* unchecked=0 .*' "${RUNNER_TEMP:-/tmp}/twice.log" \
+            || { echo "FATAL an instrument does not reproduce its own output, or the pass did not cover every probe" >&2; exit 1; }
+
+      # The charset half, and it is a different question (#1196, #836). Lock 8 proves the
+      # DAEMON's lines are the same bytes under a hostile locale; nothing asked it of the
+      # probes' lines. `carries` is the guard lock 8 learned the hard way: a comparison of
+      # two ASCII outputs passes and proves nothing, so the UTF-8 capture must be asserted
+      # to hold the byte the bug destroys.
+      - name: probes — an instrument line is the same bytes under LC_ALL=C (#1196)
+        shell: bash
+        run: |
+          set -euo pipefail
+          javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')
+          javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
+          java -cp out:probes/out DistrictNeutral > dn.utf8
+          LC_ALL=C java -cp out:probes/out DistrictNeutral > dn.ascii
+          grep -q '·' dn.utf8 || { echo "FATAL dn.utf8 carries no · — this check proves nothing" >&2; exit 1; }
+          cmp -s dn.utf8 dn.ascii \
+            || { echo "FATAL DistrictNeutral differs between UTF-8 and LC_ALL=C" >&2; diff dn.utf8 dn.ascii >&2; exit 1; }
+          echo "CHARSET probe_stdout OK"
