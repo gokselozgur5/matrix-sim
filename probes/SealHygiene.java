@@ -103,7 +103,12 @@ public final class SealHygiene {
             new Row("ivy", 104684),
             new Row("black cat", 1330742325),
             new Row("stray dog", -410265915),
-            new Row("rain", 3492756));
+            new Row("rain", 3492756),
+            // A one-off (Bestiary.ONE_OFFS), pinned here for the same reason as
+            // every row above it: the seal hashes what the world contains, and
+            // the epilogue's sunrise is in the world. Renaming it is a digest
+            // move exactly as renaming "rain" is.
+            new Row("sunrise", -1856560363));
 
     /**
      * The universe and the clock the six pinned births share. Literals, not a
@@ -143,8 +148,16 @@ public final class SealHygiene {
         // Leg 1 — the catalog. Pinned rows are matched by id, so a REMOVED or
         // RENAMED species is a break rather than a silently skipped row: the
         // whole point of this leg is that a rename is a digest move.
+        // EVERY, not CATALOG. #974 split the two — CATALOG is what the seeding
+        // loop walks, EVERY is what the world can CONTAIN — and this leg asks a
+        // question about containment: `World.digestEntity` feeds
+        // `p.species.id().hashCode()` into the seal for whatever is in the world,
+        // and it cannot tell which list a row was written on. Reading CATALOG
+        // walked twelve rows while the seal hashed thirteen, so the sunrise
+        // (#974's one-off) was a digest input nothing checked — this probe was
+        // checking the wrong list against the right hash (#1111).
         Map<String, Species> live = new LinkedHashMap<>();
-        for (Species s : Bestiary.CATALOG) {
+        for (Species s : Bestiary.EVERY) {
             live.put(s.id(), s);
         }
         for (Row r : CATALOG) {

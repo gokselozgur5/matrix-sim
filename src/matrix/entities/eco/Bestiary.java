@@ -57,6 +57,17 @@ public final class Bestiary {
      * seeding loop, never parked. A one-off is still catalog DATA (D-015) —
      * it carries a kingdom, a gait, a cadence and a speed like any other
      * row — so it lives in this file, where the readers are.
+     *
+     * <p><b>The cap on a one-off row binds nothing, and saying so is the
+     * point.</b> {@code SUNRISE} carries {@code populationCap = 1} and no
+     * reader enforces it: the seeding loop never reaches a one-off, and
+     * {@code huntLedgerCeiling} consults a cap only for a row that can
+     * teleport, which a ROOTED sunrise does not. The field is the shape #1113
+     * names — a constant that looks like a bound, is documented as a bound,
+     * and cannot cause anything to happen. It stays 1 because it is the true
+     * count and a reader deriving "how many of these exist" is right; it is
+     * not load-bearing, and the next one-off inherits a number that has never
+     * bitten. Enforcing it would be a decision (#1113), not a patch.
      */
     public static final List<Species> ONE_OFFS = List.of(SUNRISE);
 
