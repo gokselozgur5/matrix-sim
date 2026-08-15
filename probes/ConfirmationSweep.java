@@ -379,6 +379,9 @@ public final class ConfirmationSweep {
         private int signals;
         private int malformed;
         private int noAgent;
+        private boolean dark;
+        private long darkAt;
+        private long darkGap;
         private String subject = "-";
 
         Stream(long ticks) {
@@ -392,6 +395,22 @@ public final class ConfirmationSweep {
                 }
                 if (line.contains("\"signal\":")) {
                     signals++;
+                    // A signal is the tap announcing that the stream is no longer about a
+                    // live mind — "lost — the dream is no longer theirs" when Smith wears
+                    // it, "ended" when it walks out. D-021 promises a frame per 100 ticks
+                    // FOR A MIND THE TAP CAN SEE, and a mind under Smith is not one: the
+                    // probe's own javadoc says so about Thomas A. Anderson, who prints
+                    // 1,300 ticks of silence before the One is born and 1,000 more after
+                    // Smith takes him (#767).
+                    //
+                    // So the clock stops here and restarts at the next frame. Measured at
+                    // seed 7: the 800-tick gap runs 3300 → 4000, and the signal at 3300 is
+                    // `lost`. Every seed that misses the bound has a signal inside the gap
+                    // — 9 and 13 lost at 3800, 4 ended at 5300 — which is the whole of
+                    // #1155's remaining half, and it was measurable from the line the probe
+                    // was already counting and throwing away.
+                    dark = true;
+                    darkAt = Long.parseLong(between(line, "{\"tick\":", ","));
                     continue;
                 }
                 frames++;
@@ -419,6 +438,16 @@ public final class ConfirmationSweep {
                     noAgent++;
                 }
                 long tick = Long.parseLong(between(line, "{\"tick\":", ","));
+                if (dark) {
+                    // The window the tap announced it could not see. Reported, not
+                    // forgiven: a feed that goes dark for 700 ticks is a fact about the
+                    // run, and burying it would make this clause pass for a reason nobody
+                    // could read off the line.
+                    darkGap = Math.max(darkGap, tick - darkAt);
+                    dark = false;
+                    last = tick;
+                    continue;
+                }
                 maxGap = Math.max(maxGap, tick - last);
                 last = tick;
             }
@@ -428,7 +457,7 @@ public final class ConfirmationSweep {
             long gap = Math.max(maxGap, ticks - last);
             boolean held = frames > 0 && malformed == 0 && gap <= Config.FOLLOW_EVERY_TICKS;
             System.out.println("CONFIRM clause=D-021 frames=" + frames + " max_gap=" + gap
-                    + " signals=" + signals + " malformed=" + malformed + " no_agent=" + noAgent
+                    + " signals=" + signals + " malformed=" + malformed + " no_agent=" + noAgent + " dark_gap=" + darkGap
                     + " subject=\"" + subject + "\" " + status(frames > 0, held));
             return held;
         }
