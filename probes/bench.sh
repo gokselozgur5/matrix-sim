@@ -156,6 +156,11 @@ table() {
   # that needs one. reached=13 is not decoration: it moves the day a species is spawned
   # from an inline row again, which is the defect #974 split the list to end.
   judge SpeciesReach 'VERDICT EVERY_CONTAINS_THE_WORLD unlisted=0' "$TICKS"
+  # What one universe shares with the next in the same JVM (#1148). TwoWorlds guards the
+  # BEHAVIOUR at four seeds; this reads the tree, so a share that seed 42 never exercises is
+  # still named. Twelve sites, all safe, all now SAYING they are safe — the sentence that was
+  # missing from two scratch buffers for as long as they were wrong. Costs no universe.
+  judge SharedState  'VERDICT EVERY_SHARE_IS_DECLARED undeclared=0'
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
