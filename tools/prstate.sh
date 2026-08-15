@@ -81,7 +81,7 @@ done
 #                                       name<TAB>event<TAB>status<TAB>conclusion
 #   -> VERDICT<TAB>runs<TAB>green<TAB>red<TAB>pending<TAB>why
 judge() {
-  local pr_state="$1" mergeable="$2" rows="$3"
+  local pr_state="$1" mergeable="$2" rows="$3" base="${4:-main}" patterns="${5:-main}"
   local total=0 green=0 red=0 pending=0
   local name event status conclusion
 
@@ -104,6 +104,20 @@ judge() {
   if [ "$pr_state" = OPEN ] && [ "$mergeable" = CONFLICTING ]; then
     printf 'UNBUILT\t%d\t%d\t%d\t%d\tconflicting\n' "$total" "$green" "$red" "$pending"; return 0
   fi
+  # A fifth state, and the reason it is not UNBUILT: a pull request based on a
+  # branch no workflow triggers for was never going to be built. `gh pr checks`
+  # prints "no checks reported on the '<branch>' branch" for it — the same
+  # sentence it prints for a run that has not started, which is the ambiguity
+  # #1004 built this tool to end. It ended three of the four cases; this is the
+  # fourth. Every workflow here is `branches: [main]`, so every stacked unit PR
+  # — how this tree ships anything needing an unmerged predecessor — sits
+  # unjudged and looks identical to one that is merely early (#1210).
+  #
+  # Asked BEFORE the zero-run test, because "no runs" is the symptom both share
+  # and the eligible base is the thing that tells them apart.
+  if [ "$total" -eq 0 ] && ! base_eligible "$base" "$patterns"; then
+    printf 'NOT_ELIGIBLE\t0\t0\t0\t0\tbase=%s\n' "$base"; return 0
+  fi
   if [ "$total" -eq 0 ]; then
     printf 'UNBUILT\t0\t0\t0\t0\tno-run\n'; return 0
   fi
@@ -116,16 +130,48 @@ judge() {
   printf 'GREEN\t%d\t%d\t%d\t%d\t-\n' "$total" "$green" "$red" "$pending"
 }
 
-code_for() { case "$1" in GREEN) echo 0 ;; RED) echo 1 ;; UNBUILT) echo 4 ;; PENDING) echo 5 ;; *) echo 3 ;; esac; }
-rank_of()  { case "$1" in UNBUILT) echo 3 ;; RED) echo 2 ;; PENDING) echo 1 ;; *) echo 0 ;; esac; }
+code_for() { case "$1" in GREEN) echo 0 ;; RED) echo 1 ;; UNBUILT) echo 4 ;; PENDING) echo 5 ;; NOT_ELIGIBLE) echo 6 ;; *) echo 3 ;; esac; }
+# NOT_ELIGIBLE outranks UNBUILT in a sweep: an unbuilt PR is waiting for a run,
+# and this one is waiting for nothing at all.
+rank_of()  { case "$1" in NOT_ELIGIBLE) echo 4 ;; UNBUILT) echo 3 ;; RED) echo 2 ;; PENDING) echo 1 ;; *) echo 0 ;; esac; }
+
+# The bases the workflows will actually run for, READ FROM THE WORKFLOWS. The
+# alternative is a list beside them, which is a second copy of a fact and the
+# thing this tree keeps finding stale. Handles `branches: [main]` and
+# `branches: ['main', 'unit/**']` alike.
+eligible_bases() {
+  grep -hE '^[[:space:]]*branches:[[:space:]]*\[' .github/workflows/*.yml 2>/dev/null \
+    | sed -E 's/.*branches:[[:space:]]*\[([^]]*)\].*/\1/' \
+    | tr ',' '\n' \
+    | tr -d " '\"" \
+    | grep -v '^$' \
+    | sort -u
+}
+
+# base_eligible <base> <newline-separated patterns>
+#
+# `**` is GitHub's glob, not the shell's: in a workflow `unit/**` matches across
+# slashes, while the shell's `case` treats `*` as matching them anyway — so the
+# prefix test below is the honest reading of the pattern rather than a lucky one.
+base_eligible() {
+  local base="$1" pat
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    case "$pat" in
+      *'**') case "$base" in "${pat%'**'}"*) return 0 ;; esac ;;
+      *)     case "$base" in $pat) return 0 ;; esac ;;
+    esac
+  done <<< "$2"
+  return 1
+}
 
 # ---- the suite ---------------------------------------------------------------
 
 selftest() {
   local pass=0 fail=0 seen=""
-  check() { # check <name> <pr-state> <mergeable> <rows> <want>
+  check() { # check <name> <pr-state> <mergeable> <rows> <want> [base] [patterns]
     local got
-    got="$(judge "$2" "$3" "$4" | awk -F'\t' '{printf "%s runs=%s green=%s red=%s pending=%s why=%s", $1,$2,$3,$4,$5,$6}')"
+    got="$(judge "$2" "$3" "$4" "${6:-main}" "${7:-main}" | awk -F'\t' '{printf "%s runs=%s green=%s red=%s pending=%s why=%s", $1,$2,$3,$4,$5,$6}')"
     seen="$seen ${got%% *}"
     if [ "$got" = "$5" ]; then
       pass=$((pass + 1)); printf 'CASE %-26s OK    %s\n' "$1" "$got"
@@ -170,11 +216,36 @@ selftest() {
   check merged-unknown-no-run   MERGED UNKNOWN   ''  \
     'UNBUILT runs=0 green=0 red=0 pending=0 why=no-run'
 
-  # A suite that reaches one verdict is not a suite. The four states are the whole claim of
+  # The fifth state, and the four ways it must NOT fire (#1210).
+  check stacked-no-run          OPEN MERGEABLE   ''  \
+    'NOT_ELIGIBLE runs=0 green=0 red=0 pending=0 why=base=unit/1206-tool-depth-guard' \
+    unit/1206-tool-depth-guard main
+  # A base nothing triggers for, but the runs happened anyway — a workflow_dispatch,
+  # a re-run, a trigger this parser did not read. Measured beats inferred: rows on
+  # the table mean the thing was built, whatever the base says.
+  check stacked-but-built       OPEN MERGEABLE   "$GREEN_ROW" \
+    'GREEN runs=1 green=1 red=0 pending=0 why=-' \
+    unit/1206-tool-depth-guard main
+  # Conflicting is still asked first: a branch that cannot merge is unbuilt for a
+  # reason the base cannot excuse.
+  check stacked-conflicting     OPEN CONFLICTING ''  \
+    'UNBUILT runs=0 green=0 red=0 pending=0 why=conflicting' \
+    unit/1206-tool-depth-guard main
+  # The widened trigger from #1210's first candidate repair: with `unit/**` in the
+  # workflows, the same PR is eligible and its zero runs mean what they used to.
+  check stacked-when-widened    OPEN MERGEABLE   ''  \
+    'UNBUILT runs=0 green=0 red=0 pending=0 why=no-run' \
+    unit/1206-tool-depth-guard $'main\nunit/**'
+  # And the glob must not swallow everything: `unit/**` is not a licence for `dev`.
+  check other-base-still-not    OPEN MERGEABLE   ''  \
+    'NOT_ELIGIBLE runs=0 green=0 red=0 pending=0 why=base=dev' \
+    dev $'main\nunit/**'
+
+  # A suite that reaches one verdict is not a suite. The five states are the whole claim of
   # this tool, so the cases must be shown to separate them before their verdict counts.
   local missing=""
   local v
-  for v in UNBUILT RED PENDING GREEN; do
+  for v in UNBUILT RED PENDING GREEN NOT_ELIGIBLE; do
     printf '%s' "$seen" | grep -qw "$v" || missing="$missing $v"
   done
   if [ -n "$missing" ]; then
@@ -200,20 +271,20 @@ fi
   || { echo "FATAL cannot tell which repository this is; pass --for OWNER/NAME" >&2; exit 2; }
 
 report() { # report <pr-number> -> prints its rows and verdict line, returns its exit code
-  local n="$1" fields state mergeable head rows verdict runs green red pending why i
+  local n="$1" fields state mergeable head base rows verdict runs green red pending why i
   local wname wevent wstatus wconclusion
 
-  fields="$(gh pr view "$n" --repo "$REPO" --json state,mergeable,headRefOid \
-              --jq '[.state, .mergeable, .headRefOid] | @tsv' 2>/dev/null)" || {
+  fields="$(gh pr view "$n" --repo "$REPO" --json state,mergeable,headRefOid,baseRefName \
+              --jq '[.state, .mergeable, .headRefOid, .baseRefName] | @tsv' 2>/dev/null)" || {
     echo "FATAL cannot read pull request $n in $REPO (number? token? network?)" >&2; return 3; }
-  IFS=$'\t' read -r state mergeable head <<< "$fields"
+  IFS=$'\t' read -r state mergeable head base <<< "$fields"
 
   i=0
   while [ "$state" = OPEN ] && [ "$mergeable" = UNKNOWN ] && [ "$i" -lt "$POLLS" ]; do
     sleep "$POLL_SLEEP"
-    fields="$(gh pr view "$n" --repo "$REPO" --json state,mergeable,headRefOid \
-                --jq '[.state, .mergeable, .headRefOid] | @tsv' 2>/dev/null)" || break
-    IFS=$'\t' read -r state mergeable head <<< "$fields"
+    fields="$(gh pr view "$n" --repo "$REPO" --json state,mergeable,headRefOid,baseRefName \
+                --jq '[.state, .mergeable, .headRefOid, .baseRefName] | @tsv' 2>/dev/null)" || break
+    IFS=$'\t' read -r state mergeable head base <<< "$fields"
     i=$((i + 1))
   done
 
@@ -227,7 +298,8 @@ report() { # report <pr-number> -> prints its rows and verdict line, returns its
       "$n" "$wname" "$wevent" "$wstatus" "$wconclusion"
   done <<< "$rows"
 
-  IFS=$'\t' read -r verdict runs green red pending why <<< "$(judge "$state" "$mergeable" "$rows")"
+  IFS=$'\t' read -r verdict runs green red pending why \
+    <<< "$(judge "$state" "$mergeable" "$rows" "$base" "$(eligible_bases)")"
 
   printf 'PR STATE VERDICT %s pr=%s head=%s state=%s mergeable=%s runs=%s green=%s red=%s pending=%s' \
     "$verdict" "$n" "${head:0:7}" "$state" "$mergeable" "$runs" "$green" "$red" "$pending"

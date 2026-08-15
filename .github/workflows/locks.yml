@@ -443,6 +443,21 @@ jobs:
           grep -q '^RULERCHECK VERDICT PASS ' "${RUNNER_TEMP:-/tmp}/rulercheck.log" \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
 
+      # WHY: #1210 — `prstate.sh`'s catalog row says "only its judge runs in the lane",
+      # and its judge did not. The tool itself cannot be a step (the run that would carry
+      # it is the thing it exists to report missing), so the judge is the whole lane-side
+      # contract — and it was prose. Its suite takes no token and no network by
+      # construction: `judge` is a pure function of three strings, which is why the five
+      # verdicts are testable at all.
+      - name: tools — prstate.sh's judge separates its five verdicts (#1210)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/prstate.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/prstate.log"
+          grep -q '^PRSTATE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/prstate.log" \
+            || { echo "FATAL prstate's judge cannot separate its own verdicts" >&2; exit 1; }
+
       # WHY: #1095 — three tools in one day printed advice that was wrong in a way only
       # executing it revealed, and advice is the most expensive prose in a tool to be wrong
       # in: it is read once somebody has already decided to act. This audits the half that
