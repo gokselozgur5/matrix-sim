@@ -387,6 +387,21 @@ jobs:
             "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log" \
             || { echo "FATAL the seal gate reached no passing verdict over its own paths" >&2; exit 1; }
 
+      # WHY: #1164 — this tool's central claim is about DATES ("a repair that changes when
+      # the work happened is not a repair", #1012) and no amount of reading a git command
+      # tells you what it does to them. The suite runs the advised repair on a three-commit
+      # fixture in a scratch clone and compares the author dates before and after — and runs
+      # the OLD advice beside it, so the difference between the two commands is a
+      # measurement rather than a sentence in a comment.
+      - name: tools — the attribution repair keeps the dates it repairs (#1164)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/attribution.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/attribution-selftest.log"
+          grep -qE '^ATTRIBUTION SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/attribution-selftest.log" \
+            || { echo "FATAL the attribution repair reached no passing verdict" >&2; exit 1; }
+
       - name: tools — balance.sh ruler and floor (#828)
         shell: bash
         run: |
