@@ -47,10 +47,12 @@ set -euo pipefail
 
 PIN=.github/canonical-digest
 BASE=origin/main
+AGE=no
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --base) BASE="${2:-}"; [ -n "$BASE" ] || { echo "FATAL --base wants a ref" >&2; exit 2; }; shift 2 ;;
+    --age) AGE=yes; shift ;;
     -h|--help) sed -n '2,5p' "$0"; exit 0 ;;
     *) echo "FATAL unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -72,6 +74,49 @@ payload_of() { # payload_of <text> -> the single payload line, or empty on a mal
 }
 
 sha_of() { printf '%s\n' "$1" | awk '{print $1}'; }
+
+# The stamp line: `# sealed: <ISO date> <commit> <where argued>`. A comment rather than a
+# second payload line, because the payload rule is exactly one line and two readers
+# enforce it — see the pin's own paragraph. Empty when the file carries no stamp, which
+# is a state this script names rather than guesses at.
+stamp_of() { grep -m1 -E '^#[[:space:]]*sealed:' "$PIN" 2>/dev/null | sed -E 's/^#[[:space:]]*sealed:[[:space:]]*//' || true; }
+
+# --age answers "how long has this world stood" as a READ. Forty units landed against one
+# sha in a single night and the aggregate was a fact nobody could state without walking
+# the log (#1099) — so it is stated here, in the same grammar as every other verdict.
+# Days are computed in whichever `date` dialect is present, the way balance.sh does it:
+# GNU takes -d, BSD takes -j -f. A box with neither still gets the stamp and the count of
+# commits, because those are the facts that do not need arithmetic.
+if [ "$AGE" = yes ]; then
+  [ -f "$PIN" ] || { echo "FATAL $PIN is missing — the seal has no home" >&2; exit 1; }
+  stamp="$(stamp_of)"
+  payload="$(payload_of "$(cat "$PIN")")" || {
+    echo "FATAL $PIN does not hold exactly one payload line" >&2; exit 1; }
+  sha="$(sha_of "$payload")"
+  if [ -z "$stamp" ]; then
+    echo "SEAL AGE sha=$sha sealed=unstamped (the pin carries no '# sealed:' line)"
+    exit 1
+  fi
+  when="$(printf '%s\n' "$stamp" | awk '{print $1}')"
+  at="$(printf '%s\n' "$stamp" | awk '{print $2}')"
+  today="$(date -u +%Y-%m-%d)"
+  days=unknown
+  if s=$(date -u -d "$when" +%s 2>/dev/null); then
+    days=$(( ( $(date -u -d "$today" +%s) - s ) / 86400 ))
+  elif s=$(date -u -j -f %Y-%m-%d "$when" +%s 2>/dev/null); then
+    days=$(( ( $(date -u -j -f %Y-%m-%d "$today" +%s) - s ) / 86400 ))
+  fi
+  # Commits since the stamped commit is a second, independent measure of the same
+  # standing — a quiet week and a busy night are both "one day", and only one of them
+  # is evidence. Silent when the stamped commit is not in this checkout: a shallow
+  # clone knows the date and not the distance, and reporting 0 there would be a lie.
+  since=unknown
+  if git rev-parse --verify --quiet "$at^{commit}" >/dev/null 2>&1; then
+    since="$(git rev-list --count "$at..HEAD" 2>/dev/null || echo unknown)"
+  fi
+  echo "SEAL AGE sha=$sha sealed=$when at=$at days=$days commits_since=$since"
+  exit 0
+fi
 
 [ -f "$PIN" ] || { echo "FATAL $PIN is missing — the seal has no home" >&2; exit 1; }
 
@@ -138,6 +183,25 @@ printf '%s\n' "$now_payload" | grep -qE '#[0-9]+' || {
   echo "FATAL the payload line in $PIN names no issue in its reason field." >&2
   echo "      The seal's home must point at the argument: '<sha>  <why> (#N)'." >&2
   fail=1; }
+
+# The stamp moves with the seal, or it does not mean anything (#1099). A date nobody has
+# to update reads as "this world has stood since 2026-08-13" forever, and the first
+# person it misleads is whoever trusted --age instead of walking the log — which is the
+# whole reason the line exists. Checked only on a MOVE: a unit that leaves the bytes
+# alone owes nothing here, exactly as it owes no paragraph.
+now_stamp="$(stamp_of)"
+base_stamp="$(printf '%s\n' "$base_file" | grep -m1 -E '^#[[:space:]]*sealed:' | sed -E 's/^#[[:space:]]*sealed:[[:space:]]*//' || true)"
+if [ -z "$now_stamp" ]; then
+  echo "FATAL the seal moved and $PIN carries no '# sealed:' line." >&2
+  echo "      Stamp it: '# sealed: $(date -u +%Y-%m-%d) <this commit> <the PR>'." >&2
+  fail=1
+elif [ "$now_stamp" = "$base_stamp" ]; then
+  echo "FATAL the seal moved and its '# sealed:' stamp did not." >&2
+  echo "      base: $base_stamp" >&2
+  echo "      head: $now_stamp" >&2
+  echo "      A date that survives the move it dates is wrong from the moment it is read." >&2
+  fail=1
+fi
 
 if [ "$fail" != 0 ]; then
   echo "DIGEST MOVE VERDICT UNARGUED from=$base_sha to=$now_sha base=$BASE"

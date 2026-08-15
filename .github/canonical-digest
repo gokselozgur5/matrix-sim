@@ -1,5 +1,24 @@
 # The canonical digest — the seal's one home in the tree.
 #
+# sealed: 2026-08-13 4316525 PR #888 (#377)
+#
+# The date this value was set, so "how long has this world stood" is a READ and not a
+# walk of the log. Forty units landed in one night against this sha and nothing in the
+# tree recorded that as evidence: each pull request checked the pin individually, forty
+# times, and the aggregate — six of them touching src/ — was a fact nobody could state
+# without reconstructing it from history (#1099). A stability claim that costs a
+# `git log` is a claim nobody makes.
+#
+# It is a COMMENT because the payload rule is exactly one payload line, and that rule is
+# read by two separate readers (lock 7 and tools/digest-move.sh); a second data line
+# would make this file argue with itself. The grammar is
+#
+#     # sealed: <ISO date> <the commit that moved it> <where it was argued>
+#
+# and `tools/digest-move.sh --age` reads it. Moving the seal without moving this line is
+# refused by the same script that refuses an undeclared move: a stamp nobody has to
+# update is a stamp that is always wrong.
+#
 # `--selftest` runs the daemon twice and asks whether the two runs agree. Two runs of a
 # weakened seal agree perfectly, so that question cannot catch a seal that got smaller
 # (#898). This file is the outside witness: the sha that
