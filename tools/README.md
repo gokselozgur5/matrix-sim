@@ -73,3 +73,30 @@ House rules:
   198 bytes behind the tree that shipped it and drifted twice more before
   anybody re-read it. `locks.yml` now builds the reader and asks it (#965), so
   the next page to move moves in a PR.
+
+## The exit grammar — what a low code means, and who may spend it
+
+Every program in this tree that a script branches on: eleven tools, forty-odd
+probes, and the teleprinter. Three populations, and until #1241 measured them,
+three different meanings for `2`.
+
+| code | meaning | who spends it |
+|---|---|---|
+| **0** | held · ok · the claim stands | everyone |
+| **1** | broke · not-ok · the claim does not | everyone |
+| **2** | **the invocation was refused** — a flag with no argument, a value the program will not take | **everyone**; this is the largest existing agreement in the tree, ten tools deep |
+| 3+ | local answers only some programs can give | see each catalog row |
+
+The first three are **universal**: a caller may branch on them without knowing
+which program it ran. Everything above is **local**, and a row that spends it
+must say what it means — `advice.sh` fails the lane for a tool that spends a
+code its own row does not name (#1222).
+
+**Where this is not yet true, stated rather than hidden.** `probes/` spends
+**2** for `NEVER_AROSE` and **3** for a refused invocation; `DreamReader` spends
+**2** for `EXIT_NO_SUCH_PILOT` and **3** for `EXIT_USAGE`. Both disagree with
+the table above, and #1239 moved the probes to 3 on a survey one program deep —
+the defect it fixed was real (nine probes reported a typo as a world with no
+births) and the constant it chose is provisional. #1241 owns the reconciliation:
+`NEVER_AROSE` has to move up before `REFUSED` can come down to 2, and that is a
+larger change than the unit that started it should have made alone.
