@@ -167,7 +167,7 @@ table() {
   # says nothing about it is how the defect got to be a year old. When #1155 lands, this
   # line becomes CONFIRMATIONS_HELD in the PR that fixes it — and until then, a seed 7 that
   # starts passing is exactly as red as one that starts failing differently.
-  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_BROKEN' "$TICKS" 7
+  known ConfirmationSweep 'VERDICT CONFIRMATIONS_BROKEN' '#1155' "$TICKS" 7
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
@@ -268,6 +268,44 @@ contract() {
 }
 
 # A judged probe: run it, print it, and demand its exact line.
+# A row whose probe is EXPECTED to fail, because the defect it names is open and filed.
+#
+# #1093 gave judged probes honest exit codes, and that made "expected broken" unsayable:
+# `judge` fails a row whose probe exits nonzero, so pinning ConfirmationSweep's seed-7
+# verdict — the D-021 clause that holds at seed 42 and nowhere else (#1155) — turned the
+# whole sweep red for a break the tree already knows about. The two ways out of that are
+# both worse than a third verb: delete the row and lose the only thing watching the
+# defect, or drop the exit code and lose what #1093 bought.
+#
+# So a known break is DECLARED, with the issue that owns it in the row. The verdict is
+# still matched exactly, and the nonzero exit is required rather than tolerated: a probe
+# that starts PASSING here is as red as one that starts failing differently, which is what
+# makes this a lock and not a mute button. When the issue lands, the row becomes a `judge`.
+known() {                       # known <Class> '<verdict>' '<#issue>' [args...]
+  local cls="$1" want="$2" issue="$3"; shift 3
+  PROBES=$((PROBES + 1)); JUDGED=$((JUDGED + 1))
+  if [ "$LIST" = yes ]; then
+    contract "$cls" "$want (known break, $issue)" "$@"
+    return 0
+  fi
+  local started; started=$(date +%s)
+  printf 'PROBE %s args="%s" known_break="%s" issue=%s\n' "$cls" "$*" "$want" "$issue"
+  execute "$cls" "$@"
+  if [ "$ROW_RC" -eq 0 ]; then
+    FAIL=$((FAIL + 1))
+    echo "FAIL $cls exited 0 — the break $issue records is gone; make this a judge row"
+    return 0
+  fi
+  if printf '%s\n' "$ROW_OUT" | grep -qxF "$want"; then
+    PASS=$((PASS + 1))
+    echo "PASS $cls known=$issue secs=$(($(date +%s) - started))"
+  else
+    FAIL=$((FAIL + 1))
+    echo "FAIL $cls broke differently: wanted $want"
+  fi
+  settle "$cls" "$ROW_OUT" "$@"
+}
+
 judge() {
   local cls="$1" want="$2"; shift 2
   PROBES=$((PROBES + 1)); JUDGED=$((JUDGED + 1))
