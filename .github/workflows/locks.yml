@@ -371,6 +371,22 @@ jobs:
       # Streamed through tee rather than captured, under tools/README.md's capture rule: a case
       # the ruler gets wrong prints its row with the reading it wanted and then exits 5, and a
       # capture threw that row away — a wrong verdict without its case is unactionable.
+      # WHY: #1164 — this gate is armed by an ACT, a moved pin, so walking its paths meant
+      # moving a seal, and nothing walked them until now. The suite builds its fixtures in a
+      # scratch clone of this history: a pin moved with and without its paragraph, and with
+      # and without its stamp. The two that matter are the REFUSALS — a gate whose only
+      # exercised path is the green one is #898's argument one file over.
+      # Streamed through tee under tools/README.md's capture rule: the suite prints one row
+      # per case and then returns nonzero, so a capture would take the failing rows with it.
+      - name: tools — the digest-move gate walks its own refusals (#1164)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/digest-move.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log"
+          grep -qE '^DIGEST MOVE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/digest-move-selftest.log" \
+            || { echo "FATAL the seal gate reached no passing verdict over its own paths" >&2; exit 1; }
+
       - name: tools — balance.sh ruler and floor (#828)
         shell: bash
         run: |

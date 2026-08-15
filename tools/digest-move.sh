@@ -48,11 +48,13 @@ set -euo pipefail
 PIN=.github/canonical-digest
 BASE=origin/main
 AGE=no
+SELFTEST=no
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --base) BASE="${2:-}"; [ -n "$BASE" ] || { echo "FATAL --base wants a ref" >&2; exit 2; }; shift 2 ;;
     --age) AGE=yes; shift ;;
+    --selftest) SELFTEST=yes; shift ;;
     -h|--help) sed -n '2,5p' "$0"; exit 0 ;;
     *) echo "FATAL unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -116,6 +118,77 @@ if [ "$AGE" = yes ]; then
   fi
   echo "SEAL AGE sha=$sha sealed=$when at=$at days=$days commits_since=$since"
   exit 0
+fi
+
+# --selftest runs every path this gate has against fixtures built out of THIS history,
+# in a scratch clone, the way tools/baseline.sh builds its own (#1164).
+#
+# Why it did not exist until now: the gate is armed by an act — a moved pin — so walking
+# its paths meant moving a seal, and moving a seal is the one thing this repository does
+# on purpose and never casually. A scratch clone removes that: the fixtures are commits
+# nothing here will ever push, and the real pin is never touched.
+#
+# Five paths, and the two that MATTER are the refusals. A gate whose only exercised path
+# is the green one is #898's argument about --selftest itself: two runs of a weakened
+# check agree perfectly.
+if [ "$SELFTEST" = yes ]; then
+  work="$(mktemp -d "${TMPDIR:-/tmp}/digest-move-selftest.XXXXXX")"
+  trap 'rm -rf "$work"' EXIT
+  root="$(git rev-parse --show-toplevel)"
+  git clone -q --no-hardlinks "$root" "$work/repo" 2>/dev/null || {
+    echo "DIGEST MOVE SELFTEST VERDICT FAIL cases=0 failed=0  (no clone; a suite of nothing is not a pass)"
+    exit 1; }
+  cd "$work/repo" || exit 1
+  git config user.email selftest@invalid
+  git config user.name selftest
+  base="$(git rev-parse HEAD)"
+  pass=0; fail=0
+
+  case_() {                     # case_ <name> <want-verdict-word> <setup>
+    local name="$1" want="$2" setup="$3" got
+    git checkout -q -B case "$base" >/dev/null 2>&1
+    git checkout -q "$base" -- "$PIN"
+    eval "$setup"
+    got="$(bash "$root/tools/digest-move.sh" --base "$base" 2>/dev/null | grep -oE 'VERDICT [A-Z]+' | awk '{print $2}' || true)"
+    if [ "$got" = "$want" ]; then
+      pass=$((pass + 1)); printf 'DIGESTMOVE case=%-26s want=%-9s got=%-9s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'DIGESTMOVE case=%-26s want=%-9s got=%-9s BROKEN\n' "$name" "$want" "${got:-<none>}"
+    fi
+  }
+
+  # Helpers the cases share. The sha is read INSIDE the case, after the pin is restored,
+  # so a fixture cannot be built from a value the previous case left behind.
+  #
+  # `sed` rewrites the sha's first four characters and nothing else: the payload keeps its
+  # shape — 64 hex then a reason naming an issue — so a case tests the ARGUMENT and not
+  # the file's grammar, which lock 7 already refuses on its own.
+  move_pin() {
+    old="$(sed -nE 's/^([0-9a-f]{64}).*/\1/p' "$PIN" | head -1)"
+    new="aaaa${old:4}"
+    sed -i.bak "s/^$old/$new/" "$PIN" && rm -f "$PIN.bak"
+  }
+  # The issue goes on its OWN line, and finding that out is half of what this suite is
+  # worth. The gate matches the declaration with `grep -qxF` — exact line — and asks for
+  # an issue reference anywhere in the same MESSAGE. Writing `… -> <sha> (#1164)` reads
+  # perfectly and matches nothing, because the line is no longer the line. Nobody had
+  # walked this path before, so nobody had discovered that its most natural spelling
+  # fails; the first fixture written for it failed for exactly that reason.
+  declare_it() { git commit -q -a -m "selftest: move the pin (#1164)
+
+Declared digest move: $old -> $new"; }
+  restamp() { sed -i.bak "s/^# sealed: [0-9][0-9-]*/# sealed: 1999-01-01/" "$PIN" && rm -f "$PIN.bak"; }
+
+  case_ no-move-is-silent       NONE     "true"
+  case_ moved-and-unargued      UNARGUED "move_pin"
+  case_ moved-argued-restamped  ARGUED   "move_pin && restamp && declare_it"
+  case_ moved-stamp-left-behind UNARGUED "move_pin && declare_it"
+
+  cd "$root" || exit 1
+  printf 'DIGEST MOVE SELFTEST VERDICT %s cases=%d failed=%d\n' \
+    "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
+  [ "$fail" = 0 ]
+  exit $?
 fi
 
 [ -f "$PIN" ] || { echo "FATAL $PIN is missing — the seal has no home" >&2; exit 1; }
