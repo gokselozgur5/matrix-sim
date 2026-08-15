@@ -204,10 +204,11 @@ public final class ClauseAftermath {
             // Not a pass. A budget the clause never fires in has nothing to
             // account for, and saying ACCOUNTED there would let a row that
             // reaches no miracle stand in for one that does.
-            System.out.println("VERDICT NO_FIRING");
+            Probes.leave("VERDICT NO_FIRING", false, false);
         } else {
-            System.out.println("VERDICT "
-                    + (unaccounted == 0 ? "AFTERMATH_ACCOUNTED" : "AFTERMATH_UNACCOUNTED"));
+            Probes.leave("VERDICT "
+                    + (unaccounted == 0 ? "AFTERMATH_ACCOUNTED" : "AFTERMATH_UNACCOUNTED"),
+                    unaccounted == 0, true);
         }
     }
 
