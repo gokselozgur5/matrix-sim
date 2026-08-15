@@ -124,7 +124,7 @@ table() {
   # threw the moment #842 moved the pools out from under it (#892).
   judge DistrictCensus 'VERDICT CITY_CENSUSED' 42
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
-  judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=24 breaks=0'
+  judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
