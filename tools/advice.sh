@@ -183,6 +183,49 @@ done
 # the tool it describes, so every `--flag` on that row is a promise about THAT tool, and a
 # flag the tool does not mention is a promise it cannot keep. The prose around it is not
 # judged and could not be.
+# A tool that spends exit codes owes its row a list of them (#1222).
+#
+# `checkage.sh` and `prstate.sh` document theirs — 0 CURRENT · 1 STALE · 2 refused, and so
+# on — because a caller branching on `$?` needs the vocabulary. Four tools spend codes and
+# say nothing: `attribution.sh` spends six, `balance.sh` six, and both rows are silent.
+# An undocumented code is a contract with no reader, and this tree branches on `$?` in
+# workflows, in `release.sh`, and in every crew member's shell.
+#
+# Only LITERAL exits are counted. `prstate.sh` reaches its codes through `code_for`, so a
+# grep for `exit [0-9]` finds three of its seven — the shape is reported as `indirect` and
+# not judged, because inferring a code from a lookup table means interpreting the script,
+# and a checker that guesses is the thing this file exists to refuse.
+codes_undocumented=0
+codes_indirect=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  spends="$(grep -oE '(^|[^_a-zA-Z])exit [0-9]+|EXIT_[A-Z_]+=[0-9]+|EXIT_[A-Z_]+ = [0-9]+' "$tool" \
+            | grep -oE '[0-9]+$' | sort -un | tr '\n' ' ')"
+  # Trim, and ignore a tool whose only literal code is 0 — every script ends by
+  # succeeding, and "exits 0 on success" is not a vocabulary worth a row.
+  spends="$(printf '%s' "$spends" | sed -E 's/^ +| +$//g')"
+  [ -n "$spends" ] && [ "$spends" != "0" ] || continue
+  # The row this tool OPENS, not every row that mentions it. `release.sh`'s row
+  # names `attribution.sh` while explaining which locks a cut skips, so a bare
+  # grep returns two rows and the wrong one's `Exit …` answers for the right
+  # one — a checker reading a neighbour's homework, which is the same shape the
+  # `rowbody` comment below was written for.
+  row="$(grep "^| \`$name\`" tools/README.md || true)"
+  [ -n "$row" ] || continue     # UNCATALOGUED already said this, above
+  if printf '%s' "$tool" | grep -q . && grep -qE 'exit +"?\$\(' "$tool"; then
+    codes_indirect=$((codes_indirect + 1))
+    echo "CODES $name indirect: reaches at least one exit through a lookup, literals=[$spends]"
+  fi
+  case "$row" in
+    *"Exit "*) ;;
+    *)
+      codes_undocumented=$((codes_undocumented + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "CODES_UNDOCUMENTED $name spends [$spends] and its row says nothing about exit codes"
+      ;;
+  esac
+done
+
 catalog_wrong=0
 while IFS= read -r row; do
   [ -z "$row" ] && continue
@@ -281,12 +324,19 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
   echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
+elif [ "$codes_undocumented" -gt 0 ]; then
+  # A fifth word (#1222). A tool spending codes its row does not name is not a
+  # missing flag, a missing row, a lying row, or an unrun suite: everything is
+  # present and one contract is unwritten. `A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS`
+  # would send the reader looking for a promise, and there is none — that is the
+  # defect.
+  echo "ADVICE VERDICT A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME undocumented=$codes_undocumented"
 elif [ "$unrun" -gt 0 ]; then
   # A fourth failure and a fourth word (#1212). A suite the lane never executes
   # is not a missing flag, not a missing catalog row and not a lying one: the
