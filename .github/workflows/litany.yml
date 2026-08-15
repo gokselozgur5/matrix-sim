@@ -39,15 +39,22 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
-          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0 \
+          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
             "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
             || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
           bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
           grep -q '^LITANY VERDICT PASS$' "${RUNNER_TEMP:-/tmp}/litany.log" \
             || { echo "FATAL the litany did not reach a passing verdict" >&2; exit 1; }
- \
-            "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
-            || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
-          bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
-          grep -q '^LITANY VERDICT PASS$' "${RUNNER_TEMP:-/tmp}/litany.log" \
-            || { echo "FATAL the litany did not reach a passing verdict" >&2; exit 1; }
+
+      # The judge cannot be the only thing that never ran. Every `run:` block in
+      # every workflow, parsed by the shell that will execute it — including the
+      # blocks in THIS file, which is how the unclosed quote above would have
+      # been caught on the day it landed rather than eleven runs later (#1203).
+      - name: tools — every workflow's shell parses (#1203)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/litany.sh --shellcheck | tee "${RUNNER_TEMP:-/tmp}/shellcheck.log"
+          grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0$' \
+            "${RUNNER_TEMP:-/tmp}/shellcheck.log" \
+            || { echo "FATAL a workflow ships a run: block the shell cannot parse" >&2; exit 1; }
