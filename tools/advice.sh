@@ -51,6 +51,21 @@ cd "$(dirname "$0")/.."
 LIST=no
 [ "${1:-}" = "--list" ] && LIST=yes
 
+# An unknown flag is refused, and `--selftest` is the reason (#1212). This tool
+# had no suite and no argument parsing, so `tools/advice.sh --selftest` ran the
+# ordinary audit and printed `ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS` — a
+# green line from a suite that does not exist. A lane step written in good faith
+# against that invocation would have passed forever while proving nothing, which
+# is the vacuous pass this tool was built to hunt in other people's scripts.
+#
+# `release.sh` already refuses the same flag by accident, through its positional
+# usage check. This makes the refusal deliberate rather than lucky, and exit 2 is
+# the tree's code for a refused invocation.
+case "${1:-}" in
+  ''|--list) ;;
+  *) echo "FATAL unknown argument: $1 (this tool takes --list, or nothing)" >&2; exit 2 ;;
+esac
+
 # An advice line: an echo whose payload starts with four or more spaces. The
 # house style indents the command a reader is meant to copy, which is what
 # separates it from the sentence explaining why.
@@ -213,6 +228,9 @@ done <<< "$(grep -E '^\| `[a-z-]+\.sh`' tools/README.md)"
 charset_checked=0
 charset_nothing=0
 charset_drift=0
+suites=0
+no_suite=0
+unrun=0
 for tool in tools/*.sh; do
   [ "$tool" = "tools/advice.sh" ] && continue
   grep -qE '\-\-selftest\b' "$tool" || continue
@@ -228,6 +246,28 @@ for tool in tools/*.sh; do
           timeout 60 bash "$tool" --selftest 2>&1 || true)"
   ascii="$(LC_ALL=C MATRIX_TOOL_DEPTH=$((${MATRIX_TOOL_DEPTH:-0} + 1)) \
           timeout 60 bash "$tool" --selftest 2>&1 || true)"
+  # Does that invocation reach a SUITE, or did the tool merely tolerate the
+  # flag? `grep -qE -- --selftest` above says only that the string appears in
+  # the file — and it appears in THIS file for every tool it runs, which is how
+  # `advice.sh` and `release.sh` were both counted as having suites they do not
+  # have (#1212). The verdict line is the discriminator: a real suite prints
+  # `<NAME> SELFTEST VERDICT …`, and a tool that ran its ordinary self prints
+  # something else or refuses the flag outright.
+  if ! printf '%s' "$utf8" | grep -qE '^([A-Z][A-Z0-9_]* )+SELFTEST VERDICT '; then
+    no_suite=$((no_suite + 1))
+    echo "SUITE $tool none: --selftest reaches no suite (the flag is not a promise)"
+    continue
+  fi
+  suites=$((suites + 1))
+  # A suite the lane never runs is a falsification nobody performs. `litany.yml`
+  # and `locks.yml` are read for the invocation, not for the tool's name: the
+  # tool appears in the lane whenever the lane runs it at all, and the question
+  # here is narrower.
+  if ! grep -qE "$(basename "$tool") --selftest" .github/workflows/*.yml 2>/dev/null; then
+    unrun=$((unrun + 1))
+    BREAKS=$((BREAKS + 1))
+    echo "SUITE_UNRUN $tool has a suite no workflow executes"
+  fi
   if ! printf '%s' "$utf8" | LC_ALL=C grep -q '[^ -~]'; then
     charset_nothing=$((charset_nothing + 1))
     echo "CHARSET $tool nothing-to-prove: its selftest prints no byte above 0x7f"
@@ -241,12 +281,19 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
   echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
+elif [ "$unrun" -gt 0 ]; then
+  # A fourth failure and a fourth word (#1212). A suite the lane never executes
+  # is not a missing flag, not a missing catalog row and not a lying one: the
+  # tool is right, the document is right, and the falsification is simply never
+  # performed. Naming it as any of the other three sends the reader to a file
+  # where nothing is wrong.
+  echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
 elif [ "$uncatalogued" -gt 0 ]; then
   # Three failures, three words. A catalog gap reported as "advises a flag nobody
   # implements" sends the reader to the wrong file, which is the same class of error as a
