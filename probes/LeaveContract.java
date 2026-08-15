@@ -49,13 +49,19 @@ import java.util.regex.Pattern;
  * that never route through the helper at all — the population that produced
  * every one of the eight — and says so in its verdict rather than implying more.
  *
- * <h2>It counts its own row</h2>
+ * <h2>The census is not the verdict</h2>
  *
- * {@code judged=} includes {@code LeaveContract}, because the table is read as
- * the table and the row for this probe is a row. That is deliberate rather than
- * tolerated: a check that excluded itself would report a number nobody could
- * reproduce by counting the file, and the tree has spent two units this week on
- * checkers that quietly stood outside their own question.
+ * {@code LEAVE_CENSUS} carries {@code judged=}, {@code reporting=} and
+ * {@code no_source=}; the verdict line carries only {@code no_code=} and
+ * {@code by_hand=}. The first draft put the population in the verdict, the
+ * bench row pinned it by exact-line grep, and the row went red TWICE in one
+ * afternoon for reasons unrelated to this check — once when its own row was
+ * added, once when {@code SheetDump --catalog} landed. A pinned census in a
+ * lane is a number people learn to edit, which is #884's lesson about the seal.
+ *
+ * <p>{@code judged=} does include this probe: the table is read as the table
+ * and the row for this probe is a row. A check that excluded itself would
+ * report a number nobody could reproduce by counting the file.
  *
  * <p>Usage: {@code java -cp out:probes/out LeaveContract [repo-root]}
  */
@@ -134,13 +140,23 @@ public final class LeaveContract {
             System.out.println("NO_SOURCE " + probe + " judged=yes");
         }
 
+        // The population is its own line, and that is not cosmetic. The first
+        // draft put `judged=` in the verdict, the bench row pinned it by
+        // exact-line grep, and the row went red TWICE in one afternoon for
+        // reasons that had nothing to do with this check: once when the row for
+        // this probe was added, once when `SheetDump --catalog` landed. A pinned
+        // census in a lane is a number people learn to edit, which is #884's
+        // lesson about the seal. What the row must pin is the CONTRACT —
+        // `no_code=0`, and `by_hand=` because a probe leaving the helper is a
+        // decision — and the counts belong beside it, greppable and unpinned.
+        System.out.println("LEAVE_CENSUS judged=" + judged.size()
+                + " reporting=" + reporting.size()
+                + " no_source=" + missing.size());
+
         boolean held = noCode.isEmpty() && missing.isEmpty();
         Probes.leave("VERDICT " + (held ? "EVERY_JUDGED_PROBE_HAS_A_CODE" : "A_JUDGED_PROBE_HAS_NO_CODE")
-                + " judged=" + judged.size()
-                + " reporting=" + reporting.size()
                 + " no_code=" + noCode.size()
-                + " by_hand=" + byHand.size()
-                + " no_source=" + missing.size(), held);
+                + " by_hand=" + byHand.size(), held);
     }
 
     private LeaveContract() {}
