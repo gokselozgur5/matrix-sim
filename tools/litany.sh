@@ -141,6 +141,42 @@ prints() {                      # prints <literal>
     -- "$1" tools/ probes/ src/ 2>/dev/null
 }
 
+# The commands that can be RUN to produce a verdict, keyed by the token that opens it.
+#
+# Every one is no-token, no-network and finishes in seconds — that is the entry rule, not
+# a coincidence. `BENCH` is absent because the sweep costs two minutes and builds the
+# daemon; `RELEASE` is absent because `release.sh --check` runs that sweep; `GOLDEN` and
+# `EXIT` need the teleprinter compiled. Those keep the prefix rule and are counted.
+#
+# The map is a case rather than an array so this stays POSIX-shaped and greppable.
+producer_of() {                 # producer_of <first-token> -> a command, or empty
+  case "$1" in
+    BASELINE)   printf 'bash tools/baseline.sh --selftest' ;;
+    # DATECHECK is deliberately absent, and finding out why is worth the four lines.
+    # `locks.yml` greps `dialect=gnu`, and this box prints `dialect=bsd` — correctly:
+    # the lane's whole point is that the runner proves the GNU half while the operator
+    # proves the BSD one (#901). So running the producer HERE and demanding the lane's
+    # pattern would report a defect that is the check working. A verdict whose text
+    # depends on the platform cannot be judged by running it somewhere else, and the
+    # prefix rule — which reads the format string, not the value — is right for it.
+    RULERCHECK) printf 'bash tools/balance.sh --rulercheck' ;;
+    JUDGECHECK) printf 'bash tools/balance.sh --judgecheck' ;;
+    ADVICE)     printf 'bash tools/advice.sh' ;;
+    DIGEST)     printf 'bash tools/digest-move.sh --selftest' ;;
+    ATTRIBUTION) printf 'bash tools/attribution.sh --selftest' ;;
+    *) printf '' ;;
+  esac
+}
+
+# Runs the producer for a literal, or fails when there is none. Output on stdout; the
+# caller decides whether the pattern is in it.
+run_producing() {               # run_producing <literal>
+  local cmd
+  cmd="$(producer_of "$(printf '%s' "$1" | awk '{print $1}')")"
+  [ -n "$cmd" ] || return 1
+  eval "$cmd" 2>&1 || true
+}
+
 printed_prefix() {              # printed_prefix <literal> -> echoes the matched prefix, or empty
   local words rest prefix
   # Split on space AND `=`, because a field's name is printed and its value is not.
@@ -194,7 +230,7 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
     done <<< "$dupes"
   fi
 
-  local pat lit matched checked=0 skipped=0 unmatched=0 shortened=0
+  local pat lit matched ran_output checked=0 skipped=0 unmatched=0 shortened=0 executed=0
   while IFS= read -r pat; do
     [ -z "$pat" ] && continue
     lit="$(literal_of "$pat")"
@@ -203,6 +239,31 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
       continue
     fi
     checked=$((checked + 1))
+    # Ask the RUN before asking the tree (#1169). Three units narrowed the same
+    # approximation — each word searched separately (#1144), the longest adjacent prefix
+    # (#1157), a floor on what survived (#1168) — and none of them can see a verdict whose
+    # FORMAT changed while its words survived: `cases=%d` becoming `cases %d` leaves every
+    # prefix matching. That is #1040's actual shape, the defect this whole line of work
+    # descends from.
+    #
+    # The root is that all three read a format string, which is evidence about what a tool
+    # MIGHT print. The only evidence about what it DOES print is a run. Several of the
+    # commands the litany greps have a no-token, no-network mode that prints the very line
+    # in question, so for those the approximation can be replaced by the answer.
+    #
+    # Only those. A pattern whose producer needs a token, a pull request or the daemon's
+    # build is left to the prefix rule, and the count of each is on the verdict line — the
+    # gap between "checked by running" and "checked by reading" is a number rather than an
+    # assumption.
+    if ran_output="$(run_producing "$lit")"; then
+      if printf '%s\n' "$ran_output" | grep -qE -- "$pat"; then
+        executed=$((executed + 1))
+        continue
+      fi
+      unmatched=$((unmatched + 1))
+      note "UNPRINTED grep=\"$lit\" — its producer was RUN and printed no line matching it"
+      continue
+    fi
     matched="$(printed_prefix "$lit")"
     if [ -z "$matched" ]; then
       unmatched=$((unmatched + 1))
@@ -246,7 +307,7 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
   done
 
   echo "LITANY file=$f steps=$steps locks=$((hi - lo + 1)) greps_checked=$checked" \
-       "unprinted=$unmatched shortened=$shortened not_verdicts=$skipped" \
+       "executed=$executed unprinted=$unmatched shortened=$shortened not_verdicts=$skipped" \
        "lock_gaps=$missing breaks=${#BREAKS[@]}"
 }
 
