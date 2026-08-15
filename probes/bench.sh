@@ -472,8 +472,29 @@ fi
 
 table
 
+# The lane's own budget (#1115). `--bench` judges the DAEMON against D-027's
+# table; the sweep that runs it had no ceiling of its own, so every unit adding
+# an instrument made the lane longer for every unit after it — 35 probes in 86 s
+# early one night and 39 in 64 s later, the count up and the wall time down,
+# with nothing recording whether that was an improvement or a quieter laptop.
+#
+# Three things this number is deliberately NOT. It is not a per-probe budget:
+# a probe that honestly takes twenty seconds is fine and the sweep's own
+# LedgerMirror row costs fifteen. It is not tight: wall clock on shared hardware
+# moves 20% between runs and a bound that reddens on load teaches people to
+# ignore it. And it is not a gate on this script's exit code — OVER prints and
+# does not fail, because the failure being prevented is a lane growing tenfold
+# over a season, which is a thing a human reads, not a thing a runner refuses.
+#
+# 300 s against a measured 147 s on the box this was written on: roughly double
+# today's cost, so the lane can take on another dozen probes before anyone has
+# to think about it, and it cannot silently reach ten minutes.
+BENCH_BUDGET_SECS=${BENCH_BUDGET_SECS:-300}
+BENCH_SECS=$(($(date +%s) - SWEEP_START))
+
 echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL ran=$RAN" \
-     "ticks=$TICKS secs=$(($(date +%s) - SWEEP_START))" \
+     "ticks=$TICKS secs=$BENCH_SECS budget=$BENCH_BUDGET_SECS" \
+     "$([ "$BENCH_SECS" -le "$BENCH_BUDGET_SECS" ] && echo WITHIN || echo OVER)" \
      "VERDICT $([ "$FAIL" -eq 0 ] && echo BENCH_GREEN || echo BENCH_RED)"
 
 # Two verdicts, because they are two facts: the world can be perfectly
