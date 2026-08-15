@@ -54,6 +54,7 @@ for arg in "$@"; do
     --sha) MODE=sha; SHA="__next__" ;;
     --for) REPO="__next__" ;;
     --fix-cmd) MODE=fixcmd ;;
+    --selftest) MODE=selftest ;;
     -*)    echo "FATAL unknown flag: $arg" >&2; exit 2 ;;
     *)
       if   [ "$PR"   = "__next__" ]; then PR="$arg"
@@ -104,6 +105,87 @@ fix_command() {
 if [ "$MODE" = fixcmd ]; then
   fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
   exit 0
+fi
+
+# --selftest EXECUTES the advice, which is the only way this tool's central claim can be
+# checked (#1164, from #1160's rule and #1012's defect).
+#
+# The claim is not "the repair works". It is "the repair does not destroy the evidence" —
+# `--reset-author` collapses every author date it touches onto the instant of the repair,
+# and this tool exists because history is evidence. That is a statement about DATES, and no
+# amount of reading the command tells you what it does to them. It has to be run.
+#
+# It runs in a scratch clone, on commits nothing will ever push, with three commits so the
+# case that matters is reachable: the repair walks a range, and the commit that needed
+# NOTHING done to it is the one `--reset-author` used to damage.
+if [ "$MODE" = selftest ]; then
+  work="$(mktemp -d "${TMPDIR:-/tmp}/attribution-selftest.XXXXXX")"
+  trap 'rm -rf "$work"' EXIT
+  root="$(git rev-parse --show-toplevel)"
+  git clone -q --no-hardlinks "$root" "$work/repo" 2>/dev/null || {
+    echo "ATTRIBUTION SELFTEST VERDICT FAIL cases=0 failed=0  (no clone; a suite of nothing is not a pass)"
+    exit 1; }
+  cd "$work/repo" || exit 1
+  git config user.name selftest
+  base="$(git rev-parse HEAD)"
+  right="right@invalid"
+  wrong="wrong@invalid"
+  pass=0; fail=0
+  check() {                     # check <name> <want> <got>
+    if [ "$2" = "$3" ]; then
+      pass=$((pass + 1)); printf 'ATTRIBUTION case=%-28s want=%-22s got=%-22s OK\n' "$1" "$2" "$3"
+    else
+      fail=$((fail + 1)); printf 'ATTRIBUTION case=%-28s want=%-22s got=%-22s BROKEN\n' "$1" "$2" "$3"
+    fi
+  }
+
+  # Three commits with author dates a day apart, so a repair that resets them is visible as
+  # a change and not as a rounding error. The middle one carries the wrong address.
+  for n in 1 2 3; do
+    printf 'selftest %s\n' "$n" >> SELFTEST_SCRATCH
+    git add SELFTEST_SCRATCH
+    addr="$right"; [ "$n" = 2 ] && addr="$wrong"
+    GIT_AUTHOR_EMAIL="$addr" GIT_COMMITTER_EMAIL="$right" \
+    GIT_AUTHOR_DATE="2020-0$n-0${n}T12:00:00+00:00" \
+      git commit -q -m "selftest commit $n"
+  done
+  before_dates="$(git log --format=%ad --date=short "$base..HEAD" | tr '\n' ' ')"
+  wrong_count="$(git log --format=%ae "$base..HEAD" | grep -c "^$wrong$" || true)"
+  check finds-the-wrong-address 1 "$wrong_count"
+
+  # The repair this tool advises, run verbatim on the range it names.
+  fix="$(OWNER_ADDR="$right" OWNER_NAME=selftest; \
+         printf "git rebase -x 'git commit --amend --no-edit --author=\"selftest <%s>\"' %s" "$right" "$base")"
+  eval "$fix" >/dev/null 2>&1 || true
+  after_dates="$(git log --format=%ad --date=short "$base..HEAD" | tr '\n' ' ')"
+  after_wrong="$(git log --format=%ae "$base..HEAD" | grep -c "^$wrong$" || true)"
+  check repair-fixes-the-address 0 "$after_wrong"
+  check repair-keeps-author-dates "$before_dates" "$after_dates"
+
+  # And the advice this tool used to print, run on the same fixture. Without this row the
+  # suite proves the current repair works and says nothing about WHY it is written the way
+  # it is — the reader has to take #1012 on trust. With it, the difference between the two
+  # commands is a measurement: three distinct dates become one.
+  git reset -q --hard "$base" && git clean -qfd
+  for n in 1 2 3; do
+    printf 'selftest %s\n' "$n" >> SELFTEST_SCRATCH
+    git add SELFTEST_SCRATCH
+    addr="$right"; [ "$n" = 2 ] && addr="$wrong"
+    GIT_AUTHOR_EMAIL="$addr" GIT_COMMITTER_EMAIL="$right" \
+    GIT_AUTHOR_DATE="2020-0$n-0${n}T12:00:00+00:00" \
+      git commit -q -m "selftest commit $n"
+  done
+  git -c user.email="$right" rebase -x \
+    'git -c user.email='"$right"' commit --amend --no-edit --reset-author' "$base" >/dev/null 2>&1 || true
+  reset_dates="$(git log --format=%ad --date=short "$base..HEAD" | sort -u | tr '\n' ' ')"
+  distinct="$(printf '%s' "$reset_dates" | wc -w | tr -d ' ')"
+  check reset-author-destroys-dates 1 "$distinct"
+
+  cd "$root" || exit 1
+  printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
+    "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
+  [ "$fail" = 0 ]
+  exit $?
 fi
 
 # One row per commit. `.author.login` is GitHub's own resolution of the author address
