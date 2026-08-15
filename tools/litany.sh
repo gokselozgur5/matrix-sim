@@ -54,12 +54,14 @@ set -uo pipefail
 
 FILE="${1:-.github/workflows/locks.yml}"
 SELFTEST=no
+SHELLCHECK=no
 
 # One directory per invocation, holding one file per producer command. See
 # `run_producing` for why it is a directory and not an array.
 PRODUCER_CACHE="$(mktemp -d)"
 trap 'rm -rf "${PRODUCER_CACHE:-}"' EXIT
 [ "${1:-}" = "--selftest" ] && { SELFTEST=yes; FILE=.github/workflows/locks.yml; }
+[ "${1:-}" = "--shellcheck" ] && { SHELLCHECK=yes; FILE=.github/workflows/locks.yml; }
 
 # ---------------------------------------------------------------- question 1
 
@@ -387,10 +389,137 @@ selftest() {
   case_ reordered-verdict    1 'echo "        run: grep -q \"$reordered\" x" >> "$tmp/w.yml"'
   case_ one-runtime-value    0 'echo "        run: grep -q \"$one_value\" x" >> "$tmp/w.yml"'
 
+  # Question 5 answers on a different axis — a directory of workflows rather
+  # than one file's meaning — so its cases build their own tree instead of
+  # mutating `locks.yml`. Four shapes: the clean block, and the three ways the
+  # runner's own parser says no. The unclosed quote is the exact defect that
+  # shipped; it is here so it cannot ship twice (#1203).
+  shell_case() {                # shell_case <name> <want-bad> <block-body>
+    local wf="$tmp/wf"
+    rm -rf "$wf"; mkdir -p "$wf"
+    # Written the way the tree writes a step — `- name:` then `run: |` on its
+    # own line — because a fixture in a shape the real files never take proves
+    # nothing about the real files.
+    {
+      printf 'name: fixture\njobs:\n  j:\n    steps:\n      - name: s\n        run: |\n'
+      printf '%s\n' "$3" | sed 's/^/          /'
+    } > "$wf/fixture.yml"
+    local got
+    got="$(shellcheck_workflows "$wf" | sed -n 's/.*unparseable=\([0-9]*\)$/\1/p')"
+    shell_verdict "$1" "$2" "$got"
+  }
+  shell_case_inline() {         # shell_case_inline <name> <want-bad> <block-body>
+    local wf="$tmp/wf"
+    rm -rf "$wf"; mkdir -p "$wf"
+    {
+      printf 'name: fixture\njobs:\n  j:\n    steps:\n      - run: |\n'
+      printf '%s\n' "$3" | sed 's/^/          /'
+    } > "$wf/fixture.yml"
+    local got
+    got="$(shellcheck_workflows "$wf" | sed -n 's/.*unparseable=\([0-9]*\)$/\1/p')"
+    shell_verdict "$1" "$2" "$got"
+  }
+  shell_verdict() {             # shell_verdict <name> <want> <got>
+    if [ "$3" = "$2" ]; then
+      pass=$((pass + 1))
+    else
+      fail=$((fail + 1))
+      echo "SELFTEST FAIL $1 wanted unparseable=$2 got=${3:-none}"
+    fi
+  }
+  shell_case clean-block      0 'echo ok'
+  shell_case unclosed-quote   1 "grep -q 'PASS cases=[1-9] failed=0 file"
+  shell_case unbalanced-brace 1 'foo || { echo no >&2; exit 1;'
+  shell_case dangling-if      1 'if [ -f x ]; then echo y'
+  # The dash spelling, which the first draft of `extract_blocks` did not match:
+  # its blocks were skipped in silence, so three of the four cases above passed
+  # by finding nothing at all. `blocks=` exists to make that visible, and the
+  # case exists so the pattern cannot narrow again.
+  shell_case_inline dash-step 1 'if [ -f x ]; then echo y'
+
   printf 'LITANY SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
   [ "$fail" = 0 ]
 }
+
+# --------------------------------------------------------------- question 5
+#
+# DOES EVERY `run:` BLOCK PARSE AS THE SHELL THAT WILL RUN IT.
+#
+# The other four questions read `locks.yml` for meaning. This one reads every
+# workflow for syntax, and it is here because the judge itself shipped broken:
+# `litany.yml` landed with an unclosed single quote inside a grep pattern, and
+# with the six lines after it duplicated — a perl substitution whose replacement
+# contained `$'`, which perl expands to POSTMATCH, eating the closing quote and
+# pasting the rest of the match back in. GitHub could not parse the file, so it
+# produced no check at all; `gh pr checks` listed only `locks`, and the absence
+# read exactly like "this workflow is not required here". Eleven runs went red
+# in zero seconds before anyone read the run list (#1203).
+#
+# `bash -n` is the whole test. It costs milliseconds, it is the same parser the
+# runner uses, and it catches the entire class: unterminated quotes, unbalanced
+# braces, a heredoc with no terminator, an `if` with no `fi`.
+#
+# Block scalars only — `run: |` and `run: >`. A one-line `run: foo` is subject
+# to YAML's own quoting rules, and reconstructing what the runner would hand the
+# shell means implementing YAML; the count says how many blocks were read so a
+# reader can tell coverage from silence.
+
+extract_blocks() {              # extract_blocks <file> <dir> — one file per run: block
+  awk -v dir="$2" -v tag="$3" '
+    # Both spellings. `        run: |` is how every step in this tree writes it,
+    # and `      - run: |` is the one-key step YAML also allows — the selftest
+    # caught the second being missed, which is the whole reason the suite builds
+    # fixtures instead of asserting against the tree it is checking.
+    /^[[:space:]]*-?[[:space:]]*run:[[:space:]]*[|>]/ {
+      match($0, /^[[:space:]]*/)
+      indent = RLENGTH
+      n++
+      out = dir "/" tag "-" n ".sh"
+      inblock = 1
+      next
+    }
+    inblock {
+      if ($0 ~ /^[[:space:]]*$/) { print "" > out; next }
+      match($0, /^[[:space:]]*/)
+      if (RLENGTH <= indent) { inblock = 0 }
+      else { print substr($0, indent + 1) > out; next }
+    }
+  ' "$1"
+}
+
+shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the real one
+  local dir="${1:-.github/workflows}"
+  local tmp blocks=0 bad=0 f b err
+  tmp="$(mktemp -d)"
+  # SHELL_TMP, not the local: an EXIT trap fires after the function's frame is
+  # gone, so a trap quoting `$tmp` dies on `set -u` at the moment of leaving —
+  # after the verdict has printed, which is the worst place to put a crash.
+  SHELL_TMP="$tmp"
+  trap 'rm -rf "${SHELL_TMP:-}"' EXIT
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    extract_blocks "$f" "$tmp" "$(basename "$f" | tr -c 'a-zA-Z0-9' '-')"
+  done
+  for b in "$tmp"/*.sh; do
+    [ -f "$b" ] || continue
+    blocks=$((blocks + 1))
+    if ! err="$(bash -n "$b" 2>&1)"; then
+      bad=$((bad + 1))
+      # The block's own file name carries the workflow it came from, and the
+      # shell's message carries the line within it. Both, on one line.
+      echo "SHELL_UNPARSEABLE $(basename "$b") ${err##*: }"
+    fi
+  done
+  printf 'LITANY SHELL VERDICT %s blocks=%d unparseable=%d\n' \
+    "$([ "$bad" = 0 ] && printf PASS || printf FAIL)" "$blocks" "$bad"
+  [ "$bad" = 0 ]
+}
+
+if [ "$SHELLCHECK" = yes ]; then
+  shellcheck_workflows
+  exit $?
+fi
 
 if [ "$SELFTEST" = yes ]; then
   selftest
