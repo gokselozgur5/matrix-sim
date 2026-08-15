@@ -178,9 +178,18 @@ if [ "$SELFTEST" = yes ]; then
 
 Declared digest move: $old -> $new"; }
   restamp() { sed -i.bak "s/^# sealed: [0-9][0-9-]*/# sealed: 1999-01-01/" "$PIN" && rm -f "$PIN.bak"; }
+  # The spelling the FATAL text used to invite: paste the line, add the issue to it. It is
+  # refused, and #1166 is the unit that made the message say so. This case is the
+  # regression test for the MESSAGE — the artifact that was wrong — so it asserts the
+  # refusal rather than treating it as a bug to be fixed in the matcher. Loosening the
+  # match would put prose into a ledger `git log | grep` is supposed to print clean.
+  declare_on_one_line() { git commit -q -a -m "selftest: move the pin
+
+Declared digest move: $old -> $new (#1166)"; }
 
   case_ no-move-is-silent       NONE     "true"
   case_ moved-and-unargued      UNARGUED "move_pin"
+  case_ issue-on-the-same-line  UNARGUED "move_pin && restamp && declare_on_one_line"
   case_ moved-argued-restamped  ARGUED   "move_pin && restamp && declare_it"
   case_ moved-stamp-left-behind UNARGUED "move_pin && declare_it"
 
@@ -247,8 +256,17 @@ if [ -z "$argued_by" ] && [ "$fail" = 0 ]; then
   echo "" >&2
   echo "          $want" >&2
   echo "" >&2
-  echo "      Both shas in full, on one line. Naming what you moved FROM is the point: a" >&2
-  echo "      pin regenerated to clear a red build gets written without ever looking." >&2
+  echo "      Both shas in full, on one line, and NOTHING ELSE ON THAT LINE — the issue" >&2
+  echo "      number goes in the subject or a later paragraph, anywhere in the same" >&2
+  echo "      message. Appending it here (\"-> <sha> (#N)\") is the natural reading of" >&2
+  echo "      this advice and it is refused: the declaration is matched as an exact" >&2
+  echo "      line, so that" >&2
+  echo "" >&2
+  echo "          git log --format=%B | grep '^Declared digest move:'" >&2
+  echo "" >&2
+  echo "      prints every head this repository has ever had and nothing else (#1166)." >&2
+  echo "      Naming what you moved FROM is the point: a pin regenerated to clear a red" >&2
+  echo "      build gets written without ever looking." >&2
   fail=1
 fi
 
