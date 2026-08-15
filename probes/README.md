@@ -137,15 +137,28 @@ be certifying a question nobody asked.
     HELD         0
     BROKE        1
     NEVER_AROSE  2
+    REFUSED      3
 
 It is an enum because the shape it replaced was two adjacent booleans:
 `leave(v, false, true)` meant *broke* and `leave(v, true, false)` meant *never
 arose*, one transposition apart, same types, compiling identically. The entire
 purpose of the third code is that a sweep can tell those two apart — so an
 argument order that could swap them silently swapped the green sweep with the
-red one (#1204). A **refused invocation** has no code of its own: it lands on 1,
-and the probes that do it say so at the call site rather than pretending
-otherwise.
+red one (#1204).
+
+**A refused invocation is 3, and that number is borrowed rather than invented.**
+A flag with no argument, a scale the config will not accept, a roster too wide
+to print — nothing about the world was judged, because the probe never got as
+far as looking. `DreamReader` has spent 3 on `EXIT_USAGE` since #1011, so the
+two families of program in this tree agree where they overlap: a script
+branching on `$?` across `probes/` and `tools/` reads one meaning per value.
+
+It was **2** in nine probes — the word for NEVER_AROSE — so a refused invocation
+reported as a world with no births (#1239); and **1** in `BirthInputs`, which
+said so at the call site while declining to add a fourth code, because that was
+a decision about the bench's contract rather than a repair. This is that
+decision. A probe with nothing to print reaches `System.exit` directly through
+`Probes.Outcome.REFUSED.code()`, so the number still has one home.
 
 **A known break is declared, not deleted and not tolerated.** `known <Class>
 '<verdict>' '<#issue>' [args]` is the third verb, and it exists because #1093's

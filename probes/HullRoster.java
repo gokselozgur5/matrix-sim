@@ -68,7 +68,7 @@ public final class HullRoster {
         if (ordinals < pinned) {
             System.out.println("HULLROSTER refused: ordinals=" + ordinals
                     + " does not reach the " + pinned + " pinned keels");
-            System.exit(2);
+            System.exit(Probes.Outcome.REFUSED.code());
         }
         String[] roster = table("ROSTER");
         String[] signs = table("MARK_SIGNS");

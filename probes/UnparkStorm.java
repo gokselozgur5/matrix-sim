@@ -109,7 +109,7 @@ public final class UnparkStorm {
         String refusal = Config.scaleRefusal(scale);
         if (refusal != null) {
             System.err.println(refusal);
-            System.exit(2);
+            System.exit(Probes.Outcome.REFUSED.code());
         }
         Config.setEcoScale(scale); // the dial's only door, written once (#882)
 
