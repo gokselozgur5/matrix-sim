@@ -94,6 +94,14 @@ The owner put it best: every work begins with a besmele — a deliberate opening
 5. Move in small, provable increments; compile and digest-diff as you go once the engine exists. Evidence accompanies the work — it does not follow it (Dev2).
 6. Update what you touch while you touch it: crowns current (Dev4), records superseding instead of drifting (Dev10), index in sync.
 
+**Edit with tools that cannot rewrite what you did not name**
+
+6b. **Never `perl -0pi -e` with a `$` in the replacement.** Perl interpolates a replacement as a double-quoted string, *after* the shell is finished — so single-quoting the shell argument does not protect it. `$name` becomes a Perl variable, and `` $' ``, `$&` and `` $` `` become POSTMATCH, MATCH and PREMATCH. A replacement ending `…=0$'` eats its own closing quote and pastes the rest of the file back in.
+
+This tree is unusually exposed to it: the house style for an anchored verdict grep is `grep -q '^SOMETHING VERDICT PASS …$'`, so **the string written most often here is the one that detonates**. It has corrupted a file six times, three of them in `.github/workflows/`, twice in the same file on the same day — the second time while writing the check for the first (#1203, #1226, #1228). `bash -n` passed the corrupted script both times, because a duplicated block is valid shell.
+
+Use a string-literal editor for a known string, or `awk` with the replacement passed as `-v repl='…'`, which is not interpolated. Same family as the lesson `awk` taught: **move blocks by their delimiters or not at all** — an editor that can rewrite text you did not name will eventually rewrite text you did not name.
+
 **Exit through a hardline (never a hard cut)**
 
 7. Leave no mystery: what changed, what is proven (commands and their output), what remains open — written into the PR or issue, not only into chat.
