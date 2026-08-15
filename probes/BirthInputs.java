@@ -75,8 +75,13 @@ public final class BirthInputs {
         if (args.length > 0 && args[0].equals("--file")) {
             if (args.length < 2) {
                 System.out.println("usage: BirthInputs --file <recording.jsonl>");
-                System.out.println("VERDICT BIRTH_INPUTS_NONE no_file");
-                return;
+                // A REFUSED invocation, not an unexercised one (#1199). The two ways this
+                // probe prints NONE are different facts and were one exit code: `--file`
+                // with no path is the operator typing the flag wrong, which DreamReader
+                // spends 3 on (#1011), and a run with no births is a scenario that never
+                // arose, which is 2. Collapsing them would tell a sweep that a typo is a
+                // world without births.
+                Probes.leave("VERDICT BIRTH_INPUTS_NONE no_file", false, true);
             }
             Path file = Path.of(args[1]);
             source = file.getFileName().toString();
@@ -177,12 +182,12 @@ public final class BirthInputs {
             // Silence is not testimony: a file with no births proves nothing
             // about whether a birth is fully recorded, and must not print the
             // line a passing run prints.
-            System.out.println("VERDICT BIRTH_INPUTS_NONE");
-            return;
+            Probes.leave("VERDICT BIRTH_INPUTS_NONE", false, false);
         }
-        System.out.println(shortRecords == 0
+        Probes.leave(shortRecords == 0
                 ? "VERDICT BIRTH_INPUTS_COMPLETE"
-                : "VERDICT BIRTH_INPUTS_SHORT missing=" + firstMissing);
+                : "VERDICT BIRTH_INPUTS_SHORT missing=" + firstMissing,
+                shortRecords == 0, true);
     }
 
     /**
