@@ -315,6 +315,10 @@ public final class Config {
      * canonical and multiplies into byte-identical digests by construction.
      * Refused alongside --replay and --chronos: the fold's genesis line does
      * not carry a scale, so a scaled recording would be a lie.
+     *
+     * <p>Process-wide by design and sealed against a second write — see dialSealed
+     * below. Two Simulations in one JVM are built from the same dial, which is what
+     * the seal is for (#1148).
      */
     private static int ecoScale = ECO_SCALE_MIN;
     /**
@@ -323,6 +327,9 @@ public final class Config {
      * The seal closes on whichever comes first, the write or the first read:
      * after that the dial is what the world was built from, and a second write
      * could only make the label disagree with the city. One flag, both clauses.
+     *
+     * <p>Process-wide by design: it guards a process-wide value, so a per-world
+     * seal would guard nothing (#1148).
      */
     private static boolean dialSealed = false;
 

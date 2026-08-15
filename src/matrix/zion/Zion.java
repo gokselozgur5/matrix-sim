@@ -31,10 +31,14 @@ public final class Zion {
      * a ceiling on keels: {@link #hullName} owns what a hull is called, and
      * it does not stop where the array does.
      */
+    // Read-only: the three hulls, by name, never written after the class loads (#1148).
     private static final String[] ROSTER = {"the Nebuchadnezzar", "the Logos", "the Hammer"};
 
     /** The generation mark's table — ASCII, locale-free, greedy from the top. */
+    // Read-only: the numeral table the mark renderer walks. Its CONTENTS are load-bearing
+    // and its mutability is not — nothing writes to it after the class loads (#1148).
     private static final int[] MARK_VALUES = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+    // Read-only, paired with MARK_VALUES above by index (#1148).
     private static final String[] MARK_SIGNS = {
             "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
 
@@ -42,6 +46,8 @@ public final class Zion {
      * The doors, resolved once: {@link Origin#values()} clones its array on
      * every call and the ZION line asks for it on a cadence.
      */
+    // Read-only. Origin.values() hands back a fresh array on every call, so caching it once
+    // is the point — and nothing writes to the cache (#1148).
     private static final Origin[] DOORS = Origin.values();
 
     /**

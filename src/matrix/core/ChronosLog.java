@@ -25,6 +25,8 @@ import java.util.Locale;
  * Locale.ROOT, explicit \n (D-010; D-020 grammar law).
  */
 public final class ChronosLog {
+    // Read-only: a lookup table, never written after the class loads, so one per
+    // process is one per world (#1148).
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     private final PrintStream out;

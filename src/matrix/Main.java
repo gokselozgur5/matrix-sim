@@ -44,6 +44,11 @@ public final class Main {
      * owns argv until a coupling unit needs it inside the domain, and that
      * unit moves it as a one-line declared change rather than inventing a
      * second fence.
+     *
+     * <p>Process-wide by design, and safe for the same reason the dial is: it is
+     * written once by main() before any Simulation exists. Two worlds in one JVM
+     * share this flag, which is correct — they were launched by one command line
+     * (#1148).
      */
     private static boolean neutral;
 

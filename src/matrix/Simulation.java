@@ -43,8 +43,11 @@ import java.util.List;
  * the three instruments of D-020. All output lines end with an explicit \n.
  */
 public final class Simulation {
+    // Read-only: the roster the world draws agent names from, never written after the
+    // class loads (#1148).
     private static final String[] AGENT_NAMES = {
             "Smith", "Brown", "Jones", "Johnson", "Thompson", "Jackson", "Davis", "White"};
+    // Read-only, same as the roster above it (#1148).
     private static final String[] PATCH_NOTES = {
             "corridor tuning parameters updated",
             "MOVED occlusion guard enabled",
