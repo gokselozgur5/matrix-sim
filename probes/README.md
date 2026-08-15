@@ -76,11 +76,22 @@ against a directory that already held seventeen of thirty-six — so they now ca
 the commands that produce them rather than asking to be believed:
 
 ```sh
-ls probes/*.java | wc -l                            # 39 files
-grep -al 'static void main' probes/*.java | wc -l   # 37 probes; the other two are
-                                                    # the Probes and LineGrammar helpers
-grep -al 'Probes\.'         probes/*.java | wc -l   # 17 of them call the helper
+ls probes/*.java | wc -l                            # every file here
+grep -al 'static void main' probes/*.java | wc -l   # the ones you can run; the
+                                                    # difference is the Probes and
+                                                    # LineGrammar helpers, which have
+                                                    # no main and are not probes
+grep -al 'Probes\.'         probes/*.java | wc -l   # how many call the shared accessors
 ```
+
+**The numbers that used to sit in those comments are gone, and that is the
+repair.** They read `39 files`, `37 probes`, `17 … call the helper`; today the
+same three commands print **45**, **43** and **26**. Nothing re-ran them, so the
+paragraph asking not to be believed had three figures asking exactly that
+(#1192). A count pasted beside the command that produces it is strictly worse
+than the command alone: it looks checked and is not, and the command is right
+there. This is #1130's move — *stop quoting a count in prose and quote the
+command instead* — applied to the paragraph that was already halfway there.
 
 `grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
 carry a raw NUL byte inside a string literal, which made a BSD grep call the whole

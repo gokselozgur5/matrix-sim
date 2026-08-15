@@ -9,6 +9,9 @@ import matrix.realworld.Human;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Probe: what did every soul in this universe derive? (#535)
@@ -72,6 +77,25 @@ import java.util.Set;
  *   --cast               the named cast, derived
  *   --wing &lt;FAMILY&gt;      one wing's living population
  *   --system             the Matrix's own row — --wing SYSTEM under the name #350 greps
+ *   --catalog            re-derive the counts this probe's OWN catalog row quotes
+ *
+ * <h2>Why a probe reads the catalog that describes it</h2>
+ *
+ * The row for {@code SheetDump} in {@code probes/README.md} quotes four
+ * numbers — {@code 681 rows at seed 42 boot — 10 cast, 196 humans, 473
+ * programs}. They were true the day they were typed and nothing has re-derived
+ * them since; #1192 names that shape and #1130 found it doing real damage in
+ * {@code LedgerMirror}'s javadoc. Three sibling counts in the same file HAD
+ * gone stale (39/37/17 against today's 45/43/26), which is what the shape does
+ * when nobody looks.
+ *
+ * <p>The repair for a count with no producer is to delete it. The repair for a
+ * count whose producer is right here is to <b>run the producer</b>, and this
+ * mode is that: the census the probe already builds, compared against the
+ * prose that claims to report it. The producer must be the program the row
+ * describes — a separate checker would need its own copy of the mapping from
+ * "programs" to {@code WING PROGRAM souls=}, and a second copy of a mapping is
+ * a second thing to go stale.
  */
 public final class SheetDump {
 
@@ -132,6 +156,10 @@ public final class SheetDump {
                 case "--all" -> mode = Mode.ALL;
                 case "--cast" -> mode = Mode.CAST;
                 case "--system" -> mode = Mode.SYSTEM;
+                case "--catalog" -> {
+                    catalog();
+                    return;
+                }
                 case "--wing" -> {
                     mode = Mode.WING;
                     if (args.length < 2) {
@@ -174,6 +202,104 @@ public final class SheetDump {
         // cached= printed off a walk that gave up early is a number that
         // means nothing, and printing it green would be the vacuous pass.
         System.exit(drift < 0 && first.reach().sheets() == 0 && !first.reach().truncated() ? 0 : 1);
+    }
+
+    /**
+     * The four nouns the catalog row is allowed to quote a number for, each
+     * paired with the census line that produces it. A noun with no producer
+     * here is not checkable and is reported as such rather than passed over:
+     * a checker that silently ignores what it cannot read is the vacuous pass
+     * this mode exists to prevent.
+     */
+    private static final String[][] NOUNS = {
+        {"rows",     ""},                      // the census's own total, not a line
+        {"cast",     "CAST souls="},
+        {"humans",   "WING HUMAN souls="},
+        {"programs", "WING PROGRAM souls="},
+    };
+
+    /** {@code 681 rows}, {@code 10 cast} — a number and the noun it counts. */
+    private static final Pattern QUOTED_COUNT =
+            Pattern.compile("\\b([0-9]+) (rows|cast|humans|programs)\\b");
+
+    /** The row this probe is described by, found the way a reader finds it. */
+    private static final Pattern OWN_ROW = Pattern.compile("^\\|\\s*`SheetDump`\\s*\\|");
+
+    /**
+     * Re-derive every number the catalog row quotes, at the boot the row names.
+     *
+     * <p>"at seed 42 boot" is 0 ticks: the population before a tick has run.
+     * Reading that phrase out of the prose would make the mode depend on the
+     * sentence it is checking, so it is pinned here and the row is not free to
+     * move it silently — if the row starts quoting a different boot, this mode
+     * disagrees and the disagreement is the point.
+     */
+    private static void catalog() throws Exception {
+        Path readme = Path.of("probes", "README.md");
+        if (!Files.isReadable(readme)) {
+            Probes.leave("VERDICT SHEETDUMP_CATALOG_UNREADABLE " + readme, false);
+        }
+        String row = Files.readAllLines(readme, StandardCharsets.UTF_8).stream()
+                .filter(l -> OWN_ROW.matcher(l).find())
+                .findFirst()
+                .orElse(null);
+        if (row == null) {
+            Probes.leave("VERDICT SHEETDUMP_CATALOG_NO_ROW", false);
+        }
+
+        // The total is the census's own field and never a printed line —
+        // `main` composes the SHEETDUMP line from it — so `rows` is derived
+        // from the record rather than grepped out of what the record printed.
+        Census boot = census(Mode.ALL, null, 42, 0);
+        List<String> lines = boot.lines();
+        StringBuilder wrong = new StringBuilder();
+        int checked = 0;
+        int unproducible = 0;
+
+        Matcher m = QUOTED_COUNT.matcher(row);
+        while (m.find()) {
+            long quoted = Long.parseLong(m.group(1));
+            String noun = m.group(2);
+            Long derived = "rows".equals(noun) ? (long) boot.souls() : derive(lines, noun);
+            if (derived == null) {
+                unproducible++;
+                continue;
+            }
+            checked++;
+            if (derived != quoted) {
+                wrong.append(' ').append(noun).append('=').append(quoted)
+                     .append("!=").append(derived);
+            }
+        }
+
+        boolean held = wrong.length() == 0 && checked == NOUNS.length && unproducible == 0;
+        Probes.leave("VERDICT " + (held ? "SHEETDUMP_CATALOG_MATCHES" : "SHEETDUMP_CATALOG_STALE")
+                + " checked=" + checked + " of=" + NOUNS.length
+                + " unproducible=" + unproducible + wrong, held);
+    }
+
+    /** The census's own number for one noun, or null when nothing produces it. */
+    private static Long derive(List<String> lines, String noun) {
+        for (String[] pair : NOUNS) {
+            if (!pair[0].equals(noun) || pair[1].isEmpty()) {
+                continue;
+            }
+            for (String line : lines) {
+                int at = line.indexOf(pair[1]);
+                if (at < 0 || !line.startsWith(pair[1].split(" ")[0])) {
+                    continue;
+                }
+                int from = at + pair[1].length();
+                int to = from;
+                while (to < line.length() && Character.isDigit(line.charAt(to))) {
+                    to++;
+                }
+                if (to > from) {
+                    return Long.parseLong(line.substring(from, to));
+                }
+            }
+        }
+        return null;
     }
 
     /** One whole census, rendered into lines and never printed from here. */
