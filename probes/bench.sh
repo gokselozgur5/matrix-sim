@@ -108,6 +108,23 @@ table() {
   judge PirateSever  'VERDICT CONTRACT_HELD'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD' "$TICKS"
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS"
+
+  # The second universe (#1094). A PROPERTY row claims something true of every world —
+  # a contract held, a breach count of zero — and one seed cannot support that claim: three
+  # units in one night found defects seed 42 cannot see. Seed 7 is already this tree's
+  # second canonical universe and every probe here already takes one. ARC rows are NOT
+  # doubled: a beat tick, a mover count, a named subject belong to the canonical film, and
+  # asserting them at another seed would be asserting a different measurement.
+  # Measured: six rows, 6.4 s. The lane's budget is 300 s (#1115).
+  judge OneTrace     'VERDICT CONTRACT_HELD'      "$TICKS" 7
+  judge CapSentinel  'CAP_BREACHES=0'             "$TICKS" 7
+  judge LinkAudit    'VERDICT CLEAN'              "$TICKS" 7
+  judge PirateSever  'VERDICT CONTRACT_HELD'      "$TICKS" 7
+  judge PodOptional  'VERDICT POD_OPTIONAL_HELD'  "$TICKS" 7
+  judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS" 7
+  judge ArcBeats     'VERDICT BEATS_IN_ORDER'     "$TICKS" 7
+  judge BondBook     'VERDICT BOOK_TURNS_OVER'    "$TICKS" 7
+  judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
   # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
@@ -142,6 +159,15 @@ table() {
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
+  # The second seed found a defect, and the row records it rather than hiding from it
+  # (#1155). D-021's perception-feed clause holds at seed 42 and at NO OTHER SEED TRIED:
+  # seed 7 carries malformed=16, seed 4 malformed=2, seeds 9 and 13 a max_gap of 500 and
+  # 700 against a bound of 100. Pinning BROKEN is the same move #1130 made for the ledger
+  # sweep: a lane that goes red for a known open defect gets switched off, and a lane that
+  # says nothing about it is how the defect got to be a year old. When #1155 lands, this
+  # line becomes CONFIRMATIONS_HELD in the PR that fixes it — and until then, a seed 7 that
+  # starts passing is exactly as red as one that starts failing differently.
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_BROKEN' "$TICKS" 7
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
