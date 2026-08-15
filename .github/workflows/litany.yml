@@ -1,0 +1,47 @@
+# .github/workflows/litany.yml — the judge of the file that judges (#1114).
+#
+# WHY THIS IS A SECOND WORKFLOW IN A REPOSITORY THAT KEEPS ONE. A judge that
+# lives inside `locks.yml` cannot judge a `locks.yml` that will not parse: the
+# broken file is exactly the file that would have run the check. That is not
+# hypothetical here — an unresolved conflict marker made the litany unparseable
+# twice in one night, the run failed in zero seconds with no jobs, and the UI
+# said "no checks reported", which is the same sentence it prints for a pull
+# request whose CI has not started (#1109).
+#
+# So this file is deliberately small, deliberately boring, and reads nothing
+# from the file it judges. It should change about once a year. If it ever grows
+# steps of its own, the question it exists to answer has moved again and
+# something else needs to be the outermost judge.
+
+name: litany
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  litany:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No fetch-depth: this reads the tree, not its history.
+      - uses: actions/checkout@v4
+
+      # The four questions, and the suite that proves each of them can go red.
+      # Streamed through tee rather than captured: the script prints one row per
+      # breakage and then exits nonzero, so `out="$(...)"` would die on the
+      # assignment and take the report with it — the failing rows ARE the report
+      # (tools/README.md's capture rule).
+      - name: tools — the litany is judged by something outside it (#1114)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
+          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
+            || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
+          bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
+          grep -q '^LITANY VERDICT PASS$' "${RUNNER_TEMP:-/tmp}/litany.log" \
+            || { echo "FATAL the litany did not reach a passing verdict" >&2; exit 1; }
