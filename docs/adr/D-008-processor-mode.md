@@ -57,4 +57,10 @@ Not applicable until unparked; the revisit trigger is D-024 entering design.
 
 Related: [D-024](D-024-attention-lod.md). Crown: #32.
 
+**Errata (2026-08-15, #1128 — unparked in code long before the record said so):** The parking condition is spent. `Config.COMPUTE_MODEL = ComputeModel.PROCESSOR` and `coupled()` returns true, so pod count is a live systemic pressure and the boot banner no longer promises more than the engine delivers. The outcome above ("Parked until v4.0, to be designed together with D-024") and the Confirmation's "Not applicable until unparked" are kept as written under D-029 — they recorded the plan at the time, and this errata does not edit them; it records that the plan was overtaken.
+
+*The Confirmation that replaces "not applicable":* `java -cp out matrix.Main --headless --ticks 300 --seed 42 | grep -m1 '^SUBSTRATE'` prints `SUBSTRATE pods=196/196 budget=1000 slots=6 stretch=1 glitches=0` — the budget, the slots and the stretch ARE the coupling, measured rather than promised.
+
+*Why this sat wrong, stated because the mechanism outlives the instance:* the record was true when written, the code moved, and nothing in the tree compared a Confirmation against `src/`. #1128 gives DocLint the leg that would have caught it — an accepted record whose Confirmation says it is not applicable, and which carries no errata, is now `confirmation_stale`.
+
 Referenced by: [D-024](D-024-attention-lod.md), [D-032](D-032-pirate-broadcast.md), [D-038](D-038-season-two.md).

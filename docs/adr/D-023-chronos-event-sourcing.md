@@ -58,4 +58,17 @@ Not applicable while parked; on unparking, the first milestone is replaying a re
 
 Related: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md). Vision: L1 Chronos.
 
+**Errata (2026-08-15, #1128 — unparked, shipped, and three flags deep):** The parking condition is spent. `--chronos PATH` records genesis and inputs as JSONL, `--replay PATH` folds a recording back into a run, and `--audit PATH` verdicts a recording's internal consistency; `ChronosLog`, `ChronosLine` and `ReplayHarness` are on `main`, and `World` writes to them. The outcome and the Confirmation's "Not applicable while parked" are kept as written under D-029 — this errata records that the world moved past them and does not edit them.
+
+*The Confirmation that replaces "not applicable":*
+
+```
+java -cp out matrix.Main --headless --ticks 300 --seed 42 --chronos /tmp/c.jsonl
+java -cp out matrix.Main --audit /tmp/c.jsonl
+  → AUDIT records=2 commands=0 flushes=1 boundaries=0 seals=0 births=0
+    AUDIT OK records=2 seals_paired=0
+```
+
+The record's own first milestone — replaying a recorded arc to identical digests — is `--replay`'s contract, and it is exercised where the digest is: the replay path re-runs from the recording's genesis rather than trusting the recording.
+
 Referenced by: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md), [D-024](D-024-attention-lod.md), [D-038](D-038-season-two.md).
