@@ -125,6 +125,17 @@ table() {
   judge ArcBeats     'VERDICT BEATS_IN_ORDER'     "$TICKS" 7
   judge BondBook     'VERDICT BOOK_TURNS_OVER'    "$TICKS" 7
   judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
+  # Three probes that declared themselves ONE-OFF and were not (#1175). #1163's exemption
+  # let a probe excuse itself with four words in a javadoc, and all six sentences were
+  # written in one sitting by the person who wanted the check to pass. Measured instead:
+  # 0.8 s, 4.9 s and 16.4 s, stable across two runs, against a lane budget of 300 s and a
+  # measured 108 s. OrderTable was the tell — its own javadoc calls it "the keeper the root
+  # door's draw-order table never had", and a KEEPER is the shape of a thing judged on
+  # every push. The exemption survives for the two that genuinely cannot be judged: one
+  # prints no verdict without arguments, the other REFUSES for want of a fixture.
+  judge CensusSampleSize 'VERDICT SAMPLE_LAWS_PRICED'
+  judge OrderTable   'VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1'
+  judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
   # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
