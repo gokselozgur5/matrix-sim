@@ -289,7 +289,7 @@ table() {
   run   SeedAtlas    1 5 "$TICKS"
 }
 
-PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0
+PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0 UNEXERCISED=0
 STABLE=0 DRIFTED=0 EXEMPT=0 UNCHECKED=0
 VARIES=''
 VARY_LINES=''
@@ -372,6 +372,16 @@ judge() {
   local started; started=$(date +%s)
   printf 'PROBE %s args="%s" judged="%s"\n' "$cls" "$*" "$want"
   execute "$cls" "$@"
+  # Exit 2 is the third answer (#1138): the scenario never arose. Not a pass — a row that
+  # reaches no miracle must not stand in for one that does — and not a failure, because
+  # nothing broke. The row is UNEXERCISED and counted, which is #970's INSTRUMENTS_UNPROVEN
+  # argument in the other axis: a green report about work that did not occur.
+  if [ "$ROW_RC" -eq 2 ]; then
+    UNEXERCISED=$((UNEXERCISED + 1))
+    skipped "$cls"
+    echo "UNEXERCISED $cls its scenario never arose in this run — nothing was judged"
+    return 0
+  fi
   if [ "$ROW_RC" -ne 0 ]; then
     FAIL=$((FAIL + 1))
     skipped "$cls"
@@ -739,7 +749,7 @@ roster_check || FAIL=$((FAIL + 1))
 BENCH_BUDGET_SECS=${BENCH_BUDGET_SECS:-300}
 BENCH_SECS=$(($(date +%s) - SWEEP_START))
 
-echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL ran=$RAN" \
+echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL unexercised=$UNEXERCISED ran=$RAN" \
      "ticks=$TICKS secs=$BENCH_SECS budget=$BENCH_BUDGET_SECS" \
      "$([ "$BENCH_SECS" -le "$BENCH_BUDGET_SECS" ] && echo WITHIN || echo OVER)" \
      "VERDICT $([ "$FAIL" -eq 0 ] && echo BENCH_GREEN || echo BENCH_RED)"

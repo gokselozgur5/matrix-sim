@@ -39,6 +39,36 @@ final class Probes {
         System.exit(held ? 0 : 1);
     }
 
+    /**
+     * Print the verdict and leave with one of THREE codes: 0 held, 1 broken,
+     * 2 the condition never arose.
+     *
+     * <p>#1138's question, answered. Three probes print a word that is neither
+     * pass nor fail — {@code BIRTH_INPUTS_NONE}, {@code NO_FIRING},
+     * {@code NO_LIBERATIONS} — and a two-valued exit forces each of them into a
+     * lie. Zero says the contract held, which it did not: it was never tested.
+     * One says the contract broke, which it did not either.
+     *
+     * <p>The tree already had this argument and settled it the same way one
+     * directory over: {@code DreamReader} has five codes because #1011 needed
+     * "nobody by that name" told apart from "you typed the flag wrong", and
+     * #1112 refused a zero-tick day for exactly this reason — a day that never
+     * happened must not exit 0. A probe whose scenario never arose is that day.
+     *
+     * <p>The bench reads the third code as {@code UNEXERCISED}: not a failure,
+     * not a pass, and counted so a sweep cannot report a green lane over a
+     * scenario no seed produced. That is #970's {@code INSTRUMENTS_UNPROVEN}
+     * argument in the other axis — a green report about work that did not occur.
+     *
+     * @param verdict    the line the bench greps, printed verbatim
+     * @param held       true when the contract this probe judges was kept
+     * @param exercised  false when the scenario never arose in this run
+     */
+    static void leave(String verdict, boolean held, boolean exercised) {
+        System.out.println(verdict);
+        System.exit(!exercised ? 2 : held ? 0 : 1);
+    }
+
     static RealWorld realWorld(Simulation sim) throws ReflectiveOperationException {
         return (RealWorld) open(Simulation.class, "realWorld").get(sim);
     }

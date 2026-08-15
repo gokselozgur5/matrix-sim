@@ -90,12 +90,13 @@ public final class SameTick {
                 + " max_stranded=" + lateMost);
         System.out.println("SAMETICK_GROWTH " + (growth.length() == 0 ? "none" : growth));
         if (census == 0) {
-            System.out.println("VERDICT NO_LIBERATIONS");
-            return;
+            // Not a pass and not a failure: no mind was freed in this run, so the
+            // absorb rule was never asked. Exit 2 (#1138).
+            Probes.leave("VERDICT NO_LIBERATIONS", false, false);
         }
-        System.out.println(lateTicks == 0
+        Probes.leave(lateTicks == 0
                 ? "VERDICT SAME_TICK_ABSORB"
-                : "VERDICT LATE_ABSORB");
+                : "VERDICT LATE_ABSORB", lateTicks == 0, true);
     }
 
     /** The door named by this tick's own lines, or nothing — context, never the verdict. */
