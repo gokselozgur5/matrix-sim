@@ -147,14 +147,23 @@ if [ "$MODE" = selftest ]; then
   # only the rows left two more network calls in the path — see the block that sets REPO.
   ok_row="$owner_row"
 
-  check pr-range-all-owned      "commits=2 misattributed=0" \
-    "$(verdict_of "[$ok_row,$ok_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
-  check pr-range-one-wrong      "commits=2 misattributed=1" \
-    "$(verdict_of "[$ok_row,$other_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
-  check pr-range-null-author    "commits=2 misattributed=1" \
-    "$(verdict_of "[$ok_row,$null_row]" | sed -E 's/.*(commits=[0-9]+ misattributed=[0-9]+).*/\1/')"
+  # The `source=` field is asserted in every row, not tested once (#1182). A marker that
+  # says where an answer came from is worth exactly as much as the thing that would go red
+  # if it disappeared — and one case asserting it would leave three that pass without it.
+  counts() { sed -E 's|.*(source=[a-z]+ commits=[0-9]+ misattributed=[0-9]+).*|\1|'; }
+
+  check pr-range-all-owned      "source=fixture commits=2 misattributed=0" \
+    "$(verdict_of "[$ok_row,$ok_row]" | counts)"
+  check pr-range-one-wrong      "source=fixture commits=2 misattributed=1" \
+    "$(verdict_of "[$ok_row,$other_row]" | counts)"
+  check pr-range-null-author    "source=fixture commits=2 misattributed=1" \
+    "$(verdict_of "[$ok_row,$null_row]" | counts)"
   check pr-range-empty-refuses  "FAIL" \
     "$(verdict_of '[]' | awk '{print $2}')"
+  # And the other side of the field: a run with no fixture says api. Without this row the
+  # marker could be hardcoded to `fixture` and every case above would still pass.
+  check source-says-api         "source=api" \
+    "$(cd "$root" && bash tools/attribution.sh 2>/dev/null | grep -oE 'source=[a-z]+' | head -1)"
 
   cd "$root" || exit 1
   printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
@@ -286,20 +295,32 @@ while IFS=$'\t' read -r sha login email; do
   fi
 done < <(rows)
 
+# Where the rows came from, on every verdict line (#1182). `ATTRIBUTION_FIXTURE`
+# replaces the network so the --pr judging path can be exercised without a token,
+# and the verdict it produced was byte-identical to one that read GitHub — so a
+# workflow with that variable set would judge a file, forever, green. The access
+# needed to set it is the access needed to delete the step, so this is not a
+# privilege question; it is D-020: a line carries one fact and carries it fully, and
+# WHERE THIS ANSWER CAME FROM is part of the answer when it can come from two places.
+# balance.sh already prints a SUBJECT line for the same reason — a reading of the
+# wrong account is not a small error, it is a different day.
+SOURCE=api
+[ -z "${ATTRIBUTION_FIXTURE:-}" ] || SOURCE=fixture
+
 # A judged line states its denominator, so a run that saw nothing cannot report that
 # nothing was wrong. A zero-commit read is a FAIL and not a quiet PASS: this tool is
 # asked "is the work attributed", and "there was no work" does not answer it.
 if (( TOTAL == 0 )); then
-  printf 'ATTRIBUTION VERDICT FAIL owner=%s commits=0 misattributed=0  (nothing was read; a silent zero is not a pass)\n' "$OWNER"
+  printf 'ATTRIBUTION VERDICT FAIL owner=%s source=%s commits=0 misattributed=0  (nothing was read; a silent zero is not a pass)\n' "$OWNER" "$SOURCE"
   exit 4
 fi
 
 if (( WRONG == 0 )); then
-  printf 'ATTRIBUTION VERDICT PASS owner=%s commits=%d misattributed=0\n' "$OWNER" "$TOTAL"
+  printf 'ATTRIBUTION VERDICT PASS owner=%s source=%s commits=%d misattributed=0\n' "$OWNER" "$SOURCE" "$TOTAL"
   exit 0
 fi
 
-printf 'ATTRIBUTION VERDICT FAIL owner=%s commits=%d misattributed=%d\n' "$OWNER" "$TOTAL" "$WRONG"
+printf 'ATTRIBUTION VERDICT FAIL owner=%s source=%s commits=%d misattributed=%d\n' "$OWNER" "$SOURCE" "$TOTAL" "$WRONG"
 printf '  fix: git config user.email %s, then rewrite the branch:\n' "$OWNER_ADDR"
 printf '       '; fix_command "$(git merge-base HEAD origin/main 2>/dev/null || echo '<base>')"
 printf '       (the same line, for a script: tools/attribution.sh --fix-cmd)\n'
