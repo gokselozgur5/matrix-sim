@@ -134,6 +134,11 @@ table() {
   # each seed run alone, then all of them concurrently, chains compared link for link.
   # "It did not throw" is not the contract — before the fix, seed 42 diverged at link 1
   # with no exception at all while three others threw.
+  # The world's own answer to which Bestiary list means "what exists" (#1142). SealHygiene
+  # pins the hash of every id in EVERY and deliberately boots no world; this is the half
+  # that needs one. reached=13 is not decoration: it moves the day a species is spawned
+  # from an inline row again, which is the defect #974 split the list to end.
+  judge SpeciesReach 'VERDICT EVERY_CONTAINS_THE_WORLD unlisted=0' "$TICKS"
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
