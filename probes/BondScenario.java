@@ -94,7 +94,7 @@ public final class BondScenario {
         } else {
             // Neither branch was reached: the run produced no firing to refuse a
             // second payment for, so the law was not kept and was not broken.
-            Probes.leave("VERDICT NOT_DEMONSTRATED", false, false);
+            Probes.leave("VERDICT NOT_DEMONSTRATED", Probes.Outcome.NEVER_AROSE);
         }
     }
 
