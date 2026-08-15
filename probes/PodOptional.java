@@ -99,8 +99,8 @@ public final class PodOptional {
         rigCut("Ghost", new Pod("R99/U04"), "pod R99/U04 untouched");
 
         System.out.println("PODOPTIONAL scenarios=" + scenarios + " anomalies=" + anomalies);
-        System.out.println(anomalies == 0
-                ? "VERDICT POD_OPTIONAL_HELD" : "VERDICT POD_OPTIONAL_BROKEN");
+        Probes.leave(anomalies == 0
+                ? "VERDICT POD_OPTIONAL_HELD" : "VERDICT POD_OPTIONAL_BROKEN", anomalies == 0);
     }
 
     /**

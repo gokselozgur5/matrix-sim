@@ -232,12 +232,12 @@ public final class DocLint {
 
         Canon canon = read(root);
         if (canon == null) {
-            System.out.println("VERDICT DOCS_DRIFT");
-            return;
+            Probes.leave("VERDICT DOCS_DRIFT", false);
         }
         Report report = lint(canon, ArcBeats.measure(ticks, seed), resolver(root), true);
         print(report);
-        System.out.println(report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT");
+        Probes.leave(report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT",
+                report.docsTrue());
     }
 
     private static void print(Report r) {
