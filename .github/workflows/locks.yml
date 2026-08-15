@@ -158,7 +158,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=29   # raise it in the PR that adds a judged row; lowering it is a claim, not a bump
+          floor=51   # raise it in the PR that adds a judged row; lowering it is a claim, not a bump
           bash probes/bench.sh --no-build | tee "${RUNNER_TEMP:-/tmp}/sweep.log"
           summary="$(grep -E '^BENCH .* judged=[0-9]+ .* fail=0 .* VERDICT BENCH_GREEN$' \
             "${RUNNER_TEMP:-/tmp}/sweep.log" || true)"
