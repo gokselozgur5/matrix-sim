@@ -15,20 +15,41 @@ import java.util.List;
  * centroid, alignment with the neighbors' headings. The heading memory
  * lives on the entity.
  *
- * <p>The singleton holds exactly one piece of state: {@link #neighbors}, the
+ * <p>The singleton holds exactly one piece of state: {@link #NEIGHBORS}, the
  * list it asks the world to fill. It stopped being stateless at #823, when the
  * world stopped lending its own buffer — and the state is the point rather
  * than a cost. The list is this gait's and no other's, so no query anywhere
  * else in the tick can rewrite an answer this gait is still reading. Each
  * bird's walk finishes before the next one starts, which is what makes one
- * list enough; the engine is single-threaded by D-010 and this field is one
- * more thing that would have to be revisited if it ever stopped being.
+ * list enough.
+ *
+ * <p><b>One list per THREAD, not one per process (#1135).</b> The buffer used
+ * to be an instance field, and the instance is a singleton — so the sentence
+ * "never escapes one call to move" was true per call and false per process.
+ * Two {@code Simulation}s in one JVM are not two worlds there: they share this
+ * list, and one world's iteration is cleared by the other world's tick. It is
+ * reachable today — {@code LedgerMirror --sweep} over a parallel seed range
+ * threw {@code ConcurrentModificationException} out of this method, which is
+ * the LUCKY outcome. The unlucky one is a refill landing between the fill and
+ * the read, handing a bird a neighbour set from another universe with no
+ * exception at all, in a repository whose product is a seal.
+ *
+ * <p>{@code ThreadLocal} rather than a per-world field because it changes
+ * nothing about the single-threaded case that D-010 describes: one thread, one
+ * list, same list every tick, same allocation win #823 bought. What it removes
+ * is a constraint no signature stated — the engine is single-threaded per
+ * world, which was silently also "per JVM", and nothing said so where anybody
+ * would look.
  */
 public final class FlockMovement implements Movement {
     public static final FlockMovement INSTANCE = new FlockMovement();
 
-    /** Filled and drained inside one call to {@link #move}; never escapes it. */
-    private final List<MatrixEntity> neighbors = new ArrayList<>();
+    /**
+     * Filled and drained inside one call to {@link #move}; never escapes it,
+     * and never leaves the thread that filled it.
+     */
+    private static final ThreadLocal<List<MatrixEntity>> NEIGHBORS =
+            ThreadLocal.withInitial(ArrayList::new);
 
     private FlockMovement() {}
 
@@ -42,7 +63,7 @@ public final class FlockMovement implements Movement {
         long sumX = 0, sumY = 0, headX = 0, headY = 0;
         int sepX = 0, sepY = 0, count = 0;
         long sep2 = (long) Config.FLOCK_SEPARATION_CM * Config.FLOCK_SEPARATION_CM;
-        List<MatrixEntity> near = w.nearbyInto(self, Config.FLOCK_NEIGHBOR_RADIUS_CM, neighbors);
+        List<MatrixEntity> near = w.nearbyInto(self, Config.FLOCK_NEIGHBOR_RADIUS_CM, NEIGHBORS.get());
         for (MatrixEntity n : near) {
             if (n == self || !(n instanceof EnvironmentProgram other)
                     || other.species.kingdom() != Kingdom.FAUNA_BIRD) {

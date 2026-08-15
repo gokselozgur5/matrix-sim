@@ -124,6 +124,11 @@ table() {
   # threw the moment #842 moved the pools out from under it (#892).
   judge DistrictCensus 'VERDICT CITY_CENSUSED' 42
   judge CensusBlocks 'SELFCHECK VERDICT MATH_OK'  --selfcheck
+  # Two worlds alive in one JVM, judged the only way the SILENT form of #1135 shows:
+  # each seed run alone, then all of them concurrently, chains compared link for link.
+  # "It did not throw" is not the contract — before the fix, seed 42 diverged at link 1
+  # with no exception at all while three others threw.
+  judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
