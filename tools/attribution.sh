@@ -132,7 +132,9 @@ if [ "$MODE" = selftest ]; then
   cd "$root" || exit 1
   printf 'ATTRIBUTION SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
-
+  [ "$fail" -eq 0 ]
+  exit $?
+fi
 
 if [ -z "$REPO" ]; then
   REPO="$(git remote get-url origin 2>/dev/null | sed -E 's#.*github\.com[/:]##; s#\.git$##' || true)"
@@ -185,9 +187,6 @@ fi
 # It runs in a scratch clone, on commits nothing will ever push, with three commits so the
 # case that matters is reachable: the repair walks a range, and the commit that needed
 # NOTHING done to it is the one `--reset-author` used to damage.
-  [ "$fail" = 0 ]
-  exit $?
-fi
 
 # One row per commit. `.author.login` is GitHub's own resolution of the author address
 # to an account, which is exactly the resolution the contribution count uses — asking
