@@ -103,23 +103,40 @@ public final class LedgerMirror {
      * a seed that starts breaking, a seed that stops, and a seed that is
      * silently dropped from the range are all three the same red row.
      *
-     * <p>The sweep is SERIAL, and that is a finding rather than a preference.
-     * Two universes in one JVM are not independent: {@code FlockMovement} is a
-     * singleton whose neighbour scratch buffer is an instance field, so a
-     * parallel range throws {@code ConcurrentModificationException} out of
-     * {@code FlockMovement.move} — one world's iteration is cleared by another
-     * world's tick. The buffer's own javadoc says "never escapes it", which is
-     * true per call and false per process. Filed separately; until it is fixed,
-     * a sweep that goes wide would be measuring a corruption it caused itself.
+     * <p>The sweep runs the range in PARALLEL, and the history is why that
+     * sentence is safe to write. It ran serially first, because two universes
+     * in one JVM were not independent: {@code FlockMovement} and {@code
+     * SwarmMovement} were singletons holding their neighbour buffer in an
+     * instance field, so a parallel range threw {@code
+     * ConcurrentModificationException} out of {@code FlockMovement.move} —
+     * and, worse and quieter, seed 42 produced a DIFFERENT CHAIN with no
+     * exception at all. #1147 moved both buffers to a {@code ThreadLocal} and
+     * {@code probes/TwoWorlds} now judges the property in the sweep: each seed
+     * run alone, then all of them concurrently, chains equal link for link.
+     *
+     * <p>So the parallelism here rides a guarded claim rather than an assumed
+     * one. Results are collected by seed and reported in seed order, so the
+     * LINE is identical to a serial sweep's; {@code --serial} runs the same
+     * range one at a time, which is how a reader checks that for themselves
+     * rather than believing this paragraph.
      */
     private static void sweep(String[] args) {
         String[] bounds = args[1].split("\\.\\.");
         long lo = Long.parseLong(bounds[0]);
         long hi = Long.parseLong(bounds[1]);
-        long ticks = args.length > 2 ? Long.parseLong(args[2]) : 6_000;
+        boolean serial = List.of(args).contains("--serial");
+        long budget = 6_000;
+        for (int i = 2; i < args.length; i++) {
+            if (!args[i].startsWith("--")) {
+                budget = Long.parseLong(args[i]);
+            }
+        }
+        final long ticks = budget;
 
-        List<Result> results = java.util.stream.LongStream.rangeClosed(lo, hi)
+        java.util.stream.LongStream range = java.util.stream.LongStream.rangeClosed(lo, hi);
+        List<Result> results = (serial ? range : range.parallel())
                 .mapToObj(s -> run(s, ticks, false))
+                .sorted(java.util.Comparator.comparingLong(Result::seed))
                 .toList();
 
         List<String> broken = new ArrayList<>();
