@@ -212,7 +212,17 @@ for tool in tools/*.sh; do
   # `rowbody` comment below was written for.
   row="$(grep "^| \`$name\`" tools/README.md || true)"
   [ -n "$row" ] || continue     # UNCATALOGUED already said this, above
-  if printf '%s' "$tool" | grep -q . && grep -qE 'exit +"?\$\(' "$tool"; then
+  # `exit "$(…)"` AND `return "$(…)"`. The first draft looked only for `exit`,
+  # and read 0 while `prstate.sh` — the tool that motivated the counter — sits
+  # one line away spelling it `return "$(code_for "$verdict")"`. A counter that
+  # cannot move is what #1205 deleted from `SheetDump` four units ago, so this
+  # one is falsified rather than assumed: it must report `prstate.sh` today.
+  # Comments stripped first. The paragraph above QUOTES the shape it hunts, so
+  # the unfiltered grep reported this file as indirect on the strength of its own
+  # explanation — a checker inside its own search path, for the fifth time in
+  # this file's history (#1144's ghost verdict, #1157's comments, #1222's row
+  # lookup reading a neighbour, and now this).
+  if grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(exit|return) +"?\$\('; then
     codes_indirect=$((codes_indirect + 1))
     echo "CODES $name indirect: reaches at least one exit through a lookup, literals=[$spends]"
   fi
