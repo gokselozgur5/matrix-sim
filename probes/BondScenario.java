@@ -88,11 +88,13 @@ public final class BondScenario {
                 + " flatlines=" + tally.flatlines
                 + " written_anyway=" + tally.writtenAnyway);
         if (tally.writtenAnyway > 0) {
-            System.out.println("VERDICT UNWRITING_BROKEN");
+            Probes.leave("VERDICT UNWRITING_BROKEN", false);
         } else if (tally.fired > 0 && tally.refusedSpent > 0) {
-            System.out.println("VERDICT ONCE_PER_EDGE_HELD");
+            Probes.leave("VERDICT ONCE_PER_EDGE_HELD", true);
         } else {
-            System.out.println("VERDICT NOT_DEMONSTRATED");
+            // Neither branch was reached: the run produced no firing to refuse a
+            // second payment for, so the law was not kept and was not broken.
+            Probes.leave("VERDICT NOT_DEMONSTRATED", false, false);
         }
     }
 

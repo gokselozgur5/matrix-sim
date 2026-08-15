@@ -88,7 +88,12 @@ public final class LedgerMirror {
         }
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
-        run(seed, ticks, true);
+        // The verdict line is printed HERE rather than inside `run`, because
+        // `sweep` calls `run` sixty times and a helper that exits would end the
+        // sweep on its first world (#1214). `run` still prints its MIRROR line;
+        // the verdict and the exit code leave together, from one place.
+        Result r = run(seed, ticks, true);
+        Probes.leave("LEDGER_ANOMALIES=" + r.anomalies(), r.anomalies() == 0);
     }
 
     /**
@@ -240,7 +245,6 @@ public final class LedgerMirror {
             System.out.println("MIRROR seed=" + seed + " ticks=" + ticks
                     + " final_balance=" + world.ledger().balance()
                     + " unparks=" + world.unparks());
-            System.out.println("LEDGER_ANOMALIES=" + anomalies);
         }
         return new Result(seed, anomalies);
     }

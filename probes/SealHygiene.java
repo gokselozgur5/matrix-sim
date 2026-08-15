@@ -216,8 +216,11 @@ public final class SealHygiene {
         }
         // The denominator rides the verdict: a run that pinned nothing must not
         // be able to report that nothing moved.
-        System.out.printf("VERDICT %s sites=2 checked=%d breaks=%d%n",
-                breaks.isEmpty() ? "SEAL_HYGIENE_HELD" : "SEAL_HYGIENE_BROKEN", checked, breaks.size());
+        Probes.leave(String.format(java.util.Locale.ROOT,
+                "VERDICT %s sites=2 checked=%d breaks=%d",
+                breaks.isEmpty() ? "SEAL_HYGIENE_HELD" : "SEAL_HYGIENE_BROKEN",
+                checked, breaks.size()),
+                breaks.isEmpty());
     }
 
     private SealHygiene() {}

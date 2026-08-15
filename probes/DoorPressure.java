@@ -195,8 +195,8 @@ public final class DoorPressure {
                 fact("no_grant_without_a_slot", starved.door.granted() == 0));
 
         System.out.println("DOORPRESSURE scenarios=" + scenarios + " anomalies=" + anomalies);
-        System.out.println(anomalies == 0
-                ? "VERDICT DOOR_PRESSURE_HELD" : "VERDICT DOOR_PRESSURE_BROKEN");
+        Probes.leave(anomalies == 0
+                ? "VERDICT DOOR_PRESSURE_HELD" : "VERDICT DOOR_PRESSURE_BROKEN", anomalies == 0);
     }
 
     /**

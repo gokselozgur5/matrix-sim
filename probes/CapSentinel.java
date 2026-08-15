@@ -65,7 +65,7 @@ public final class CapSentinel {
             }
         }
         System.out.println("SENTINEL seed=" + seed + " ticks=" + ticks + " cap=" + Config.RED_CAP);
-        System.out.println("CAP_BREACHES=" + breaches);
+        Probes.leave("CAP_BREACHES=" + breaches, breaches == 0);
     }
 
     private static boolean hasResidentLink(

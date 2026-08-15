@@ -213,6 +213,10 @@ table() {
   judge BoundsCensus 'VERDICT EVERY_KNOB_IS_WIRED_OR_SAYS_SO silent=0'
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
+  # The contract on the rows above, read off this table. `by_hand=11` is the
+  # honest half of the count: those probes exit with their own code, which is
+  # not a lie, only a second place the contract lives (#1214).
+  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE judged=36 reporting=7 no_code=0 by_hand=11 no_source=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
   # The second seed found a defect (#1155) and this row was a `known` break for four hours.
   # Both halves turned out to be the PROBE describing truthfully-measured things wrongly:

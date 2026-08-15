@@ -103,7 +103,7 @@ public final class CensusSampleSize {
                     + " exact_order_correct=" + pct(exact / (double) trials)
                     + " top1_correct=" + pct(top1 / (double) trials));
         }
-        System.out.println("VERDICT SAMPLE_LAWS_PRICED");
+        Probes.leave("VERDICT SAMPLE_LAWS_PRICED", true);
     }
 
     /** Counts are generated in the true order, so "correct" means non-increasing. */
