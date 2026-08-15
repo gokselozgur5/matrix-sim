@@ -402,6 +402,39 @@ jobs:
             "${RUNNER_TEMP:-/tmp}/attribution-selftest.log" \
             || { echo "FATAL the attribution repair reached no passing verdict" >&2; exit 1; }
 
+      # WHY: #1185 — `--twice` byte-compares every probe's output against a second run of
+      # itself, and no lane had ever run it: `INSTRUMENTS_DRIFTED` was a verdict nothing
+      # read. Run by hand for the first time today, it immediately found `UnparkStorm`
+      # printing nanosecond percentiles that move with the JIT (#1184).
+      #
+      # It is not switched on wholesale, because it doubles a 208 s sweep against the
+      # 300 s ceiling this lane set itself (#1115). It runs over the probes THIS pull
+      # request touched, which is the shape the defect actually arrives in — a probe added
+      # or edited without its author running the pass — and costs nothing at all on the
+      # majority of units, which touch no probe.
+      #
+      # Skipped rows count as UNCHECKED, never STABLE: #970's identity (probes = stable +
+      # drift + exempt + unchecked) exists so a pass over a subset cannot report itself as
+      # a pass over the whole.
+      - name: probes — the determinism pass, over what this PR touched (#1185)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD -- 'probes/*.java' \
+                     | xargs -r -n1 basename | sed 's/\.java$//' | paste -sd, -)"
+          if [ -z "$changed" ]; then
+            echo "TWICE skipped=no-probe-touched"
+            exit 0
+          fi
+          echo "TWICE probes=$changed"
+          bash probes/bench.sh --no-build --twice-changed "$changed" \
+            | tee "${RUNNER_TEMP:-/tmp}/twice.log"
+          grep -qE '^BENCH determinism .* drift=0 .*' "${RUNNER_TEMP:-/tmp}/twice.log" \
+            || { echo "FATAL a probe this PR touched does not reproduce its own output" >&2; exit 1; }
+
       - name: tools — balance.sh ruler and floor (#828)
         shell: bash
         run: |
