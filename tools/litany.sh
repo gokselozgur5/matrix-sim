@@ -103,27 +103,62 @@ verdict_shaped() {              # verdict_shaped <literal>
   printf '%s' "$1" | grep -qE '^[A-Z][A-Z0-9_]{2,}([ =]|$)'
 }
 
-# Every word of the literal must appear in the sources that could print it —
-# each word rather than the whole run, because a verdict is usually assembled by
-# a printf with substitutions in the middle, so the full string exists only at
-# runtime. A stale grep loses a WORD (a renamed verdict, a dropped field), and
-# that is what this catches; a reordering it does not.
-printed_words() {               # printed_words <literal>
-  local word
-  # `=` splits too, because a field is printed as `dialect=%s` and its VALUE
-  # never appears in the source at all — asking for `dialect=gnu` verbatim finds
-  # nothing and would call `tools/balance.sh` stale while it prints that exact
-  # line. What survives the split is the field NAME, which is the half a rename
-  # actually breaks.
-  for word in $(printf '%s' "$1" | tr '=' ' '); do
-    case "$word" in
-      [A-Za-z_]*) ;;
-      *) continue ;;                     # a value or punctuation, not a name
+# The literal's longest ADJACENT prefix must appear in the sources that could
+# print it.
+#
+# The first version of this asked each WORD separately, and #1145 named what
+# that misses: `RELEASE CHECK` passes if `RELEASE` and `CHECK` each appear
+# anywhere at all — not adjacent, not in one file, not in a printf. A tool
+# drifting from `RELEASE CHECK 12/12` to `RELEASE GATE 12/12` kept its lane
+# green, because `CHECK` survives in a hundred other places. That is #972's
+# defect exactly, and the check written to catch it could not.
+#
+# Adjacency works because a verdict is a printf FORMAT STRING, and the format
+# string is in the source verbatim up to its first substitution:
+#
+#     printf 'DATECHECK VERDICT PASS dialect=%s cases=%d\n' ...
+#
+# So `DATECHECK VERDICT PASS` is findable as one run of characters, and only
+# `dialect=gnu`'s VALUE is not — which is why the prefix shortens from the right
+# until it matches, rather than being demanded whole. What is reported is how
+# much of it matched, so a claim that shrank to one weak word is visible instead
+# of passing as a match.
+# Where a verdict can come FROM: a thing that runs. Two exclusions, both learned the
+# expensive way while writing this.
+#
+# Documents are not sources. `RELEASE CHECK 12/12 locks green` appears in tools/README.md,
+# describing the lock — so searching all of tools/ found the sentence ABOUT the verdict and
+# called the verdict printed. A prose description of a lock is exactly what survives when
+# the lock stops working.
+#
+# And this file is not a source. Its own comments quote both the live verdict and the
+# renamed one it exists to refuse, so an unfiltered search finds its own explanation and
+# passes. That is the second time the same shape has bitten in this script — the selfcheck's
+# ghost verdict had to be assembled from fragments for the identical reason — and it is
+# worth the sentence: a checker inside its own search path certifies itself.
+prints() {                      # prints <literal>
+  grep -rqF --include='*.java' --include='*.sh' --exclude='litany.sh' \
+    -- "$1" tools/ probes/ src/ 2>/dev/null
+}
+
+printed_prefix() {              # printed_prefix <literal> -> echoes the matched prefix, or empty
+  local words rest prefix
+  # Split on space AND `=`, because a field's name is printed and its value is not.
+  words="$(printf '%s' "$1" | tr '=' ' ')"
+  rest="$words"
+  while [ -n "$rest" ]; do
+    prefix="$rest"
+    if [ ${#prefix} -ge 8 ] && prints "$prefix"; then
+      printf '%s' "$prefix"
+      return 0
+    fi
+    # Drop the last word and try again: the tail is where the runtime values live.
+    case "$rest" in
+      *\ *) rest="${rest% *}" ;;
+      *) rest="" ;;
     esac
-    [ ${#word} -lt 4 ] && continue
-    grep -rqF -- "$word" tools/ probes/ src/ 2>/dev/null || return 1
   done
-  return 0
+  return 1
 }
 
 grep_patterns() {               # grep_patterns <file>
@@ -159,7 +194,7 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
     done <<< "$dupes"
   fi
 
-  local pat lit checked=0 skipped=0 unmatched=0
+  local pat lit matched checked=0 skipped=0 unmatched=0 shortened=0
   while IFS= read -r pat; do
     [ -z "$pat" ] && continue
     lit="$(literal_of "$pat")"
@@ -168,9 +203,13 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
       continue
     fi
     checked=$((checked + 1))
-    if ! printed_words "$lit"; then
+    matched="$(printed_prefix "$lit")"
+    if [ -z "$matched" ]; then
       unmatched=$((unmatched + 1))
-      note "UNPRINTED grep=\"$lit\" — no tool, probe or source prints this"
+      note "UNPRINTED grep=\"$lit\" — no run of it is printed by any tool, probe or source"
+    elif [ "${#matched}" -lt "${#lit}" ]; then
+      shortened=$((shortened + 1))
+      echo "PREFIX grep=\"$lit\" matched=\"$matched\" (the tail is runtime values)"
     fi
   done < <(grep_patterns "$f")
 
@@ -184,7 +223,8 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
   done
 
   echo "LITANY file=$f steps=$steps locks=$((hi - lo + 1)) greps_checked=$checked" \
-       "unprinted=$unmatched not_verdicts=$skipped lock_gaps=$missing breaks=${#BREAKS[@]}"
+       "unprinted=$unmatched shortened=$shortened not_verdicts=$skipped" \
+       "lock_gaps=$missing breaks=${#BREAKS[@]}"
 }
 
 # ---------------------------------------------------------------- selftest
@@ -219,6 +259,14 @@ selftest() {
   # search path is the shape #898 is about.
   local ghost="NOBODY"; ghost="${ghost}PRINTS THIS EVER"; ghost="${ghost}LINE"
   case_ stale-verdict-grep   1 'echo "        run: grep -q \"$ghost\" x" >> "$tmp/w.yml"'
+  # #1145: a RENAMED verdict, which the word-by-word form could not see. Both words of
+  # "RELEASE GATE" exist in the tree — GATE is all over the release tooling — so only
+  # ADJACENCY refuses it. The live spelling beside it is the row that proves the case is
+  # about the rename and not about the sentence being long.
+  local live="RELEASE CHECK 12/12 locks green"
+  local renamed="RELEASE GATE 12/12 locks green"
+  case_ renamed-verdict-grep 1 'echo "        run: grep -q \"$renamed\" x" >> "$tmp/w.yml"'
+  case_ live-verdict-grep    0 'echo "        run: grep -q \"$live\" x" >> "$tmp/w.yml"'
 
   printf 'LITANY SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
