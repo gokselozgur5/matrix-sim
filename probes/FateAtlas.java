@@ -305,9 +305,14 @@ public final class FateAtlas {
         // and has one distinct name by arithmetic. Reading that as a
         // monoculture would fire the gate on the wrong fact and teach the next
         // tuner to widen the band to silence it.
-        System.out.println(admitted == 0 ? "VERDICT BAND_SEALED"
+        // Two of the three outcomes are failures: a band nothing can enter, and a
+        // band only one name ever enters. The exit code has to say which, because
+        // #1093's whole finding is that the verdict word alone reaches only the
+        // bench — and BAND_SEALED read as success to every hand-run script.
+        boolean open = admitted > 0 && !(admitted >= 2 && byName.size() == 1);
+        Probes.leave(admitted == 0 ? "VERDICT BAND_SEALED"
                 : admitted >= 2 && byName.size() == 1 ? "VERDICT MONOCULTURE"
-                : "VERDICT BAND_OPEN admitted=" + admitted);
+                : "VERDICT BAND_OPEN admitted=" + admitted, open);
     }
 
     /**

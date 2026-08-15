@@ -171,6 +171,6 @@ public final class BondBook {
         // again is the symptom; a book that let an edge go AND minted
         // afterwards is the mechanism working.
         boolean turnsOver = forgotten > 0 && fillTick >= 0 && lastMintTick > fillTick;
-        System.out.println("VERDICT " + (turnsOver ? "BOOK_TURNS_OVER" : "BOOK_FOSSILIZED"));
+        Probes.leave("VERDICT " + (turnsOver ? "BOOK_TURNS_OVER" : "BOOK_FOSSILIZED"), turnsOver);
     }
 }

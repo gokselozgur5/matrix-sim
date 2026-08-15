@@ -74,7 +74,7 @@ public final class LinkAudit {
                 + " closed_clean=" + zion[2]
                 + " closed_dead=" + zion[3]
                 + " ghosts=" + zion[4]);
-        System.out.println(all[4] == 0 ? "VERDICT CLEAN" : "VERDICT GHOSTS_FOUND");
+        Probes.leave(all[4] == 0 ? "VERDICT CLEAN" : "VERDICT GHOSTS_FOUND", all[4] == 0);
     }
 
     /** 0 open_streaming · 1 worn_by_smith · 2 closed_clean · 3 closed_dead · 4 ghost. */

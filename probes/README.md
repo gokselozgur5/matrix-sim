@@ -105,7 +105,19 @@ The contract table lives in that script, one row per invocation — `judge
 that only reports, either of them prefixed by `vary '<reason>'` when the row's
 output may legitimately move. A judged probe is judged by exact-line grep
 (`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
-sweep; a reporting probe fails only by crashing or exiting nonzero. Adding a
+sweep; a reporting probe fails only by crashing or exiting nonzero.
+
+**A judged probe also owes an honest exit code, and until #1093 only the grep
+was ever enforced.** The bench reads the verdict line, so nineteen probes could
+print a failing verdict and exit 0 and no lane cared — while every hand-run
+invocation, every `$?` in a script, and `bench.sh --twice` (whose `settle` reads
+the second run's code before comparing bytes) were told the contract held.
+`Probes.leave(verdict, held)` is the one place that owes both: it prints the
+line the bench greps and leaves with 0 or 1 to match. A **reporting** probe must
+not call it — a `run` row fails on a nonzero exit, so adopting an exit code
+there changes what the row means.
+
+Adding a
 probe is a one-row change here, beside the probe — one row per probe, and one
 row per mode where a probe verdicts in more than one. `SheetBench` is the only
 one that does today, and its `--avalanche` row is `run` rather than `judge` on

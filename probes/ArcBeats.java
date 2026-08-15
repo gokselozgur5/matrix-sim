@@ -88,7 +88,7 @@ public final class ArcBeats {
             }
         }
         System.out.println("ARC seed=" + arc.seed() + " ticks=" + arc.ticks() + " lines=" + arc.lines());
-        System.out.println(ok ? "VERDICT BEATS_IN_ORDER" : "VERDICT ARC_BROKEN");
+        Probes.leave(ok ? "VERDICT BEATS_IN_ORDER" : "VERDICT ARC_BROKEN", ok);
     }
 
     private ArcBeats() {}

@@ -97,7 +97,7 @@ public final class PirateSever {
                 fact("still_closed", wire4.closed()));
 
         System.out.println("PIRATESEVER scenarios=4 anomalies=" + anomalies);
-        System.out.println(anomalies == 0 ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN");
+        Probes.leave(anomalies == 0 ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN", anomalies == 0);
     }
 
     /** A fact holds or it counts: prints name=held, tallies the anomaly when it does not. */
