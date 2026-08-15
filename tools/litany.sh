@@ -209,7 +209,30 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
       note "UNPRINTED grep=\"$lit\" — no run of it is printed by any tool, probe or source"
     elif [ "${#matched}" -lt "${#lit}" ]; then
       shortened=$((shortened + 1))
-      echo "PREFIX grep=\"$lit\" matched=\"$matched\" (the tail is runtime values)"
+      # How much of the claim survived, judged rather than merely reported (#1158). The
+      # prefix shortens from the right until it matches, and until now the only floor was
+      # eight characters — which is one word, so `DATECHECK PASS VERDICT dialect=gnu`
+      # would shorten to `DATECHECK` and pass. A reordered verdict loses everything after
+      # its first token and the check calls that a match.
+      #
+      # The bound is on what SURVIVED, not on how much was dropped — and the first draft
+      # got that backwards. "At most one dropped token" looked right and reddened
+      # `RELEASE CHECK 12/12 locks green`, which is honest: `release.sh` prints
+      # `RELEASE CHECK %d/%d locks green`, so a substitution in the MIDDLE takes every
+      # word after it with it. Three dropped tokens there is correct behaviour.
+      #
+      # What separates that from a reordered verdict is what is LEFT. `RELEASE CHECK` is
+      # two words in the tool's own order; `DATECHECK PASS VERDICT dialect=gnu` collapses
+      # to `DATECHECK` alone, which is one word that happens to be long. So: two words
+      # survive, or one word of sixteen characters — `SNAPSHOT_MATCHES_DIGEST` is a whole
+      # verdict in one token and there is no second word to ask for.
+      local got_words
+      got_words="$(printf '%s' "$matched" | tr '= ' '\n\n' | grep -c '[^[:space:]]' || true)"
+      if [ "$got_words" -lt 2 ] && [ "${#matched}" -lt 16 ]; then
+        note "OVERSHORTENED grep=\"$lit\" matched=\"$matched\" survived=$got_words — one short word is not evidence the tool prints this line"
+      else
+        echo "PREFIX grep=\"$lit\" matched=\"$matched\" survived=$got_words (the tail is runtime values)"
+      fi
     fi
   done < <(grep_patterns "$f")
 
@@ -267,6 +290,14 @@ selftest() {
   local renamed="RELEASE GATE 12/12 locks green"
   case_ renamed-verdict-grep 1 'echo "        run: grep -q \"$renamed\" x" >> "$tmp/w.yml"'
   case_ live-verdict-grep    0 'echo "        run: grep -q \"$live\" x" >> "$tmp/w.yml"'
+  # #1158: a REORDERED verdict. Every word is real and adjacent to nothing it belongs
+  # beside, so the prefix collapses to the first token — eight characters, over the old
+  # floor, and it passed. The pair below is the whole case: one dropped token is a runtime
+  # value, three is a different line.
+  local reordered="DATECHECK PASS VERDICT dialect=gnu"
+  local one_value="DATECHECK VERDICT PASS dialect=gnu"
+  case_ reordered-verdict    1 'echo "        run: grep -q \"$reordered\" x" >> "$tmp/w.yml"'
+  case_ one-runtime-value    0 'echo "        run: grep -q \"$one_value\" x" >> "$tmp/w.yml"'
 
   printf 'LITANY SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
