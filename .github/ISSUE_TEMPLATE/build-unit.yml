@@ -17,6 +17,24 @@ body:
       placeholder: "A `probes/LedgerMirror` instrument holds every ledger delta to the open-link residue mirror..."
     validations:
       required: true
+  - type: textarea
+    id: measured
+    attributes:
+      label: Measured
+      description: >-
+        The command you ran and the line it printed. An issue written from a SHAPE the tree
+        keeps producing, rather than from a run, is fileable — write "not measured" and why.
+        Saying so is the point: an absence is invisible, a declaration is not. #1215 claimed a
+        drift that DocLint had been checking all along, and #1212's central measurement was
+        wrong because it grepped a source for a flag instead of running it.
+      placeholder: |
+        gh run list --workflow litany.yml --limit 6
+        main  push  failure     ← eleven runs, all zero seconds
+
+        or: not measured — this is a shape, not a sighting: every catalog row
+        that quotes a count will rot, and none has yet.
+    validations:
+      required: true
   - type: input
     id: decisions
     attributes:
