@@ -63,6 +63,7 @@ while [ $# -gt 0 ]; do
     --pr)  PR="${2:-}";   [ -n "$PR" ]   || { echo "FATAL --pr wants a number" >&2; exit 2; }; shift 2 ;;
     --for) REPO="${2:-}"; [ -n "$REPO" ] || { echo "FATAL --for wants OWNER/NAME" >&2; exit 2; }; shift 2 ;;
     --selftest) MODE=selftest; shift ;;
+    --schedules) MODE=schedules; shift ;;
     -h|--help) sed -n '2,7p' "$0"; exit 0 ;;
     -*) echo "FATAL unknown flag: $1" >&2; exit 2 ;;
     *)  [ -z "$PR" ] || { echo "FATAL unexpected argument: $1" >&2; exit 2; }; PR="$1"; shift ;;
@@ -137,6 +138,62 @@ judge() {
 }
 
 code_for() { case "$1" in GREEN) echo 0 ;; RED) echo 1 ;; UNBUILT) echo 4 ;; PENDING) echo 5 ;; NOT_ELIGIBLE) echo 6 ;; *) echo 3 ;; esac; }
+
+# ---- the schedule question (#1233) -------------------------------------------
+#
+# A workflow on a cron is the only kind that can be COMPLETELY silent and still
+# look installed. `determinism.yml` landed carrying `probes/bench.sh --twice` —
+# the one pass in this tree that byte-compares a probe against a second run of
+# itself — and had run zero times when this was written, because its first
+# scheduled firing had not arrived and nobody had dispatched it. That is #1203's
+# shape with the clock instead of a syntax error: there, a workflow that could
+# not start looked like one that did not apply; here, one that has not started
+# looks the same.
+#
+# The period is derived from the cron rather than configured, because a period
+# stated beside the cron is a second copy of the cron.
+#
+# period_of <cron> -> days
+#   `0 4 * * 0`   day-of-week pinned   -> 7
+#   `0 4 1 * *`   day-of-month pinned  -> 31
+#   `0 4 * * *`   neither              -> 1
+#
+# Not a cron parser. A parser would be better and is not free (D-009's habit),
+# and these three shapes are what a repository schedule actually looks like. A
+# cron this cannot read reports its shape rather than guessing a period.
+period_of() {                   # period_of <cron-expression>
+  local dom dow
+  dom="$(printf '%s' "$1" | awk '{print $3}')"
+  dow="$(printf '%s' "$1" | awk '{print $5}')"
+  if [ "${dow:-*}" != '*' ]; then printf '7'; return 0; fi
+  if [ "${dom:-*}" != '*' ]; then printf '31'; return 0; fi
+  printf '1'
+}
+
+# judge_schedule <period-days> <age-days|none> -> VERDICT<TAB>why
+#
+# Pure, so the arithmetic is testable without a token. `none` is not "overdue by
+# a lot" — it is a workflow that has never run at all, and the two want different
+# words: one is a schedule that slipped, the other is a schedule nobody has ever
+# seen work.
+#
+# The tolerance is 1.5x the period. A run that fires at 04:00 and is read at
+# 03:00 seven days later is not late, and a schedule GitHub skipped once is.
+judge_schedule() {
+  local period="$1" age="$2"
+  if [ "$age" = none ]; then
+    printf 'NEVER_RAN\tperiod=%sd\n' "$period"; return 0
+  fi
+  # Integer arithmetic only: 2 * age > 3 * period is age > 1.5 * period. The
+  # first draft wrote `3 * age > 2 * period`, which is age > 0.67 * period —
+  # a weekly schedule read as overdue five days in. The cases below caught it,
+  # which is the entire reason the tolerance is bracketed on both sides rather
+  # than asserted once.
+  if [ $((2 * age)) -gt $((3 * period)) ]; then
+    printf 'OVERDUE\tage=%sd period=%sd\n' "$age" "$period"; return 0
+  fi
+  printf 'CURRENT\tage=%sd period=%sd\n' "$age" "$period"
+}
 # NOT_ELIGIBLE outranks UNBUILT in a sweep: an unbuilt PR is waiting for a run,
 # and this one is waiting for nothing at all.
 rank_of()  { case "$1" in NOT_ELIGIBLE) echo 4 ;; UNBUILT) echo 3 ;; RED) echo 2 ;; PENDING) echo 1 ;; *) echo 0 ;; esac; }
@@ -284,6 +341,31 @@ selftest() {
     'UNBUILT runs=0 green=0 red=0 pending=0 why=no-run' \
     unit/1206-tool-depth-guard ''
 
+  # The schedule question (#1233), whose whole arithmetic is testable with no
+  # token: a period read off a cron, an age in days, and the 1.5x tolerance.
+  sched() {                     # sched <name> <cron> <age> <want>
+    local got
+    got="$(judge_schedule "$(period_of "$2")" "$3" | tr '\t' ' ')"
+    seen="$seen ${got%% *}"
+    if [ "$got" = "$4" ]; then
+      pass=$((pass + 1)); printf 'CASE %-26s OK    %s\n' "$1" "$got"
+    else
+      fail=$((fail + 1)); printf 'CASE %-26s FAIL  got=[%s] want=[%s]\n' "$1" "$got" "$4"
+    fi
+  }
+  sched weekly-fresh        '0 4 * * 0' 3    'CURRENT age=3d period=7d'
+  sched weekly-at-period    '0 4 * * 0' 7    'CURRENT age=7d period=7d'
+  # 1.5x of 7 is 10.5, so ten is inside the tolerance and eleven is not. Both,
+  # because a tolerance stated and not bracketed is a tolerance nobody checked.
+  sched weekly-inside-slack '0 4 * * 0' 10   'CURRENT age=10d period=7d'
+  sched weekly-overdue      '0 4 * * 0' 11   'OVERDUE age=11d period=7d'
+  sched daily-overdue       '0 4 * * *' 2    'OVERDUE age=2d period=1d'
+  sched monthly-fresh       '0 4 1 * *' 20   'CURRENT age=20d period=31d'
+  # A workflow that has never run is not "overdue by a lot": one is a schedule
+  # that slipped, the other is a schedule nobody has ever seen work — which is
+  # exactly the state `determinism.yml` was in on the day it was written.
+  sched never-ran           '0 4 * * 0' none 'NEVER_RAN period=7d'
+
   # A suite that reaches one verdict is not a suite. The five states are the whole claim of
   # this tool, so the cases must be shown to separate them before their verdict counts.
   local missing=""
@@ -304,6 +386,48 @@ selftest() {
 }
 
 if [ "$MODE" = selftest ]; then selftest; exit $?; fi
+
+# ---- the live schedule reading -----------------------------------------------
+
+schedules() {
+  local f cron period last age verdict why worst=0 n=0
+  for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+    [ -f "$f" ] || continue
+    # The cron line, if this workflow has one. `awk` rather than a YAML reader,
+    # for D-009's reason and because the shape is one line.
+    cron="$(awk -F"'" '/^[[:space:]]*-[[:space:]]*cron:/ {print $2; exit}' "$f")"
+    [ -n "$cron" ] || continue
+    n=$((n + 1))
+    period="$(period_of "$cron")"
+    # The most recent run of any kind — a dispatch counts, because the question
+    # is whether the pass has been TAKEN, not whether the clock delivered it.
+    last="$(gh run list --workflow "$(basename "$f")" --limit 1 \
+              --json createdAt -q '.[0].createdAt' 2>/dev/null || true)"
+    if [ -z "$last" ] || [ "$last" = null ]; then
+      age=none
+    else
+      # Days between then and now, computed from epoch seconds so no date(1)
+      # dialect is involved (#901 is why that sentence is here).
+      local then now
+      then="$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$last" +%s 2>/dev/null \
+              || date -u -d "$last" +%s 2>/dev/null || true)"
+      now="$(date -u +%s)"
+      if [ -z "$then" ]; then
+        echo "SCHEDULE $(basename "$f") UNREADABLE stamp=$last"
+        continue
+      fi
+      age=$(( (now - then) / 86400 ))
+    fi
+    IFS=$'\t' read -r verdict why <<< "$(judge_schedule "$period" "$age")"
+    printf 'SCHEDULE %s %s cron="%s" %s\n' "$(basename "$f")" "$verdict" "$cron" "$why"
+    case "$verdict" in NEVER_RAN|OVERDUE) worst=1 ;; esac
+  done
+  printf 'PR STATE SCHEDULES VERDICT %s scheduled=%d\n' \
+    "$([ "$worst" = 0 ] && printf CURRENT || printf OVERDUE)" "$n"
+  [ "$worst" = 0 ]
+}
+
+if [ "$MODE" = schedules ]; then schedules; exit $?; fi
 
 # ---- the live reading --------------------------------------------------------
 
