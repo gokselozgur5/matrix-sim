@@ -161,6 +161,11 @@ table() {
   # still named. Twelve sites, all safe, all now SAYING they are safe — the sentence that was
   # missing from two scratch buffers for as long as they were wrong. Costs no universe.
   judge SharedState  'VERDICT EVERY_SHARE_IS_DECLARED undeclared=0'
+  # The row #1153 wrote in its PR body and never committed (#1162). Its `perl` substitution
+  # was anchored on `judge SpeciesReach`, which was on a different branch at the time; the
+  # pattern matched nothing, perl exited 0, and the tree gained an instrument that ran on
+  # nobody's push. Costs no universe — it reads Config.
+  judge BoundsCensus 'VERDICT EVERY_KNOB_IS_WIRED_OR_SAYS_SO silent=0'
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
@@ -532,11 +537,51 @@ clause5() {
   [ "$verdict" = BENCH_STANDS_ALONE ] || return 1
   rm -rf "$work"
 }
+# Every probe in the directory is in the table, or the table is not the list it claims
+# to be (#1162). `BoundsCensus` landed on main with no row: its PR body quoted the row,
+# its evidence block quoted the verdict, and the commit touched one file. Three ordinary
+# things lined up — a substitution anchored on a line that did not exist yet, a tool that
+# reports success when it changes nothing, and an author who verified the probe instead of
+# the row — and the tree gained an instrument that guards nothing.
+#
+# This file's own header says a probe CI does not run is a probe that guards nothing
+# between two people remembering it. That sentence needed a reader.
+#
+# `Probes` is the shared accessor class and has no main; the rest of the exemptions are
+# named individually rather than pattern-matched, because a pattern is where the next
+# unrun probe hides. Reported and judged on every run, --list included: the check costs
+# one `ls` and it is the cheapest lock in the file.
+roster_check() {
+  local missing=0 cls
+  for f in probes/*.java; do
+    cls="$(basename "$f" .java)"
+    # No main, no row: `Probes` holds the reflective accessors and `LineGrammar` holds
+    # D-020's families as data, and neither is a thing you can run. Asked of the file
+    # rather than listed by name, because a name list is where the next unrun probe hides.
+    grep -q 'static void main(String\[\] args)' "$f" || continue
+    grep -q "^\s*\(judge\|run\|known\|vary\).*\b$cls\b" probes/bench.sh && continue
+    # A probe may legitimately have no row: six do, and they are one-off instruments
+    # written to answer a question once — a census re-verdict, a sample-size argument,
+    # a draw-order keeper. Forcing them into the lane would buy nothing and cost wall
+    # clock on every push. What is refused is the SILENT case, which is what happened
+    # to BoundsCensus: the probe says so in its own javadoc, or it is untabled.
+    grep -qi 'one-off\|not in the bench\|run by hand\|investigation' "$f" && continue
+    missing=$((missing + 1))
+    echo "UNTABLED $cls has no row and does not say it is one-off — it runs on nobody's push"
+  done
+  echo "ROSTER probes_on_disk=$(ls probes/*.java | wc -l | tr -d ' ') untabled=$missing"
+  [ "$missing" -eq 0 ]
+}
+
 
 if [ "$LIST" = yes ]; then
   table
   echo "CONTRACT probes=$PROBES judged=$JUDGED ticks=$TICKS"
-  exit 0
+  # The roster runs here too, and this is the form an author actually types while
+  # adding a row (#1162): --list is the cheap read, so the check that a probe HAS a
+  # row belongs where the author will meet it, not only in the two-minute sweep.
+  roster_check
+  exit $?
 fi
 
 # The clause-5 check is its own errand: it builds a different tree from the one
@@ -556,6 +601,7 @@ if [ "$BUILD" = yes ]; then
 fi
 
 table
+roster_check || FAIL=$((FAIL + 1))
 
 # The lane's own budget (#1115). `--bench` judges the DAEMON against D-027's
 # table; the sweep that runs it had no ceiling of its own, so every unit adding
@@ -598,5 +644,6 @@ if [ "$TWICE" = yes ]; then
                   elif [ "$UNCHECKED" -ne 0 ]; then echo INSTRUMENTS_UNPROVEN
                   else echo INSTRUMENTS_STABLE; fi)"
 fi
+
 
 [ "$FAIL" -eq 0 ] && [ "$DRIFTED" -eq 0 ]

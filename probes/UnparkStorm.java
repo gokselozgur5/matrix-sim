@@ -12,6 +12,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * <p>ONE-OFF: run by hand, not in the bench. It answers a question once rather than
+ * guarding a property on every push, so a row would cost the lane wall clock and buy
+ * nothing (#1162). The rule is that the absence is DECLARED, not that it is unusual.
+ *
  * Probe: how big is one déjà vu, and what does the tick it lands on cost?
  *
  * Parking (D-024 P2) buys a smaller ticked population by folding an
