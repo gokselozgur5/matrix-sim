@@ -2,6 +2,10 @@ import java.util.Locale;
 import java.util.Random;
 
 /**
+ * <p>ONE-OFF: run by hand, not in the bench. It answers a question once rather than
+ * guarding a property on every push, so a row would cost the lane wall clock and buy
+ * nothing (#1162). The rule is that the absence is DECLARED, not that it is unusual.
+ *
  * Probe: how many seeds a claim needs, per class of claim.
  *
  * The census's cheapest mistake is to run one sweep and let every sentence in

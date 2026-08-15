@@ -9,6 +9,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
+ * <p>ONE-OFF: run by hand, not in the bench. It answers a question once rather than
+ * guarding a property on every push, so a row would cost the lane wall clock and buy
+ * nothing (#1162). The rule is that the absence is DECLARED, not that it is unusual.
+ *
  * Probe: what a census owes a declared digest move.
  *
  * The digest ritual catches "did the world change?". It was never designed to

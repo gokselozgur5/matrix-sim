@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * <p>ONE-OFF: run by hand, not in the bench. It answers a question once rather than
+ * guarding a property on every push, so a row would cost the lane wall clock and buy
+ * nothing (#1162). The rule is that the absence is DECLARED, not that it is unusual.
+ *
  * Probe: held-at-window-end is CENSORED, never a hold.
  *
  * The film's census gets away with a simple design because the film ENDS: every
