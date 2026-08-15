@@ -49,24 +49,105 @@ import java.util.List;
  * machine node, which runs before it. So open-at-tick-start is
  * open-at-accrual, and dead-at-tick-end is dead-at-accrual.
  *
- * Verdict: LEDGER_ANOMALIES=0 at seeds 42, 7 and 9 over the full arc
- * (verification round, 2026-08-11; re-verified with the unpark source
- * modeled for the P2 parking film; #863 modelled the clean exit and
- * swept seeds 0..49 clean, 2026-08-13; #978 opened the reset tick and
- * swept seeds 0..59 clean, 2026-08-14).
+ * THE VERDICT IS NOT WRITTEN HERE, and that is the whole point of #1130.
+ * What this instrument establishes is a CONTRACT — every nonzero ledger
+ * delta is explained by the three accounted sources above, or it is an
+ * anomaly — and the contract's current standing is printed by the run
+ * that measures it: `--sweep A..B` prints one line, `bench.sh` greps
+ * that line exactly, and every push regenerates it. A sentence cannot be
+ * kept honest by care; a verdict line is honest by construction.
+ *
+ * Recorded before the verdict, kept unedited and FALSE as of 2026-08-15:
+ *
+ *   "Verdict: LEDGER_ANOMALIES=0 at seeds 42, 7 and 9 over the full arc
+ *    (verification round, 2026-08-11; re-verified with the unpark source
+ *    modeled for the P2 parking film; #863 modelled the clean exit and
+ *    swept seeds 0..49 clean, 2026-08-13; #978 opened the reset tick and
+ *    swept seeds 0..59 clean, 2026-08-14)."
+ *
+ * It was almost certainly true when it was written — and `4316525`, one
+ * day later, broke seed 7 with nothing left in the repository able to
+ * notice. Measured at 57bbf96: seeds 0..59 hold SEVEN breaks —
+ * 4, 7, 8, 13, 34, 49 and 52 — one anomaly each. The defect is #1090 and
+ * this record does not close it; what this record closes is the sentence
+ * that kept it invisible.
  *
  * Usage: java -cp out:probes/out LedgerMirror [ticks] [seed]
+ *        java -cp out:probes/out LedgerMirror --sweep A..B [ticks]
  */
 public final class LedgerMirror {
 
+    /** One universe's verdict: the seed, and how many ticks the mirror could not explain. */
+    public record Result(long seed, long anomalies) {}
+
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        if (args.length > 0 && args[0].equals("--sweep")) {
+            sweep(args);
+            return;
+        }
         long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+        run(seed, ticks, true);
+    }
 
+    /**
+     * The sweep, as a line that is regenerated rather than remembered.
+     *
+     * <p>This exists because the claim it replaces was prose. The javadoc
+     * certified seeds 0..59 clean on 2026-08-14 and four of the first twenty
+     * broke the next day, one commit later — nothing recomputed the sentence,
+     * so the one instrument able to see the break carried a written statement
+     * that it did not exist (#1130). A verdict line cannot go stale: it is
+     * printed by the run that produces it, and `bench.sh` greps it exactly, so
+     * a seed that starts breaking, a seed that stops, and a seed that is
+     * silently dropped from the range are all three the same red row.
+     *
+     * <p>The sweep is SERIAL, and that is a finding rather than a preference.
+     * Two universes in one JVM are not independent: {@code FlockMovement} is a
+     * singleton whose neighbour scratch buffer is an instance field, so a
+     * parallel range throws {@code ConcurrentModificationException} out of
+     * {@code FlockMovement.move} — one world's iteration is cleared by another
+     * world's tick. The buffer's own javadoc says "never escapes it", which is
+     * true per call and false per process. Filed separately; until it is fixed,
+     * a sweep that goes wide would be measuring a corruption it caused itself.
+     */
+    private static void sweep(String[] args) {
+        String[] bounds = args[1].split("\\.\\.");
+        long lo = Long.parseLong(bounds[0]);
+        long hi = Long.parseLong(bounds[1]);
+        long ticks = args.length > 2 ? Long.parseLong(args[2]) : 6_000;
+
+        List<Result> results = java.util.stream.LongStream.rangeClosed(lo, hi)
+                .mapToObj(s -> run(s, ticks, false))
+                .toList();
+
+        List<String> broken = new ArrayList<>();
+        for (Result r : results) {
+            if (r.anomalies() > 0) {
+                broken.add(Long.toString(r.seed()));
+                System.out.println("SWEEP seed=" + r.seed() + " anomalies=" + r.anomalies() + " BROKEN");
+            }
+        }
+        System.out.println("LEDGER_SWEEP seeds=" + lo + ".." + hi + " ticks=" + ticks
+                + " clean=" + (results.size() - broken.size())
+                + " broken=" + broken.size()
+                + " at " + (broken.isEmpty() ? "-" : String.join(",", broken)));
+    }
+
+    /**
+     * One universe, mirrored tick by tick. Printing is optional so a sweep stays
+     * one line per break.
+     *
+     * <p>The reflective accessors are checked, and a sweep reads them from
+     * inside a stream: an accessor that cannot be reached is a broken probe,
+     * not a finding about the world, so it is wrapped rather than swallowed and
+     * the run dies where it happened.
+     */
+    static Result run(long seed, long ticks, boolean print) {
         Simulation sim = new Simulation(seed, null, null);
-        var world = Probes.world(sim);
-        var links = Probes.links(Probes.realWorld(sim));
+        var world = reflect(() -> Probes.world(sim));
+        var links = reflect(() -> Probes.links(reflect(() -> Probes.realWorld(sim))));
 
         long anomalies = 0;
         long prev = world.ledger().balance();
@@ -117,25 +198,47 @@ public final class LedgerMirror {
                 // balance IS the mirror, and the check is absolute rather than
                 // differential. Both numbers on the line, so the reader can
                 // see it happened.
-                System.out.println("RESET t=" + world.tick()
-                        + " to=" + now + " mirror=" + mirror);
+                if (print) {
+                    System.out.println("RESET t=" + world.tick()
+                            + " to=" + now + " mirror=" + mirror);
+                }
                 if (now != mirror) {
                     anomalies++;
-                    System.out.println("ANOMALY t=" + world.tick()
-                            + " after_reset=" + now + " mirror=" + mirror);
+                    if (print) {
+                        System.out.println("ANOMALY t=" + world.tick()
+                                + " after_reset=" + now + " mirror=" + mirror);
+                    }
                 }
                 continue;
             }
             if (delta != mirror) {
                 anomalies++;
-                System.out.println("ANOMALY t=" + world.tick()
-                        + " delta=" + delta + " mirror=" + mirror);
+                if (print) {
+                    System.out.println("ANOMALY t=" + world.tick()
+                            + " delta=" + delta + " mirror=" + mirror);
+                }
             }
         }
-        System.out.println("MIRROR seed=" + seed + " ticks=" + ticks
-                + " final_balance=" + world.ledger().balance()
-                + " unparks=" + world.unparks());
-        System.out.println("LEDGER_ANOMALIES=" + anomalies);
+        if (print) {
+            System.out.println("MIRROR seed=" + seed + " ticks=" + ticks
+                    + " final_balance=" + world.ledger().balance()
+                    + " unparks=" + world.unparks());
+            System.out.println("LEDGER_ANOMALIES=" + anomalies);
+        }
+        return new Result(seed, anomalies);
+    }
+
+    /** A reflective accessor, called where a checked exception cannot travel. */
+    private interface Reflective<T> {
+        T get() throws ReflectiveOperationException;
+    }
+
+    private static <T> T reflect(Reflective<T> accessor) {
+        try {
+            return accessor.get();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("probe accessor unreachable", e);
+        }
     }
 
     private LedgerMirror() {}
