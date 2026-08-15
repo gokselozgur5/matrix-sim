@@ -39,7 +39,13 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
-          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+          grep -q '^LITANY SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0 \
+            "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
+            || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
+          bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
+          grep -q '^LITANY VERDICT PASS$' "${RUNNER_TEMP:-/tmp}/litany.log" \
+            || { echo "FATAL the litany did not reach a passing verdict" >&2; exit 1; }
+ \
             "${RUNNER_TEMP:-/tmp}/litany-selftest.log" \
             || { echo "FATAL the litany judge cannot falsify itself" >&2; exit 1; }
           bash tools/litany.sh | tee "${RUNNER_TEMP:-/tmp}/litany.log"
