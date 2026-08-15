@@ -290,7 +290,7 @@ table() {
   # that had none were deleted rather than re-derived (#1192).
   judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4' --catalog
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
-        --lines '^ALLOC(_NOTE)? ' \
+        --lines '^ALLOC(_NOTE|_BUDGET)? ' \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   # The referee's own referee, not the referee. `NeutralDiff <ticks>` needs
