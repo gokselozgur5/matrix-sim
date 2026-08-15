@@ -117,6 +117,17 @@ line the bench greps and leaves with 0 or 1 to match. A **reporting** probe must
 not call it — a `run` row fails on a nonzero exit, so adopting an exit code
 there changes what the row means.
 
+**A property row runs at two seeds; an arc row runs at one (#1094).** The
+distinction is what the row CLAIMS. *"The contract held"*, *"breaches = 0"*,
+*"the audit is clean"* are claims about every world, and one universe cannot
+support them — three units in one night found defects the canonical seed cannot
+see, and the second seed added here immediately found a fourth (#1155: D-021's
+perception clause holds at seed 42 and at no other seed tried). *"The film's
+beats are 1299, 1525, …"*, *"movers = 19"*, *"the subject is Nadia Petrov"* are
+measurements of the canonical arc, and asserting them at another seed would be
+asserting a different measurement, not a stronger one. Seed 7 is the tree's
+second canonical universe; nine property rows carry it, measured at 6.4 s.
+
 **The lane has a budget of its own (#1115).** The summary line carries
 `secs=<measured> budget=<ceiling> WITHIN|OVER`, because `--bench` judges the
 *daemon* against D-027's table and nothing judged the sweep that runs it — so
