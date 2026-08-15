@@ -81,7 +81,7 @@ public final class BirthInputs {
                 // spends 3 on (#1011), and a run with no births is a scenario that never
                 // arose, which is 2. Collapsing them would tell a sweep that a typo is a
                 // world without births.
-                Probes.leave("VERDICT BIRTH_INPUTS_NONE no_file", Probes.Outcome.BROKE);
+                Probes.leave("VERDICT BIRTH_INPUTS_NONE no_file", Probes.Outcome.REFUSED);
             }
             Path file = Path.of(args[1]);
             source = file.getFileName().toString();

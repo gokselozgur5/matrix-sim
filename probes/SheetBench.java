@@ -65,7 +65,7 @@ public final class SheetBench {
             default -> {
                 System.err.println("unknown mode: " + mode
                         + " (try --vocab, --hunt-axis, --discipline, --avalanche, --bands)");
-                System.exit(2);
+                System.exit(Probes.Outcome.REFUSED.code());
             }
         }
     }

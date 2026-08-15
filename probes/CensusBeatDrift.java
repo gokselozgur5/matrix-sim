@@ -246,7 +246,7 @@ public final class CensusBeatDrift {
      */
     private static RuntimeException fatal(String message) {
         System.err.println("FATAL " + message);
-        System.exit(2);
+        System.exit(Probes.Outcome.REFUSED.code());
         return new IllegalStateException(message);
     }
 

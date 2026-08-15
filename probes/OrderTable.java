@@ -124,7 +124,7 @@ public final class OrderTable {
         if (n > MAX_NODES) {
             System.out.println("FATAL ORDER_TABLE_TOO_WIDE nodes=" + n
                     + " orders=" + factorial(n) + " max_nodes=" + MAX_NODES);
-            System.exit(2);
+            System.exit(Probes.Outcome.REFUSED.code());
         }
 
         System.out.println("ORDERS seed=" + seed + " ticks=" + ticks

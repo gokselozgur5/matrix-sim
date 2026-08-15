@@ -75,7 +75,7 @@ public final class FleetLines {
         if (ordinals < 3) {
             System.out.println("FLEETLINES refused: ordinals=" + ordinals
                     + " does not reach all three laydown arms");
-            System.exit(2);
+            System.exit(Probes.Outcome.REFUSED.code());
         }
 
         // PIN — the five reachable arms, as literals. The heads are written

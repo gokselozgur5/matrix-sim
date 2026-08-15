@@ -88,12 +88,44 @@ final class Probes {
          * liberations, no firing. Silence is not testimony: a probe that prints
          * a passing verdict here would be certifying a question nobody asked.
          */
-        NEVER_AROSE(2);
+        NEVER_AROSE(2),
+        /**
+         * The invocation was refused: a flag with no argument, a scale the
+         * config will not accept, a roster too wide to print. Nothing about the
+         * world was judged, because the probe never got as far as looking.
+         *
+         * <p>3 rather than 1 or 2, and the number is not arbitrary.
+         * {@code DreamReader} has spent 3 on {@code EXIT_USAGE} since #1011, so
+         * the two families of program in this tree now agree where they overlap
+         * — a script branching on {@code $?} across `probes/` and `tools/` reads
+         * one meaning per value.
+         *
+         * <p>It was 2 in nine probes, which is the word for NEVER_AROSE: a
+         * refused invocation reported as a world with no births (#1239). And it
+         * was 1 in {@code BirthInputs}, which said so at the call site while
+         * declining to add a fourth code, because that was a decision about the
+         * bench's contract rather than a repair. This is that decision.
+         */
+        REFUSED(3);
 
         private final int code;
 
         Outcome(int code) {
             this.code = code;
+        }
+
+        /**
+         * The number, for the probes that spend it without a verdict line.
+         *
+         * <p>A refused invocation has nothing to print in the bench's grammar —
+         * it never judged anything — so it reaches {@code System.exit} directly
+         * rather than through {@code leave}. Naming the code here rather than
+         * writing `3` at eight call sites is the whole point: the grammar has
+         * one home, and #1204's argument about transposition applies just as
+         * well to a literal nobody can search for.
+         */
+        int code() {
+            return code;
         }
     }
 
