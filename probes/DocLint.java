@@ -108,7 +108,7 @@ public final class DocLint {
                          int twoStatuses, int missingConfirmation,
                          int gaps, int unannotatedGaps, int beatClaims, int beatDrift,
                          int pinsScanned, int pinsPlaceholder, int deadPins,
-                         int staleConfirmations) {
+                         int staleConfirmations, int confirmationsExcused) {
 
         boolean docsTrue() {
             return statusDrift == 0 && gateDrift == 0 && twoStatuses == 0
@@ -205,6 +205,14 @@ public final class DocLint {
     // matched away, because an exemption nobody can see is how the next one gets added quietly.
     private static final Set<String> PLACEHOLDERS = Set.of("abc1234");
 
+    // Every way this canon says "do not run this Confirmation". One phrasing shipped in
+    // #1139 and #1140 named the hole; the list is the rule, and the count of records it
+    // matches is printed so a phrasing nobody thought of is a number and not a clean sweep.
+    private static final List<String> EXCUSES = List.of(
+            "not applicable", "n/a while", "n/a until",
+            "once unparked", "on unparking", "until unparked", "while parked",
+            "deferred until", "deferred to v");
+
     // ----------------------------------------------------------------- main
 
     public static void main(String[] args) throws IOException {
@@ -242,6 +250,7 @@ public final class DocLint {
                 + " gate_drift=" + r.gateDrift()
                 + " two_statuses=" + r.twoStatuses()
                 + " missing_confirmation=" + r.missingConfirmation()
+                + " confirmations_excused=" + r.confirmationsExcused()
                 + " confirmation_stale=" + r.staleConfirmations()
                 + " gaps=" + r.gaps()
                 + " unannotated_gaps=" + r.unannotatedGaps()
@@ -393,6 +402,7 @@ public final class DocLint {
         int two = 0;
         int noConfirmation = 0;
         int staleConfirmation = 0;
+        int excusedCount = 0;
         for (Rec rec : canon.records()) {
             String status = frontStatus(rec);
             String contradiction = contradiction(rec, status);
@@ -408,6 +418,9 @@ public final class DocLint {
                 if (print) {
                     System.out.println("NO_CONFIRMATION " + rec.id() + " file=" + rec.file());
                 }
+            }
+            if (excused(rec)) {
+                excusedCount++;
             }
             if (staleConfirmation(rec, status)) {
                 staleConfirmation++;
@@ -452,7 +465,7 @@ public final class DocLint {
 
         return new Report(canon.records().size(), index.size(), roadmap.size(), compared,
                 drift, gates[0], gates[1], two, noConfirmation, gaps, unannotated,
-                beats[0], beats[1], pins[0], pins[1], pins[2], staleConfirmation);
+                beats[0], beats[1], pins[0], pins[1], pins[2], staleConfirmation, excusedCount);
     }
 
     // -------------------------------------------------------------- the pins
@@ -832,21 +845,60 @@ public final class DocLint {
      * which is exactly what D-033 already carries and why D-033 is not flagged.
      */
     private static boolean staleConfirmation(Rec rec, String status) {
-        if (!status.equals("accepted")) {
-            return false;
-        }
-        boolean excused = false;
-        boolean errata = false;
+        return status.equals("accepted") && excused(rec) && !answered(rec);
+    }
+
+    /**
+     * Does this record excuse its Confirmation from ever being run?
+     *
+     * <p>#1139 shipped one phrasing — {@code not applicable} — and #1140 named
+     * the obvious hole: {@code N/A while parked}, {@code once unparked} and
+     * {@code deferred to v5} all say the same thing and matched nothing. The
+     * list is here rather than in a comment because it IS the rule, and the
+     * count of records it matches is printed beside the verdict, so a phrasing
+     * nobody thought of shows up as a number rather than as a clean sweep.
+     */
+    private static boolean excused(Rec rec) {
         for (String line : rec.lines()) {
             String lower = line.toLowerCase(java.util.Locale.ROOT);
-            if (lower.contains("not applicable")) {
-                excused = true;
-            }
-            if (lower.contains("errata")) {
-                errata = true;
+            for (String phrase : EXCUSES) {
+                if (lower.contains(phrase)) {
+                    return true;
+                }
             }
         }
-        return excused && !errata;
+        return false;
+    }
+
+    /**
+     * Does an errata in this record ADDRESS the excusal, rather than merely
+     * existing?
+     *
+     * <p>#1139's rule was "carries an errata", and D-033 holds nine of them on
+     * subjects from the spike constants to a name-derived threshold — any one
+     * excused the record whether or not it spoke to the Confirmation at all
+     * (#1140). In this tree that was right by luck: D-033's errata IS its
+     * unparking. The next record with a routine errata and a stale Confirmation
+     * was invisible.
+     *
+     * <p>So an errata answers the excusal when it NAMES it: the paragraph must
+     * mention the Confirmation, or the unparking, or the command that replaces
+     * "not applicable". That is still a text rule and it is a much narrower one
+     * — an errata about constants no longer excuses a Confirmation about a
+     * mechanism, which is the whole distinction #1140 asked for.
+     */
+    private static boolean answered(Rec rec) {
+        for (List<String> para : paragraphs(rec.lines())) {
+            String text = String.join(" ", para).toLowerCase(java.util.Locale.ROOT);
+            if (!text.contains("errata")) {
+                continue;
+            }
+            if (text.contains("confirmation") || text.contains("unpark")
+                    || text.contains("parking condition")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasHeading(Rec rec, String heading) {
@@ -1038,12 +1090,27 @@ public final class DocLint {
                         "Not applicable until unparked; the trigger is D-002 entering design.",
                         "", "**Errata (2026-08-15):** unparked, and here is the command that proves it."))),
                         arc, RESOLVING, false));
+        // #1140: an errata about SOMETHING ELSE used to excuse any record. D-033 carries
+        // nine of them, on subjects from spike constants to a threshold, and any one of
+        // them counted.
+        broken += expect("errata-about-something-else", "confirmation_stale",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("",
+                        "Not applicable until unparked; the trigger is D-002 entering design.",
+                        "", "**Errata (2026-08-15):** the constant is 144, not 120."))),
+                        arc, RESOLVING, false));
+        // #1140: one phrasing was the whole rule. These three all say the same thing.
+        broken += expect("excused-as-n-slash-a", "confirmation_stale",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("", "N/A while parked."))),
+                        arc, RESOLVING, false));
+        broken += expect("excused-as-on-unparking", "confirmation_stale",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("", "On unparking, the first milestone is a replay."))),
+                        arc, RESOLVING, false));
         broken += expect("a-proposed-record-may-be-excused", "none",
                 lint(sample(c -> c.bodies.get(2).addAll(List.of("",
                         "Not applicable until the verdict lands."))),
                         arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=31 broken=" + broken);
+        System.out.println("SELFCHECK cases=34 broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
