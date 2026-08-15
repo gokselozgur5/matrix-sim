@@ -141,11 +141,34 @@ for tool in tools/*.sh; do
   [ "$has_selftest" = no ] && echo "UNFALSIFIABLE $tool has no --selftest: its advice has nowhere to be executed"
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') lines=$found flags_checked=$checked" \
+# Every tool is in the catalog, or nobody can find out what it is for (#1188). This is
+# #1177's check one directory over: `probes/bench.sh`'s roster asks the same question of
+# `probes/README.md`, and it found five probes with a bench row and no catalog row. Here
+# it found two — `litany.sh` and `advice.sh` itself, both landed today, both in the lane
+# and in no document.
+#
+# The catalog is the only place that says what a tool is FOR. A tool absent from it has a
+# verdict line and no explanation of what the verdict means, which is the state
+# LedgerMirror's sweep was in before #1130.
+uncatalogued=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  grep -q "\`$name\`" tools/README.md && continue
+  uncatalogued=$((uncatalogued + 1))
+  BREAKS=$((BREAKS + 1))
+  echo "UNCATALOGUED $name has no row in tools/README.md — nobody can find out what it is for"
+done
+
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
-else
+elif [ "$missing" -gt 0 ]; then
   echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
+else
+  # Two failures, two words. A catalog gap reported as "advises a flag nobody implements"
+  # sends the reader to the wrong file, which is the same class of error as a defect
+  # report that names the wrong defect (#1170).
+  echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FIND uncatalogued=$uncatalogued"
 fi
 [ "$BREAKS" -eq 0 ]
