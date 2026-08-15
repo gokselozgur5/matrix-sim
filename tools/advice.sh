@@ -119,11 +119,22 @@ for tool in tools/*.sh; do
       # A capture has no upstream to kill. tools/README.md's capture rule says the
       # same thing from the other direction.
       body="$(grep -vE '^\s*(echo|printf) .*"[[:space:]]{4,}[^"]' "$target" || true)"
-      if ! printf '%s\n' "$body" | grep -qF -- "$flag"; then
-        missing=$((missing + 1))
-        BREAKS=$((BREAKS + 1))
-        echo "UNIMPLEMENTED $tool advises '$flag' at $target, which does not mention it"
-      fi
+      # Matched in the shell, with no pipe at all. The previous two drafts both died on
+      # the same mechanism from opposite ends: `grep -v … | grep -q` failed under pipefail
+      # because -q's early exit SIGPIPEs the upstream, and `printf … | grep -q` failed
+      # because -q's early exit SIGPIPEs the PRINTF — which on this box was silent and on
+      # ubuntu-latest printed `write error: Broken pipe` and took the exit code with it.
+      # It went green locally and red in CI, which is #836's shape one tool over: a
+      # platform difference in a script nobody ran on the other platform. `case` reads a
+      # variable and cannot be interrupted by a reader that stops reading.
+      case "$body" in
+        *"$flag"*) ;;
+        *)
+          missing=$((missing + 1))
+          BREAKS=$((BREAKS + 1))
+          echo "UNIMPLEMENTED $tool advises '$flag' at $target, which does not mention it"
+          ;;
+      esac
     done <<< "$(flags_of "$line")"
   done <<< "$(advice_lines "$tool")"
 
