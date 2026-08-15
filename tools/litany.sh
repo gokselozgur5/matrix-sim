@@ -65,6 +65,7 @@ set -uo pipefail
 FILE="${1:-.github/workflows/locks.yml}"
 SELFTEST=no
 SHELLCHECK=no
+FLOORCHECK=no
 
 # One directory per invocation, holding one file per producer command. See
 # `run_producing` for why it is a directory and not an array.
@@ -72,6 +73,7 @@ PRODUCER_CACHE="$(mktemp -d)"
 trap 'rm -rf "${PRODUCER_CACHE:-}"' EXIT
 [ "${1:-}" = "--selftest" ] && { SELFTEST=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--shellcheck" ] && { SHELLCHECK=yes; FILE=.github/workflows/locks.yml; }
+[ "${1:-}" = "--floorcheck" ] && { FLOORCHECK=yes; FILE=.github/workflows/locks.yml; }
 
 # ---------------------------------------------------------------- question 1
 
@@ -582,6 +584,71 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
     "$blocks" "$bad" "$unguarded"
   [ "$bad" = 0 ] && [ "$unguarded" = 0 ]
 }
+
+# --------------------------------------------------------------- question 7
+#
+# DOES EVERY SUITE GATE CARRY A FLOOR.
+#
+# `cases=[1-9][0-9]*` asserts that SOME cases ran and nothing about how many.
+# A suite that lost every case but one — a bad rebase, a deleted `case_` line, a
+# helper renamed so the calls below it silently no-op — prints `cases=1
+# failed=0` and the lane says PASS. #1040 named that for the baseline gate and
+# #1073 for the exit-grammar gate; both grew a floor. Five gates did not, and
+# nothing said so (#1213).
+#
+# Two shapes today were caught by a human reading output rather than by a lane:
+# `litany.sh`'s own new question passed three of four cases by finding NOTHING
+# (#1203), and `prstate.sh`'s suite could not express an empty-pattern case at
+# all because `${7:-main}` turned empty into "main" (#1210). Neither would have
+# been caught by a floor either — a floor catches disappearance, not vacuity.
+# It is the cheaper half of a real problem, and the half nothing was doing.
+#
+# What is checked: a step that greps a `SELFTEST VERDICT PASS cases=` line must
+# also compare that count against a `floor=`. The two must be in the same block,
+# because a floor declared in a different step guards a different suite.
+
+floor_breaks() {                # floor_breaks <file> — one line per unfloored gate
+  local f="$1"
+  awk '
+    /^      - name:/ { name = $0; sub(/^[[:space:]]*- name:[[:space:]]*/, "", name); gate = 0; floored = 0 }
+    /SELFTEST VERDICT PASS cases=/ { gate = 1 }
+    /floor=[0-9]/ { floored = 1 }
+    # A step ends where the next begins, and the report is emitted then — so a
+    # gate whose floor sits below its grep is still counted as floored.
+    /^      - name:/ || /^jobs:/ {
+      if (prev_gate && !prev_floored) { print "FLOOR ungated step=" prev_name }
+      prev_gate = 0; prev_floored = 0; prev_name = name
+    }
+    { if (gate) prev_gate = 1; if (floored) prev_floored = 1; if (name != "") prev_name = name }
+    END { if (prev_gate && !prev_floored) { print "FLOOR ungated step=" prev_name } }
+  ' "$f"
+}
+
+floorcheck_workflows() {
+  local dir="${1:-.github/workflows}" f gates=0 unfloored=0 row
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    # `grep -c` prints a count and exits 1 when that count is zero, so `|| echo 0`
+    # appends a SECOND number and the arithmetic sees "0\n0". The count is always
+    # printed; the exit code is the thing to ignore.
+    local n
+    n="$(grep -c 'SELFTEST VERDICT PASS cases=' "$f" 2>/dev/null)" || true
+    gates=$((gates + ${n:-0}))
+    while IFS= read -r row; do
+      [ -n "$row" ] || continue
+      unfloored=$((unfloored + 1))
+      echo "$row file=$(basename "$f")"
+    done <<< "$(floor_breaks "$f")"
+  done
+  printf 'LITANY FLOOR VERDICT %s gates=%d unfloored=%d\n' \
+    "$([ "$unfloored" = 0 ] && printf PASS || printf FAIL)" "$gates" "$unfloored"
+  [ "$unfloored" = 0 ]
+}
+
+if [ "$FLOORCHECK" = yes ]; then
+  floorcheck_workflows
+  exit $?
+fi
 
 if [ "$SHELLCHECK" = yes ]; then
   shellcheck_workflows
