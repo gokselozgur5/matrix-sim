@@ -235,6 +235,29 @@ for tool in tools/*.sh; do
       ;;
   esac
 done
+# The universal codes mean one thing each, and a row may not redefine them
+# (#1241). `2` is the largest agreement in this tree — ten rows spend it for a
+# refused invocation — and the value of an agreement is that a caller can branch
+# on it without knowing which program answered. A row spending 2 for something
+# else silently ends that.
+#
+# Only 2 is checked. 0 and 1 are held-and-broke everywhere and phrased twenty
+# ways ("green", "CURRENT", "ARGUED or NONE"), so demanding one wording would
+# reject correct rows; 3 and up are local by the table's own rule. 2 is the one
+# code that is both universal AND phrased identically in every row that has it,
+# which is what makes it checkable rather than a style opinion.
+codes_redefined=0
+while IFS= read -r row; do
+  [ -z "$row" ] && continue
+  case "$row" in
+    *"· 2 the invocation was refused"*) ;;
+    *)
+      codes_redefined=$((codes_redefined + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "CODE_REDEFINED $(printf '%s' "$row" | grep -oE '^\| `[a-z-]+\.sh`') spends 2 for something other than a refused invocation"
+      ;;
+  esac
+done <<< "$(grep -E '^\| `[a-z-]+\.sh`.*· 2 ' tools/README.md || true)"
 
 catalog_wrong=0
 while IFS= read -r row; do
@@ -334,7 +357,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
@@ -354,6 +377,11 @@ elif [ "$unrun" -gt 0 ]; then
   # performed. Naming it as any of the other three sends the reader to a file
   # where nothing is wrong.
   echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
+elif [ "$codes_redefined" -gt 0 ]; then
+  # A row redefining a UNIVERSAL code is not a wrong promise about one tool — it
+  # breaks a reading every caller in the tree relies on, and the reader has to be
+  # sent to the exit-grammar table rather than to the row (#1241).
+  echo "ADVICE VERDICT A_ROW_REDEFINES_A_UNIVERSAL_CODE redefined=$codes_redefined"
 elif [ "$uncatalogued" -gt 0 ]; then
   # Three failures, three words. A catalog gap reported as "advises a flag nobody
   # implements" sends the reader to the wrong file, which is the same class of error as a
