@@ -187,7 +187,7 @@ sequenceDiagram
     end
     L-->>S: overflowed() — balance ≥ 30,000
     S->>RW: birthTheOne("Thomas A. Anderson")
-    Note over RW,S: t=1299 at ea2c141, seed 42 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
+    Note over RW,S: t=1299 at 57bbf96, seed 42 — a real pod, a HARDLINE.<br/>The One is OWED, not scheduled.
     D->>D: routeOverflow — infected ≥ 0.62
     alt the One is alive
         D->>NL: one.alive = false — he flies to Machine City
@@ -203,7 +203,7 @@ sequenceDiagram
     loop the cycle
         RW->>L: residue accrues again
     end
-    Note over L,S: t=4989 at ea2c141, seed 42 — a second Thomas A. Anderson.<br/>The cycle is the point.
+    Note over L,S: t=4989 at 57bbf96, seed 42 — a second Thomas A. Anderson.<br/>The cycle is the point.
 ```
 
 ## State machine — system states
@@ -244,7 +244,7 @@ The owner's standing order: this system must be worked so well that *we never ge
 
 ### The case of Nadia Petrov
 
-> **As of the `v3.0.0` tag.** Every tick in this case study belongs to the sealed Season One universe and is quoted from a run pinned there (`git archive fa1da4d`, per D-030's pin-to-SHA rule) — the four flips, the 1846 log line, the 4324 walk-out, all reproduce today at that tag. **On current `main` they do not**: Season Two's mechanics moved the film (the README's quickstart carries the same two pinned columns — the open door is 4324 at the tag, 4075 at `ea2c141`), and re-running `LinkTrace` against `main` prints *one* line for her — `t=0`, and no change through all 6,000 ticks. She is never worn, never freed, and the event log holds nothing under her name at all. PR #230 caught this first and said so for the record. What is pinned here is the **evidence**; the method below it is era-free, which is why the chapter still teaches.
+> **As of the `v3.0.0` tag.** Every tick in this case study belongs to the sealed Season One universe and is quoted from a run pinned there (`git archive fa1da4d`, per D-030's pin-to-SHA rule) — the four flips, the 1846 log line, the 4324 walk-out, all reproduce today at that tag. **On current `main` they do not**: Season Two's mechanics moved the film (the README's quickstart carries the same two pinned columns — the open door is 4324 at the tag, 4075 at `57bbf96`), and re-running `LinkTrace` against `main` prints *one* line for her — `t=0`, and no change through all 6,000 ticks. She is never worn, never freed, and the event log holds nothing under her name at all. PR #230 caught this first and said so for the record. What is pinned here is the **evidence**; the method below it is era-free, which is why the chapter still teaches.
 
 **Symptom (one instrument speaks).** A `--follow "Nadia Petrov"` stream went dark twice — `"signal":"lost"` at tick 1800 and again at 2500 — with frames flowing again *between* the darkenings. A dream that ends should stay ended; a dream that returns should have a reason. The event log, grepped for her name across the whole run, held exactly one line: her walk-out at 4324. Silence where there should have been a story.
 
@@ -387,7 +387,7 @@ java -cp out:probes/out SeedAtlas 201 300 6000 | tail -1
 java -cp out:probes/out SeedAtlas 301 400 6000 | tail -1
 ```
 
-**The sample.** Seeds 201–400 at 6,000 ticks, default scale, film era — measured at `4c82835` as part of entry 5's 500-universe run (62m14s wall for all 500 on four threads of a loaded box; ~12m27s per hundred at that aggregate throughput, which is an aggregate figure and not a clean per-batch reference-box measurement). The classifier is `SeedAtlas.census()` — literally the same method the command above calls, so these counts and a standalone `SeedAtlas` invocation cannot disagree.
+**The sample.** Seeds 201–400 at 6,000 ticks, default scale, film era — measured at `945d8bf` as part of entry 5's 500-universe run (62m14s wall for all 500 on four threads of a loaded box; ~12m27s per hundred at that aggregate throughput, which is an aggregate figure and not a clean per-batch reference-box measurement). The classifier is `SeedAtlas.census()` — literally the same method the command above calls, so these counts and a standalone `SeedAtlas` invocation cannot disagree.
 
 **The table.** Each batch states its own n and nothing larger — batch protocol rule 2, now reinforced by entry 5's ruling.
 
@@ -419,7 +419,7 @@ The middle row is the uncomfortable one: entry 3's published `QUIET` interval is
 
 What this entry does **not** license: any 400-seed or 1,000-seed `QUIET` or `FULL_ARC` fraction, and any restatement of entry 3's interval as though it were wider than published — entry 3 stands as written, with entry 5's ruling and this table naming what its interval is worth. The blocks above are five measurements, not one.
 
-**The stamp.** 2026-08-12, v3.0, measured at `4c82835` · batches 2–3 of the campaign (seeds 201–400 of 101–1000), plus one scattered block.
+**The stamp.** 2026-08-12, v3.0, measured at `945d8bf` · batches 2–3 of the campaign (seeds 201–400 of 101–1000), plus one scattered block.
 
 ---
 
@@ -437,7 +437,7 @@ java -cp out:probes/out CensusBlocks --threads 4 \
   6000
 ```
 
-**The sample.** 500 distinct universes at 6,000 ticks, default scale, film era — measured at `4c82835`, 62m14s wall on four threads of a loaded 4-core box (`load average 33–41` throughout, shared with other work; the per-universe cost is not a clean reference-box figure and is not quoted as one). The three groups share their universes: seeds 1–400 are simulated **once** and partitioned **twice**, so the decisive comparison below costs no extra universes at all.
+**The sample.** 500 distinct universes at 6,000 ticks, default scale, film era — measured at `945d8bf`, 62m14s wall on four threads of a loaded 4-core box (`load average 33–41` throughout, shared with other work; the per-universe cost is not a clean reference-box figure and is not quoted as one). The three groups share their universes: seeds 1–400 are simulated **once** and partitioned **twice**, so the decisive comparison below costs no extra universes at all.
 
 **The table.** Same 400 universes, cut two ways.
 
@@ -480,7 +480,7 @@ What this entry does **not** license: **every pooled fraction in this chapter me
 
 **The ruling, binding on this chapter.** Contiguous seed blocks are **retired as a sampling method**. New census samples are drawn scattered — a stride, not a run (see the fifth law under *How a census entry is written*). Existing contiguous tables stand as measurements and are re-read with a design-effect interval, never silently pooled into a larger n.
 
-**The stamp.** 2026-08-12, v3.0, measured at `4c82835` · 500 universes · the ruling on #775.
+**The stamp.** 2026-08-12, v3.0, measured at `945d8bf` · 500 universes · the ruling on #775.
 
 ---
 

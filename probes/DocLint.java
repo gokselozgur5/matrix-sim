@@ -26,7 +26,7 @@ import java.util.stream.Stream;
  * published beats stale by ~420 ticks) are the same failure with different
  * subjects, and both were repaired by hand because nothing could fail.
  *
- * <p>Six questions, asked of the tree this runs in:
+ * <p>Seven questions, asked of the tree this runs in:
  *
  * <ol>
  *   <li><b>One decision, one status.</b> The ADR front matter, the
@@ -55,6 +55,15 @@ import java.util.stream.Stream;
  *   <li><b>The published beats are the beats.</b> README's pinned {@code main}
  *       column is compared against a live run of the film, via
  *       {@link ArcBeats#measure} rather than a second copy of the needles.</li>
+ *   <li><b>A cited SHA resolves.</b> D-030 pins a measurement to a commit so a
+ *       reader can go and re-run it, and an amend or a rebase kills that
+ *       provenance silently: the figures beside a dead pin stay correct, so
+ *       nothing in the prose looks wrong (#1131). Only the DECLARED citation
+ *       forms are judged — {@code at `<sha>`}, {@code git archive <sha>}, and
+ *       the same pin bare, because a mermaid {@code Note} cannot carry a
+ *       backtick — since a bare hex scan returns twelve candidates in this
+ *       tree and most are digest fragments or JSON, and a lock that cries wolf
+ *       gets switched off.</li>
  * </ol>
  *
  * <p>The gate comparison needs three sources and takes the third from
@@ -97,12 +106,27 @@ public final class DocLint {
     public record Report(int records, int indexRows, int roadmapRows, int compared,
                          int statusDrift, int gatesCompared, int gateDrift,
                          int twoStatuses, int missingConfirmation,
-                         int gaps, int unannotatedGaps, int beatClaims, int beatDrift) {
+                         int gaps, int unannotatedGaps, int beatClaims, int beatDrift,
+                         int pinsScanned, int pinsPlaceholder, int deadPins) {
 
         boolean docsTrue() {
             return statusDrift == 0 && gateDrift == 0 && twoStatuses == 0
-                    && missingConfirmation == 0 && unannotatedGaps == 0 && beatDrift == 0;
+                    && missingConfirmation == 0 && unannotatedGaps == 0 && beatDrift == 0
+                    && deadPins == 0;
         }
+    }
+
+    /**
+     * Does this SHA name a commit in the checkout under test?
+     *
+     * <p>An interface rather than a call to {@code git} because the selfcheck
+     * must be able to state a dead pin without owning a repository to make one
+     * in: the lint is then the same code in both, and only the answer differs.
+     */
+    public interface Resolver {
+
+        /** True when the sha names a commit that can be checked out. */
+        boolean resolves(String sha);
     }
 
     // The four status words and the four glyphs the index spends them as.
@@ -143,6 +167,27 @@ public final class DocLint {
     // A published number: not glued to a word, not half of a date or a `20,000-tick` compound.
     private static final Pattern NUMBER = Pattern.compile("(?<![\\w-])(\\d[\\d,]*)(?![\\w-])");
 
+    // The two forms in which this canon CITES a tree, and nothing else. `at `sha`` is D-030's
+    // pin; `git archive sha` is the command the reader is told to run. Prose that merely holds
+    // hex — a digest fragment, a JSON example — makes no claim and is not judged.
+    private static final Pattern CITE_AT = Pattern.compile("\\bat\\s+`([0-9a-f]{7,40})`");
+    private static final Pattern CITE_ARCHIVE = Pattern.compile("\\bgit archive\\s+([0-9a-f]{7,40})\\b");
+
+    // The same pin without its backticks. Two of the four `ea2c141` citations #1131 counted are
+    // inside a mermaid Note, where a backtick would render as one — so the form that misses them
+    // would have called the tree clean after repairing half of it. Bare hex needs the guard the
+    // backticked form gets for free: `at 1299000` is a tick count and `at 6000000` is a budget,
+    // both perfectly good short hex, so a bare citation is only read as one when it carries a
+    // letter. That rejects no real sha here (all 24 carry one) and no digits-only prose.
+    private static final Pattern CITE_AT_BARE = Pattern.compile("\\bat\\s+([0-9a-f]{7,40})\\b");
+    private static final Pattern HAS_LETTER = Pattern.compile("[a-f]");
+
+    // `abc1234` is this repository's stand-in sha: D-061 quotes it inside a sentence ABOUT
+    // dead pins, and DocLint's own selfcheck canon is built on it. It is hex, it is in the
+    // citation form, and it names nothing on purpose — so it is counted and named rather than
+    // matched away, because an exemption nobody can see is how the next one gets added quietly.
+    private static final Set<String> PLACEHOLDERS = Set.of("abc1234");
+
     // ----------------------------------------------------------------- main
 
     public static void main(String[] args) throws IOException {
@@ -165,7 +210,7 @@ public final class DocLint {
             System.out.println("VERDICT DOCS_DRIFT");
             return;
         }
-        Report report = lint(canon, ArcBeats.measure(ticks, seed), true);
+        Report report = lint(canon, ArcBeats.measure(ticks, seed), resolver(root), true);
         print(report);
         System.out.println(report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT");
     }
@@ -183,7 +228,67 @@ public final class DocLint {
                 + " gaps=" + r.gaps()
                 + " unannotated_gaps=" + r.unannotatedGaps()
                 + " beat_claims=" + r.beatClaims()
-                + " beat_drift=" + r.beatDrift());
+                + " beat_drift=" + r.beatDrift()
+                + " pins=" + r.pinsScanned()
+                + " placeholders=" + r.pinsPlaceholder()
+                + " dead_pins=" + r.deadPins());
+    }
+
+    /**
+     * The checkout's own answer to "is this a commit", or a resolver that admits
+     * it cannot ask.
+     *
+     * <p>A tree with no {@code .git} — a tarball, an unpacked release — can still
+     * be linted for everything else, and calling every honest pin dead there would
+     * blame the reader's download for the author's provenance. A SHALLOW clone is
+     * the same ignorance wearing git's clothes: {@code --depth 1} leaves every pin
+     * older than the tip unreachable, and locks.yml's {@code fetch-depth: 0} is a
+     * comment in another file governing one of the places this probe runs. So both
+     * ways of not knowing end in the same sentence: name the reason, judge nothing,
+     * stay green. Silence is the one thing this will not do.
+     */
+    private static Resolver resolver(Path root) {
+        if (!ran(root, "rev-parse", "--verify", "HEAD")) {
+            System.out.println("PIN_SCAN skipped=no-git root=" + root
+                    + " (nothing here can say whether a sha resolves)");
+            return sha -> true;
+        }
+        if ("true".equals(read(root, "rev-parse", "--is-shallow-repository"))) {
+            System.out.println("PIN_SCAN skipped=shallow root=" + root
+                    + " (a depth-limited clone cannot resolve a pin older than its tip)");
+            return sha -> true;
+        }
+        return sha -> ran(root, "cat-file", "-e", sha + "^{commit}");
+    }
+
+    /** Runs one git plumbing command in the checkout; true when it exits 0. */
+    private static boolean ran(Path root, String... args) {
+        return git(root, args) != null;
+    }
+
+    /** One git command's stdout, trimmed, or empty when it could not be run. */
+    private static String read(Path root, String... args) {
+        String out = git(root, args);
+        return out == null ? "" : out;
+    }
+
+    /** The command's trimmed stdout when it exits 0, else null. */
+    private static String git(Path root, String... args) {
+        List<String> cmd = new ArrayList<>(List.of("git"));
+        cmd.addAll(List.of(args));
+        try {
+            Process p = new ProcessBuilder(cmd)
+                    .directory(root.toFile())
+                    .redirectErrorStream(true)
+                    .start();
+            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            return p.waitFor() == 0 ? out.trim() : null;
+        } catch (IOException e) {
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
     }
 
     // ----------------------------------------------------------------- read
@@ -233,7 +338,7 @@ public final class DocLint {
     // ----------------------------------------------------------------- lint
 
     /** The whole judgement, on a canon and one run's beats. Printing is optional so selfcheck is quiet. */
-    static Report lint(Canon canon, ArcBeats.Arc arc, boolean print) {
+    static Report lint(Canon canon, ArcBeats.Arc arc, Resolver resolver, boolean print) {
         Map<String, String> index = indexStatuses(canon.index());
         Map<String, String> roadmap = roadmapStatuses(canon.roadmap());
         Map<String, String> front = new LinkedHashMap<>();
@@ -317,10 +422,80 @@ public final class DocLint {
         }
 
         int[] beats = beatCheck(canon, arc, print);
+        int[] pins = pinCheck(canon, resolver, print);
 
         return new Report(canon.records().size(), index.size(), roadmap.size(), compared,
                 drift, gates[0], gates[1], two, noConfirmation, gaps, unannotated,
-                beats[0], beats[1]);
+                beats[0], beats[1], pins[0], pins[1], pins[2]);
+    }
+
+    // -------------------------------------------------------------- the pins
+
+    /**
+     * Every cited tree, asked whether it is still a tree.
+     *
+     * <p>The check is one line of git per pin; the design is entirely in what
+     * gets fed to it. Judging a bare hex grep returns twelve candidates in this
+     * canon and most assert nothing — a digest fragment, a JSON example, the
+     * placeholder D-061 quotes in a sentence about this exact failure. So the
+     * scan reads the forms in which a document CITES a tree, and reports the
+     * number it examined: a regex that silently matched nothing would otherwise
+     * pass as a clean sweep, which is the same silence #1131 is about.
+     *
+     * @return {@code {scanned, placeholders, dead}}
+     */
+    private static int[] pinCheck(Canon canon, Resolver resolver, boolean print) {
+        List<Object[]> docs = new ArrayList<>();
+        docs.add(new Object[] {"README.md", canon.readme()});
+        docs.add(new Object[] {"docs/ARCHITECTURE.md", canon.architecture()});
+        docs.add(new Object[] {"docs/DECISIONS.md", canon.index()});
+        docs.add(new Object[] {"ROADMAP.md", canon.roadmap()});
+        for (Rec rec : canon.records()) {
+            docs.add(new Object[] {"docs/adr/" + rec.file(), rec.lines()});
+        }
+
+        int scanned = 0;
+        int placeholder = 0;
+        int dead = 0;
+        for (Object[] doc : docs) {
+            String name = (String) doc[0];
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) doc[1];
+            for (int n = 0; n < lines.size(); n++) {
+                Set<String> seen = new LinkedHashSet<>();
+                for (Pattern form : List.of(CITE_AT, CITE_ARCHIVE, CITE_AT_BARE)) {
+                    Matcher m = form.matcher(lines.get(n));
+                    while (m.find()) {
+                        String sha = m.group(1);
+                        if (form == CITE_AT_BARE && !HAS_LETTER.matcher(sha).find()) {
+                            continue; // digits-only: a tick count, a budget, a year — not a tree
+                        }
+                        if (!seen.add(sha)) {
+                            continue; // the backticked form already counted this one on this line
+                        }
+                        scanned++;
+                        if (PLACEHOLDERS.contains(sha)) {
+                            placeholder++;
+                            if (print) {
+                                System.out.println("PIN file=" + name + " line=" + (n + 1)
+                                        + " sha=" + sha + " placeholder");
+                            }
+                        } else if (!resolver.resolves(sha)) {
+                            dead++;
+                            if (print) {
+                                System.out.println("PIN file=" + name + " line=" + (n + 1)
+                                        + " sha=" + sha + " DEAD (does not resolve to a commit)");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (print) {
+            System.out.println("PIN_SCAN scanned=" + scanned
+                    + " placeholders=" + placeholder + " dead=" + dead);
+        }
+        return new int[] {scanned, placeholder, dead};
     }
 
     // -------------------------------------------------------------- the gate
@@ -692,6 +867,15 @@ public final class DocLint {
      * built: the beats are handed in, so this runs in milliseconds and stays
      * a lock rather than a second full film.
      */
+    /**
+     * The selfcheck's git: one sha exists, everything else does not.
+     *
+     * <p>{@code fa1da4d} is borrowed from the real canon on purpose — it is the
+     * v3.0.0 tag this repository cites, so the case that must stay green is
+     * green for the same reason the tree is.
+     */
+    private static final Resolver RESOLVING = sha -> sha.equals("fa1da4d");
+
     private static void selfcheck() {
         ArcBeats.Arc arc = new ArcBeats.Arc(List.of(
                 new ArcBeats.Found("birth", 100),
@@ -699,45 +883,74 @@ public final class DocLint {
                 new ArcBeats.Found("peace", 300)), 42, 6_000, 3);
 
         int broken = 0;
-        broken += expect("true-canon", "none", lint(sample(c -> { }), arc, false));
+        broken += expect("true-canon", "none", lint(sample(c -> { }), arc, RESOLVING, false));
         broken += expect("roadmap-desync", "status_drift",
-                lint(sample(c -> c.roadmap.set(2, "| Districts | D-002 | 🟡 | #223 |")), arc, false));
+                lint(sample(c -> c.roadmap.set(2, "| Districts | D-002 | 🟡 | #223 |")), arc, RESOLVING, false));
         broken += expect("index-desync", "status_drift",
-                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟡 | v6.0 | #2 |")), arc, false));
+                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟡 | v6.0 | #2 |")), arc, RESOLVING, false));
         broken += expect("record-desync", "status_drift",
-                lint(sample(c -> c.bodies.get(2).set(1, "status: accepted")), arc, false));
+                lint(sample(c -> c.bodies.get(2).set(1, "status: accepted")), arc, RESOLVING, false));
         broken += expect("gate-index-desync", "gate_drift",
-                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟢 | v7.5 | #2 |")), arc, false));
+                lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟢 | v7.5 | #2 |")), arc, RESOLVING, false));
         broken += expect("gate-roadmap-desync", "gate_drift",
-                lint(sample(c -> c.roadmap.set(0, "## v6.5 — Program")), arc, false));
+                lint(sample(c -> c.roadmap.set(0, "## v6.5 — Program")), arc, RESOLVING, false));
         broken += expect("gate-record-desync", "gate_drift",
-                lint(sample(c -> c.bodies.get(1).set(3, "informed: milestone v7.5")), arc, false));
+                lint(sample(c -> c.bodies.get(1).set(3, "informed: milestone v7.5")), arc, RESOLVING, false));
         broken += expect("gate-cell-annotated", "none",
                 lint(sample(c -> c.index.set(2, "| [D-002](adr/D-002-b.md) | Two | 🟢 | v6.0 (interface) | #2 |")),
-                        arc, false));
+                        arc, RESOLVING, false));
         broken += expect("record-without-row", "status_drift",
-                lint(sample(c -> c.index.remove(2)), arc, false));
+                lint(sample(c -> c.index.remove(2)), arc, RESOLVING, false));
         broken += expect("two-statuses", "two_statuses",
                 lint(sample(c -> c.bodies.get(0).addAll(List.of("", "Awaiting the Architect's verdict in #1."))),
-                        arc, false));
+                        arc, RESOLVING, false));
         broken += expect("kept-label-excused", "none",
                 lint(sample(c -> c.bodies.get(0).addAll(List.of("",
                         "*Recorded before the verdict, kept unedited:* Awaiting the Architect's verdict in #1."))),
-                        arc, false));
+                        arc, RESOLVING, false));
         broken += expect("no-confirmation", "missing_confirmation",
-                lint(sample(c -> c.bodies.get(0).remove("### Confirmation")), arc, false));
+                lint(sample(c -> c.bodies.get(0).remove("### Confirmation")), arc, RESOLVING, false));
         broken += expect("unannotated-gap", "unannotated_gaps",
-                lint(sample(c -> c.index.remove(c.index.size() - 1)), arc, false));
+                lint(sample(c -> c.index.remove(c.index.size() - 1)), arc, RESOLVING, false));
         broken += expect("stale-beat", "beat_drift",
-                lint(sample(c -> c.readme.set(0, pinLine("100", "999", "300"))), arc, false));
+                lint(sample(c -> c.readme.set(0, pinLine("100", "999", "300"))), arc, RESOLVING, false));
         broken += expect("dropped-beat", "beat_drift",
-                lint(sample(c -> c.readme.set(0, pinLine("100", "300"))), arc, false));
+                lint(sample(c -> c.readme.set(0, pinLine("100", "300"))), arc, RESOLVING, false));
         broken += expect("no-pin", "beat_drift",
-                lint(sample(c -> c.readme.set(0, "the film plays 100, 200 and 300.")), arc, false));
+                lint(sample(c -> c.readme.set(0, "the film plays 100, 200 and 300.")), arc, RESOLVING, false));
         broken += expect("stale-attribution", "beat_drift",
-                lint(sample(c -> c.architecture.add("the door is 999 at `abc1234`.")), arc, false));
+                lint(sample(c -> c.architecture.add("the door is 999 at `abc1234`.")), arc, RESOLVING, false));
+        broken += expect("dead-pin", "dead_pins",
+                lint(sample(c -> c.architecture.add("measured at `0000000a`, seeds 1-500.")),
+                        arc, RESOLVING, false));
+        broken += expect("dead-pin-in-a-record", "dead_pins",
+                lint(sample(c -> c.bodies.get(0).addAll(List.of("", "Measured at `0000000a`."))),
+                        arc, RESOLVING, false));
+        broken += expect("dead-archive-command", "dead_pins",
+                lint(sample(c -> c.architecture.add("re-run it: `git archive 0000000a`.")),
+                        arc, RESOLVING, false));
+        broken += expect("live-archive-command", "none",
+                lint(sample(c -> c.architecture.add("re-run it: `git archive fa1da4d`.")),
+                        arc, RESOLVING, false));
+        // The mermaid case: a Note cannot carry backticks, so the pin arrives bare.
+        broken += expect("bare-pin-in-a-note", "dead_pins",
+                lint(sample(c -> c.architecture.add("    Note over RW,S: t=1299 at 0000000a, seed 42.")),
+                        arc, RESOLVING, false));
+        broken += expect("bare-live-pin-in-a-note", "none",
+                lint(sample(c -> c.architecture.add("    Note over RW,S: t=1299 at fa1da4d, seed 42.")),
+                        arc, RESOLVING, false));
+        // The three ways a bare hex scan goes red on prose that claims nothing.
+        broken += expect("bare-digits-are-not-a-pin", "none",
+                lint(sample(c -> c.architecture.add("the corridor was held at 1299000 ticks.")),
+                        arc, RESOLVING, false));
+        broken += expect("digest-fragment-is-not-a-pin", "none",
+                lint(sample(c -> c.architecture.add("DIGEST tick=6000 sha=0000000adeadc0de.")),
+                        arc, RESOLVING, false));
+        broken += expect("placeholder-is-named-not-judged", "none",
+                lint(sample(c -> c.architecture.add("a body saying \"measured at `abc1234`\" pins nothing.")),
+                        arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=17 broken=" + broken);
+        System.out.println("SELFCHECK cases=26 broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
@@ -772,6 +985,9 @@ public final class DocLint {
         }
         if (r.beatDrift() > 0) {
             names.add("beat_drift");
+        }
+        if (r.deadPins() > 0) {
+            names.add("dead_pins");
         }
         return names.isEmpty() ? "none" : names.size() == 1 ? names.get(0) : String.join("+", names);
     }
