@@ -443,6 +443,22 @@ jobs:
           grep -q '^RULERCHECK VERDICT PASS ' "${RUNNER_TEMP:-/tmp}/rulercheck.log" \
             || { echo "FATAL the ruler did not reach a passing verdict" >&2; exit 1; }
 
+      # WHY: #1212 — `checkage.sh` has had a fourteen-case suite and no workflow
+      # anywhere that runs it. The tool answers "is this green current, or did it
+      # judge a different litany" (#1017), which is a question the merge rule leans
+      # on; its judge had never been executed by anything but a hand. Like
+      # `prstate.sh` the tool itself cannot be a step — it reads a pull request that
+      # does not exist while the pull request is being built — so the suite is the
+      # whole lane-side contract.
+      - name: tools — checkage.sh's judge separates its verdicts (#1212)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/checkage.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/checkage.log"
+          grep -q '^CHECKAGE SELFTEST VERDICT PASS cases=[1-9][0-9]* failed=0$' \
+            "${RUNNER_TEMP:-/tmp}/checkage.log" \
+            || { echo "FATAL checkage's judge cannot separate its own verdicts" >&2; exit 1; }
+
       # WHY: #1210 — `prstate.sh`'s catalog row says "only its judge runs in the lane",
       # and its judge did not. The tool itself cannot be a step (the run that would carry
       # it is the thing it exists to report missing), so the judge is the whole lane-side
