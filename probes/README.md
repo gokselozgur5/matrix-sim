@@ -117,6 +117,16 @@ line the bench greps and leaves with 0 or 1 to match. A **reporting** probe must
 not call it — a `run` row fails on a nonzero exit, so adopting an exit code
 there changes what the row means.
 
+**A known break is declared, not deleted and not tolerated.** `known <Class>
+'<verdict>' '<#issue>' [args]` is the third verb, and it exists because #1093's
+honest exit codes made "expected broken" unsayable: `judge` fails a row whose
+probe exits nonzero, so a defect the tree already knows about could only be
+watched by deleting the row or by dropping the exit code. Both lose something.
+A `known` row requires the nonzero exit **and** matches the verdict exactly, so
+a probe that starts *passing* is as red as one that starts failing differently
+— that is what makes it a lock rather than a mute button. The issue number is
+in the row; when it lands, the row becomes a `judge`.
+
 **A property row runs at two seeds; an arc row runs at one (#1094).** The
 distinction is what the row CLAIMS. *"The contract held"*, *"breaches = 0"*,
 *"the audit is clean"* are claims about every world, and one universe cannot
