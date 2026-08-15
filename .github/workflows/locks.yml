@@ -46,12 +46,14 @@ jobs:
       # is how that stranger runs commands on the runner.
       - name: evidence baseline
         if: github.event_name == 'pull_request'
+        shell: bash
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
-          bash tools/baseline.sh "$RUNNER_TEMP/pr-body.md" "$BASE_SHA"
+          set -euo pipefail
+          printf '%s' "$PR_BODY" > "${RUNNER_TEMP:-/tmp}/pr-body.md"
+          bash tools/baseline.sh "${RUNNER_TEMP:-/tmp}/pr-body.md" "$BASE_SHA"
 
       # WHY: lock 0 judges one body against one base, so on a green day it walks one of its
       # paths and every other path is a claim. The suite runs all of them against this

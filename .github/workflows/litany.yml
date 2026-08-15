@@ -50,11 +50,11 @@ jobs:
       # every workflow, parsed by the shell that will execute it — including the
       # blocks in THIS file, which is how the unclosed quote above would have
       # been caught on the day it landed rather than eleven runs later (#1203).
-      - name: tools — every workflow's shell parses (#1203)
+      - name: tools — every workflow's shell parses, and under what (#1203, #1226)
         shell: bash
         run: |
           set -euo pipefail
           bash tools/litany.sh --shellcheck | tee "${RUNNER_TEMP:-/tmp}/shellcheck.log"
-          grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0$' \
+          grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0 unguarded=0$' \
             "${RUNNER_TEMP:-/tmp}/shellcheck.log" \
-            || { echo "FATAL a workflow ships a run: block the shell cannot parse" >&2; exit 1; }
+            || { echo "FATAL a run: block the shell cannot parse, or one with no guard" >&2; exit 1; }
