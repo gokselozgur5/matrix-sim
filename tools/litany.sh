@@ -54,6 +54,11 @@ set -uo pipefail
 
 FILE="${1:-.github/workflows/locks.yml}"
 SELFTEST=no
+
+# One directory per invocation, holding one file per producer command. See
+# `run_producing` for why it is a directory and not an array.
+PRODUCER_CACHE="$(mktemp -d)"
+trap 'rm -rf "${PRODUCER_CACHE:-}"' EXIT
 [ "${1:-}" = "--selftest" ] && { SELFTEST=yes; FILE=.github/workflows/locks.yml; }
 
 # ---------------------------------------------------------------- question 1
@@ -172,9 +177,31 @@ producer_of() {                 # producer_of <first-token> -> a command, or emp
 # caller decides whether the pattern is in it.
 run_producing() {               # run_producing <literal>
   local cmd
+  # Already inside another tool's run: do not run producers. `advice.sh` runs
+  # every tool's --selftest, this selftest runs `advice.sh` as a producer, and
+  # the pair recursed without end — thirty-nine processes in eight seconds
+  # (#1206). Declining here is not a weakening: the caller falls through to the
+  # prefix rule, which reads the format string instead of the value and is
+  # already the right answer for a verdict that cannot be produced where it is
+  # being read (see DATECHECK in `producer_of`).
+  [ "${MATRIX_TOOL_DEPTH:-0}" -eq 0 ] || return 1
   cmd="$(producer_of "$(printf '%s' "$1" | awk '{print $1}')")"
   [ -n "$cmd" ] || return 1
-  eval "$cmd" 2>&1 || true
+
+  # Each producer runs once per invocation, not once per pattern. `judge` is
+  # called ~30 times by the selftest and every call re-ran all six producers;
+  # `advice.sh` alone takes 9 s, so the suite could not finish inside the five
+  # minutes `litany.yml` allows it — which nobody knew, because that workflow
+  # has never parsed (#1203) and its selftest step has therefore never run.
+  #
+  # A file, not an associative array: `declare -A` is bash 4, and the operator's
+  # machine ships bash 3.2. A producer's output is a fact about a tree that does
+  # not change while this script runs, so caching it changes no verdict.
+  local slot="$PRODUCER_CACHE/$(printf '%s' "$cmd" | tr -c 'a-zA-Z0-9' '-')"
+  if [ ! -f "$slot" ]; then
+    { eval "$cmd" > "$slot" 2>&1; } || true
+  fi
+  cat "$slot"
 }
 
 printed_prefix() {              # printed_prefix <literal> -> echoes the matched prefix, or empty

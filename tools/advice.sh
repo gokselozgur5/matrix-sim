@@ -216,8 +216,18 @@ charset_drift=0
 for tool in tools/*.sh; do
   [ "$tool" = "tools/advice.sh" ] && continue
   grep -qE '\-\-selftest\b' "$tool" || continue
-  utf8="$(timeout 60 bash "$tool" --selftest 2>&1 || true)"
-  ascii="$(LC_ALL=C timeout 60 bash "$tool" --selftest 2>&1 || true)"
+  # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
+  # it runs — `litany.sh` — runs tools of its own to check their verdicts
+  # (#1169). Without a depth to read, the two call each other without end:
+  # thirty-nine processes in eight seconds from one bare `advice.sh` (#1206).
+  # `timeout 60` bounds a leaf and not a tree. The depth is exported rather
+  # than a name being excluded here, because the next tool that audits tools
+  # will close the same cycle by a different route, and an exclusion list is a
+  # thing to forget.
+  utf8="$(MATRIX_TOOL_DEPTH=$((${MATRIX_TOOL_DEPTH:-0} + 1)) \
+          timeout 60 bash "$tool" --selftest 2>&1 || true)"
+  ascii="$(LC_ALL=C MATRIX_TOOL_DEPTH=$((${MATRIX_TOOL_DEPTH:-0} + 1)) \
+          timeout 60 bash "$tool" --selftest 2>&1 || true)"
   if ! printf '%s' "$utf8" | LC_ALL=C grep -q '[^ -~]'; then
     charset_nothing=$((charset_nothing + 1))
     echo "CHARSET $tool nothing-to-prove: its selftest prints no byte above 0x7f"
