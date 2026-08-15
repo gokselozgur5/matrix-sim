@@ -168,7 +168,7 @@ table() {
   # instrument noise printed beside it is not, and the exemption is DECLARED here rather
   # than discovered by whoever next runs the determinism pass.
   vary  'prints its own timing noise: the QUIET line carries nanosecond percentiles of the tick it measures, which move with the JIT while the bound they are judged against does not' \
-        --lines '^(QUIET|STORM|TICKCOST) ' \
+        --lines '^(QUIET|STORM|TICKCOST) ' --cut 4 \
         judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
@@ -290,7 +290,7 @@ table() {
   # that had none were deleted rather than re-derived (#1192).
   judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4' --catalog
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
-        --lines '^ALLOC(_NOTE|_BUDGET)? ' \
+        --lines '^ALLOC(_NOTE|_BUDGET)? ' --cut 3 \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
   # The referee's own referee, not the referee. `NeutralDiff <ticks>` needs
@@ -308,6 +308,7 @@ PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0 UNEXERCISED=0
 STABLE=0 DRIFTED=0 EXEMPT=0 UNCHECKED=0
 VARIES=''
 VARY_LINES=''
+VARY_CUT=''
 # Set by `known` around its call to `settle`, which otherwise reads a declared
 # break's nonzero second run as an instrument that drifted (#1231).
 KNOWN_ROW=no
@@ -455,12 +456,30 @@ vary() {
   # of its lines drift is still better off declaring the drift than hiding it — but a row
   # that CAN say should, and both of today's two can.
   VARY_LINES=''
+  VARY_CUT=''
   if [ "${1:-}" = "--lines" ]; then
     VARY_LINES="$2"; shift 2
+  fi
+  # `--cut <N>`: how many lines this exemption expects to remove. A pattern is a
+  # snapshot of what the probe printed the day the row was written, and when the
+  # probe grows a line family the pattern stops covering it — silently, because
+  # the pass compares what is LEFT and a family it never removed simply gets
+  # judged. `AllocMeter` sat that way from #1187 until #1245: two families named,
+  # three printed, and the third carrying the same JIT noise the row was exempted
+  # for. The count was on the EXEMPT line the whole time and nothing compared it.
+  #
+  # A floor rather than an equality: a probe that grows a noisy line inside an
+  # already-exempt family is not a defect, and demanding the exact number would
+  # turn every such growth into a red row and an edit-to-green (#884's lesson).
+  # Cutting FEWER than declared is the direction that means the pattern stopped
+  # reaching, and that is the one this refuses.
+  if [ "${1:-}" = "--cut" ]; then
+    VARY_CUT="$2"; shift 2
   fi
   "$@"
   VARIES=''
   VARY_LINES=''
+  VARY_CUT=''
 }
 
 # The determinism pass (#364). The probes referee the daemon; nothing referees
@@ -540,8 +559,14 @@ settle() {
     n_cut="$(printf '%s\n' "$first" | grep -cE "$VARY_LINES" || true)"
     cut_a="$(printf '%s\n' "$first"  | grep -vE "$VARY_LINES" || true)"
     cut_b="$(printf '%s\n' "$again2" | grep -vE "$VARY_LINES" || true)"
+    if [ -n "$VARY_CUT" ] && [ "$n_cut" -lt "$VARY_CUT" ]; then
+      DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+      echo "DRIFT $cls exemption cut $n_cut lines and declares $VARY_CUT — the pattern stopped reaching its subject"
+      return 0
+    fi
     if [ "$cut_a" = "$cut_b" ]; then
-      printf 'EXEMPT %s lines=%s reason="%s"\n' "$cls" "$n_cut" "$VARIES"
+      printf 'EXEMPT %s lines=%s declared=%s reason="%s"\n' \
+        "$cls" "$n_cut" "${VARY_CUT:-none}" "$VARIES"
     else
       DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
       echo "DRIFT $cls outside its declared exemption — the verdict moved, not the noise"
