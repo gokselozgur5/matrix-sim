@@ -21,7 +21,7 @@
 # not import anything from the file it reads. That is the whole reason for a
 # second workflow in a repository that keeps exactly one.
 #
-# FOUR QUESTIONS, in the order they can be answered without running a job:
+# SIX QUESTIONS, in the order they can be answered without running a job:
 #
 #   1. DOES IT PARSE. Not a YAML library — this repository builds with javac and
 #      nothing else (D-009), and adding a parser to answer one question would be
@@ -46,6 +46,16 @@
 #   4. ARE TWO STEPS NAMED THE SAME. Adding rather than editing is how this file
 #      grows, and a duplicate name is silent in the Actions UI: two rows with one
 #      label, and no way to tell which one failed.
+#
+#   5. DOES EVERY `run:` BLOCK PARSE AS THE SHELL THAT WILL RUN IT (--shellcheck).
+#      `bash -n`, the runner's own parser. This file shipped with an unclosed
+#      quote and could not be parsed for eleven runs (#1203).
+#
+#   6. AND WHAT WILL IT RUN UNDER (--shellcheck). A block with no `shell:` gets
+#      GitHub's default `bash -e {0}` — -e without -u or pipefail — while its
+#      neighbours set all three. Twenty-one of twenty-two blocks were uniform and
+#      the odd one out was lock 0, the only lock that judges a claim (#1226). A
+#      block may decline with `# litany: unguarded <reason>` on its first line.
 #
 # Exit 0 when every question is answered clean, 1 otherwise. The verdict line is
 # the contract, the way a probe's is.
@@ -405,7 +415,7 @@ selftest() {
       printf '%s\n' "$3" | sed 's/^/          /'
     } > "$wf/fixture.yml"
     local got
-    got="$(shellcheck_workflows "$wf" | sed -n 's/.*unparseable=\([0-9]*\)$/\1/p')"
+    got="$(shellcheck_workflows "$wf" | sed -n 's|.*unparseable=\([0-9]*\).*|\1|p')"
     shell_verdict "$1" "$2" "$got"
   }
   shell_case_inline() {         # shell_case_inline <name> <want-bad> <block-body>
@@ -416,7 +426,7 @@ selftest() {
       printf '%s\n' "$3" | sed 's/^/          /'
     } > "$wf/fixture.yml"
     local got
-    got="$(shellcheck_workflows "$wf" | sed -n 's/.*unparseable=\([0-9]*\)$/\1/p')"
+    got="$(shellcheck_workflows "$wf" | sed -n 's|.*unparseable=\([0-9]*\).*|\1|p')"
     shell_verdict "$1" "$2" "$got"
   }
   shell_verdict() {             # shell_verdict <name> <want> <got>
@@ -427,15 +437,48 @@ selftest() {
       echo "SELFTEST FAIL $1 wanted unparseable=$2 got=${3:-none}"
     fi
   }
-  shell_case clean-block      0 'echo ok'
-  shell_case unclosed-quote   1 "grep -q 'PASS cases=[1-9] failed=0 file"
-  shell_case unbalanced-brace 1 'foo || { echo no >&2; exit 1;'
-  shell_case dangling-if      1 'if [ -f x ]; then echo y'
+  # Question 6 has its own counter and therefore its own reader. Same fixtures,
+  # same extractor — only the number being asked for differs, which is why the
+  # helper takes the field name rather than a second copy of the case runner.
+  shell_guard_case() {          # shell_guard_case <name> <want-unguarded> <block-body>
+    local wf="$tmp/wf"
+    rm -rf "$wf"; mkdir -p "$wf"
+    {
+      printf 'name: fixture\njobs:\n  j:\n    steps:\n      - name: s\n        run: |\n'
+      printf '%s\n' "$3" | sed 's/^/          /'
+    } > "$wf/fixture.yml"
+    local got
+    got="$(shellcheck_workflows "$wf" | sed -n 's|.*unguarded=\([0-9]*\).*|\1|p')"
+    shell_verdict "$1" "$2" "$got"
+  }
+  shell_guard_case guarded       0 'set -euo pipefail
+echo ok'
+  shell_guard_case unguarded     1 'echo ok'
+  # The exemption, declared. A block that must survive a failing command says so
+  # on its first line rather than by omitting a line — `vary`'s move in
+  # probes/bench.sh, where the reason rides the row instead of being skipped.
+  shell_guard_case declared      0 '# litany: unguarded — this step must survive a failing probe
+echo ok'
+  # And a blank first line must not read as a declaration: the check reads the
+  # first NON-BLANK line, and a fixture that opens with whitespace is how a
+  # YAML-formatted block actually arrives.
+  shell_guard_case blank-first   1 '
+echo ok'
+
+  shell_case clean-block      0 'set -euo pipefail
+echo ok'
+  shell_case unclosed-quote   1 "set -euo pipefail
+grep -q 'PASS cases=[1-9] failed=0 file"
+  shell_case unbalanced-brace 1 'set -euo pipefail
+foo || { echo no >&2; exit 1;'
+  shell_case dangling-if      1 'set -euo pipefail
+if [ -f x ]; then echo y'
   # The dash spelling, which the first draft of `extract_blocks` did not match:
   # its blocks were skipped in silence, so three of the four cases above passed
   # by finding nothing at all. `blocks=` exists to make that visible, and the
   # case exists so the pattern cannot narrow again.
-  shell_case_inline dash-step 1 'if [ -f x ]; then echo y'
+  shell_case_inline dash-step 1 'set -euo pipefail
+if [ -f x ]; then echo y'
 
   printf 'LITANY SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
@@ -501,6 +544,7 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
     [ -f "$f" ] || continue
     extract_blocks "$f" "$tmp" "$(basename "$f" | tr -c 'a-zA-Z0-9' '-')"
   done
+  local unguarded=0 first
   for b in "$tmp"/*.sh; do
     [ -f "$b" ] || continue
     blocks=$((blocks + 1))
@@ -510,10 +554,33 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
       # shell's message carries the line within it. Both, on one line.
       echo "SHELL_UNPARSEABLE $(basename "$b") ${err##*: }"
     fi
+    # `bash -n` answers "does it parse". This answers "what will it run under",
+    # and the two questions live one line apart in the same extractor (#1226).
+    #
+    # A `run:` block with no `shell:` gets GitHub's default, `bash -e {0}` — so
+    # it has -e and lacks -u and pipefail, silently, while twenty-one blocks
+    # beside it set all three. `evidence baseline` was that block: lock 0, the
+    # only lock that judges a CLAIM rather than a compilation, running under
+    # weaker guarantees than the ones that judge a compile, with `RUNNER_TEMP`
+    # unquoted where every neighbour spells `${RUNNER_TEMP:-/tmp}`.
+    #
+    # A block may decline, the way a bench row declines the determinism pass:
+    # `# litany: unguarded <reason>` on its first line says the difference out
+    # loud. Omitting the guard silently is what this refuses.
+    first="$(grep -m1 -vE '^[[:space:]]*$' "$b" || true)"
+    case "$first" in
+      *'set -euo pipefail'*) ;;
+      *'# litany: unguarded'*) ;;
+      *)
+        unguarded=$((unguarded + 1))
+        echo "SHELL_UNGUARDED $(basename "$b") opens with: $(printf '%s' "$first" | cut -c1-60)"
+        ;;
+    esac
   done
-  printf 'LITANY SHELL VERDICT %s blocks=%d unparseable=%d\n' \
-    "$([ "$bad" = 0 ] && printf PASS || printf FAIL)" "$blocks" "$bad"
-  [ "$bad" = 0 ]
+  printf 'LITANY SHELL VERDICT %s blocks=%d unparseable=%d unguarded=%d\n' \
+    "$([ "$bad" = 0 ] && [ "$unguarded" = 0 ] && printf PASS || printf FAIL)" \
+    "$blocks" "$bad" "$unguarded"
+  [ "$bad" = 0 ] && [ "$unguarded" = 0 ]
 }
 
 if [ "$SHELLCHECK" = yes ]; then
