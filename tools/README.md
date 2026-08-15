@@ -48,6 +48,21 @@ House rules:
   lane: under `pipefail` the tool's own exit code still fails the step, and by
   then `tee` has put the rows that say WHY into the log. The rule is about the
   capture and not about the caller — `tools/*.sh` and `locks.yml` steps alike.
+- A tool that tells you what to type owes you a command that works, and the
+  advice is the most expensive prose in the tool to be wrong in — it is read at
+  the moment somebody has already decided to act. Three units in one day fixed
+  the same defect in three tools: `attribution.sh` printed `--reset-author`,
+  which destroys the author dates the tool exists to protect (#1012);
+  `release.sh` matched a line that was no longer first, so a release could not
+  be cut from a green `main` (#972); `balance.sh` named a leg its own arithmetic
+  could not move (#952). Each was wrong in a way only EXECUTING it revealed.
+  So: a printed flag exists in the tool it names, and a tool that prints advice
+  has a `--selftest` for that advice to be executed in. `tools/advice.sh`
+  audits the first half mechanically and reports the second — four tools have
+  no selftest today, which is the gap this rule is about rather than a failure
+  it asserts. What it cannot do is RUN the advice: `git commit --amend` inside
+  an audit would be a tool damaging the tree to check whether it damages the
+  tree.
 - A tool whose output is PROSE carries a golden file, because a page that
   reads well is not a page that is still true. `dreamreader/golden/` holds one
   blessed day; `--check-golden` re-renders and prints the first line that
