@@ -205,8 +205,8 @@ public final class LineLint {
                 + " retyped=" + retyped
                 + " domain=" + domain
                 + " cadence_breaks=" + cadenceBreaks);
-        System.out.println(held ? "VERDICT GRAMMAR_HELD"
-                : "VERDICT GRAMMAR_BROKEN family=" + brokenFamily + " field=" + brokenField);
+        Probes.leave(held ? "VERDICT GRAMMAR_HELD"
+                : "VERDICT GRAMMAR_BROKEN family=" + brokenFamily + " field=" + brokenField, held);
     }
 
     /**

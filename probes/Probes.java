@@ -13,6 +13,32 @@ import java.util.List;
  */
 final class Probes {
 
+    /**
+     * Print the verdict and leave with an exit code that agrees with it.
+     *
+     * <p>`probes/README.md` asks a judged probe for two things — a greppable
+     * verdict line AND an honest exit code — and only the first half was ever
+     * enforced, because `bench.sh` greps the line and never needed the code.
+     * #1091 found the consequence: `DistrictNeutral` printed
+     * `DISTRICTS_TOUCHED_THE_STREAM` and exited 0, so the lane was safe and the
+     * probe lied to anyone running it by hand — which is what an investigation
+     * does. `bench.sh --twice` reads the second run's exit code too, before it
+     * compares bytes.
+     *
+     * <p>One helper rather than nineteen `System.exit` calls, so the contract
+     * has one place to be read and one place to change. A probe with no failing
+     * verdict — a reporting probe, whose bench row is `run` rather than `judge`
+     * — must NOT call this: a `run` row fails on a nonzero exit, so adopting an
+     * exit code there changes what the row means (#1093).
+     *
+     * @param verdict the line the bench greps, printed verbatim
+     * @param held    true when the contract this probe judges was kept
+     */
+    static void leave(String verdict, boolean held) {
+        System.out.println(verdict);
+        System.exit(held ? 0 : 1);
+    }
+
     static RealWorld realWorld(Simulation sim) throws ReflectiveOperationException {
         return (RealWorld) open(Simulation.class, "realWorld").get(sim);
     }

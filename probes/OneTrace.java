@@ -69,7 +69,7 @@ public final class OneTrace {
             }
         }
         System.out.println("ONETRACE seed=" + seed + " ticks=" + ticks + " births=" + births);
-        System.out.println(ok ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN");
+        Probes.leave(ok ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN", ok);
     }
 
     private OneTrace() {}

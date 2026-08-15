@@ -134,8 +134,8 @@ public final class ConfirmationSweep {
         boolean broken = (restore.fired && !restoreHeld) || (door.fired && !doorHeld)
                 || (stream.frames > 0 && !streamHeld)
                 || (lifecycle.collections > 0 && !lifecycleHeld);
-        System.out.println("VERDICT " + (held ? "CONFIRMATIONS_HELD"
-                : broken ? "CONFIRMATIONS_BROKEN" : "CONFIRMATIONS_UNMET"));
+        Probes.leave("VERDICT " + (held ? "CONFIRMATIONS_HELD"
+                : broken ? "CONFIRMATIONS_BROKEN" : "CONFIRMATIONS_UNMET"), held);
     }
 
     // -----------------------------------------------------------------

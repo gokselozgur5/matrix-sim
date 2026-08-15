@@ -147,8 +147,8 @@ public final class HuntBound {
         for (String b : breaks) {
             System.out.println(b);
         }
-        System.out.println("VERDICT " + (breaks.isEmpty() ? "HUNT_BOUND_HELD" : "HUNT_BOUND_CROSSED")
-                + " movers=" + declared.size() + " breaks=" + breaks.size());
+        Probes.leave("VERDICT " + (breaks.isEmpty() ? "HUNT_BOUND_HELD" : "HUNT_BOUND_CROSSED")
+                + " movers=" + declared.size() + " breaks=" + breaks.size(), breaks.isEmpty());
     }
 
     /** The key the gait table is written in: a catalog row is its species, anything else is its class. */
