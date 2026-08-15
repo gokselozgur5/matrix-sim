@@ -81,7 +81,7 @@ done
 #                                       name<TAB>event<TAB>status<TAB>conclusion
 #   -> VERDICT<TAB>runs<TAB>green<TAB>red<TAB>pending<TAB>why
 judge() {
-  local pr_state="$1" mergeable="$2" rows="$3" base="${4:-main}" patterns="${5:-main}"
+  local pr_state="$1" mergeable="$2" rows="$3" base="${4:-main}" patterns="${5-main}"
   local total=0 green=0 red=0 pending=0
   local name event status conclusion
 
@@ -115,7 +115,13 @@ judge() {
   #
   # Asked BEFORE the zero-run test, because "no runs" is the symptom both share
   # and the eligible base is the thing that tells them apart.
-  if [ "$total" -eq 0 ] && ! base_eligible "$base" "$patterns"; then
+  #
+  # An EMPTY pattern set is "I could not read the triggers", not "nothing is
+  # eligible". Those two readings differ by every pull request in the
+  # repository, and the second one is reachable by a typo in a workflow, a
+  # renamed directory, or running this tool from the wrong working directory.
+  # Silence falls back to the old verdict rather than condemning everything.
+  if [ "$total" -eq 0 ] && [ -n "$patterns" ] && ! base_eligible "$base" "$patterns"; then
     printf 'NOT_ELIGIBLE\t0\t0\t0\t0\tbase=%s\n' "$base"; return 0
   fi
   if [ "$total" -eq 0 ]; then
@@ -140,9 +146,37 @@ rank_of()  { case "$1" in NOT_ELIGIBLE) echo 4 ;; UNBUILT) echo 3 ;; RED) echo 2
 # thing this tree keeps finding stale. Handles `branches: [main]` and
 # `branches: ['main', 'unit/**']` alike.
 eligible_bases() {
-  grep -hE '^[[:space:]]*branches:[[:space:]]*\[' .github/workflows/*.yml 2>/dev/null \
-    | sed -E 's/.*branches:[[:space:]]*\[([^]]*)\].*/\1/' \
-    | tr ',' '\n' \
+  # Both spellings YAML allows, because a tool that reads one of them and
+  # returns nothing for the other does not report "I could not read this" — it
+  # reports an empty allow-list, and an empty allow-list makes EVERY pull
+  # request ineligible. The caller's empty-set rule is the other half of that
+  # guard; this half is simply reading the file properly.
+  #
+  #     branches: [main]              flow
+  #     branches:                     block
+  #       - main
+  #
+  # `branches-ignore:` is deliberately not read. It inverts the meaning, and a
+  # parser that treated its list as an allow-list would be confidently backwards
+  # — the one failure mode worse than reading nothing.
+  awk '
+    /^[[:space:]]*branches:[[:space:]]*\[/ {
+      line = $0
+      sub(/.*branches:[[:space:]]*\[/, "", line)
+      sub(/\].*/, "", line)
+      n = split(line, parts, ",")
+      for (i = 1; i <= n; i++) { print parts[i] }
+      inblock = 0; next
+    }
+    /^[[:space:]]*branches:[[:space:]]*$/ { inblock = 1; next }
+    inblock && /^[[:space:]]*-[[:space:]]*[^[:space:]]/ {
+      item = $0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", item)
+      print item
+      next
+    }
+    { inblock = 0 }
+  ' .github/workflows/*.yml 2>/dev/null \
     | tr -d " '\"" \
     | grep -v '^$' \
     | sort -u
@@ -171,7 +205,9 @@ selftest() {
   local pass=0 fail=0 seen=""
   check() { # check <name> <pr-state> <mergeable> <rows> <want> [base] [patterns]
     local got
-    got="$(judge "$2" "$3" "$4" "${6:-main}" "${7:-main}" | awk -F'\t' '{printf "%s runs=%s green=%s red=%s pending=%s why=%s", $1,$2,$3,$4,$5,$6}')"
+    # `${7-main}`, not `${7:-main}`: an EMPTY pattern set is a case this suite
+    # has to be able to express, and `:-` would silently turn it into "main".
+    got="$(judge "$2" "$3" "$4" "${6:-main}" "${7-main}" | awk -F'\t' '{printf "%s runs=%s green=%s red=%s pending=%s why=%s", $1,$2,$3,$4,$5,$6}')"
     seen="$seen ${got%% *}"
     if [ "$got" = "$5" ]; then
       pass=$((pass + 1)); printf 'CASE %-26s OK    %s\n' "$1" "$got"
@@ -240,6 +276,13 @@ selftest() {
   check other-base-still-not    OPEN MERGEABLE   ''  \
     'NOT_ELIGIBLE runs=0 green=0 red=0 pending=0 why=base=dev' \
     dev $'main\nunit/**'
+  # An unreadable trigger set must not condemn every pull request. A parser that
+  # reads one YAML spelling and not the other returns exactly this, and the
+  # difference between the two readings is the whole repository (found by this
+  # PR's own adversarial pass).
+  check no-patterns-readable    OPEN MERGEABLE   ''  \
+    'UNBUILT runs=0 green=0 red=0 pending=0 why=no-run' \
+    unit/1206-tool-depth-guard ''
 
   # A suite that reaches one verdict is not a suite. The five states are the whole claim of
   # this tool, so the cases must be shown to separate them before their verdict counts.
