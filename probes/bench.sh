@@ -164,15 +164,14 @@ table() {
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD sites=2 checked=25 breaks=0'
   judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
-  # The second seed found a defect, and the row records it rather than hiding from it
-  # (#1155). D-021's perception-feed clause holds at seed 42 and at NO OTHER SEED TRIED:
-  # seed 7 carries malformed=16, seed 4 malformed=2, seeds 9 and 13 a max_gap of 500 and
-  # 700 against a bound of 100. Pinning BROKEN is the same move #1130 made for the ledger
-  # sweep: a lane that goes red for a known open defect gets switched off, and a lane that
-  # says nothing about it is how the defect got to be a year old. When #1155 lands, this
-  # line becomes CONFIRMATIONS_HELD in the PR that fixes it — and until then, a seed 7 that
-  # starts passing is exactly as red as one that starts failing differently.
-  known ConfirmationSweep 'VERDICT CONFIRMATIONS_BROKEN' '#1155' "$TICKS" 7
+  # The second seed found a defect (#1155) and this row was a `known` break for four hours.
+  # Both halves turned out to be the PROBE describing truthfully-measured things wrongly:
+  # `malformed` counted frames that correctly report a world with no agent in it (#1170),
+  # and `max_gap` counted the window the tap had ANNOUNCED it could not see — the signal
+  # line "lost — the dream is no longer theirs" sits inside every gap that missed the bound.
+  # Both are now their own numbers, `no_agent=` and `dark_gap=`, and the clause holds at
+  # seeds 42, 7, 4, 9 and 13. The row is a judge again, which is what a known break is for.
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS" 7
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
