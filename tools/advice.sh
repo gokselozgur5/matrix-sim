@@ -61,10 +61,25 @@ LIST=no
 # `release.sh` already refuses the same flag by accident, through its positional
 # usage check. This makes the refusal deliberate rather than lucky, and exit 2 is
 # the tree's code for a refused invocation.
+SELFTEST=no
 case "${1:-}" in
   ''|--list) ;;
-  *) echo "FATAL unknown argument: $1 (this tool takes --list, or nothing)" >&2; exit 2 ;;
+  --selftest) SELFTEST=yes ;;
+  *) echo "FATAL unknown argument: $1 (this tool takes --list, --selftest, or nothing)" >&2; exit 2 ;;
 esac
+
+# The suite's harness is defined below the audit it exercises, because the
+# function it calls is defined there — and bash defines a function when it
+# reaches it, not when it parses the file. So under --selftest the ordinary
+# audit still RUNS and its output is parked on fd 3 instead of the terminal,
+# with the suite's own lines restored to stdout before the first case. Two
+# consequences, both wanted: the suite's output is not buried under the shop's,
+# and a crash in the ordinary path fails --selftest too, which is the correct
+# reading — a suite that passes while the tool it belongs to dies is the
+# vacuous pass this file exists to hunt.
+if [ "$SELFTEST" = yes ]; then
+  exec 3>&1 >/dev/null
+fi
 
 # An advice line: an echo whose payload starts with four or more spaces. The
 # house style indents the command a reader is meant to copy, which is what
@@ -106,10 +121,21 @@ unfalsifiable=0
 BREAKS=0
 
 for tool in tools/*.sh; do
-  [ "$tool" = "tools/advice.sh" ] && continue    # a checker inside its own search path (#1157)
+  # The falsifiability census counts EVERY tool here, this one included
+  # (#1265). #1157's skip below is about prose — a checker reading its own
+  # explanation and reporting itself — and it was applied to the whole loop,
+  # which quietly exempted this file from the census it publishes. So the
+  # program that prints `UNFALSIFIABLE <tool> has no --selftest` and counts it
+  # was, itself, an uncounted third. It has a suite now, and it is counted
+  # whether it has one or not.
   has_selftest=no
   grep -qE '\-\-(selftest|selfcheck|rulercheck|datecheck|check)\b' "$tool" && has_selftest=yes
-  [ "$has_selftest" = no ] && unfalsifiable=$((unfalsifiable + 1))
+  if [ "$has_selftest" = no ]; then
+    unfalsifiable=$((unfalsifiable + 1))
+    echo "UNFALSIFIABLE $tool has no --selftest: its advice has nowhere to be executed"
+  fi
+
+  [ "$tool" = "tools/advice.sh" ] && continue    # a checker inside its own search path (#1157)
 
   while IFS= read -r hit; do
     [ -z "$hit" ] && continue
@@ -153,7 +179,7 @@ for tool in tools/*.sh; do
     done <<< "$(flags_of "$line")"
   done <<< "$(advice_lines "$tool")"
 
-  [ "$has_selftest" = no ] && echo "UNFALSIFIABLE $tool has no --selftest: its advice has nowhere to be executed"
+  # (the UNFALSIFIABLE line is printed with the count, at the top of the loop)
 done
 
 # Every tool is in the catalog, or nobody can find out what it is for (#1188). This is
@@ -207,12 +233,22 @@ done
 # this loop is the one a whole-row read answers exactly: does the manual
 # mention this flag ANYWHERE. It cannot false-positive; it can only miss a flag
 # mentioned in passing but absent from Usage, and #1263 owns that gap.
-flags_parsed=0
-flags_undocumented=0
-tools_no_flags=0
-for tool in tools/*.sh; do
+#
+# Lifted into a function so it can be pointed at a scratch tree (#1265). The
+# whole audit used to be one straight run over `tools/`, which meant the only
+# way to watch a check here fail was to break a real tool — so nothing ever
+# watched, and this file audits eleven programs for exactly that omission
+# while committing it. `--selftest` calls this against fixtures; the ordinary
+# run calls it against the shop.
+flag_audit() {                                   # flag_audit <tools-dir> <catalog>
+  local dir="$1" catalog="$2" tool name row body arms compares accepted advertised flag
+  flags_parsed=0
+  flags_undocumented=0
+  tools_no_flags=0
+  for tool in "$dir"/*.sh; do
+  [ -f "$tool" ] || continue
   name="$(basename "$tool")"
-  row="$(grep "^| \`$name\`" tools/README.md || true)"
+  row="$(grep "^| \`$name\`" "$catalog" || true)"
   [ -n "$row" ] || continue                      # uncatalogued, counted above
   body="$(grep -vE '^[[:space:]]*#' "$tool" || true)"
   arms="$(printf '%s\n' "$body" \
@@ -247,7 +283,114 @@ for tool in tools/*.sh; do
         ;;
     esac
   done <<< "$accepted"
-done
+  done
+}
+
+# ---------------------------------------------------------------- selftest
+#
+# #1265: this file has spent its whole life auditing whether OTHER tools can
+# execute their own advice, printing `UNFALSIFIABLE <tool> has no --selftest`
+# and counting it, while having no way to be watched failing itself. Its own
+# checks were falsified by transcripts pasted into pull requests — real
+# evidence, and evidence that ages: the next edit to an extraction pattern had
+# nothing to run.
+#
+# The cases are built rather than mocked. Each writes a two-line scratch tool
+# and a one-row scratch catalog into a temp directory and points `flag_audit`
+# at them, so what is exercised is the shipped function and not a copy of its
+# logic — the second copy being the thing this file exists to hunt.
+selftest() {
+  local pass=0 fail=0
+  # NOT local: the EXIT trap fires after this function returns, and under
+  # `set -u` a local that has gone out of scope is an unbound variable — the
+  # cleanup then dies with `tmp: unbound variable` after a green suite, which
+  # is a passing run that prints an error and leaves a directory behind.
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/advice.XXXXXX")"
+  trap 'rm -rf "$tmp"' EXIT
+
+  case_() {                     # case_ <name> <want-undocumented> <tool-body> <row>
+    local name="$1" want="$2" toolbody="$3" row="$4" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$toolbody" > "$tmp/shop/fixture.sh"
+    printf '%s\n' "$row" > "$tmp/shop/README.md"
+    BREAKS=0
+    flag_audit "$tmp/shop" "$tmp/shop/README.md" >/dev/null 2>&1
+    got="$flags_undocumented"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  no_flags_case() {             # no_flags_case <name> <want-no-flags> <tool-body> <row>
+    local name="$1" want="$2" toolbody="$3" row="$4" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$toolbody" > "$tmp/shop/fixture.sh"
+    printf '%s\n' "$row" > "$tmp/shop/README.md"
+    BREAKS=0
+    flag_audit "$tmp/shop" "$tmp/shop/README.md" >/dev/null 2>&1
+    got="$tools_no_flags"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  local ROW_WITH='| `fixture.sh` | does a thing. Usage: `tools/fixture.sh --pr N`. |'
+  local ROW_WITHOUT='| `fixture.sh` | does a thing and says nothing about how. |'
+
+  # A `case` arm, the spelling most tools here use.
+  case_ case-arm-documented    0 '  --pr) PR=1 ;;' "$ROW_WITH"
+  case_ case-arm-hidden        1 '  --pr) PR=1 ;;' "$ROW_WITHOUT"
+
+  # A direct comparison, the spelling litany.sh and baseline.sh use. The first
+  # draft of #1033 read only `case` arms and would have passed both of these.
+  #
+  # The flag is ASSEMBLED rather than written, and that is not fussiness. The
+  # comparison form is `= "--pr"`, which is exactly what the extractor greps
+  # for — so spelled out here it would be a literal inside the file the
+  # ordinary audit reads, and `advice.sh` would report ITSELF as parsing a
+  # flag its row hides. It did, on the first run of this suite. Same shape as
+  # litany.sh's assembled ghost verdict, and the fifth time a checker in this
+  # tree has found its own test data.
+  local dash="--" pr; pr="${dash}pr"
+  case_ comparison-documented  0 "[ \"\${1:-}\" = \"$pr\" ] && PR=1" "$ROW_WITH"
+  case_ comparison-hidden      1 "[ \"\${1:-}\" = \"$pr\" ] && PR=1" "$ROW_WITHOUT"
+
+  # An alternation arm: both flags are parsed, one is advertised.
+  case_ alternation-half-hidden 1 '  --pr|--sha) X=1 ;;' "$ROW_WITH"
+
+  # A flag named only in a COMMENT is not parsed, and must not be counted as
+  # either kind — the self-matching shape this file has been bitten by four
+  # times, in the one direction that would produce a false accusation.
+  case_ comment-only-flag      0 '# --pr is discussed here and parsed nowhere' "$ROW_WITHOUT"
+
+  # Substring safety: --for must not be satisfied by --format on the row.
+  case_ prefix-not-a-match     1 '  --for) X=1 ;;' \
+        '| `fixture.sh` | takes `--format` and nothing else. |'
+
+  # An uncatalogued tool is skipped here rather than double-reported: the
+  # UNCATALOGUED check above owns that defect and this loop would name the
+  # same file for a second reason.
+  case_ uncatalogued-skipped   0 '  --pr) PR=1 ;;' '| `other.sh` | not our fixture. |'
+
+  # Positional-only tools are reported, not silently passed (#1207's shape).
+  no_flags_case positional-only 1 'echo "$1"' "$ROW_WITHOUT"
+  no_flags_case has-flags       0 '  --pr) PR=1 ;;' "$ROW_WITH"
+
+  echo "ADVICE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
+  [ "$fail" -eq 0 ]
+}
+
+if [ "$SELFTEST" = yes ]; then
+  exec 1>&3            # the shop's audit is done; the suite speaks for itself
+  selftest
+  exit $?
+fi
+
+flag_audit tools tools/README.md
 
 # A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
 # readers added today catch a MISSING row; a WRONG row is prose about a program written by

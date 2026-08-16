@@ -517,6 +517,27 @@ jobs:
           grep -q '^ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS$' "${RUNNER_TEMP:-/tmp}/advice.log" \
             || { echo "FATAL a tool advises a flag nobody implements" >&2; exit 1; }
 
+      # WHY: #1265 — the step above judges eleven programs on whether their advice can be
+      # executed, and the program giving the judgement had no suite of its own. Its checks
+      # were falsified by transcripts in pull requests, which is evidence that ages: the next
+      # edit to an extraction pattern had nothing to run. `A_SUITE_NOBODY_RUNS` is a verdict
+      # this same tool prints about other people's scripts, so the suite lands in a lane in
+      # the pull request that adds it, with a floor, per this file's own rule.
+      - name: tools — the flag audit's own suite (#1265)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/advice.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/advice-selftest.log"
+          verdict="$(grep -E '^ADVICE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/advice-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the flag audit's suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=10   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "ADVICE SUITE FLOOR OK cases=$ran floor=$floor"
+
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
       # solve one leg with the other three standing still, so acting on two of them leaves a leg
