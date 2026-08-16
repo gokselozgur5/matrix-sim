@@ -70,15 +70,33 @@ public final class SheetFence {
     private static final Pattern FOREIGN_IMPORT = Pattern.compile(
             "^\\s*import\\s+(?:static\\s+)?(matrix\\.(?!core\\.|character\\.)[\\w.]+)\\s*;");
 
-    private static final String[] DEFAULT_WINGS = {
-            "src/matrix/realworld", "src/matrix/entities", "src/matrix/machine", "src/matrix/zion",
-    };
+    /**
+     * The domain, as a DENY-list: everything under {@code src/} except the
+     * character layer, which is judged next door under different rules.
+     *
+     * <p>It was an allow-list of four named directories until #1258, and the
+     * hole was not hypothetical. {@code src/matrix/core} was not among the
+     * four — and {@code SheetDump}'s javadoc reaches for exactly that package
+     * as its example of the defect: *"0 today because the domain imports
+     * nothing from `matrix.character`, and 1 the moment a `Sheet` is parked
+     * on `World`"*. The file the documentation names as THE case was the file
+     * this probe did not read.
+     *
+     * <p>An allow-list is a claim about the shape of the tree, and nothing
+     * checks the claim. {@code entities/eco} and {@code entities/behavior}
+     * were inside the old sweep only because {@code Files.walk} recurses —
+     * luck, not design — and the next package to be added would have been
+     * swept by nobody. A deny-list cannot go stale that way: a new package is
+     * covered on the day it is created, and the only thing that must be
+     * maintained is the short list of what is deliberately NOT the domain.
+     */
+    private static final String DEFAULT_ROOT = "src";
 
     private static final String DEFAULT_LAYER = "src/matrix/character";
 
     public static void main(String[] args) throws IOException {
         matrix.Streams.utf8();
-        List<String> wings = new ArrayList<>(List.of(DEFAULT_WINGS));
+        String root = DEFAULT_ROOT;
         String layer = DEFAULT_LAYER;
 
         for (int i = 0; i < args.length; i++) {
@@ -87,7 +105,7 @@ public final class SheetFence {
                     if (++i == args.length) {
                         System.exit(Probes.Outcome.REFUSED.code());
                     }
-                    wings = new ArrayList<>(List.of(args[i].split(",")));
+                    root = args[i];
                 }
                 case "--layer" -> {
                     if (++i == args.length) {
@@ -101,13 +119,17 @@ public final class SheetFence {
 
         List<String> offences = new ArrayList<>();
         int stored = 0;
-        for (String wing : wings) {
-            for (Path file : javaFiles(Path.of(wing))) {
-                for (String line : code(file)) {
-                    if (keepsASheet(line)) {
-                        stored++;
-                        offences.add("STORED " + file + " — " + line.trim());
-                    }
+        int swept = 0;
+        Path layerPath = Path.of(layer);
+        for (Path file : javaFiles(Path.of(root))) {
+            if (file.startsWith(layerPath)) {
+                continue;   // judged next door, by cached=, under its own rules
+            }
+            swept++;
+            for (String line : code(file)) {
+                if (keepsASheet(line)) {
+                    stored++;
+                    offences.add("STORED " + file + " — " + line.trim());
                 }
             }
         }
@@ -136,10 +158,23 @@ public final class SheetFence {
         }
 
         offences.forEach(System.out::println);
-        boolean held = stored == 0 && foreign == 0 && cached == 0 && doorMissing == 0;
+
+        // The population, on its own line and NOT in the verdict (#1221). A
+        // scan that silently read zero files prints the same green line as one
+        // that read the tree — charset_checked=0 (#1207) and
+        // INSTRUMENTS_UNPROVEN (#970) are that shape twice — so the fact that
+        // something WAS swept has to ride the exit code. The COUNT must not:
+        // an exact-line bench row carrying `swept=92` goes red on the day
+        // somebody adds a domain class, which teaches the next reader that the
+        // number in the lane is a thing you edit until the lane is quiet.
+        // `LeaveContract` learned this the expensive way, twice in one
+        // afternoon. So: the census reports, the verdict judges.
+        System.out.println("FENCE_CENSUS swept=" + swept + " layer=" + javaFiles(layerPath).size());
+
+        boolean held = swept > 0 && stored == 0 && foreign == 0 && cached == 0 && doorMissing == 0;
         Probes.leave(String.format(
-                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d cached=%d door_missing=%d",
-                stored, foreign, cached, doorMissing),
+                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d cached=%d door_missing=%d swept_none=%d",
+                stored, foreign, cached, doorMissing, swept == 0 ? 1 : 0),
                 held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
