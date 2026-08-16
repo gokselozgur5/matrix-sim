@@ -34,9 +34,20 @@ import matrix.core.World;
  *       wrong.</li>
  * </ul>
  *
- * <p>The reboot is performed on this probe's OWN universe, never a shared
- * one (clause 2), and queues nothing: {@code bumpVersion} increments a
- * counter that the digest already reads.
+ * <h2>The mutation, declared</h2>
+ *
+ * This probe calls {@code world.bumpVersion()}, which makes it the first
+ * probe in this tree to mutate anything. It stands on clause 1's carve-out
+ * and says so here, as that clause requires: the universe is one this probe
+ * built itself (clause 2), nothing is queued — the counter is one the digest
+ * already reads — and the mutation IS the measurement. The claim under test
+ * is that the fatigue axis moves when the world reloads, and there is no way
+ * to ask that of a world that never reloads.
+ *
+ * <p>The carve-out was written down in #1261 because this probe was inside
+ * the LETTER of a clause composed when no probe mutated anything at all, and
+ * a rule people follow that is not the rule on the page is how the next
+ * probe arrives with a weaker excuse.
  */
 public final class SystemFatigue {
 
