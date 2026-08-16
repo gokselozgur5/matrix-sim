@@ -206,7 +206,7 @@ done
 # the promise direction is already judged above, the only question left for
 # this loop is the one a whole-row read answers exactly: does the manual
 # mention this flag ANYWHERE. It cannot false-positive; it can only miss a flag
-# mentioned in passing but absent from Usage, and #1262 owns that gap.
+# mentioned in passing but absent from Usage, and #1263 owns that gap.
 flags_parsed=0
 flags_undocumented=0
 tools_no_flags=0
