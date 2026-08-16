@@ -1,3 +1,6 @@
+import matrix.character.Family;
+import matrix.character.Sheet;
+import matrix.character.SheetDoor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -94,8 +97,40 @@ public final class SheetFence {
 
     private static final String DEFAULT_LAYER = "src/matrix/character";
 
+    /**
+     * The crossings, pinned (#1255).
+     *
+     * <p>{@code SheetDoor.crossing} is the third clause of #656 — *the sheet
+     * crosses the jack as a hash, never a reference* — and it landed with one
+     * definition and zero call sites. Dead code with a javadoc reads like
+     * shipped behaviour, and worse, an unfalsified fold is a wrong constant
+     * or a values-order bug waiting for the first real crossing, which is the
+     * worst possible moment to find one.
+     *
+     * <p>These numbers are the falsification. They are arithmetic over bytes
+     * this package defines, so a stranger's implementation reproduces them
+     * without owning a JVM — which is the only sense in which a fold is
+     * "ours" rather than the platform's. One row per family whose sheet is
+     * purely derived; SYSTEM is crossed through its own door, because its
+     * fatigue axis is read rather than folded.
+     *
+     * <p>Changing a value here is changing what has already crossed. The
+     * axis ORDER in {@link Family} is load-bearing for the same reason: a
+     * reorder re-rolls the sheets AND remakes every crossing ever recorded.
+     */
+    private static final String[][] PINNED_CROSSINGS = {
+            {"HUMAN/Trinity", "1618467648"},
+            {"PROGRAM/Agent Smith", "-1204527709"},
+            {"MACHINE/the Machine City", "1039264927"},
+            {"SYSTEM/the Matrix@6", "-276689648"},
+    };
+
     public static void main(String[] args) throws IOException {
         matrix.Streams.utf8();
+        if (args.length == 1 && "--crossings".equals(args[0])) {
+            crossings();
+            return;
+        }
         String root = DEFAULT_ROOT;
         String layer = DEFAULT_LAYER;
 
@@ -204,6 +239,46 @@ public final class SheetFence {
             return false;   // a method signature, not a field
         }
         return HOLDS_SHEET.matcher(declarator).find();
+    }
+
+    /**
+     * The pinned crossings, recomputed and compared. Gives
+     * {@code SheetDoor.crossing} the reader it landed without.
+     */
+    private static void crossings() {
+        int checked = 0;
+        int drifted = 0;
+        for (String[] row : PINNED_CROSSINGS) {
+            String label = row[0];
+            int want = Integer.parseInt(row[1]);
+            int got = SheetDoor.crossing(sheetFor(label));
+            checked++;
+            System.out.println("CROSSING " + label + "=" + got
+                    + (got == want ? "" : " WANTED " + want));
+            if (got != want) {
+                drifted++;
+            }
+        }
+        Probes.leave("VERDICT CROSSINGS_STABLE checked=" + checked + " drifted=" + drifted,
+                drifted == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+    }
+
+    /**
+     * The sheet a pinned label names. {@code FAMILY/name} for a derived
+     * sheet, {@code SYSTEM/name@versions} for the one family whose sheet is
+     * read rather than folded — the label carries the version because the
+     * crossing does, and a SYSTEM crossing with no version in its name would
+     * be a number nobody could reproduce.
+     */
+    private static Sheet sheetFor(String label) {
+        int slash = label.indexOf('/');
+        Family family = Family.valueOf(label.substring(0, slash));
+        String name = label.substring(slash + 1);
+        if (family == Family.SYSTEM) {
+            int at = name.lastIndexOf('@');
+            return SheetDoor.system(name.substring(0, at), Integer.parseInt(name.substring(at + 1)));
+        }
+        return SheetDoor.at(name, family);
     }
 
     /** Every .java under a root, sorted, so two runs read the same bytes in the same order. */
