@@ -251,7 +251,21 @@ table() {
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge DocsRoster   'VERDICT EVERY_DOCUMENT_IS_NAMED orphans=0 scanned_none=0'
-  judge DocFigures   'VERDICT FIGURES_AGREE stale=0 refused=0 checked_none=0'
+  # The second row ever to wear `vary`, and it is a decision rather than a
+  # formality (#1328). `FIGURE_CENSUS … secs=` is wall-clock, so it moves
+  # between two identical runs and clause 4 says a probe that does that fails
+  # the sweep on the line that moved. The number exists because two of this
+  # probe's markers run the daemon — 4,500 and 20,000 ticks — and #1302 put it
+  # there so an expensive marker is visible where it is incurred rather than
+  # only in the sweep's total.
+  #
+  # The alternative is deleting a measurement this tree decided yesterday it
+  # wanted. Same shape as AllocMeter's exemption: the noise is printed BESIDE
+  # the world's numbers rather than in place of them, and the verdict line is
+  # fixed while the census moves.
+  vary  'prints its own wall-clock: two of its markers run the daemon (4,500 and 20,000 ticks) and the second run of a pair is warmer, so secs= lands anywhere in 4-6 while checked= and docs= hold (#1302, #1328)' \
+        --lines '^FIGURE_CENSUS ' --cut 1 \
+        judge DocFigures   'VERDICT FIGURES_AGREE stale=0 refused=0 checked_none=0'
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
