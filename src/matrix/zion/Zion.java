@@ -514,6 +514,42 @@ public final class Zion {
      * built from the board itself now, which is where it belonged: a mind
      * the rig ever put in there is the ship's, wire or no wire, until the
      * world lets the body go.
+     *
+     * <p><b>EVERY HULL'S BOARD, AFLOAT OR NOT</b> (#918). This is the fourth
+     * walk over the fleet and the only one that does not guard
+     * {@code MissionState.LOST} — launch does, recall does, {@code zionLine}
+     * does before counting {@code links=} and {@code traced=}. The omission
+     * is deliberate now rather than accidental, and it is deliberate because
+     * a sunk hull's board never empties: {@code BroadcastRig.beginSession}
+     * holds the only line that takes a closed wire off a board
+     * ({@code links.removeIf(NeuralLink::closed)}) and a LOST hull never
+     * begins another session. The fleet keeps them by design — <i>LOST hulls
+     * stay listed: nobody deleted, not even ships</i> — so the roster of every
+     * ship that has ever sunk is in this list until the process exits.
+     *
+     * <p>Measured at seed 42 with {@code --sink-at 4600}: three wires cut with
+     * the Nebuchadnezzar are still on the board at tick 6,000, 1,400 ticks
+     * later. {@code probes/BoardScope} counts them rather than leaving the
+     * sentence to be believed.
+     *
+     * <p>It is inert today and the reason is worth stating, because the reason
+     * is a filter somewhere else: {@code MetricsCollector.traceSuffix} keeps
+     * only {@code p.alive && world.isPresent(p)}, and {@code destroy} queues a
+     * {@code Remove} for every wire it cuts, so a drowned pirate never reaches
+     * the arithmetic. The presence filter is the only thing standing between a
+     * stale roster and the baseline. Nothing states that as an invariant and
+     * nothing checks it, which is the half of #918 this javadoc closes — the
+     * set is honestly named now, so a reader who relies on it relies on what it
+     * actually is.
+     *
+     * <p>One path in the tree defeats the filter and no seed has walked it:
+     * {@code Remove} is id-keyed, {@code SmithPrime.infect} replaces a victim
+     * with a copy under a NEW id, so the {@code Remove} queued for an infected
+     * pirate matches nothing — and when the copy is unwound
+     * ({@code Replace(c.id, c.original)}) the original goes back alive and
+     * present, on the board of a ship that no longer flies. That is a live
+     * defect with a dead seed, and it belongs to whoever adds the guard rather
+     * than to this correction.
      */
     public List<matrix.entities.Avatar> pirateBoard() {
         List<matrix.entities.Avatar> out = new ArrayList<>();
