@@ -75,6 +75,31 @@ House rules:
   anybody re-read it. `locks.yml` now builds the reader and asks it (#965), so
   the next page to move moves in a PR.
 
+## Read your arguments before you reach the network
+
+A refusal that needs no API must not require one. `subissue.sh` sent `--nonsense` to
+GitHub before anything read it and left with `gh`'s exit code instead of the refusal
+its row promises — passing locally, where there was a token and an open parent to
+read, and printing `want=2 got=4` on the runner (#1309). **Two exit codes for one
+mistake, and which one you get depends on whether you happened to be authenticated.**
+
+This is a rule and not a check, and #1314 is why. The obvious lint — does a `gh` call
+appear above the last line that reads `$1` — was written, run over all twelve tools,
+and produced three violations, all three false:
+
+```
+attribution.sh   the gh call is guarded (`|| true`) and the parse is above it
+prstate.sh       the gh call is inside a function, nine definitions down —
+                 a definition is not an execution, and line order says nothing
+subissue.sh      real, and already fixed by #1309
+```
+
+A line-number reading cannot tell a function body from a straight run, and a bash
+parser is a dependency (D-009). So the ordering lives here, next to the self-matching
+clause, for the same reason that one does: it is followable, it is cheap, and the
+check that would enforce it costs more in false accusations than the defect costs in
+occurrences.
+
 ## Writing a checker here
 
 Read clause 8 of `probes/README.md`'s contract first. Every tool in this directory
