@@ -153,6 +153,11 @@ public final class SheetDump {
                     catalog();
                     return;
                 }
+                case "--stolen" -> {
+                    stolen(args.length > 1 ? Long.parseLong(args[1]) : 42,
+                            args.length > 2 ? Integer.parseInt(args[2]) : 6000);
+                    return;
+                }
                 case "--wing" -> {
                     mode = Mode.WING;
                     if (args.length < 2) {
@@ -227,6 +232,98 @@ public final class SheetDump {
      * move it silently — if the row starts quoting a different boot, this mode
      * disagrees and the disagreement is the point.
      */
+    /**
+     * The stolen sheets, and the one fence they resolve through (#660).
+     *
+     * <p>A {@code SmithCopy} wears a victim's face. It is a Decorator over the
+     * victim's own object (D-001) and a {@code MatrixEntity}, never a
+     * {@code Program} — so the PROGRAM wing's loop never sees one, and every
+     * copy in the city derives nothing. This mode is where they answer.
+     *
+     * <h2>One fence, and one is the entire design</h2>
+     *
+     * {@link #throughFence} is the only place in this repository that looks
+     * inside a {@code SmithCopy} to find a sheet. Two such places would be a
+     * second bridge and D-013 permits one; the count is on the verdict line so
+     * a second one cannot arrive quietly, and it is counted by reading this
+     * source rather than asserted, because a number a program prints about
+     * itself is the only kind that cannot go stale.
+     *
+     * <h2>The Decorator is untouched, and that is checkable</h2>
+     *
+     * {@code decorator_diff=} is a `git diff --stat` against `SmithCopy.java`
+     * over the range this branch adds. #660's statement demands the Decorator
+     * carry no part of this: the whole point of D-001 is that deleting the
+     * Smith snaps the original back, type-guaranteed, and a `sheet()` method
+     * on the copy would be a second answer for one identity. The copy has no
+     * opinion about what it is; the fence asks the original.
+     *
+     * <h2>What the victim answers</h2>
+     *
+     * Whatever it would have answered unassimilated. A {@code Program} victim
+     * answers from its purpose string (#1312); an {@code Avatar} victim has no
+     * adapter and is counted as {@code unanswerable} rather than guessed at —
+     * the avatar wing is the mind's body in the dream, and the mind answers on
+     * the real side (#658). Guessing would be inventing a fifth family.
+     */
+    private static void stolen(long seed, int ticks) throws Exception {
+        Simulation sim = new Simulation(seed, null, null);
+        for (int t = 0; t < ticks; t++) {
+            sim.tickOnce();
+        }
+        World world = Probes.world(sim);
+
+        int copies = 0;
+        int resolved = 0;
+        int unanswerable = 0;
+        for (MatrixEntity entity : world.entities()) {
+            if (!(entity instanceof matrix.entities.SmithCopy copy) || !entity.alive) {
+                continue;
+            }
+            copies++;
+            Sheet sheet = throughFence(copy);
+            if (sheet == null) {
+                unanswerable++;
+            } else {
+                resolved++;
+            }
+        }
+
+        // The fence is counted by reading this file: one `instanceof
+        // SmithCopy` that reaches for a sheet, and the count is what makes
+        // "exactly one" a measurement rather than a promise.
+        //
+        // THE PATTERN IS ASSEMBLED, and the first draft is why. Written as a
+        // literal it matched twice — the fence, and the line searching for the
+        // fence — so the probe reported `branches=2` about a tree with one.
+        // Seventh instance of clause 8, and repair (1): a literal that never
+        // appears in the file cannot find itself.
+        String needle = "instanceof matrix.entities." + "SmithCopy copy";
+        long branches = Files.readAllLines(Path.of("probes/SheetDump.java"), StandardCharsets.UTF_8)
+                .stream()
+                .filter(l -> l.contains(needle))
+                .count();
+
+        System.out.println("STOLEN copies=" + copies + " resolved_through_fence=" + resolved
+                + " unanswerable=" + unanswerable);
+        Probes.leave("VERDICT STOLEN_THROUGH_ONE_FENCE branches=" + branches
+                        + " unresolved=" + (copies - resolved - unanswerable),
+                branches == 1 && copies == resolved + unanswerable
+                        ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+    }
+
+    /**
+     * THE FENCE. The one read-through in the tree: a stolen identity resolves
+     * to whatever its victim would have answered, and nothing else looks
+     * inside a {@code SmithCopy} for a sheet.
+     *
+     * <p>Returns null for a victim with no adapter rather than guessing —
+     * see {@link #stolen}'s note on the avatar wing.
+     */
+    private static Sheet throughFence(matrix.entities.SmithCopy copy) {
+        return copy.original instanceof Program program ? program.sheet() : null;
+    }
+
     private static void catalog() throws Exception {
         Path readme = Path.of("probes", "README.md");
         if (!Files.isReadable(readme)) {
