@@ -19,9 +19,27 @@ jobs:
     # WHY: backstop only — the litany finishes in minutes; a hung JVM must not eat the meter.
     # 15 until #1052 put the release gate in the lane. That step runs this lane's own floor a
     # second time, from a clean out/, because a release gate that reused someone else's build
-    # would not be the gate an operator runs — so the litany's work roughly doubles: 76 s for
-    # the steps below and 103 s for `release.sh --check` on the box the patch was written on,
-    # the probe sweep being most of both. This number is still a hang-guard and not the bound.
+    # would not be the gate an operator runs. This number is still a hang-guard and not the
+    # bound.
+    #
+    # MEASURED ON THE RUNNER, 2026-08-16 (#1326), over this lane's own history:
+    #
+    #   gh run list --workflow locks.yml --limit 60 --json conclusion,createdAt,updatedAt \
+    #     -q '[.[] | select(.conclusion=="success")
+    #          | ((.updatedAt|fromdate)-(.createdAt|fromdate))]
+    #         | "runs=\(length) min=\(min) max=\(max) mean=\((add/length)|floor)"'
+    #   runs=54 min=296 max=710 mean=492
+    #
+    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 33 steps. The two
+    # figures this comment used to carry — 76 s and 103 s — were from a laptop and described
+    # a lane with roughly half these steps. A guard argued from a developer's box is a guard
+    # nobody has compared against the thing it guards.
+    #
+    # The lane gained six steps in one day (#1291's standalone build, four tool suites, four
+    # probe rows including a 20,000-tick simulation), each justified alone and none weighed
+    # against the total. That is how a hang-guard becomes a bound: not one expensive step,
+    # but a dozen cheap ones with nobody holding the sum. Re-run the command above when
+    # adding a step whose cost you cannot state.
     timeout-minutes: 25
     steps:
       # WHY: the litany judges the tree as pushed — no caches, no artifacts from elsewhere.
