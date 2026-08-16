@@ -124,6 +124,32 @@ jobs:
       - name: compile probes
         run: javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 
+      # WHY: #1291 — clause 5 of the probe contract says the daemon stands without
+      # `probes/`, and then says the promise is KEPT rather than assumed. The checker
+      # that keeps it has existed since it was written and ran in no lane, so the
+      # clause was kept by whoever remembered to type the command — which is the state
+      # clause 5 exists to end. That is `A_SUITE_NOBODY_RUNS` (#1212) landing in
+      # probes/, where nothing prints that verdict about anything.
+      #
+      # The step is placed AFTER `compile probes` on purpose: the ordinary probe
+      # compile is what would HIDE the defect, because it builds probes against a
+      # populated `out/` and is perfectly happy. This runs in a throwaway
+      # `git archive HEAD` copy with the directory removed, which is the only way to
+      # ask the question — and, because it archives HEAD rather than the working tree,
+      # it also catches a src/ file that exists on a developer's disk and in nobody
+      # else's clone. That is the branch that was falsified before this step landed:
+      # a committed class needing an uncommitted one prints
+      # `src_builds=no VERDICT BENCH_ENTANGLED` and exits nonzero.
+      #
+      # Three seconds measured, against a 300 s lane budget.
+      - name: probes — the daemon stands without this directory (clause 5)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash probes/bench.sh --without-probes | tee "${RUNNER_TEMP:-/tmp}/clause5.log"
+          grep -qE '^BENCH clause5 .* VERDICT BENCH_STANDS_ALONE$' "${RUNNER_TEMP:-/tmp}/clause5.log" \
+            || { echo "FATAL src/ does not build and selftest with probes/ removed — D-009's claim is that the daemon needs javac and nothing else" >&2; exit 1; }
+
       # WHY: lock 6 — probes always exit 0, so the verdict line itself is the contract:
       # exact-line grep (-x), so =0 can never match =01 and a missing line fails the job.
       # This step used to carry five of those rows inline. probes/bench.sh carries the same
