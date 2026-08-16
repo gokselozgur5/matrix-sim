@@ -236,11 +236,39 @@ The probes referee the daemon. `--twice` is what referees the probes: every row
 runs a second time at the same seed and budget, the two outputs are byte-compared,
 and the first line that moved is printed with its number.
 
+```sh
+probes/bench.sh --no-build --twice-changed SheetFence 200
 ```
-STABLE LineLint
+```
+STABLE SheetFence
+STABLE SheetFence
+BENCH determinism probes=62 stable=2 drift=0 exempt=0 unchecked=60 VERDICT INSTRUMENTS_NARROWED
+```
+
+`SheetFence` appears twice because the pass is per INVOCATION and that class
+holds two rows — the fence and `--crossings`. `stable=2` counts invocations,
+not classes, which is the same denominator the sweep itself uses.
+
+The command is quoted beside the output for #1130's reason: a sample nobody
+re-runs is a sample that rots, and this one did. Until #1277 the block above
+read
+
+```
+BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
+```
+
+— four fields against the program's five. `unchecked=` arrived with #970 and
+the document never followed, so the line a reader was shown as *what this looks
+like* was a line no run had produced since. That is worse than a stale count:
+a count is data, and this is GRAMMAR. A reader writing a grep from it gets a
+pattern that matches nothing, and the lane's grep works only because it was
+written from the program instead.
+
+The other two rows, in the shapes the pass prints them:
+
+```
 DRIFT NameCensus line=37 a="NANO 3276938399359740" b="NANO 3276941531734784"
 EXEMPT AllocMeter reason="prints its own instrument noise: steady_max is a cold …"
-BENCH determinism probes=17 stable=15 drift=1 exempt=1 VERDICT INSTRUMENTS_DRIFTED
 ```
 
 The digest leash proves the *world* is deterministic and says nothing about the
