@@ -292,6 +292,7 @@ table() {
   # only counts left in `probes/README.md` with a producer to run; the three
   # that had none were deleted rather than re-derived (#1192).
   judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4' --catalog
+  judge SheetDump    'VERDICT STOLEN_THROUGH_ONE_FENCE branches=1 unresolved=0' --stolen 42 4000
   judge SheetFence   'VERDICT ONE_DOOR_NO_CACHE stored=0 foreign_imports=0 cached=0 door_missing=0 swept_none=0 impure_adapters=0'
   judge SheetFence   'VERDICT CROSSINGS_STABLE checked=4 drifted=0' --crossings
   judge SystemFatigue 'VERDICT FATIGUE_READS_THE_COUNTER boot=6 reboot=7 v99=10 v0=1 derived_intact=true bypass_refused=true'
