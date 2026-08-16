@@ -285,6 +285,15 @@ table() {
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge DocsRoster   'VERDICT EVERY_DOCUMENT_IS_NAMED orphans=0 scanned_none=0'
+  # Three populations exit with codes a script branches on, and until #1219 two
+  # documents each said they agreed. They do not: 2 is NEVER_AROSE here and a
+  # refusal in tools/, 3 is a refusal here and an unreadable answer there. The
+  # split is declared in a marker on the grammar page and this row is what keeps
+  # the declaration true — a new collision that nobody writes down is red, and so
+  # is a declared code that has stopped colliding. `undeclared=` is judged in
+  # both directions for that reason; a one-way check would let the list outlive
+  # the thing it describes, which is the failure #1337 spent a day on.
+  judge ExitGrammar  'VERDICT THE_GRAMMAR_HAS_ONE_HOME doc_drift=0 undeclared=0 checked_none=0'
   # The second row ever to wear `vary`, and it is a decision rather than a
   # formality (#1328). `FIGURE_CENSUS … secs=` is wall-clock, so it moves
   # between two identical runs and clause 4 says a probe that does that fails

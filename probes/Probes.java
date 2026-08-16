@@ -74,9 +74,12 @@ final class Probes {
      * exit is that a sweep tells those two apart by exit code.
      *
      * <p>The codes are the probe grammar and not this enum's invention:
-     * 0 held · 1 broken · 2 the scenario never arose. A refused invocation has
-     * no code of its own here and lands on 1 — see {@code BirthInputs}, which
-     * says so at its call site rather than pretending otherwise.
+     * 0 held · 1 broken · 2 the scenario never arose · 3 the invocation was
+     * refused. This sentence said THREE codes, and that a refusal lands on 1,
+     * until #1219 read it back against the constant two lines below it — the
+     * fourth arrived in #1239 and the paragraph describing the enum did not
+     * move. A javadoc contradicting the field under it is the cheapest kind of
+     * stale prose to write and the most expensive to read.
      */
     enum Outcome {
         /** The contract this probe judges was kept. */
@@ -94,11 +97,21 @@ final class Probes {
          * config will not accept, a roster too wide to print. Nothing about the
          * world was judged, because the probe never got as far as looking.
          *
-         * <p>3 rather than 1 or 2, and the number is not arbitrary.
-         * {@code DreamReader} has spent 3 on {@code EXIT_USAGE} since #1011, so
-         * the two families of program in this tree now agree where they overlap
-         * — a script branching on {@code $?} across `probes/` and `tools/` reads
-         * one meaning per value.
+         * <p>3 rather than 1 or 2, and the number is borrowed:
+         * {@code DreamReader} has spent 3 on {@code EXIT_USAGE} since #1011.
+         *
+         * <p>It was borrowed from the wrong incumbent (#1219). This javadoc
+         * said the two families now agree where they overlap — a script
+         * branching on {@code $?} across `probes/` and `tools/` reads one
+         * meaning per value — and that was false as written. {@code DreamReader}
+         * is one program with a five-code grammar of its own; the shell tools
+         * are eleven, and {@code tools/README.md} makes 2 the refusal for all of
+         * them and 3 <em>the answer could not be read</em>. So 2 is NEVER_AROSE
+         * here and a refusal there, 3 is a refusal here and an unreadable answer
+         * there. The split is DECLARED now, in `probes/README.md`'s
+         * grammar-boundary marker, and {@code ExitGrammar} fails the sweep if a
+         * code the two families spend differently is missing from it — or if one
+         * on the list has stopped being split.
          *
          * <p>It was 2 in nine probes, which is the word for NEVER_AROSE: a
          * refused invocation reported as a world with no births (#1239). And it
