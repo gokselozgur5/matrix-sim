@@ -70,6 +70,26 @@ shift 3
 [[ -n "$TITLE" ]] || { echo "FATAL title required" >&2; exit 2; }
 [[ -f "$BODY" ]] || { echo "FATAL body file not found: $BODY" >&2; exit 2; }
 
+# THE FLAGS ARE READ BEFORE THE NETWORK, and CI is why (#1309). The suite's
+# `unknown-flag` case passed locally and printed `want=2 got=4` on the runner:
+# the flag loop sat below two `gh issue view` calls, so a typo'd flag went to
+# GitHub first and left with whatever `gh` exits under `set -e`. Locally that
+# path had a token and an open #1246 to read; the runner had neither.
+#
+# The repair is the right order regardless of the suite. Nothing about
+# `--nonsense` needs an API to decide, and a tool that asks the network before
+# reading its own argument list spends a round trip to refuse.
+LABELS=()
+MILESTONE=""
+HAS_MILESTONE=0
+while (($#)); do
+  case "$1" in
+    --label) LABELS+=(--label "$2"); shift 2 ;;
+    --milestone) MILESTONE="$2"; HAS_MILESTONE=1; shift 2 ;;
+    *) echo "FATAL unknown flag: $1" >&2; exit 2 ;;
+  esac
+done
+
 # The parent must exist and be open — a tree does not grow from a closed branch.
 STATE="$(gh issue view "$PARENT" --repo "$REPO" --json state --jq .state)"
 [[ "$STATE" == "OPEN" ]] || { echo "FATAL parent #$PARENT is $STATE" >&2; exit 2; }
@@ -78,15 +98,12 @@ STATE="$(gh issue view "$PARENT" --repo "$REPO" --json state --jq .state)"
 # floats out of its phase is a child nobody schedules.
 INHERIT="$(gh issue view "$PARENT" --repo "$REPO" --json milestone --jq '.milestone.title // ""')"
 ARGS=(--repo "$REPO" --title "$TITLE" --body-file "$BODY")
-HAS_MILESTONE=0
-while (($#)); do
-  case "$1" in
-    --label) ARGS+=(--label "$2"); shift 2 ;;
-    --milestone) ARGS+=(--milestone "$2"); HAS_MILESTONE=1; shift 2 ;;
-    *) echo "FATAL unknown flag: $1" >&2; exit 2 ;;
-  esac
-done
-if (( ! HAS_MILESTONE )) && [[ -n "$INHERIT" ]]; then
+if ((${#LABELS[@]})); then
+  ARGS+=("${LABELS[@]}")
+fi
+if (( HAS_MILESTONE )); then
+  ARGS+=(--milestone "$MILESTONE")
+elif [[ -n "$INHERIT" ]]; then
   ARGS+=(--milestone "$INHERIT")
 fi
 
