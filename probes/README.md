@@ -50,6 +50,22 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    removes `probes/` from **that** copy, builds `src/` and selftests there, and prints
    `VERDICT BENCH_STANDS_ALONE` or `VERDICT BENCH_ENTANGLED`. It never deletes anything
    in the tree you are standing in — clause 1 binds the check as hard as it binds a probe.
+   The lane has run it since #1291; before that the clause was kept by whoever
+   remembered to type the command.
+
+   **What it guards is not what this clause used to advertise (#1293).** The coupling
+   named above — a `src/` class depending on something in `probes/` — has no syntax:
+   probes are in the DEFAULT package, every file in `src/` is in `matrix.*`, and Java
+   provides no import for that direction. Nobody needs to spend a unit re-guarding it.
+
+   The failure the checker really catches is the archive/working-tree gap. `git archive
+   HEAD` cannot see a `src/` file that exists on one developer's disk and in nobody
+   else's clone, so a committed class needing an uncommitted one prints `src_builds=no
+   VERDICT BENCH_ENTANGLED`. That is a real defect class, this repository would meet it
+   on an ordinary bad day, and nothing else in the lane looks for it — `compile src`
+   builds the working tree, which is the copy that has the file. `BENCH_ENTANGLED`
+   therefore reads as *the archived tree does not stand*, which is broader and truer
+   than the coupling it was named for.
 6. **Pinned to a SHA.** A probe run that is *evidence* — anything quoted in a PR,
    a verdict, an ADR errata or a skeptic round — is taken from a `git archive <sha>`
    copy, never from a shared working tree that may move under it. This is Ag9's
