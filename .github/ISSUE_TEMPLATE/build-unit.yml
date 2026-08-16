@@ -27,6 +27,13 @@ body:
         Saying so is the point: an absence is invisible, a declaration is not. #1215 claimed a
         drift that DocLint had been checking all along, and #1212's central measurement was
         wrong because it grepped a source for a flag instead of running it.
+
+        PAGE YOUR MEASUREMENT. `gh issue list` and `gh run list` return 30 rows by default and
+        say nothing about it. #1246 opened with "thirty open build-units, twenty unmeasured"
+        and the true figures were 508 and 425 — an issue about unmeasured claims whose own
+        headline was off by seventeen times, because a paging default went unnamed. Pass
+        `--limit` and quote it. `tools/backlog.sh` sorts the backlog by this field and pages
+        explicitly for the same reason.
       placeholder: |
         gh run list --workflow litany.yml --limit 6
         main  push  failure     ← eleven runs, all zero seconds
