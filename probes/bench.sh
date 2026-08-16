@@ -250,6 +250,7 @@ table() {
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge DocsRoster   'VERDICT EVERY_DOCUMENT_IS_NAMED orphans=0 scanned_none=0'
+  judge DocFigures   'VERDICT FIGURES_AGREE stale=0 refused=0 checked_none=0'
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
