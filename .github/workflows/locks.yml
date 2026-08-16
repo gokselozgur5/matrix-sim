@@ -523,6 +523,25 @@ jobs:
       # edit to an extraction pattern had nothing to run. `A_SUITE_NOBODY_RUNS` is a verdict
       # this same tool prints about other people's scripts, so the suite lands in a lane in
       # the pull request that adds it, with a floor, per this file's own rule.
+      # WHY: #1246 — the backlog classifier decides which open issues carry evidence, and a
+      # classifier nobody can watch fail is the thing this shop keeps finding in other people's
+      # scripts. The suite takes no token and no network: it feeds bodies to the predicate
+      # directly, so the lane exercises the classification and never the API.
+      - name: tools — the backlog classifier's own suite (#1246)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/backlog.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/backlog-selftest.log"
+          verdict="$(grep -E '^BACKLOG SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/backlog-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the backlog classifier's suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=6    # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "BACKLOG SUITE FLOOR OK cases=$ran floor=$floor"
+
       - name: tools — the flag audit's own suite (#1265)
         shell: bash
         run: |
