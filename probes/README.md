@@ -250,6 +250,28 @@ chasing a phantom that lives in the coroner, not the corpse. The sweep prints tw
 verdicts because they are two facts: `BENCH_GREEN` can sit directly above
 `INSTRUMENTS_DRIFTED`, and the run still exits nonzero.
 
+**Four words, because a narrowed pass is not an incomplete one (#1247).**
+
+| verdict | what happened |
+|---|---|
+| `INSTRUMENTS_STABLE` | every instrument was compared, none moved |
+| `INSTRUMENTS_DRIFTED` | something moved — outranks everything below it |
+| `INSTRUMENTS_NARROWED` | `--twice-changed` selected a subset, on purpose, and here is what it covered |
+| `INSTRUMENTS_UNPROVEN` | the pass was supposed to reach every instrument and did not |
+
+`--twice-changed` exists to narrow the pass to what a pull request touched
+(#1185), so a large `unchecked` is what a CORRECT narrowed run looks like — and
+every correct narrowed run used to print `INSTRUMENTS_UNPROVEN`. That word is
+#970's, coined for *a green report about work that did not occur*; spending it
+on the ordinary case wears it out, which is #884's mechanism (a lane number
+people learn to edit) applied to a verdict people learn to ignore. The
+per-PR lane read `drift=0` instead of the verdict for exactly that reason —
+a lane cannot demand a word that fires on success — and it reads the verdict
+now that there is one it can ask for.
+
+The denominator stays on all four, as #970 insisted: `stable + drift + exempt
++ unchecked = probes`, whichever word is printed.
+
 A row that legitimately moves declares itself with `vary` and states why, rather
 than being skipped in silence. Exactly one does today: `AllocMeter` reads the JDK's
 thread-allocation counter, which counts the JIT compiling as well as the daemon
