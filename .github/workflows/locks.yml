@@ -192,8 +192,11 @@ jobs:
       # took the wrong side — still prints a green summary at its new size, and nothing
       # else in the lane compares that size to yesterday's: #1040's argument for the
       # baseline suite, one gate over in the file that made it. The bench went from
-      # fifteen judged rows to twenty-nine this season, so the number is live and moves
-      # with real work. A number rather than a roster of class names, for the reason this
+      # fifteen judged rows to fifty-five, so the number is live and moves with real
+      # work — and this sentence said twenty-nine until #1342 read it back against
+      # `grep -c '^  judge ' probes/bench.sh`. The floor below is the producer for that
+      # count; a second copy of it in prose has no reader, which is #1130's shape, so
+      # trust the argument here and the digit below it. A number rather than a roster of class names, for the reason this
       # step exists at all (#789): a roster here is a second copy of a list that lives in
       # probes/bench.sh, and the two copies drifting apart is the defect this step was
       # built to end. What a floor cannot do is name the row that went missing or refuse a
@@ -556,8 +559,12 @@ jobs:
       # executing it revealed, and advice is the most expensive prose in a tool to be wrong
       # in: it is read once somebody has already decided to act. This audits the half that
       # is decidable without running anything — a printed flag exists in the tool it names —
-      # and reports the half that is not: four tools have no --selftest for their advice to
-      # be executed in. Needs no token and no network; it reads tools/.
+      # and JUDGES the half that is not: a tool with no --selftest has nowhere for its
+      # advice to be executed, and since #1311 that is a red build and not a report. This
+      # sentence said *four tools have no --selftest* until #1342 — true when written,
+      # false from the moment #1307 and #1309 gave the last two their suites, and
+      # load-bearing in between, since it was the stated reason the check was only a
+      # report. Needs no token and no network; it reads tools/.
       # Streamed through tee under this file's own capture rule: the script prints one row
       # per unimplemented flag and then exits nonzero, so a capture would die on the
       # assignment and take the rows with it.
@@ -569,7 +576,7 @@ jobs:
           grep -q '^ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS$' "${RUNNER_TEMP:-/tmp}/advice.log" \
             || { echo "FATAL a tool advises a flag nobody implements" >&2; exit 1; }
 
-      # WHY: #1265 — the step above judges eleven programs on whether their advice can be
+      # WHY: #1265 — the step above judges every program in tools/ on whether their advice can be
       # executed, and the program giving the judgement had no suite of its own. Its checks
       # were falsified by transcripts in pull requests, which is evidence that ages: the next
       # edit to an extraction pattern had nothing to run. `A_SUITE_NOBODY_RUNS` is a verdict
