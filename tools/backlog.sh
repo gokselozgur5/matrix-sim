@@ -94,13 +94,41 @@ truncated() {                     # truncated <open> <limit>
 # prose in a field, and a lint demanding it is how a required field becomes
 # `n/a`. A TEMPLATE is an artefact: it is a file in this tree, a fourth one is
 # added by a pull request, and the cost of the rule is one word in a label.
-unmarked_templates() {            # unmarked_templates <dir> -> names, one per line
+# ONE ENUMERATION, READ TWICE (#1351). This walked `*.yml` and `*.yaml` while
+# the census beside it counted `*.yml` with `ls`. Today all three templates are
+# `.yml`, so the two agreed by accident; the day somebody writes `feature.yaml`
+# the check judges four and the census says three, and a reader comparing them
+# concludes the fourth was skipped — the opposite of what happened.
+#
+# The census rule (#1221) says what may not ride a verdict. It says nothing
+# about whether a census and its verdict describe the SAME POPULATION, and this
+# tree found three pairs in one day that were computed independently and
+# happened to agree: `CODES_CENSUS with_returns=` beside `tools=`,
+# `classes_timed=` beside `probes_on_disk=`, and this one — two globs in
+# adjacent lines of one function.
+#
+# The repair generalises even where the fix does not: derive the census from the
+# list the check walks, never from a second command.
+#
+# It sets two GLOBALS rather than printing, and that is forced rather than
+# chosen: `x="$(f)"` runs `f` in a subshell, so a count assigned inside it dies
+# with the subshell and the caller reads the initial 0. A function that must
+# return two answers in bash either writes globals or writes a file, and the
+# whole point here is that the two answers come from one walk.
+templates_seen=0
+templates_unmarked=''
+read_templates() {                # read_templates <dir> — sets $templates_seen and $templates_unmarked
   local dir="${1:-.github/ISSUE_TEMPLATE}" f
+  templates_seen=0
+  templates_unmarked=''
   [ -d "$dir" ] || return 0
   for f in "$dir"/*.yml "$dir"/*.yaml; do
     [ -f "$f" ] || continue
-    grep -qE '^ *label: *Measured( |$)' "$f" || basename "$f"
+    templates_seen=$((templates_seen + 1))
+    grep -qE '^ *label: *Measured( |$)' "$f" \
+      || templates_unmarked="$templates_unmarked $(basename "$f")"
   done
+  templates_unmarked="${templates_unmarked# }"
 }
 
 selftest() {
@@ -178,7 +206,27 @@ BENCH judged=52
       printf 'name: fixture %s\nbody:\n  - type: textarea\n    attributes:\n%s\n' "$i" "$line" \
         > "$dir/t$i.yml"
     done
-    got="$(unmarked_templates "$dir" | grep -c . || true)"
+    read_templates "$dir"
+    got="$(printf '%s' "$templates_unmarked" | wc -w | tr -d ' ')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKLOG case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  # The census and the check read the same walk (#1351). A case per direction:
+  # the count must move with the number of FILES, not with the number that
+  # happen to be marked, and it must not move with the extension.
+  seen_() {                       # seen_ <name> <want-seen> <file-spec…>
+    local name="$1" want="$2" got; shift 2
+    local dir="$tmp/seen"; rm -rf "$dir"; mkdir -p "$dir"
+    local spec
+    for spec in "$@"; do
+      printf 'name: fixture\nbody:\n  - type: textarea\n    attributes:\n      label: Measured\n' \
+        > "$dir/$spec"
+    done
+    read_templates "$dir"
+    got="$templates_seen"
     if [ "$want" = "$got" ]; then
       pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
     else
@@ -197,6 +245,14 @@ BENCH judged=52
   # has nothing to be wrong about, and reporting one would be a checker
   # inventing a defect out of an absence (#1235's shape).
   tpl_ tpl-no-templates      0
+  # The defect this unit is about: the census counted `*.yml` with a second
+  # command while the check walked `*.yml` AND `*.yaml`. Today all three
+  # templates are `.yml`, so the two agreed by accident and nothing would have
+  # said otherwise until somebody wrote the other extension.
+  seen_ seen-counts-yml      2 a.yml b.yml
+  seen_ seen-counts-yaml     2 a.yaml b.yaml
+  seen_ seen-counts-both     3 a.yml b.yaml c.yml
+  seen_ seen-empty-dir       0
 
   echo "BACKLOG SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
@@ -241,13 +297,14 @@ fi
 # --limit 1000 rather than the default 30, and the number is the whole point of
 # this tool's existence. A count taken at the default is a count of the first
 # page, and nothing in the output says so.
-unmarked="$(unmarked_templates)"
-if [ -n "$unmarked" ]; then
-  printf 'TEMPLATE_UNMARKED %s has no evidence field labelled `Measured …`\n' $unmarked
+read_templates
+if [ -n "$templates_unmarked" ]; then
+  # shellcheck disable=SC2086
+  printf 'TEMPLATE_UNMARKED %s has no evidence field labelled `Measured …`\n' $templates_unmarked
   echo "FATAL a template's evidence field is unreachable by the query below — one word in the label is the whole fix (#1251)" >&2
   exit 1
 fi
-echo "TEMPLATES_MARKED count=$(ls .github/ISSUE_TEMPLATE/*.yml 2>/dev/null | wc -l | tr -d ' ')"
+echo "TEMPLATES_MARKED count=$templates_seen  (the same walk the check used, not a second command — #1351)"
 
 LIMIT=1000
 # EVERY KIND THAT HAS AN EVIDENCE FIELD, not just build units (#1251). Three
