@@ -95,16 +95,26 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
 
    Every one was caught on the check's first run, which is why the shape kept getting
    fixed locally and never written down: it announces itself loudly, and the next
-   author meets it fresh. The five repairs, so the seventh checker's author can choose
-   deliberately rather than discover:
+   author meets it fresh. The five repairs, **in the order to reach for them** — they
+   are not equivalent, and the list used to imply they were (#1296):
 
-   - **strip comments before counting** — a tool discussing `--foo` is not parsing it;
-   - **assemble the fixture at runtime** so the literal never appears in the file;
-   - **anchor the search** so a neighbour cannot answer for you (`^| \`name\``);
-   - **escape the syntax in prose** when the document is the population;
-   - **exclude yourself explicitly** — and narrow that skip to the checks that read
-     prose. The whole-loop version exempted `advice.sh` from the census it publishes
-     for months (#1265).
+   1. **assemble the fixture at runtime** so the literal never appears in the file.
+      Cannot fail quietly: the string is absent or the fixture does not exist.
+   2. **anchor the search** so a neighbour cannot answer for you (`^| \`name\``).
+      Cannot fail quietly either: the anchor matches or it does not.
+   3. **strip comments before counting** — a tool discussing `--foo` is not parsing it.
+      Narrow failure: a string literal containing `//`.
+   4. **escape the syntax in prose** when the document is the population. Holds until
+      somebody writes the marker a second way.
+   5. **exclude yourself explicitly** — LAST RESORT, and narrowed to the check that
+      needs it rather than the loop. This is the only repair whose failure is silent
+      and unbounded: `advice.sh`'s whole-loop `continue` exempted it from the census it
+      publishes, nothing went red, and the tool reported *two tools cannot execute
+      their own advice* while being an uncounted third (#1265).
+
+   The ordering matters because (5) fits every shape. A reader choosing quickly reaches
+   for the bullet that always applies, which is precisely the one that fails without
+   saying so.
 
    Nothing enforces this clause and nothing can: a check that detected self-matching
    would have to know which file it is, which is the same problem one level up.
