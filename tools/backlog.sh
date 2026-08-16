@@ -64,6 +64,14 @@ measured_body() {                 # measured_body <body>
   esac
 }
 
+# Did the answer fill the page? Split out so the suite can drive it over a
+# synthetic count instead of over the API (#1273) — faking `gh` would be a
+# bigger apparatus than the branch is worth, and a fixture that fakes the
+# transport tests the fake.
+truncated() {                     # truncated <open> <limit>
+  [ "$1" -ge "$2" ]
+}
+
 selftest() {
   pass=0
   fail=0
@@ -88,6 +96,25 @@ BENCH judged=52
   case_ empty-body           1 ''
   case_ near-miss-word       1 'the measure of a lock is whether it can fail'
 
+  # The paging half (#1273). The defect #1246 was filed about lives in the
+  # request, and the six cases above are all on the classifier — so a limit
+  # edited from 1000 to 100 left every one of them green while the tool began
+  # reporting a page as a backlog. These drive the predicate the request uses.
+  page_() {                       # page_ <name> <open> <limit> <want 0=truncated 1=not>
+    local name="$1" open="$2" limit="$3" want="$4" got
+    if truncated "$open" "$limit"; then got=0; else got=1; fi
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKLOG case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  page_ under-the-page     508 1000 1
+  page_ exactly-the-page  1000 1000 0
+  page_ over-the-page     1001 1000 0
+  page_ the-old-default     30   30 0   # #1246's own measurement, as it was taken
+
   echo "BACKLOG SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
@@ -100,8 +127,9 @@ fi
 # --limit 1000 rather than the default 30, and the number is the whole point of
 # this tool's existence. A count taken at the default is a count of the first
 # page, and nothing in the output says so.
+LIMIT=1000
 if ! rows="$(gh issue list --repo "$REPO" --label build-unit --state open \
-             --limit 1000 --json number,title,body 2>&1)"; then
+             --limit "$LIMIT" --json number,title,body 2>&1)"; then
   echo "FATAL could not read the backlog: $rows" >&2
   exit 3
 fi
@@ -122,7 +150,7 @@ while IFS= read -r line; do
 done <<< "$(printf '%s' "$rows" | jq -r '.[] | [.number, .title, (.body // "" | gsub("[\n\t]"; " "))] | @tsv')"
 
 measured=$((open - unmeasured))
-echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured limit=1000"
+echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured limit=$LIMIT"
 
 # Reported, never judged. #1246 argues the lane version should not be built —
 # an issue is not an artefact CI can judge — and a tool that exits nonzero on a
@@ -131,5 +159,25 @@ echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured li
 if [ "$open" -eq 0 ]; then
   echo "BACKLOG VERDICT NOTHING_READ — an empty answer is not an empty backlog" >&2
   exit 4
+fi
+
+# The other end of the same axis (#1273). NOTHING_READ catches an empty page;
+# this catches a FULL one.
+#
+# #1246's whole finding was a count taken at an undeclared paging default, and
+# the tool written to not repeat that had the same defect one layer down: the
+# limit is a literal in a request the suite never makes, so editing it to 100
+# leaves every case green while the tool starts reporting a page as a backlog.
+# Printing `limit=` was the mitigation, and it only works on a reader who is
+# reading.
+#
+# A count that exactly equals the limit is almost certainly truncated, and the
+# tool CANNOT TELL a full page from a complete answer — which is the honest
+# statement and the reason this is a refusal rather than a footnote. A backlog
+# of exactly $LIMIT is possible; raising the limit is how you find out, and a
+# tool that guessed would be doing the thing this whole unit is about.
+if truncated "$open" "$LIMIT"; then
+  echo "BACKLOG VERDICT TRUNCATED open=$open limit=$LIMIT — the answer filled the page, so it is a page and not a backlog" >&2
+  exit 5
 fi
 echo "BACKLOG VERDICT COUNTED"
