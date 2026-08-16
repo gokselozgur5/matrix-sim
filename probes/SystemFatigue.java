@@ -2,6 +2,7 @@ import matrix.Simulation;
 import matrix.character.Family;
 import matrix.character.Sheet;
 import matrix.character.SheetDoor;
+import matrix.character.Sheets;
 import matrix.core.World;
 
 /**
@@ -77,26 +78,48 @@ public final class SystemFatigue {
         // The other three axes must NOT have moved: this unit reads one axis
         // and derives the rest, and a reboot that shifted `authority` would
         // mean the override had reached past its own index.
+        //
+        // The control is a SECOND CROSSING OF THE SAME DOOR at a different
+        // version, not a raw derivation. It was `SheetDoor.at(THE_MATRIX,
+        // SYSTEM)` until #1260 closed that route — and comparing two doors is
+        // the better test anyway: the old form compared the door against the
+        // bypass it was meant to replace, so it would have gone green on the
+        // day somebody made the bypass authoritative.
         Sheet before = SheetDoor.system(THE_MATRIX, counter);
-        Sheet plain = SheetDoor.at(THE_MATRIX, Family.SYSTEM);
-        boolean derivedIntact = before.stat("stability") == plain.stat("stability")
-                && before.stat("tolerance") == plain.stat("tolerance")
-                && before.stat("authority") == plain.stat("authority");
+        Sheet control = SheetDoor.system(THE_MATRIX, 1);
+        boolean derivedIntact = before.stat("stability") == control.stat("stability")
+                && before.stat("tolerance") == control.stat("tolerance")
+                && before.stat("authority") == control.stat("authority");
         System.out.println("FATIGUE derived_axes intact=" + derivedIntact
-                + " (stability=" + plain.stat("stability")
-                + " tolerance=" + plain.stat("tolerance")
-                + " authority=" + plain.stat("authority") + ")");
+                + " (stability=" + control.stat("stability")
+                + " tolerance=" + control.stat("tolerance")
+                + " authority=" + control.stat("authority") + ")");
+
+        // The bypass is gone, and its absence is judged rather than assumed
+        // (#1260). Two public ways to ask for the SYSTEM sheet, one of them
+        // returning a number about a world it never looked at, is the defect
+        // #661 fixed without removing.
+        boolean bypassRefused = false;
+        try {
+            Sheets.derive(THE_MATRIX, Family.SYSTEM);
+        } catch (IllegalArgumentException expected) {
+            bypassRefused = expected.getMessage().contains("SheetDoor.system");
+        }
+        System.out.println("FATIGUE bypass refused=" + bypassRefused
+                + " (Sheets.derive names the door for SYSTEM)");
 
         boolean held = boot == counter
                 && after == rebooted
                 && after == boot + 1
                 && saturated == 10
                 && floor == 1
-                && derivedIntact;
+                && derivedIntact
+                && bypassRefused;
 
         Probes.leave(String.format(
-                "VERDICT FATIGUE_READS_THE_COUNTER boot=%d reboot=%d v99=%d v0=%d derived_intact=%s",
-                boot, after, saturated, floor, derivedIntact),
+                "VERDICT FATIGUE_READS_THE_COUNTER boot=%d reboot=%d v99=%d v0=%d "
+                        + "derived_intact=%s bypass_refused=%s",
+                boot, after, saturated, floor, derivedIntact, bypassRefused),
                 held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 

@@ -88,6 +88,31 @@ public final class Sheets {
      * thousand boxes and diff nothing.
      */
     public static Sheet derive(String nameAtBirth, Family family) {
+        if (family == Family.SYSTEM) {
+            throw new IllegalArgumentException(
+                    "SYSTEM sheets are not purely derived: versionFatigue is READ from the "
+                            + "world's version counter, never folded out of a name (#661). "
+                            + "Ask SheetDoor.system(name, livedVersions).");
+        }
+        return fold(nameAtBirth, family);
+    }
+
+    /**
+     * The derivation itself, with no question asked about the family.
+     *
+     * <p>Package-private, and the only caller outside this class is
+     * {@link SheetDoor#system}, which needs the three name-derived axes
+     * before it replaces the fourth. {@link #derive} is the public door and
+     * refuses SYSTEM (#1260); this is the machinery underneath it, reachable
+     * only from inside the layer that knows why the exception exists.
+     *
+     * <p>Splitting them is what keeps the refusal from being a lie. A public
+     * method that throws for SYSTEM while the layer quietly derives SYSTEM
+     * sheets through some other spelling would be a rule with an exception
+     * nobody can see; this way the exception has a name, a package boundary,
+     * and exactly one call site.
+     */
+    static Sheet fold(String nameAtBirth, Family family) {
         List<Integer> values = new ArrayList<>(family.axisCount());
         for (int axis = 0; axis < family.axisCount(); axis++) {
             values.add(1 + Math.floorMod(mix(nameAtBirth, family, axis), 10));

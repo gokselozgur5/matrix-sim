@@ -88,7 +88,11 @@ public final class SheetDoor {
      * @param livedVersions the world's version counter, as it stands right now
      */
     public static Sheet system(String nameAtBirth, int livedVersions) {
-        Sheet derived = at(nameAtBirth, Family.SYSTEM);
+        // Sheets.fold, not Sheets.derive: the public derivation refuses SYSTEM
+        // outright since #1260, and this is the one place in the tree allowed
+        // to reach past that refusal — because it is the place that then
+        // supplies the axis the refusal exists to protect.
+        Sheet derived = Sheets.fold(nameAtBirth, Family.SYSTEM);
         List<Integer> values = new ArrayList<>(derived.values());
         values.set(Family.SYSTEM.axisIndex(Family.FATIGUE_AXIS), band(livedVersions));
         return new Sheet(Family.SYSTEM, nameAtBirth, values);

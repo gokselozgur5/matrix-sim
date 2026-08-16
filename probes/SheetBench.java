@@ -1,6 +1,7 @@
 import matrix.character.Contest;
 import matrix.character.Family;
 import matrix.character.Sheet;
+import matrix.character.SheetDoor;
 import matrix.character.Sheets;
 import matrix.core.NamePool;
 
@@ -52,6 +53,19 @@ public final class SheetBench {
      */
     private static final int STAT_VALUES = 10;
 
+    /**
+     * The world's version at boot, for the modes that derive the cast without
+     * building a universe.
+     *
+     * <p>This bench takes no {@code Simulation} on purpose — identity in, fate
+     * out, no seed and no draw — and one member of the cast now needs a number
+     * only a world can supply. Six is what {@code World} initializes to, so
+     * this bench's rows equal the census's at boot, and {@code SheetDump}
+     * passes {@code world.version()} rather than this constant because it HAS
+     * a world to ask. If the two ever disagree, the census is right.
+     */
+    private static final int BOOT_VERSION = 6;
+
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
         String mode = args.length > 0 ? args[0] : "";
@@ -79,14 +93,21 @@ public final class SheetBench {
      * #479 moves this table out of source entirely; until it lands, the
      * cast lives in exactly one place and this is the place.
      */
-    static List<Sheet> namedCast() {
+    static List<Sheet> namedCast(int livedVersions) {
         return List.of(
                 Sheets.derive("Trinity", Family.HUMAN),
                 Sheets.derive("Morpheus", Family.HUMAN),
                 Sheets.derive("Niobe", Family.HUMAN),
                 Sheets.derive("Cypher", Family.HUMAN),
                 Sheets.derive("Thomas A. Anderson", Family.HUMAN),
-                Sheets.derive("the Architect", Family.SYSTEM),
+                // The Architect is a SYSTEM resident too, and #1260's refusal
+                // is what made that visible: his versionFatigue was being
+                // folded out of the string "the Architect", exactly the defect
+                // #661 fixed for the Matrix and left standing here. He has
+                // lived through the same reloads — the vocabulary is "running
+                // platforms", and there is one platform — so he reads the same
+                // counter through the same door.
+                SheetDoor.system("the Architect", livedVersions),
                 Sheets.derive("the Oracle", Family.PROGRAM),
                 Sheets.derive("Otto Aydin", Family.MACHINE),
                 Sheets.derive("Agent Smith", Family.PROGRAM),
@@ -110,7 +131,7 @@ public final class SheetBench {
 
     /** The exhibit the gate argued over: ten sheets, five scenes, one count line. */
     private static void cast() {
-        List<Sheet> cast = namedCast();
+        List<Sheet> cast = namedCast(BOOT_VERSION);
         Sheet trinity = member(cast, "Trinity");
         Sheet morpheus = member(cast, "Morpheus");
         Sheet niobe = member(cast, "Niobe");
