@@ -51,6 +51,13 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    population that does have the defect is this one, and it has been compared under a
    hostile locale since #836, weekly in `determinism.yml`. Two halves of one question,
    in two directories, neither written where the other could be found (#1207).
+
+   **A pair, not a duplicate** (#1299). This half compares one probe's whole output
+   between two PROCESSES, the second hostile — strictly stronger on the locale axis,
+   and it catches heap addresses, unordered iteration and wall-clock with it. The other
+   half compares one tool's `--selftest` stdout between two LOCALES, one process each,
+   and it is the only thing in this tree that runs a TOOL twice and compares. Folding
+   them together would lose that: no other check gives a tool a second run at all.
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
    `src/` must build and `--selftest` must pass with this directory deleted. "With this
    directory deleted" is a promise the bench keeps rather than assumes:
