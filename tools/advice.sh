@@ -627,6 +627,18 @@ for tool in tools/*.sh; do
   # are covered next door, and neither fact was written where the other could
   # be found. Deleting this half would leave the day a tool DOES print a dash
   # unguarded, which is why #1207 argued against deletion.
+  #
+  # AND THEY ARE NOT THE SAME CHECK, which is the part a tidy-up would get
+  # wrong (#1299). This one compares one tool's --selftest stdout between two
+  # LOCALES, one process each. `bench.sh --twice` compares one probe's whole
+  # output between two PROCESSES, the second hostile — strictly stronger on
+  # the locale axis, and it catches heap addresses, unordered iteration and
+  # wall-clock with it.
+  #
+  # What only THIS half can catch: a tool whose output moves between two runs
+  # for a reason that has nothing to do with charset. It captures both runs and
+  # compares them, and no other check in this tree runs a tool twice at all —
+  # so folding the two together would lose the only double-run any tool gets.
   if ! printf '%s' "$utf8" | LC_ALL=C grep -q '[^ -~]'; then
     charset_nothing=$((charset_nothing + 1))
     echo "CHARSET $tool nothing-to-prove: its selftest prints no byte above 0x7f"
