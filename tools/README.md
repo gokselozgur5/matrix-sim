@@ -100,6 +100,13 @@ clause, for the same reason that one does: it is followable, it is cheap, and th
 check that would enforce it costs more in false accusations than the defect costs in
 occurrences.
 
+One of three rules in this repository that state their own unenforceability, and they
+read as one convention rather than three (#1322): this one, `probes/README.md`'s
+clause 8 (a checker is inside the population it checks), and its census rule (a number
+in a judged verdict must be a finding). Each says what the rule is, that nothing
+enforces it, and **why a check would be wrong rather than merely absent** — the third
+clause being the one that stops the next author building it anyway.
+
 ## Writing a checker here
 
 Read clause 8 of `probes/README.md`'s contract first. Every tool in this directory

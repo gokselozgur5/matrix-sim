@@ -124,7 +124,9 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    saying so.
 
    Nothing enforces this clause and nothing can: a check that detected self-matching
-   would have to know which file it is, which is the same problem one level up.
+   would have to know which file it is, which is the same problem one level up. One of
+   three rules here that say so — see the census rule below and `tools/README.md`'s
+   ordering rule, which state it in the same form for the same reason (#1322).
 
 ## Building and running
 
@@ -248,6 +250,21 @@ verdict — `checked_none=`, `scanned_none=`, `swept_none=` — because a run th
 looked at nothing must not be able to report that nothing moved. The count
 goes beside it: `SEAL_CENSUS`, `FENCE_CENSUS`, `ROSTER_DOCS`, `FIGURE_CENSUS`,
 `LEAVE_CENSUS`.
+
+**Nothing enforces this rule and nothing can** (#1322). A check would have to
+know which numbers are findings — which is the judgement the rule exists to
+convey, so a checker able to make it would not need the rule. What a lane
+*can* see is the symptom, one incident late: a verdict row edited in a PR that
+changed nothing about what the verdict claims. That is a code review, and this
+paragraph is what a reviewer reads before writing the comment.
+
+Third rule in this repository to state its own unenforceability, and they now
+read as one convention: clause 8 above (a checker inside its own population),
+`tools/README.md`'s ordering rule (arguments before the network, with the
+three false positives its failed lint produced), and this one. The form is
+what the rule is, that nothing enforces it, and **why a check would be wrong
+rather than merely absent** — the third clause being the one that stops the
+next author building it anyway.
 
 **A judged probe also owes an honest exit code, and until #1093 only the grep
 was ever enforced.** The bench reads the verdict line, so nineteen probes could
