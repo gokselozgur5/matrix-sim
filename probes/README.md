@@ -43,6 +43,14 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    address or an unordered iteration fails the sweep on the line that moved. The
    second run is taken under `LC_ALL=C`, because the locale clause was the one this
    pass could not see while both runs stood in the same shell (#836).
+
+   That hostile second run **is** the charset comparison for this directory, and it is
+   worth saying because a sibling check was thought to be missing it. `advice.sh`
+   reports `charset_checked=0` and #1207 read that as a guard covering nothing —
+   correctly, for TOOLS, which print instrument lines in ASCII by convention. The
+   population that does have the defect is this one, and it has been compared under a
+   hostile locale since #836, weekly in `determinism.yml`. Two halves of one question,
+   in two directories, neither written where the other could be found (#1207).
 5. **Outside the build.** Nothing under `probes/` is compiled into the daemon.
    `src/` must build and `--selftest` must pass with this directory deleted. "With this
    directory deleted" is a promise the bench keeps rather than assumes:

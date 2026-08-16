@@ -611,6 +611,22 @@ for tool in tools/*.sh; do
     BREAKS=$((BREAKS + 1))
     echo "SUITE_UNRUN $tool has a suite no workflow executes"
   fi
+  # THIS HALF COVERS TOOLS ONLY, AND THE OTHER HALF ALREADY EXISTS (#1207).
+  #
+  # `charset_checked=0` has been the reading since this landed, and #1207 named
+  # it correctly — the check is pointed at the population least likely to have
+  # the defect, because tools print instrument lines in ASCII by convention
+  # while probes print em dashes and box characters. What that issue proposed
+  # next, "point the comparison at the probes", is a check the tree already
+  # had and nobody had connected to it: `probes/bench.sh --twice` takes its
+  # SECOND run under `LC_ALL=C` and byte-compares (#836), which is exactly the
+  # move, over exactly that population, and it runs weekly in determinism.yml.
+  #
+  # So this counter is a genuine zero over a genuine population rather than a
+  # gap: the tools have nothing above 0x7f to prove anything about, the probes
+  # are covered next door, and neither fact was written where the other could
+  # be found. Deleting this half would leave the day a tool DOES print a dash
+  # unguarded, which is why #1207 argued against deletion.
   if ! printf '%s' "$utf8" | LC_ALL=C grep -q '[^ -~]'; then
     charset_nothing=$((charset_nothing + 1))
     echo "CHARSET $tool nothing-to-prove: its selftest prints no byte above 0x7f"
