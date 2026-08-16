@@ -138,6 +138,7 @@ table() {
   judge ArcBeats     'VERDICT BEATS_IN_ORDER'  "$TICKS"
   judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
   judge PirateSever  'VERDICT CONTRACT_HELD'
+  judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD' "$TICKS"
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS"
 
