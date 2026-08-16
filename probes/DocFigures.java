@@ -76,6 +76,7 @@ public final class DocFigures {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        long started = System.nanoTime();
 
         List<String> docs = new ArrayList<>(List.of(DEFAULT_DOCS));
         for (int i = 0; i < args.length; i++) {
@@ -124,6 +125,24 @@ public final class DocFigures {
                 }
             }
         }
+
+        // The cost, where the population already is (#1302). Two of these
+        // markers run the daemon — 4,500 ticks and 20,000 — which took this
+        // probe from about a second to five, and the only place that showed
+        // was the sweep's total, mixed with sixty-three other rows.
+        //
+        // This is the probe most likely to grow expensive markers, because a
+        // slow figure is exactly the kind a reader most wants pinned. `secs=`
+        // rides the CENSUS and never the verdict: a timing on an exact-line
+        // row goes red on a slow box, which teaches people to edit the number
+        // (#1221).
+        //
+        // Wall-clock is read here and nowhere else in this probe. It is not a
+        // determinism hazard for the same reason AllocMeter's byte counts are
+        // not: the census line is exempt from the --twice byte compare by
+        // being off the verdict, and the bench row greps the verdict alone.
+        System.out.println("FIGURE_CENSUS checked=" + checked + " docs=" + docs.size()
+                + " secs=" + ((System.nanoTime() - started) / 1_000_000_000L));
 
         boolean held = stale == 0 && refused == 0 && checked > 0;
         Probes.leave("VERDICT FIGURES_AGREE stale=" + stale + " refused=" + refused
