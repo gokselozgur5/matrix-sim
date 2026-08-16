@@ -95,10 +95,30 @@ done
 # fixed while the byte counts printed beside it move with the JIT (#906). It
 # stays the rarest thing in the table, because an instrument whose output moves
 # between two identical runs cannot be diffed across a change, which is most of
-# what a bench is for. Exactly one row wears it today, and it earns it by
-# printing the JVM's noise beside the world's number instead of in place of it
-# (#817): the steady figure is a median of twenty-four repeats and barely moves,
-# and the cold sample published next to it moves by design.
+# what a bench is for.
+#
+# HOW MANY ROWS WEAR IT is a question with a command rather than an answer with
+# a date (#1330):
+#
+#   grep -c '^  vary ' probes/bench.sh
+#
+# This comment said "exactly one row wears it today" and was wrong before
+# #1329 made it wronger: UnparkStorm had taken a second one and the sentence
+# never followed. The count carried the rule's whole weight — a table with one
+# exemption is a table where the exemption is remarkable, and a table with five
+# is one where `vary` is how a flaky probe gets past the sweep — so a number
+# nobody re-ran was the worst possible place to keep it.
+#
+# WHICH rows, on the other hand, is short enough to be prose that ages
+# honestly, and it is the part a reader needs. Every one earns it the same way:
+# by printing its own noise BESIDE the world's numbers rather than in place of
+# them, with the verdict line fixed and the noise on a neighbouring line.
+#
+#   AllocMeter    the JIT's cold sample beside a median of twenty-four
+#                 repeats (#817, #906)
+#   UnparkStorm   nanosecond percentiles beside a bounded worst case
+#   DocFigures    wall-clock beside checked= and docs=, because two of its
+#                 markers run the daemon (#1302, #1328)
 # ---------------------------------------------------------------------------
 table() {
   judge LedgerMirror 'LEDGER_ANOMALIES=0'      "$TICKS"
