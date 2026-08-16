@@ -162,7 +162,7 @@ public final class SheetDump {
                     mode = Mode.WING;
                     if (args.length < 2) {
                         System.err.println("--wing needs a family: " + families());
-                        System.exit(2);
+                        System.exit(Probes.Outcome.REFUSED.code());
                     }
                     wing = family(args[1]);
                     next = 1;
@@ -170,7 +170,7 @@ public final class SheetDump {
                 default -> {
                     System.err.println("unknown selector: " + args[0]
                             + " (try --all, --cast, --wing <FAMILY>, --system)");
-                    System.exit(2);
+                    System.exit(Probes.Outcome.REFUSED.code());
                 }
             }
             next += 1;
@@ -689,7 +689,7 @@ public final class SheetDump {
         // Refused at the door, in the vocabulary's own spelling: a family is
         // one of four words and a typo is not a wing with nobody in it.
         System.err.println("no such family: " + word + " (" + families() + ")");
-        System.exit(2);
+        System.exit(Probes.Outcome.REFUSED.code());
         return null;
     }
 

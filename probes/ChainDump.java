@@ -42,7 +42,7 @@ public final class ChainDump {
             String refusal = matrix.core.Config.scaleRefusal(scale);
             if (refusal != null) {
                 System.err.println(refusal);
-                System.exit(2);
+                System.exit(Probes.Outcome.REFUSED.code());
             }
             matrix.core.Config.setEcoScale(scale);
         }

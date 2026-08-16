@@ -134,7 +134,7 @@ public final class DistrictCensus {
             return;
         }
         System.out.println("VERDICT CITY_MISCOUNTED faults=" + faults.size());
-        System.exit(1);
+        System.exit(Probes.Outcome.BROKE.code());
     }
 
     /**
@@ -188,7 +188,7 @@ public final class DistrictCensus {
             return;
         }
         System.out.println("VERDICT CATALOG_UNBOUNDED faults=" + faults.size());
-        System.exit(1);
+        System.exit(Probes.Outcome.BROKE.code());
     }
 
     /** N zones with distinct names and no map behind them — the catalog reads the name and nothing else. */
