@@ -7,8 +7,29 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
 
 ## The probe contract
 
-1. **Read-only.** A probe never mutates the repo tree, never writes files, and never
-   calls anything on a shared `Simulation` that could queue a `WorldEvent`. It prints.
+1. **Read-only, with one carve-out that is now stated rather than inferred.** A probe
+   never mutates the repo tree, never writes files, and never calls anything on a
+   shared `Simulation` that could queue a `WorldEvent`. It prints.
+
+   The carve-out: a probe MAY mutate **its own private universe** when the mutation is
+   *the thing being measured*, and it says so in its javadoc. `SystemFatigue` calls
+   `world.bumpVersion()` because the fact under test is that the sheet's fatigue axis
+   moves when the world reloads — there is no other way to ask that question, and the
+   universe it bumps is one it built itself (clause 2). It was the first mutation any
+   probe in this tree performed, and it was inside the letter of a clause written when
+   none did; the rule people were actually following had stopped being the rule on the
+   page (#1261).
+
+   The boundary does not move: never a shared `Simulation`, never a queued
+   `WorldEvent`, never the repo tree. A probe that writes a file is still a probe that
+   lies to the next reader — clause 5's `--without-probes` check binds itself by this
+   same sentence. And *convenient* is not *measured*: a mutation that saves the probe a
+   setup step, rather than being the fact under test, is refused by this clause and not
+   licensed by `SystemFatigue`'s precedent.
+
+   Not counted by anything, deliberately. A grep for `.set` across `probes/` is mostly
+   false positives, and a parser is a dependency (D-009) — so this clause is social,
+   which is stated here rather than left to look mechanical.
 2. **Own universe.** A probe constructs and ticks its **own private** `Simulation`
    (quiet sink, explicit seed). Determinism does the rest: the universe it dissects is
    byte-identical to the one that showed the symptom.
