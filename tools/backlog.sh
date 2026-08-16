@@ -42,11 +42,20 @@ cd "$(dirname "$0")/.."
 
 REPO="${MATRIX_REPO:-gokselozgur5/matrix-sim}"
 MODE=count
+SINCE=""
 case "${1:-}" in
   '') ;;
   --list) MODE=list ;;
   --selftest) MODE=selftest ;;
-  *) echo "FATAL unknown argument: $1 (this tool takes --list, --selftest, or nothing)" >&2; exit 2 ;;
+  --flow)
+    MODE=flow
+    SINCE="${2:-}"
+    [ -n "$SINCE" ] || { echo "FATAL --flow wants a date: tools/backlog.sh --flow 2026-08-16" >&2; exit 2; }
+    case "$SINCE" in
+      [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+      *) echo "FATAL not a date: $SINCE (want YYYY-MM-DD)" >&2; exit 2 ;;
+    esac ;;
+  *) echo "FATAL unknown argument: $1 (this tool takes --list, --flow DATE, --selftest, or nothing)" >&2; exit 2 ;;
 esac
 
 # Does a body carry a measurement? The word, case-insensitive, anywhere in it.
@@ -115,9 +124,57 @@ BENCH judged=52
   page_ over-the-page     1001 1000 0
   page_ the-old-default     30   30 0   # #1246's own measurement, as it was taken
 
+  # The flow mode's door (#1323). Its counts need the API; its refusals do not,
+  # and the refusals are the part a typo meets — `--flow yesterday` must be
+  # told, not silently searched for.
+  date_() {                       # date_ <name> <want-code> <args...>
+    local name="$1" want="$2"; shift 2
+    local got=0
+    bash "$0" "$@" >/dev/null 2>&1 || got=$?
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKLOG case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  date_ flow-needs-a-date    2 --flow
+  date_ flow-refuses-prose   2 --flow yesterday
+  date_ flow-refuses-partial 2 --flow 2026-08
+
   echo "BACKLOG SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
+
+# FLOW, because the standing population says nothing about the day (#1323).
+#
+# A day that closed thirty-three and opened thirty-three prints the same
+# `open=` as a day that closed none. The ratio is what says whether a day was
+# spent draining the backlog or exploring the tree, and both are correct at
+# different times — a survey unit SHOULD open more than it closes.
+#
+# There is no right ratio, only a visible one. Reported, never judged, for
+# backlog.sh's existing reason (#1246) and for that second one.
+if [ "$MODE" = flow ]; then
+  if ! opened="$(gh issue list --repo "$REPO" --state all --limit 1000 \
+                 --search "created:>=$SINCE" --json number --jq 'length' 2>&1)"; then
+    echo "FATAL could not read the day's opened issues: $opened" >&2
+    exit 3
+  fi
+  if ! closed="$(gh issue list --repo "$REPO" --state closed --limit 1000 \
+                 --search "closed:>=$SINCE" --json number --jq 'length' 2>&1)"; then
+    echo "FATAL could not read the day's closed issues: $closed" >&2
+    exit 3
+  fi
+  echo "BACKLOG FLOW opened=$opened closed=$closed net=$((opened - closed)) since=$SINCE"
+  # Both ends of the paging axis, same as the count mode (#1273): a day that
+  # filled the page is a page and not a day.
+  if truncated "$opened" 1000 || truncated "$closed" 1000; then
+    echo "BACKLOG VERDICT TRUNCATED — a day's flow filled the page, so it is a page and not a day" >&2
+    exit 5
+  fi
+  echo "BACKLOG VERDICT COUNTED"
+  exit 0
+fi
 
 if [ "$MODE" = selftest ]; then
   selftest
