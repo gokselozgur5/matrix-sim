@@ -340,6 +340,35 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
     fi
   done < <(grep_patterns "$f")
 
+  # SHELL OPTIONS ON A MULTI-LINE BLOCK (#1360). #1226 found one `run:` with no
+  # `shell:` line, running under GitHub's default `bash -e {0}` — -e, no -u, no
+  # pipefail — while every neighbour set all three. It was lock 0, and an unset
+  # RUNNER_TEMP wrote its input to `/pr-body.md` instead of failing on a named
+  # variable. A lock writing its evidence to the wrong path and then judging
+  # that file does not fail; it passes on the wrong evidence.
+  #
+  # That was found by counting once. The lane has grown fourteen `run:` blocks
+  # since and nothing counted again.
+  #
+  # MULTI-LINE IS JUDGED, SINGLE-LINE IS REPORTED, and the boundary is in the
+  # YAML rather than in a heuristic: `run: |` opens a script with variables and
+  # pipes, `run: <command>` is one command whose failure `-e` alone still
+  # catches — nothing to leave unbound, no pipe to lose a status in. Six
+  # single-line blocks have no `shell:` today and not one of them is a defect;
+  # judging them would demand a line that buys nothing, which is how a rule gets
+  # exempted the first time it is inconvenient.
+  local shell_missing=0 shell_single=0 cur='' has_shell=0
+  while IFS= read -r line; do
+    case "$line" in
+      '      - name: '*)  cur="${line#      - name: }"; has_shell=0 ;;
+      '        shell: '*) has_shell=1 ;;
+      '        run: |')
+        [ "$has_shell" -eq 1 ] || { shell_missing=$((shell_missing + 1))
+            note "NOSHELL step \"$cur\" opens a multi-line run: with no shell: line — GitHub's default is bash -e, without -u and without pipefail" ; } ;;
+      '        run: '*)   [ "$has_shell" -eq 1 ] || shell_single=$((shell_single + 1)) ;;
+    esac
+  done < "$f"
+
   # Lock numbers: contiguous from 0, each claimed by a comment in the file.
   local nums lo hi missing=0 n
   nums=$(grep -oE 'lock [0-9]+' "$f" | awk '{print $2}' | sort -n -u)
@@ -349,9 +378,20 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
     printf '%s\n' "$nums" | grep -qx "$n" || { missing=$((missing + 1)); note "LOCKGAP lock $n is cited by no comment"; }
   done
 
+  # `shell_single=` is a census: it counts steps that are CORRECT under the rule
+  # above, and it moves whenever somebody writes a one-line step. Its change is
+  # not a finding, so it does not ride the judged fields (#1221) — it is printed
+  # because a reader meeting six exceptions with no number beside them infers
+  # that the rule is optional.
+  # ABOVE the summary, not below it: the suite reads `judge`'s LAST line for
+  # `breaks=`, so a census printed after it silently replaced the number every
+  # case compares — thirteen cases green against a line that no longer carried
+  # the field. Caught here by running the suite; worth the sentence because the
+  # next census line will want to go at the bottom too.
+  echo "LITANY_CENSUS single_line_no_shell=$shell_single  (one command, so -e alone still catches it; judged blocks are the multi-line ones)"
   echo "LITANY file=$f steps=$steps locks=$((hi - lo + 1)) greps_checked=$checked" \
        "executed=$executed unprinted=$unmatched shortened=$shortened not_verdicts=$skipped" \
-       "lock_gaps=$missing breaks=${#BREAKS[@]}"
+       "lock_gaps=$missing no_shell=$shell_missing breaks=${#BREAKS[@]}"
 }
 
 # ---------------------------------------------------------------- selftest
@@ -402,6 +442,17 @@ selftest() {
   local one_value="DATECHECK VERDICT PASS dialect=gnu"
   case_ reordered-verdict    1 'echo "        run: grep -q \"$reordered\" x" >> "$tmp/w.yml"'
   case_ one-runtime-value    0 'echo "        run: grep -q \"$one_value\" x" >> "$tmp/w.yml"'
+
+  # The shell-options rule (#1360). Multi-line judged, single-line reported, and
+  # both directions driven — a rule with only its failing case tested is a rule
+  # that can be satisfied by refusing everything.
+  case_ multiline-no-shell   1 'printf "      - name: a script with no shell line\n        run: |\n          set -e\n          true\n" >> "$tmp/w.yml"'
+  case_ multiline-with-shell 0 'printf "      - name: a script that sets them\n        shell: bash\n        run: |\n          set -euo pipefail\n          true\n" >> "$tmp/w.yml"'
+  case_ single-line-no-shell 0 'printf "      - name: one command\n        run: true\n" >> "$tmp/w.yml"'
+  # The reset matters: `shell:` belongs to the step above it, so a step that
+  # sets it must not license the NEXT step to omit it. Without the reset on
+  # `- name:` this case passes while every following block is unguarded.
+  case_ shell-does-not-carry 1 'printf "      - name: sets it\n        shell: bash\n        run: |\n          true\n      - name: does not\n        run: |\n          true\n" >> "$tmp/w.yml"'
 
   # Question 5 answers on a different axis — a directory of workflows rather
   # than one file's meaning — so its cases build their own tree instead of
