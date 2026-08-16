@@ -446,7 +446,15 @@ jobs:
           echo "TWICE probes=$changed"
           bash probes/bench.sh --no-build --twice-changed "$changed" \
             | tee "${RUNNER_TEMP:-/tmp}/twice.log"
-          grep -qE '^BENCH determinism .* drift=0 .*' "${RUNNER_TEMP:-/tmp}/twice.log" \
+          # The VERDICT, not one field of it (#1247). `drift=0` was read because the
+          # verdict word for a correct narrowed run was INSTRUMENTS_UNPROVEN — a lane
+          # cannot demand a word that fires on success, so it read around it, and a
+          # verdict nothing reads is the state this bench hunts in other people's
+          # scripts. NARROWED is now the word a narrowed pass prints, so the lane can
+          # ask for it: STABLE if the narrowing selected everything, NARROWED if it
+          # did not, and nothing else is green.
+          grep -qE '^BENCH determinism .* drift=0 .* VERDICT INSTRUMENTS_(NARROWED|STABLE)$' \
+            "${RUNNER_TEMP:-/tmp}/twice.log" \
             || { echo "FATAL a probe this PR touched does not reproduce its own output" >&2; exit 1; }
 
       - name: tools — balance.sh ruler and floor (#828)

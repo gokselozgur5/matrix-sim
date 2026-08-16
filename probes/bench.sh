@@ -832,11 +832,28 @@ echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL unexercised=$UNE
 # inserted, because appending is evolution and inserting is a break (D-020).
 # Drift outranks unchecked: a moved instrument is a finding, an unrun one is
 # only an absence of findings, and the verdict names the worse of the two.
+#
+# A FOURTH WORD, because two different situations were printing the third one
+# (#1247). `--twice-changed` exists to narrow the pass to what a pull request
+# touched (#1185), so a large `unchecked` is what a correct narrowed run looks
+# like — and every correct narrowed run was printing INSTRUMENTS_UNPROVEN.
+#
+# That word is #970's, and its argument is that a green report about work that
+# did not occur is worse than a red one. Spending it on the ordinary case wears
+# it out: the same mechanism as a lane number people learn to edit (#884),
+# applied to a verdict people learn to ignore. The lane greps `drift=0` rather
+# than the verdict, which is why nothing broke — and a verdict nothing reads is
+# the state this bench keeps finding in other people's scripts.
+#
+# The two states are genuinely distinct and the denominator #970 insisted on
+# stays on both: a pass that was SUPPOSED to cover everything and did not is
+# UNPROVEN; a pass narrowed on purpose is NARROWED, and says what it covered.
 if [ "$TWICE" = yes ]; then
   echo "BENCH determinism probes=$PROBES stable=$STABLE drift=$DRIFTED exempt=$EXEMPT unchecked=$UNCHECKED" \
        "VERDICT $(if [ "$DRIFTED" -ne 0 ]; then echo INSTRUMENTS_DRIFTED
-                  elif [ "$UNCHECKED" -ne 0 ]; then echo INSTRUMENTS_UNPROVEN
-                  else echo INSTRUMENTS_STABLE; fi)"
+                  elif [ "$UNCHECKED" -eq 0 ]; then echo INSTRUMENTS_STABLE
+                  elif [ -n "$TWICE_ONLY" ]; then echo INSTRUMENTS_NARROWED
+                  else echo INSTRUMENTS_UNPROVEN; fi)"
 fi
 
 

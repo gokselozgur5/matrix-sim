@@ -44,9 +44,15 @@ jobs:
           java-version: '17'
 
       # The whole sweep, twice, with nothing narrowed. `unchecked=0` is the field that
-      # separates this from #1185's per-PR pass: there, 52 probes go unchecked and the
-      # verdict is correctly INSTRUMENTS_UNPROVEN; here every probe is compared and the
-      # verdict word means what it says.
+      # separates this from #1185's per-PR pass: there most probes go unchecked and the
+      # verdict is INSTRUMENTS_NARROWED since #1247; here every probe is compared and
+      # the verdict is INSTRUMENTS_STABLE.
+      #
+      # UNPROVEN now means only what #970 coined it for: this pass, unnarrowed, having
+      # failed to reach an instrument. That is the case this step exists to catch, and
+      # it is the reason the grep below demands `unchecked=0` as well as the verdict —
+      # the field and the word are two independent statements of the same claim, and
+      # this lane is the one place where paying for both is worth it.
       #
       # Streamed through tee under tools/README.md's capture rule: the pass prints one
       # DRIFT row per unstable probe and then returns nonzero, so a capture would take the
