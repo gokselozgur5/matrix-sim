@@ -9,7 +9,35 @@
 set -euo pipefail
 
 REPO="${MATRIX_REPO:-gokselozgur5/matrix-sim}"
-ROOT="${1:?usage: tools/issuetree.sh <issue-number> [max-depth]}"
+
+# Refusals, spelled out rather than left to bash (#1276).
+#
+# `${1:?usage…}` is bash's own mechanism and it leaves with 1, which is this
+# tree's code for "the claim does not hold" — so a missing argument reported the
+# same way a broken contract does, and the catalog row documented that as if it
+# were the rule. 2 is the refusal code, ten tools deep, and the largest existing
+# agreement in the grammar.
+#
+# The second refusal did not exist at all. A non-numeric argument was walked as
+# though it were an issue number: `issuetree.sh not-a-number` printed
+# `? #not-a-number <unreadable>` and left with 3 — the code for THE ANSWER
+# COULD NOT BE READ. A typo and a rate-limited API produced the same verdict,
+# which is #1235's own defect (an unreadable node reported as an empty one)
+# arriving through the argument door of the tool that fixed it. `subissue.sh`
+# has refused a non-numeric parent since it was written; this is that rule,
+# applied to the tool that reads the same numbers.
+if [ $# -lt 1 ]; then
+  echo "FATAL usage: tools/issuetree.sh <issue-number> [max-depth]" >&2
+  exit 2
+fi
+case "$1" in
+  ''|*[!0-9]*) echo "FATAL not an issue number: $1" >&2; exit 2 ;;
+esac
+case "${2:-6}" in
+  ''|*[!0-9]*) echo "FATAL not a depth: $2" >&2; exit 2 ;;
+esac
+
+ROOT="$1"
 MAXDEPTH="${2:-6}"
 
 walk() {
