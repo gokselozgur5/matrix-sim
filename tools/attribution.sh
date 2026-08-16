@@ -75,6 +75,15 @@ if [ "$MODE" = selftest ]; then
     exit 1; }
   cd "$work/repo" || exit 1
   git config user.name selftest
+  # AND user.email, which was missing for the suite's whole life (#1362). The
+  # fixture's repairs run `git commit --amend` inside a rebase, and a commit
+  # needs a COMMITTER address as well as the author one the repair sets. A
+  # developer's box has a global identity so the amend succeeds; a runner has
+  # none, and git either guesses from the hostname or refuses. When it refused,
+  # the rebase aborted, `|| true` ate it, and the two cases that read the result
+  # reported each other's answer — the repair looked destructive and the defect
+  # it demonstrates looked fixed. Passed on seven runs and failed on the eighth.
+  git config user.email selftest@invalid
   base="$(git rev-parse HEAD)"
   right="right@invalid"
   wrong="wrong@invalid"
@@ -104,7 +113,21 @@ if [ "$MODE" = selftest ]; then
   # The repair this tool advises, run verbatim on the range it names.
   fix="$(OWNER_ADDR="$right" OWNER_NAME=selftest; \
          printf "git rebase -x 'git commit --amend --no-edit --author=\"selftest <%s>\"' %s" "$right" "$base")"
-  eval "$fix" >/dev/null 2>&1 || true
+  # The rebase's own exit code is a case (#1362). It was `|| true` with both
+  # streams to /dev/null, so a rebase that never ran was indistinguishable from
+  # one that ran and worked — and the two cases below then read an untouched
+  # range and reported the repair broken. An error a suite swallows is worse
+  # than one it prints, because the suite goes on to assert things about a state
+  # it did not produce; that is #1235's finding, inside an instrument rather
+  # than a tool. Aborted here rather than continued, so no later case runs
+  # against a half-applied rebase.
+  rebase_out="$(eval "$fix" 2>&1)" && rebase_rc=0 || rebase_rc=$?
+  check repair-rebase-ran 0 "$rebase_rc"
+  if [ "$rebase_rc" -ne 0 ]; then
+    printf 'ATTRIBUTION FIXTURE the advised repair did not run — every case after this reads a range it never touched\n'
+    printf '%s\n' "$rebase_out" | sed 's/^/  /' | tail -5
+    git rebase --abort >/dev/null 2>&1 || true
+  fi
   after_dates="$(git log --format=%ad --date=short "$base..HEAD" | tr '\n' ' ')"
   after_wrong="$(git log --format=%ae "$base..HEAD" | grep -c "^$wrong$" || true)"
   check repair-fixes-the-address 0 "$after_wrong"
@@ -123,8 +146,15 @@ if [ "$MODE" = selftest ]; then
     GIT_AUTHOR_DATE="2020-0$n-0${n}T12:00:00+00:00" \
       git commit -q -m "selftest commit $n"
   done
-  git -c user.email="$right" rebase -x \
-    'git -c user.email='"$right"' commit --amend --no-edit --reset-author' "$base" >/dev/null 2>&1 || true
+  reset_out="$(git -c user.email="$right" rebase -x \
+    'git -c user.email='"$right"' commit --amend --no-edit --reset-author' "$base" 2>&1)" \
+    && reset_rc=0 || reset_rc=$?
+  check reset-rebase-ran 0 "$reset_rc"
+  if [ "$reset_rc" -ne 0 ]; then
+    printf 'ATTRIBUTION FIXTURE the --reset-author demonstration did not run\n'
+    printf '%s\n' "$reset_out" | sed 's/^/  /' | tail -5
+    git rebase --abort >/dev/null 2>&1 || true
+  fi
   reset_dates="$(git log --format=%ad --date=short "$base..HEAD" | sort -u | tr '\n' ' ')"
   distinct="$(printf '%s' "$reset_dates" | wc -w | tr -d ' ')"
   check reset-author-destroys-dates 1 "$distinct"
