@@ -464,6 +464,55 @@ done
 # reject correct rows; 3 and up are local by the table's own rule. 2 is the one
 # code that is both universal AND phrased identically in every row that has it,
 # which is what makes it checkable rather than a style opinion.
+# The OTHER direction: a row promising a code the tool never spends (#1276).
+#
+# Everything above asks whether a spent code is documented. Nothing asked
+# whether a documented code is spent — the same asymmetry #1033 found in the
+# flag audit, one column over, and it was hiding a real defect: `issuetree.sh`'s
+# row promised `1 the invocation was refused` and the tool contained no `exit 1`
+# at all. The 1 came from bash's `${1:?usage}`, which is the code for A CLAIM
+# THAT DOES NOT HOLD, so a missing argument was reported the way a broken
+# contract is, and the row wrote that down as though it were the rule.
+#
+# Literal exits only, same as the census above, and `codes_indirect` is the
+# escape hatch for a tool that reaches its codes through a lookup — `prstate.sh`
+# does, so its promises cannot be checked this way and it is exempted by the
+# same flag rather than reported as a liar.
+codes_unspent=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  row="$(grep "^| \`$name\`" tools/README.md || true)"
+  [ -n "$row" ] || continue
+  case "$row" in *"Exit "*) ;; *) continue ;; esac
+  spends="$(grep -vE '^[[:space:]]*#' "$tool" \
+            | grep -oE '(exit|return) [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
+  # A tool whose codes are all indirect has nothing to compare against.
+  [ -n "$spends" ] || continue
+  # `exit "$(code_for …)"` is a lookup; `exit $?` is a PASS-THROUGH — the code
+  # is whatever the last command produced, so the tool genuinely spends
+  # everything that command can. Both are invisible to a literal grep, and both
+  # make a promise uncheckable rather than false. `advice.sh` itself is the
+  # second shape: `selftest; exit $?` spends 1 on a failing suite, and the first
+  # draft of this check reported its own row as a liar.
+  grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(exit|return) +("?\$\(|\$\?)' && continue
+  promised="$(printf '%s' "$row" | grep -oE 'Exit [^|]*' \
+              | grep -oE '(^Exit |· )[0-9]+' | grep -oE '[0-9]+' | sort -u)"
+  while IFS= read -r code; do
+    [ -z "$code" ] && continue
+    # 0 is spent by falling off the end of a script as often as by `exit 0`,
+    # so a row promising it proves nothing either way.
+    [ "$code" = 0 ] && continue
+    case " $spends " in
+      *" $code "*) ;;
+      *)
+        codes_unspent=$((codes_unspent + 1))
+        BREAKS=$((BREAKS + 1))
+        echo "CODES_UNSPENT $name promises exit $code and never spends it, literals=[$spends]"
+        ;;
+    esac
+  done <<< "$promised"
+done
+
 codes_redefined=0
 while IFS= read -r row; do
   [ -z "$row" ] && continue
@@ -575,7 +624,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented tools_no_flags=$tools_no_flags"
 if [ "$BREAKS" -eq 0 ]; then
@@ -596,6 +645,12 @@ elif [ "$unrun" -gt 0 ]; then
   # performed. Naming it as any of the other three sends the reader to a file
   # where nothing is wrong.
   echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
+elif [ "$codes_unspent" -gt 0 ]; then
+  # A seventh word (#1276). The mirror of A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME,
+  # and a different defect again: the row promises a code the tool cannot give.
+  # A caller branching on it waits for an answer that never comes, which reads
+  # as the tool hanging rather than as the document being wrong.
+  echo "ADVICE VERDICT A_ROW_PROMISES_A_CODE_THE_TOOL_NEVER_SPENDS unspent=$codes_unspent"
 elif [ "$flags_undocumented" -gt 0 ]; then
   # A sixth word (#1033). The mirror of ADVISES_A_FLAG_NOBODY_IMPLEMENTS, and a
   # different defect: there is no broken promise here, no wrong row and no
