@@ -214,13 +214,28 @@ public final class SealHygiene {
         for (String b : breaks) {
             System.out.println("BREAK " + b);
         }
-        // The denominator rides the verdict: a run that pinned nothing must not
-        // be able to report that nothing moved.
+        // The POPULATION reports; the verdict judges (#1221).
+        //
+        // `checked=25` rode the verdict, and the bench row is an exact-line
+        // grep — so pinning a twenty-sixth id turned the lane red for doing
+        // exactly what this probe wants done. That is #884's mechanism: a lane
+        // number that must be hand-edited to go green is a number people learn
+        // to edit, and after enough edits nobody reads it.
+        //
+        // The rule, which probes/README.md now carries: a number in a judged
+        // verdict must be a number whose CHANGE IS A FINDING. `breaks=` is a
+        // finding. `checked_none=` is a finding — a run that pinned nothing
+        // must not report that nothing moved, which is the sentence the old
+        // comment here was reaching for and got wrong by pinning the count
+        // instead of its emptiness. `checked=25` is a description of how much
+        // was looked at, and descriptions go beside the verdict rather than in
+        // it.
+        System.out.println("SEAL_CENSUS sites=2 checked=" + checked);
         Probes.leave(String.format(java.util.Locale.ROOT,
-                "VERDICT %s sites=2 checked=%d breaks=%d",
+                "VERDICT %s breaks=%d checked_none=%d",
                 breaks.isEmpty() ? "SEAL_HYGIENE_HELD" : "SEAL_HYGIENE_BROKEN",
-                checked, breaks.size()),
-                breaks.isEmpty());
+                breaks.size(), checked == 0 ? 1 : 0),
+                breaks.isEmpty() && checked > 0);
     }
 
     private SealHygiene() {}

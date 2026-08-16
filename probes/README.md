@@ -226,6 +226,29 @@ output may legitimately move. A judged probe is judged by exact-line grep
 (`grep -qxF`), so `=0` can never match `=01` and a missing verdict fails the
 sweep; a reporting probe fails only by crashing or exiting nonzero.
 
+**A number in a judged verdict must be a number whose CHANGE IS A FINDING.**
+A number that merely describes how much was looked at goes on a census line
+beside it (#1221). Exact-line grep is what makes this a rule rather than
+taste: every count a verdict carries becomes a lane pin, and a pin that must
+be hand-edited to go green is a number people learn to edit — after enough
+edits, nobody reads it. That is #884's mechanism, recorded for the seal and
+running quietly in five verdict lines.
+
+The test, on the two rows that show the difference:
+
+| line | pinned number | is its change a finding? |
+|---|---|---|
+| `LEDGER_SWEEP … clean=53 broken=7 at 4,7,8,…` | the seeds that break | **yes** — a seed starting or stopping is the whole claim |
+| `SEAL_HYGIENE … checked=25` | how many ids were pinned | **no** — pinning a 26th turned the lane red for doing what the probe wants |
+
+`LeaveContract` learned it twice in one afternoon (`judged=35 → 36 → 37`, once
+for its own row landing and once for a sibling's), and `SealHygiene` was
+repaired by #1221. The emptiness of a population IS a finding and stays on the
+verdict — `checked_none=`, `scanned_none=`, `swept_none=` — because a run that
+looked at nothing must not be able to report that nothing moved. The count
+goes beside it: `SEAL_CENSUS`, `FENCE_CENSUS`, `ROSTER_DOCS`, `FIGURE_CENSUS`,
+`LEAVE_CENSUS`.
+
 **A judged probe also owes an honest exit code, and until #1093 only the grep
 was ever enforced.** The bench reads the verdict line, so nineteen probes could
 print a failing verdict and exit 0 and no lane cared — while every hand-run
@@ -414,7 +437,7 @@ judges it (#906).
 | `LinkAudit` | What is the end-state of every NeuralLink after N ticks? | ghost-link triage: open/closed × alive/dead × present/absent |
 | `ChainDump` | What is the DIGEST chain of a run, as plain lines? | out-of-band replay diffing between two boxes — and since #518 the same diff at scale, which is the only cross-PROCESS determinism proof the dial has: `ChainDump [ticks] [seed] [scale]`, two runs at `2000 42 11` byte-identical, trailer `CHAIN … scale=11 entities=5266`. `--selftest` double-runs inside one process, where anything derived from the dial once is shared by both runs and cancels; two processes do not share it. The scale rides the daemon's own gate (`Config.scaleRefusal`), so 0, 101 and 217 die with the daemon's sentence and its exit 2, and scale 1 appends nothing so every chain this probe has already published keeps its bytes |
 | `LedgerMirror` | Does every ledger delta equal the open-link residue mirror? | the ghost-HARDLINE class of bug, made permanently detectable (`LEDGER_ANOMALIES=0`, seeds 42, 7 & 9 — seed 9 joined when #863 modelled the clean exit, which the mirror used to report as an anomaly and explain away in a comment) |
-| `SealHygiene` | Are the numbers the seal borrows from the JLS still the numbers it borrowed? | #837: `String.hashCode` sits inside `World.digestEntity`, so a species id is canonical text and not a caption — renaming `"black cat"` moved the chain from `421d7263…` to `ec0a1b61…` in total silence. Twelve ids and both door thresholds pinned; needs no ticks, no seed and no world, so it is the one probe that cannot be flaky |
+| `SealHygiene` | Are the numbers the seal borrows from the JLS still the numbers it borrowed? | #837: `String.hashCode` sits inside `World.digestEntity`, so a species id is canonical text and not a caption — renaming `"black cat"` moved the chain from `421d7263…` to `ec0a1b61…` in total silence. Ids and both door thresholds pinned; needs no ticks, no seed and no world, so it is the one probe that cannot be flaky. **How many** is on `SEAL_CENSUS` rather than the verdict since #1221: `checked=25` was a lane pin, so adding a twenty-sixth id turned the sweep red for doing exactly what this probe wants done. `checked_none=` stays on the verdict, because a run that pinned nothing must not be able to report that nothing moved — the emptiness is a finding, the count is a description |
 | `LeaveContract` | Does every probe the bench JUDGES reach its exit through `Probes.leave`? | the contract `probes/README.md` has stated since #1093 — a judged probe owes a greppable verdict line AND an honest exit code — checked for the first time. Eight judged probes had no `System.exit` anywhere the day this landed (`BondScenario`, `CapSentinel`, `CensusSampleSize`, `DocLint`, `DoorPressure`, `LedgerMirror`, `PodOptional`, `SealHygiene`): each printed its failing verdict and fell off the end of `main`, which is exit 0, so `SEAL_HYGIENE_BROKEN` would have left with the code that means the seal is clean — #1091's defect, eight times over, four months after it was fixed. The bench table is READ rather than a list being kept here, because a list would be a second copy of the bench's own contract. Its verdict pins the CONTRACT — `no_code=0 by_hand=11` — while `LEAVE_CENSUS` carries the population unpinned, after the first draft put `judged=` in the verdict and the exact-line row went red twice in one afternoon for reasons unrelated to the check. Two facts are separated rather than merged: a probe with no exit call at all is red (`no_code=`), a probe that calls `System.exit` itself is honest and merely counted (`by_hand=`), since calling a style a lie is exactly the confusion this probe exists to end. Blind by construction to a probe that routes through the helper on one branch and returns on another |
 | `KnownFixture` | Does the bench's third verb still work? | a break that will never be fixed, so `known` stays proven. The verb had **zero rows and zero tests** (#1231): it worked once for `LedgerMirror`'s broken seeds and retired when that row became a judge again — leaving the verb the tree reaches for at its worst moment (the defect is real, the fix is not ready, and the choice is between deleting the row and dropping the exit code) defined, unused and unobserved. This probe prints one line and exits 1. No seed, no tick, no `Simulation` — a fixture that touched the daemon could break for a second reason and stop being a fixture. `--heal` makes it exit 0, which is how the inversion a `known` row rests on gets falsified: a probe that starts PASSING must fail the sweep with *make this a judge row*, and that branch is the one most likely to break under a refactor of `execute`/`ROW_RC` (twice this week: #1093, #1138). Its issue is itself and will be closed forever, which is stated rather than hidden — every OTHER `known` row must cite an issue that is genuinely open |
 | `HuntBound` | Does the running world obey the displacement law the gait table declares? | #825: `HUNT_DISP_BOUND_CM` had 74 cm of headroom and no reader — crossing it multiplies the linear far-mover term 428x while the digest, the selftest and the hunt referee all report that nothing happened. `Config.huntBoundLine()` is the tight check and runs in `--selftest`; this probe is the half a table cannot prove about itself, measuring what each gait actually spends (sparrow: 566 declared, 566 measured) and reporting the ledger occupancy nobody could see (peak 2, mean 0.147 at seed 42) |
