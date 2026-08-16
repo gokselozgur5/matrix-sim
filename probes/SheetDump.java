@@ -110,21 +110,12 @@ public final class SheetDump {
      */
     private static final String THE_MATRIX = "the Matrix";
 
-    /**
-     * The Machine City, minted here (#1010) and spelled once and forever.
-     * The wing has nobody to derive from — {@code Source} holds a world and
-     * a registry, {@code Architect} is {@code enum … INSTANCE},
-     * {@code MachineCity} is static methods, {@code SubstrateBudget} is two
-     * ints, and not one of them carries an identity string — so the city
-     * answers for itself, one row, the way the Matrix answers the SYSTEM
-     * row above. Capitalization is identity: these bytes ARE the MACHINE
-     * row's fate, and respelling them afterwards re-rolls the sheet
-     * attached to them, which is why the string is quoted in exactly one
-     * place. If a later verdict gives the wing residents — sentinels,
-     * harvesters, as catalog data under D-015 — they APPEND to this wing;
-     * they do not replace this row, and this row's numbers do not move.
-     */
-    private static final String THE_MACHINE_CITY = "the Machine City";
+    // The Machine City's name lived here from #1010 until #659 moved it to
+    // `MachineCity.NAME`, where it belongs: capitalization is identity, these
+    // bytes ARE the MACHINE row's fate, and a name minted in the instrument is
+    // a fact about the instrument rather than about the world. The reasoning
+    // that used to sit here — why the wing answers with one row and no
+    // residents — moved with it, to the method that does the answering.
 
     /** Safety stop on the reachability walk: a census must not become a heap dump. */
     private static final int WALK_CEILING = 5_000_000;
@@ -459,7 +450,11 @@ public final class SheetDump {
             // `power · precision · relentlessness` has somebody to speak it
             // and #659's WING machine souls=<N> stops being 0 by
             // construction.
-            case MACHINE -> sheets.add(Sheets.derive(THE_MACHINE_CITY, Family.MACHINE));
+            // The city answers for itself since #659, and the NAME moved with
+            // it: capitalization is identity, so a string that lives in the
+            // instrument rather than in the world is a fact about the
+            // instrument. This probe now asks rather than mints.
+            case MACHINE -> sheets.add(matrix.machine.MachineCity.sheet());
             // The one row in the census that is not purely derived (#661).
             // `versionFatigue` is READ from the counter the world has been
             // carrying since v1 rather than folded out of the name — the
