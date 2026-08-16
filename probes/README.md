@@ -89,12 +89,10 @@ javac -encoding UTF-8 --release 17 -cp out -d probes/out probes/*.java
 java -cp out:probes/out <Probe> [args]
 ```
 
-Compile the whole directory, not one file: seventeen of the thirty-seven probes call
-the shared `Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails
-on them with `cannot find symbol: variable Probes`. Both numbers are hand-counted,
-and both had drifted by the time #995 read them — the sentence said seven of twelve
-against a directory that already held seventeen of thirty-six — so they now carry
-the commands that produce them rather than asking to be believed:
+Compile the whole directory, not one file: most of the probes here call the shared
+`Probes` reflection helper, and `javac … probes/<Probe>.java` alone fails on them
+with `cannot find symbol: variable Probes`. How many is a question with a command
+rather than an answer with a date:
 
 ```sh
 ls probes/*.java | wc -l                            # every file here
@@ -105,14 +103,26 @@ grep -al 'static void main' probes/*.java | wc -l   # the ones you can run; the
 grep -al 'Probes\.'         probes/*.java | wc -l   # how many call the shared accessors
 ```
 
-**The numbers that used to sit in those comments are gone, and that is the
-repair.** They read `39 files`, `37 probes`, `17 … call the helper`; today the
-same three commands print **45**, **43** and **26**. Nothing re-ran them, so the
-paragraph asking not to be believed had three figures asking exactly that
-(#1192). A count pasted beside the command that produces it is strictly worse
-than the command alone: it looks checked and is not, and the command is right
-there. This is #1130's move — *stop quoting a count in prose and quote the
-command instead* — applied to the paragraph that was already halfway there.
+**No count is quoted here, and the second attempt at that is why.** #1192 took
+three figures out of the code comments — `39 files`, `37 probes`, `17 … call
+the helper` — and replaced them with three fresher ones in the prose, `45`,
+`43` and `26`. Today the same commands print **50**, **48** and **42**, so the
+replacements rotted exactly as the originals had, in a paragraph whose own
+argument is that *a count pasted beside the command that produces it is
+strictly worse than the command alone: it looks checked and is not, and the
+command is right there.*
+
+Worse, the sentence introducing the block kept its pair — *seventeen of the
+thirty-seven* — through the whole repair, so the paragraph announcing that the
+numbers were removed was the paragraph still carrying them, and every figure in
+it was wrong including the one asserting that wrong figures had been taken out
+(#1279). A document describing its own repair, un-repaired, in the file that
+teaches the practice.
+
+The figures above are the last three this section will quote, and they are
+quoted as history rather than as fact — dated, attached to the issue that
+produced them, and never again as *today the commands print*. #1130's move,
+applied for real this time: the commands are the answer.
 
 `grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
 carry a raw NUL byte inside a string literal, which made a BSD grep call the whole
