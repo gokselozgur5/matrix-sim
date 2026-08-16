@@ -420,9 +420,15 @@ public final class SheetDump {
         int skipped = 0;
         switch (family) {
             case HUMAN -> {
+                // The wing answers for itself since #658. This probe used to
+                // pick the family and the identity string on the wing's
+                // behalf — see the javadoc above, which said it would stop
+                // when #350 landed. It stops here for the human wing; the
+                // program wing below is still this probe's call, and #660
+                // owns it.
                 for (Human human : Probes.realWorld(sim).humans()) {
                     if (human.alive()) {
-                        sheets.add(Sheets.derive(human.name, Family.HUMAN));
+                        sheets.add(human.sheet());
                     } else {
                         skipped++;
                     }

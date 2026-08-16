@@ -9,6 +9,37 @@ package matrix.realworld;
  * (see AcceptanceLoop), and the rng stream never hears about it.
  */
 public final class Human {
+
+    /**
+     * What this mind answers when asked what it is (#658, leaf of #350).
+     *
+     * <p>The wing answers for itself. Until this method, the question *which
+     * family is a Human, and which string is its identity* was decided inside
+     * a probe — `SheetDump` picked `Family.HUMAN` and `human.name` on the
+     * wing's behalf, out loud in a comment saying it would stop doing so when
+     * #350 landed. This is the wing taking its own decision back.
+     *
+     * <p>DERIVED, NEVER STORED. There is no field behind this and there must
+     * not be: the deleted `Human.threshold` is the litigated precedent, a
+     * cached derived value being a second source of truth that drifts the
+     * moment anything authors an override. `probes/SheetFence` reads that as
+     * a grep and `SheetDump`'s `cached=` reads it as a heap walk, and both
+     * stay at zero because this returns and forgets.
+     *
+     * <p>THE NAME AT BIRTH, and today that is the only name there is —
+     * {@code name} is final and nothing renames a mind. #342's birth record
+     * is what makes the invariant structural; until it lands this method is
+     * correct by the field's immutability rather than by construction, which
+     * is a weaker guarantee and worth saying rather than assuming.
+     *
+     * <p>Birth-invariants only: no pod, no link, no pill, no position, no
+     * tick. Every one of those is a temptation and none of them is an input —
+     * a mind's sheet is what it always was, not what happened to it.
+     */
+    public matrix.character.Sheet sheet() {
+        return matrix.character.SheetDoor.at(name, matrix.character.Family.HUMAN);
+    }
+
     public final String name;
     public final Brain brain;
     /** Honestly 0..1 (D-032, per the crown): the farm's slot, or null for the free-born. */
