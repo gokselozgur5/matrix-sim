@@ -103,26 +103,39 @@ grep -al 'static void main' probes/*.java | wc -l   # the ones you can run; the
 grep -al 'Probes\.'         probes/*.java | wc -l   # how many call the shared accessors
 ```
 
-**No count is quoted here, and the second attempt at that is why.** #1192 took
-three figures out of the code comments — `39 files`, `37 probes`, `17 … call
-the helper` — and replaced them with three fresher ones in the prose, `45`,
-`43` and `26`. Today the same commands print **50**, **48** and **42**, so the
-replacements rotted exactly as the originals had, in a paragraph whose own
-argument is that *a count pasted beside the command that produces it is
-strictly worse than the command alone: it looks checked and is not, and the
-command is right there.*
+**No count is quoted here, and the third attempt at that is why.** The
+figures in this paragraph are all in the past tense, dated, and attached to
+the issue that measured them — that is what keeps them from rotting, and it
+took three tries to get right:
 
-Worse, the sentence introducing the block kept its pair — *seventeen of the
-thirty-seven* — through the whole repair, so the paragraph announcing that the
-numbers were removed was the paragraph still carrying them, and every figure in
-it was wrong including the one asserting that wrong figures had been taken out
-(#1279). A document describing its own repair, un-repaired, in the file that
-teaches the practice.
+| attempt | figures | how they were phrased | outcome |
+|---|---|---|---|
+| original | `39` / `37` / `17` | in code comments | rotted, found by #1192 |
+| #1192 | `45` / `43` / `26` | *today the same three commands print* | rotted, found by #1279 |
+| #1279 | `50` / `48` / `42` | *Today the same commands print* | rotted before the PR merged, #1284 |
 
-The figures above are the last three this section will quote, and they are
-quoted as history rather than as fact — dated, attached to the issue that
-produced them, and never again as *today the commands print*. #1130's move,
-applied for real this time: the commands are the answer.
+The last row is not a joke at #1279's expense; it is the finding. That unit
+diagnosed the defect exactly — *the phrasing is the defect, the numbers were
+only its symptom* — and then wrote the phrasing back in, in the sentence
+introducing the ban, sixteen lines above the ban itself. Three repairs, all
+of them to the numbers, and the tense survived all three.
+
+A figure in the past tense with a date cannot rot: *by the time #1279 read
+them the commands printed 50, 48 and 42* is true forever. A figure in the
+present tense is a claim about now, and nothing re-runs it. That is the whole
+rule, and this paragraph is the fourth attempt at obeying it.
+
+The same file did it in prose too. The sentence introducing the block kept its
+pair — *seventeen of the thirty-seven* — through #1192's whole repair, so the
+paragraph announcing that the numbers were removed was the paragraph still
+carrying them, and every figure in it was wrong including the one asserting
+that wrong figures had been taken out (#1279). A document describing its own
+repair, un-repaired, in the file that teaches the practice.
+
+#1283 owns the mechanical version of this — comparing a prose figure against
+the command printed beside it — and would have caught every row of the table
+above. Until it lands, the rule is the tense: the commands are the answer, and
+a number written near them is history or it is a bug.
 
 `grep -a` is kept out of habit rather than necessity now. `SheetDump.java` used to
 carry a raw NUL byte inside a string literal, which made a BSD grep call the whole
