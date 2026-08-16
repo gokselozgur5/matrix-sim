@@ -93,6 +93,15 @@ public final class SheetFence {
      * covered on the day it is created, and the only thing that must be
      * maintained is the short list of what is deliberately NOT the domain.
      */
+    /**
+     * Something a wing adapter must not read: the world, the clock, the slot,
+     * the wire. A sheet derives from birth-invariants and nothing else (#658),
+     * and every one of these is a field sitting within arm's reach of the
+     * method that must not touch it.
+     */
+    private static final Pattern WORLD_SHAPED = Pattern.compile(
+            "\\b(world|tick|pod|link|avatar|alive|position|pill)\\b");
+
     private static final String DEFAULT_ROOT = "src";
 
     private static final String DEFAULT_LAYER = "src/matrix/character";
@@ -185,6 +194,42 @@ public final class SheetFence {
             }
         }
 
+        // The wing adapters (#658). A wing that answers for a sheet must reach
+        // the door and read nothing else: no world, no tick, no pod, no link.
+        // Every one of those is a temptation and none is an input — a mind's
+        // sheet is what it always was, not what happened to it.
+        //
+        // The check is shallow on purpose. It reads the three lines after a
+        // `Sheet sheet()` signature and asks two questions: does SheetDoor
+        // appear, and does anything world-shaped. A deeper reading needs a
+        // parser, which is a dependency (D-009), and a longer window would
+        // start matching the next method. So the rule the adapters follow is
+        // also a rule about their SHAPE: a wing's sheet() is one expression,
+        // and this refuses one that is not.
+        int adapters = 0;
+        int impure = 0;
+        for (Path file : javaFiles(Path.of(root))) {
+            if (file.startsWith(layerPath)) {
+                continue;
+            }
+            List<String> lines = code(file);
+            for (int i = 0; i < lines.size(); i++) {
+                if (!lines.get(i).contains("Sheet sheet()")) {
+                    continue;
+                }
+                adapters++;
+                String window = String.join(" ", lines.subList(i, Math.min(i + 4, lines.size())));
+                boolean reachesDoor = window.contains("SheetDoor");
+                boolean readsWorld = WORLD_SHAPED.matcher(window).find();
+                if (!reachesDoor || readsWorld) {
+                    impure++;
+                    offences.add("ADAPTER " + file + ":" + (i + 1)
+                            + (reachesDoor ? "" : " does not reach SheetDoor")
+                            + (readsWorld ? " reads something world-shaped" : ""));
+                }
+            }
+        }
+
         int doorMissing = 0;
         Path door = Path.of(layer, "SheetDoor.java");
         if (!Files.exists(door)) {
@@ -204,12 +249,15 @@ public final class SheetFence {
         // number in the lane is a thing you edit until the lane is quiet.
         // `LeaveContract` learned this the expensive way, twice in one
         // afternoon. So: the census reports, the verdict judges.
-        System.out.println("FENCE_CENSUS swept=" + swept + " layer=" + javaFiles(layerPath).size());
+        System.out.println("FENCE_CENSUS swept=" + swept + " layer=" + javaFiles(layerPath).size()
+                + " adapters=" + adapters);
 
-        boolean held = swept > 0 && stored == 0 && foreign == 0 && cached == 0 && doorMissing == 0;
+        boolean held = swept > 0 && stored == 0 && foreign == 0 && cached == 0
+                && doorMissing == 0 && impure == 0;
         Probes.leave(String.format(
-                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d cached=%d door_missing=%d swept_none=%d",
-                stored, foreign, cached, doorMissing, swept == 0 ? 1 : 0),
+                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d cached=%d door_missing=%d "
+                        + "swept_none=%d impure_adapters=%d",
+                stored, foreign, cached, doorMissing, swept == 0 ? 1 : 0, impure),
                 held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
