@@ -26,6 +26,42 @@ REPO="${MATRIX_REPO:-gokselozgur5/matrix-sim}"
 # arriving through the argument door of the tool that fixed it. `subissue.sh`
 # has refused a non-numeric parent since it was written; this is that rule,
 # applied to the tool that reads the same numbers.
+# The suite, before the refusals it exercises — a `--selftest` that fell
+# through to the argument checks would be refused by them (#1307).
+#
+# Argument handling is exactly the part that needs no token and no network,
+# and it is the part #1276 changed. Both refusals were verified by hand, in a
+# pull request, once; `advice.sh` prints UNFALSIFIABLE about precisely that.
+#
+# The WALK stays out. A fixture that fakes `gh` tests the fake — #1273's
+# reasoning, one tool over — so this suite covers the door and says so rather
+# than implying the whole tool is under test.
+if [ "${1:-}" = "--selftest" ]; then
+  pass=0
+  fail=0
+  case_() {                     # case_ <name> <want-code> <args...>
+    local name="$1" want="$2"; shift 2
+    local got=0
+    bash "$0" "$@" >/dev/null 2>&1 || got=$?
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ISSUETREE case=%-18s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ISSUETREE case=%-18s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  case_ no-argument   2
+  case_ not-a-number  2 not-a-number
+  case_ bad-depth     2 1246 not-a-depth
+  case_ a-flag        2 --help
+  # The empty string is its own case: `case "$1" in ''|*[!0-9]*)` has two arms
+  # for a reason, and a draft that dropped the first would pass every case
+  # above while accepting `issuetree.sh ""` as issue number zero.
+  case_ empty-string  2 ""
+  echo "ISSUETREE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
+  [ "$fail" -eq 0 ] || exit 1
+  exit 0
+fi
+
 if [ $# -lt 1 ]; then
   echo "FATAL usage: tools/issuetree.sh <issue-number> [max-depth]" >&2
   exit 2

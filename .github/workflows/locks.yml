@@ -561,6 +561,27 @@ jobs:
       # classifier nobody can watch fail is the thing this shop keeps finding in other people's
       # scripts. The suite takes no token and no network: it feeds bodies to the predicate
       # directly, so the lane exercises the classification and never the API.
+      # WHY: #1307 — #1276 gave issuetree.sh two refusals it did not have (a missing
+      # argument left with 1, a typo was walked as an issue number and reported as an
+      # unreadable node). Both were verified by hand, once, which is the state
+      # `advice.sh` prints UNFALSIFIABLE about. The suite covers the DOOR only: argument
+      # handling needs no token and no network, and a fixture that faked `gh` would test
+      # the fake.
+      - name: tools — the issue tree's own refusals (#1307)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/issuetree.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/issuetree-selftest.log"
+          verdict="$(grep -E '^ISSUETREE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/issuetree-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the issue tree's suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=5    # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "ISSUETREE SUITE FLOOR OK cases=$ran floor=$floor"
+
       - name: tools — the backlog classifier's own suite (#1246)
         shell: bash
         run: |
