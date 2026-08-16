@@ -114,7 +114,10 @@ public final class DocsRoster {
         // The population reports; the verdict judges (#1221). A count of files
         // in a lane's exact-line row goes red the day somebody writes a
         // document, which is the wrong thing for a lane to punish.
-        System.out.println("ROSTER_DOCS files=" + files.size() + " readers=" + readers.size());
+        System.out.println("ROSTER_DOCS files=" + files.size() + " readers=" + readers.size()
+                + "  (readers EXCEEDS files on purpose: every document may name another, and the four"
+                + " root documents that route a reader into docs/ are readers without being files —"
+                + " #1368)");
 
         boolean held = orphans == 0 && !files.isEmpty();
         Probes.leave("VERDICT EVERY_DOCUMENT_IS_NAMED orphans=" + orphans

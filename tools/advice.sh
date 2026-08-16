@@ -1071,6 +1071,5 @@ echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogu
 # claim whose change is a finding — a tool gaining a helper function that
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
 # that CANNOT be judged is still visible beside the ones that can.
-echo "CODES_CENSUS with_returns=$codes_returns rows_read=$(grep -c '^| `[a-z-]*\.sh`' tools/README.md)  (a return is a predicate or an exit depending on where the function sits; unjudged on purpose)"
+echo "CODES_CENSUS tools_with_returns=$codes_returns catalog_rows=$(grep -c '^| `[a-z-]*\.sh`' tools/README.md)  (TOOLS carrying at least one, not returns — it sits beside tools= and would read as a statement count otherwise, #1368; a return is a predicate or an exit depending on where the function sits, so it is unjudged on purpose)"
 verdict_word
-[ "$BREAKS" -eq 0 ]

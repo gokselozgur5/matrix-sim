@@ -230,7 +230,10 @@ public final class SealHygiene {
         // instead of its emptiness. `checked=25` is a description of how much
         // was looked at, and descriptions go beside the verdict rather than in
         // it.
-        System.out.println("SEAL_CENSUS sites=2 checked=" + checked);
+        System.out.println("SEAL_CENSUS sites=2 checked=" + checked
+                + "  (sites are the two files a seal is pinned in; checked is SOURCE FILES swept for a"
+                + " stale copy of it — two populations, one line, and #1368 is about a reader having"
+                + " to know that)");
         Probes.leave(String.format(java.util.Locale.ROOT,
                 "VERDICT %s breaks=%d checked_none=%d",
                 breaks.isEmpty() ? "SEAL_HYGIENE_HELD" : "SEAL_HYGIENE_BROKEN",

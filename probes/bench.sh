@@ -929,7 +929,10 @@ cost_line() {
 echo "BENCH_COST slowest=$(cost_line)" \
      "rows_timed=$(printf '%s' "$COSTS" | grep -c . || true)" \
      "classes_timed=$(printf '%s' "$COSTS" | awk '{print $2}' | sort -u | grep -c . || true)" \
-     " (wall clock, so it moves between two runs of one tree — a census and never a verdict, #1221)"
+     " (wall clock, so it moves between two runs of one tree — a census and never a verdict, #1221;" \
+     "classes_timed counts CLASSES WITH A ROW and sits four lines under probes_on_disk, which counts" \
+     ".java files — the difference is the helpers no row invokes, and #1368 is about a reader having" \
+     "to know that to reconcile them)"
 
 echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL unexercised=$UNEXERCISED ran=$RAN" \
      "ticks=$TICKS secs=$BENCH_SECS budget=$BENCH_BUDGET_SECS" \
