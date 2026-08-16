@@ -39,10 +39,27 @@ import java.util.stream.Stream;
  */
 public final class SheetFence {
 
-    /** A field of type Sheet, however it is qualified — the thing no wing may hold. */
-    private static final Pattern STORED = Pattern.compile(
-            "(?:private|protected|public|static|final|volatile|transient)\\s+"
-                    + "(?:[\\w<>,\\[\\]]+\\s+)*?Sheet\\s+\\w+\\s*[=;]");
+    /**
+     * A field whose declared type mentions {@code Sheet} — the thing nobody
+     * may hold, in a wing or in the layer itself.
+     *
+     * <p>The type is matched loosely on purpose. {@code Sheet sheet}, and
+     * also {@code Map<String, Sheet> memo}, {@code Sheet[] roster},
+     * {@code List<Sheet> cast}: the law is about a derived value being kept,
+     * and a value kept inside a container is kept. A tight
+     * {@code ^Sheet\s+\w+} — which is what the first draft carried — is the
+     * pattern that reads a memo map as compliant, and a memo map is the
+     * exact shape #1256 was opened for.
+     */
+    private static final Pattern HOLDS_SHEET = Pattern.compile("\\bSheet\\b");
+
+    /**
+     * The shape of a field declaration: modifiers, a type, a name, and a
+     * semicolon — with or without an initializer.
+     */
+    private static final Pattern FIELD_SHAPE = Pattern.compile(
+            "^\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)+"
+                    + "[\\w<>,\\[\\]\\s?]+\\s+\\w+\\s*(?:=.*)?;\\s*$");
 
     /**
      * An import of some corner of the domain the layer may not see. D-013
@@ -52,16 +69,6 @@ public final class SheetFence {
      */
     private static final Pattern FOREIGN_IMPORT = Pattern.compile(
             "^\\s*import\\s+(?:static\\s+)?(matrix\\.(?!core\\.|character\\.)[\\w.]+)\\s*;");
-
-    /**
-     * Any field at all in the door: the door is a door, not a drawer.
-     * Both spellings — {@code Type name;} and {@code Type name = value;} —
-     * because a memo cache would arrive as the second one, initialized in
-     * place, and an earlier draft of this pattern only recognized the first.
-     */
-    private static final Pattern DOOR_FIELD = Pattern.compile(
-            "^\\s*(?:private|protected|public)?\\s*(?:static\\s+)?(?:final\\s+)?"
-                    + "[\\w<>,\\[\\]]+\\s+\\w+\\s*(?:=[^;]*)?;\\s*$");
 
     private static final String[] DEFAULT_WINGS = {
             "src/matrix/realworld", "src/matrix/entities", "src/matrix/machine", "src/matrix/zion",
@@ -97,7 +104,7 @@ public final class SheetFence {
         for (String wing : wings) {
             for (Path file : javaFiles(Path.of(wing))) {
                 for (String line : code(file)) {
-                    if (STORED.matcher(line).find()) {
+                    if (keepsASheet(line)) {
                         stored++;
                         offences.add("STORED " + file + " — " + line.trim());
                     }
@@ -106,6 +113,7 @@ public final class SheetFence {
         }
 
         int foreign = 0;
+        int cached = 0;
         for (Path file : javaFiles(Path.of(layer))) {
             for (String line : code(file)) {
                 Matcher m = FOREIGN_IMPORT.matcher(line);
@@ -113,32 +121,54 @@ public final class SheetFence {
                     foreign++;
                     offences.add("IMPORT " + file + " — " + m.group(1));
                 }
+                if (keepsASheet(line)) {
+                    cached++;
+                    offences.add("CACHED " + file + " — " + line.trim());
+                }
             }
         }
 
-        int doorFields = 0;
+        int doorMissing = 0;
         Path door = Path.of(layer, "SheetDoor.java");
-        if (Files.exists(door)) {
-            for (String line : code(door)) {
-                String trimmed = line.trim();
-                if (trimmed.startsWith("package ") || trimmed.startsWith("import ")) {
-                    continue;   // a declaration of where the file lives, not of what it holds
-                }
-                if (DOOR_FIELD.matcher(line).matches() && !line.contains("(")) {
-                    doorFields++;
-                    offences.add("DOORFIELD " + line.trim());
-                }
-            }
-        } else {
-            offences.add("DOORFIELD no door at " + door + " — the resolver this probe judges is gone");
-            doorFields++;
+        if (!Files.exists(door)) {
+            offences.add("DOOR no door at " + door + " — the resolver this probe judges is gone");
+            doorMissing++;
         }
 
         offences.forEach(System.out::println);
-        boolean held = stored == 0 && foreign == 0 && doorFields == 0;
+        boolean held = stored == 0 && foreign == 0 && cached == 0 && doorMissing == 0;
         Probes.leave(String.format(
-                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d door_fields=%d",
-                stored, foreign, doorFields), held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+                "VERDICT ONE_DOOR_NO_CACHE stored=%d foreign_imports=%d cached=%d door_missing=%d",
+                stored, foreign, cached, doorMissing),
+                held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+    }
+
+    /**
+     * Does this line declare a field that keeps a {@code Sheet}?
+     *
+     * <p>Two questions, in the order that makes the second cheap: is the
+     * line shaped like a field at all, and does its DECLARATOR — everything
+     * left of the {@code =} — name the type. The split matters. A method
+     * body line reading {@code Sheet s = door.at(name, family);} is a local,
+     * not a field, and is refused by the modifier requirement in
+     * {@link #FIELD_SHAPE}; a field initialized in place with
+     * {@code = new HashMap<Sheet>()} carries parentheses on the right-hand
+     * side, which must not make it look like a method to the paren test.
+     */
+    private static boolean keepsASheet(String line) {
+        if (!FIELD_SHAPE.matcher(line).matches()) {
+            return false;
+        }
+        String trimmed = line.trim();
+        if (trimmed.startsWith("package ") || trimmed.startsWith("import ")) {
+            return false;   // where the file lives, not what it holds
+        }
+        int assign = line.indexOf('=');
+        String declarator = assign < 0 ? line : line.substring(0, assign);
+        if (declarator.contains("(")) {
+            return false;   // a method signature, not a field
+        }
+        return HOLDS_SHEET.matcher(declarator).find();
     }
 
     /** Every .java under a root, sorted, so two runs read the same bytes in the same order. */
