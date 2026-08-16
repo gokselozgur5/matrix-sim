@@ -97,12 +97,47 @@ three different meanings for `2`.
 | **0** | held · ok · the claim stands | everyone |
 | **1** | broke · not-ok · the claim does not | everyone |
 | **2** | **the invocation was refused** — a flag with no argument, a value the program will not take | **everyone**; this is the largest existing agreement in the tree, ten tools deep |
-| 3+ | local answers only some programs can give | see each catalog row |
+| **3** | **the answer could not be read** — a rate limit, an expired token, a sha this repository has never seen, a node the API would not return | **six tools**, by imitation until #1304 wrote it down |
+| 4 | *contested.* Three tools spend it for **nothing was read at all, which is not a pass**; two spend it for something else | see each catalog row, and below |
+| 5+ | local answers only some programs can give | see each catalog row |
 
-The first three are **universal**: a caller may branch on them without knowing
+The first **four** are universal: a caller may branch on them without knowing
 which program it ran. Everything above is **local**, and a row that spends it
 must say what it means — `advice.sh` fails the lane for a tool that spends a
 code its own row does not name (#1222).
+
+**Three became universal by imitation and the table said otherwise for months
+(#1304).** Six tools spend it and all six mean *the answer could not be read*,
+in six different phrasings:
+
+```
+attribution.sh   the repository has never seen the sha
+backlog.sh       the backlog could not be read
+checkage.sh      the answer could not be read
+prstate.sh       the repository could not be read
+issuetree.sh     at least one node was unreadable, so the tree is PARTIAL
+balance.sh       the API would not answer
+```
+
+The phrasings stay. Six sentences of one meaning is not a defect — *the backlog
+could not be read* is better prose in `backlog.sh`'s row than a generic
+sentence would be, and the local colour is what makes a row worth reading. The
+defect was the table calling 3 local while six tools treated it as universal,
+so a reader branching on `$?` across two of them was right and the grammar told
+them they were wrong.
+
+**Four is contested and now says so.** `attribution.sh`, `backlog.sh` and
+`checkage.sh` spend it for *nothing was read at all, which is not a pass* —
+#1004's shape, an absent answer wearing an empty one's face. `prstate.sh`
+spends it for `UNBUILT` (near enough) and `balance.sh` for *a window and its
+days disagree*, which is a different thing entirely. That disagreement is real,
+it is small, and it is visible here rather than discovered by a caller.
+
+`advice.sh` cannot police either code the way it polices 2. Its
+`codes_redefined=` check works because 2 is both universal AND phrased
+identically in every row — the one code where a wording comparison is a check
+rather than a style opinion. For 3 the wordings differ by design, so the
+agreement lives here, in prose, and is kept by reading.
 
 **Where this is not yet true, stated rather than hidden.** `probes/` spends
 **2** for `NEVER_AROSE` and **3** for a refused invocation; `DreamReader` spends
