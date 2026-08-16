@@ -218,6 +218,30 @@ for tool in tools/*.sh; do
   echo "UNCATALOGUED $name has no row in tools/README.md — nobody can find out what it is for"
 done
 
+# THE OTHER WAY A CATALOG BREAKS: more than one row per tool (#1340). The
+# catalog is a table with a primary key nobody declared, and every check in this
+# file assumes the mapping is a function. `balance.sh` had TWO rows opening with
+# its name, one stale by two units — and `row="$(grep "^| \`$name\`" …)"` returns
+# both, joined by a newline, so every downstream check read the concatenation as
+# one row. A flag documented in either satisfied the audit for the other; an exit
+# clause in either answered for both; and `flags_phantom`'s bounded read stopped
+# at the FIRST row's `Exit`, so the second row's Usage clause was never checked
+# at all.
+#
+# Nothing counted it. `uncatalogued=` counts tools with no row; nothing counted
+# tools with more than one, and the discrepancy was visible only as
+# `CODES_CENSUS catalog_rows=13` beside `tools=12` — two numbers on two lines
+# that nobody had compared.
+rows_duplicated=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  n="$(grep -c "^| \`$name\`" tools/README.md || true)"
+  [ "$n" -le 1 ] && continue
+  rows_duplicated=$((rows_duplicated + 1))
+  BREAKS=$((BREAKS + 1))
+  echo "DUPLICATE_ROW $name opens $n rows in tools/README.md — every check here reads them as one"
+done
+
 # The manual read in the OTHER direction (#1033).
 #
 # Everything above asks whether the catalog's promises are kept: a row naming
@@ -278,7 +302,7 @@ done
 # It reads the counters as globals rather than taking twelve arguments: twelve
 # positional parameters is a transposition waiting to happen, which is #1204's
 # argument one directory over, and the suite sets the same names.
-BREAK_COUNTERS='missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
+BREAK_COUNTERS='rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
 
 verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
   if [ "$BREAKS" -eq 0 ]; then
@@ -333,7 +357,12 @@ verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one A
     # breaks a reading every caller in the tree relies on, and the reader has to be
     # sent to the exit-grammar table rather than to the row (#1241).
     echo "ADVICE VERDICT A_ROW_REDEFINES_A_UNIVERSAL_CODE redefined=$codes_redefined"
-  elif [ "$uncatalogued" -gt 0 ]; then
+  elif [ "$rows_duplicated" -gt 0 ]; then
+  # A twelfth word (#1340). Not a missing row and not a wrong one: there are TWO,
+  # and every check in this file silently reads their concatenation. Sending the
+  # reader to A_TOOL_NOBODY_CAN_FIND would send them looking for an absence.
+  echo "ADVICE VERDICT A_TOOL_WEARS_TWO_ROWS duplicated=$rows_duplicated"
+elif [ "$uncatalogued" -gt 0 ]; then
     # Three failures, three words. A catalog gap reported as "advises a flag nobody
     # implements" sends the reader to the wrong file, which is the same class of error as a
     # defect report that names the wrong defect (#1170) — and a catalog row that promises a
@@ -663,6 +692,7 @@ selftest() {
   verdict_case flags_undocumented A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES
   verdict_case codes_redefined    A_ROW_REDEFINES_A_UNIVERSAL_CODE
   verdict_case uncatalogued       A_TOOL_NOBODY_CAN_FIND
+  verdict_case rows_duplicated    A_TOOL_WEARS_TWO_ROWS
   verdict_case flags_phantom      A_ROW_ADVERTISES_A_FLAG_THE_TOOL_REFUSES
   verdict_case charset_drift      A_TOOL_ANSWERS_DIFFERENTLY_IN_ANOTHER_LOCALE
   verdict_case catalog_wrong      A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS
@@ -1013,7 +1043,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
