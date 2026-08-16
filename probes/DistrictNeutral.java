@@ -232,7 +232,7 @@ public final class DistrictNeutral {
         // either way, so nothing a stream leg found is swallowed by a rename.
         if (drifted > 0) {
             System.out.println("VERDICT CATALOG_DRIFTED drifted=" + drifted);
-            System.exit(1);
+            System.exit(Probes.Outcome.BROKE.code());
         }
         System.out.println(faults.isEmpty()
                 ? "VERDICT DISTRICTS_DRAW_NOTHING"

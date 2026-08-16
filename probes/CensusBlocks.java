@@ -110,7 +110,7 @@ public final class CensusBlocks {
         }
         if (blocks.isEmpty()) {
             System.err.println("FATAL no blocks given; e.g. CensusBlocks 1-100 101-200 6000");
-            System.exit(2);
+            System.exit(Probes.Outcome.REFUSED.code());
         }
 
         // One universe per distinct seed, however many blocks quote it. This is what
@@ -141,12 +141,12 @@ public final class CensusBlocks {
         pool.shutdown();
         if (!pool.awaitTermination(24, TimeUnit.HOURS)) {
             System.err.println("FATAL sweep did not finish");
-            System.exit(3);
+            System.exit(Probes.Outcome.BROKE.code());
         }
         double wall = (System.nanoTime() - t0) / 1e9;
         if (rows.size() != distinct.size()) {
             System.err.println("FATAL a universe failed: " + rows.size() + "/" + distinct.size());
-            System.exit(3);
+            System.exit(Probes.Outcome.BROKE.code());
         }
 
         System.out.printf(Locale.ROOT,
@@ -404,7 +404,7 @@ public final class CensusBlocks {
         // grep -qxF, the exact-line rule every judged probe on the bench obeys.
         System.out.println(ok ? "SELFCHECK VERDICT MATH_OK" : "SELFCHECK VERDICT MATH_BROKEN");
         if (!ok) {
-            System.exit(1);
+            System.exit(Probes.Outcome.BROKE.code());
         }
     }
 

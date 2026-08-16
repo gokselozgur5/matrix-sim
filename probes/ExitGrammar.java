@@ -58,15 +58,27 @@ import java.util.stream.Stream;
  * set stops matching the measured one, which is the only way a boundary stays
  * true after the unit that drew it — #1337's finding, one file over.
  *
- * <h2>Why the census counts literal exits</h2>
+ * <h2>Why literal exits are judged, and were not</h2>
  *
- * {@code Outcome.code()} exists so the grammar has one home, and eight probes
- * still write the digit at the call site. {@code CensusBlocks} alone spends a
- * literal 2 and two literal 3s. That is reported and not judged: some of those
- * literals are genuinely local codes the enum does not own, telling them apart
- * means reading each call site, and a checker that guesses is what this
- * directory refuses. The number is here so the next reader knows the enum is
- * the home of the grammar and not yet the home of every code.
+ * {@code Outcome.code()} exists so the grammar has one home, and fourteen call
+ * sites wrote the digit instead. That was REPORTED here for a stated reason —
+ * the fourteen were not one defect, telling a refusal from a never-arose means
+ * reading each site, and a checker that guesses is what this directory refuses.
+ *
+ * <p>#1345 read them. Six were refusals spending 2, which in this family means
+ * NEVER_AROSE — so {@code bench.sh} read a refused invocation as a world with
+ * nothing to judge and did not fail the row. Two more spent 3 for a sweep that
+ * did not finish, which is a break wearing the refusal's number. The remaining
+ * six were honest breaks written as {@code 1}.
+ *
+ * <p>The count is 0 now, which is the only moment a gate costs nothing (#1311's
+ * argument, one directory over). At zero it stops the next probe that writes a
+ * digit; at one it demands a unit from whoever trips it, which is how a gate
+ * gets argued about instead of added.
+ *
+ * <p>What it reads is a LITERAL digit: {@code System.exit(held ? 0 : 1)} is a
+ * computed code and stays out, because the two-valued form is the honest
+ * spelling for a probe whose whole answer is pass-or-fail.
  *
  * <pre>
  *   probes/ExitGrammar                    judge the tree's own documents
@@ -175,6 +187,8 @@ public final class ExitGrammar {
             Matcher m = LITERAL_EXIT.matcher(Files.readString(probe, StandardCharsets.UTF_8));
             while (m.find()) {
                 literals++;
+                System.out.println("GRAMMAR_LITERAL " + probe + " leaves with the digit " + m.group(1)
+                        + " — the grammar's home is Probes.Outcome, and a digit is not searchable");
             }
         }
 
@@ -183,12 +197,13 @@ public final class ExitGrammar {
         // finding.
         System.out.println("GRAMMAR_CENSUS codes=" + enumCodes.size() + " doc_rows=" + docCodes.size()
                 + " universal=" + toolCodes.size() + " declared=" + declared.size()
-                + " literal_exits=" + literals + " files=" + files);
+                + " files=" + files);
 
         boolean read = !enumCodes.isEmpty() && !toolCodes.isEmpty();
-        boolean held = drift == 0 && undeclared == 0 && read;
+        boolean held = drift == 0 && undeclared == 0 && literals == 0 && read;
         Probes.leave("VERDICT THE_GRAMMAR_HAS_ONE_HOME doc_drift=" + drift
                         + " undeclared=" + undeclared
+                        + " literals=" + literals
                         + " checked_none=" + (read ? 0 : 1),
                 held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }

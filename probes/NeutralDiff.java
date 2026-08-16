@@ -201,7 +201,7 @@ public final class NeutralDiff {
         Verdict v = compare(seal, run);
         report(v);
         if (!v.pass()) {
-            System.exit(1);
+            System.exit(Probes.Outcome.BROKE.code());
         }
     }
 
@@ -297,11 +297,16 @@ public final class NeutralDiff {
                 + " byte-equal VERDICT " + (v.pass() ? "PASS" : "FAIL"));
     }
 
-    /** No comparison happened. Say which, say so in the verdict, exit 2. */
+    /**
+     * No comparison happened. Say which, say so in the verdict, and leave with the
+     * probe grammar's word for a refusal rather than with the digit 2 — which in
+     * this family means NEVER_AROSE, so the bench read a refused invocation as a
+     * world with nothing to judge and did not fail the row (#1345).
+     */
     private static void refuse(String detail) {
         System.out.println("NEUTRALDIFF FAIL " + detail);
         System.out.println("NEUTRALDIFF no_comparison VERDICT FAIL");
-        System.exit(2);
+        System.exit(Probes.Outcome.REFUSED.code());
     }
 
     // -----------------------------------------------------------------------
@@ -373,7 +378,7 @@ public final class NeutralDiff {
         System.out.println(ok ? "SELFCHECK VERDICT REFEREE_HOLDS"
                 : "SELFCHECK VERDICT REFEREE_BROKEN");
         if (!ok) {
-            System.exit(1);
+            System.exit(Probes.Outcome.BROKE.code());
         }
     }
 

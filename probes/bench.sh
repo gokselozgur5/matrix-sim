@@ -293,7 +293,7 @@ table() {
   # is a declared code that has stopped colliding. `undeclared=` is judged in
   # both directions for that reason; a one-way check would let the list outlive
   # the thing it describes, which is the failure #1337 spent a day on.
-  judge ExitGrammar  'VERDICT THE_GRAMMAR_HAS_ONE_HOME doc_drift=0 undeclared=0 checked_none=0'
+  judge ExitGrammar  'VERDICT THE_GRAMMAR_HAS_ONE_HOME doc_drift=0 undeclared=0 literals=0 checked_none=0'
   # The second row ever to wear `vary`, and it is a decision rather than a
   # formality (#1328). `FIGURE_CENSUS … secs=` is wall-clock, so it moves
   # between two identical runs and clause 4 says a probe that does that fails
