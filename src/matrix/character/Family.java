@@ -70,11 +70,30 @@ public enum Family {
      */
     public static final String HUNT_AXIS = "pursuit";
 
+    /**
+     * The one axis in the whole grammar that is READ rather than derived.
+     *
+     * <p>Every other value on every sheet is a pure function of a name — a
+     * christening rolls no dice. Fatigue is the exception, and it is an
+     * exception on purpose: the Matrix has lived through its reloads, the
+     * count of them has been sitting in the digest since v1, and deriving a
+     * number from the string {@code "the Matrix"} to describe how tired the
+     * system is would be inventing a fact the world already knows (#661).
+     *
+     * <p>Named here for the same reason {@link #HUNT_AXIS} is: the reader
+     * that fills it asks for it by name, so a verdict that renames the axis
+     * is one edit rather than a silent survivor.
+     */
+    public static final String FATIGUE_AXIS = "versionFatigue";
+
     static {
-        // The constant and the vocabulary cannot drift: a typo here is a
+        // The constants and the vocabulary cannot drift: a typo here is a
         // class-init failure, not a mystery at the catch site.
         if (PROGRAM.axisIndex(HUNT_AXIS) < 0) {
             throw new IllegalStateException("HUNT_AXIS '" + HUNT_AXIS + "' is not in the PROGRAM vocabulary");
+        }
+        if (SYSTEM.axisIndex(FATIGUE_AXIS) < 0) {
+            throw new IllegalStateException("FATIGUE_AXIS '" + FATIGUE_AXIS + "' is not in the SYSTEM vocabulary");
         }
     }
 

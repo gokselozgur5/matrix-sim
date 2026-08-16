@@ -1,6 +1,7 @@
 import matrix.Simulation;
 import matrix.character.Family;
 import matrix.character.Sheet;
+import matrix.character.SheetDoor;
 import matrix.character.Sheets;
 import matrix.core.World;
 import matrix.entities.MatrixEntity;
@@ -102,9 +103,10 @@ public final class SheetDump {
     /**
      * The Matrix, by the record's spelling. Capitalization is identity: the
      * bytes of this string are the SYSTEM row's fate, so it is quoted here
-     * exactly once and never re-typed. Its {@code versionFatigue} is the
-     * mixer's number today; #661 makes that axis read {@code World.version()},
-     * and this row is where that change becomes visible.
+     * exactly once and never re-typed. Its {@code versionFatigue} was the
+     * mixer's number until #661 and is now {@code World.version()} — the
+     * SYSTEM row is the one line in this census that is read rather than
+     * derived, and it went from 1 to 6 the day the counter was asked.
      */
     private static final String THE_MATRIX = "the Matrix";
 
@@ -447,7 +449,13 @@ public final class SheetDump {
             // and #659's WING machine souls=<N> stops being 0 by
             // construction.
             case MACHINE -> sheets.add(Sheets.derive(THE_MACHINE_CITY, Family.MACHINE));
-            case SYSTEM -> sheets.add(Sheets.derive(THE_MATRIX, Family.SYSTEM));
+            // The one row in the census that is not purely derived (#661).
+            // `versionFatigue` is READ from the counter the world has been
+            // carrying since v1 rather than folded out of the name — the
+            // system's age is an old fact finally being asked the right
+            // question, and a derived 1 was this probe reporting a fresh
+            // install of a world on its sixth version.
+            case SYSTEM -> sheets.add(SheetDoor.system(THE_MATRIX, world.version()));
         }
         return new Wing(sheets, skipped);
     }
