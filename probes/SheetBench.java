@@ -1,3 +1,4 @@
+import matrix.Simulation;
 import matrix.character.Contest;
 import matrix.character.Family;
 import matrix.character.Sheet;
@@ -30,6 +31,7 @@ import java.util.Map;
  *   java -cp out:probes/out SheetBench --discipline   a human asked for replication
  *   java -cp out:probes/out SheetBench --avalanche    the mixer measured on the farm's own name pool
  *   java -cp out:probes/out SheetBench --bands        where the derived population lands in the five bands
+ *   java -cp out:probes/out SheetBench --boot-version does this bench's boot constant still match the world's?
  */
 public final class SheetBench {
 
@@ -63,6 +65,13 @@ public final class SheetBench {
      * this bench's rows equal the census's at boot, and {@code SheetDump}
      * passes {@code world.version()} rather than this constant because it HAS
      * a world to ask. If the two ever disagree, the census is right.
+     *
+     * <p>That last sentence was a claim until #1270 and is a check now:
+     * {@code --boot-version} builds one universe, asks it, and compares. The
+     * disagreement it guards is exactly one row wide — the Architect's
+     * {@code versionFatigue} — and both sides would have stayed green while it
+     * happened, which is #1192's shape (a figure that was true when typed) in
+     * a probe whose whole claim is that its numbers are reproducible.
      */
     private static final int BOOT_VERSION = 6;
 
@@ -75,10 +84,11 @@ public final class SheetBench {
             case "--discipline" -> discipline();
             case "--avalanche" -> System.exit(avalanche());
             case "--bands" -> System.exit(bands());
+            case "--boot-version" -> bootVersion();
             case "" -> cast();
             default -> {
                 System.err.println("unknown mode: " + mode
-                        + " (try --vocab, --hunt-axis, --discipline, --avalanche, --bands)");
+                        + " (try --vocab, --hunt-axis, --discipline, --avalanche, --bands, --boot-version)");
                 System.exit(Probes.Outcome.REFUSED.code());
             }
         }
@@ -353,6 +363,28 @@ public final class SheetBench {
      * would be a guaranteed tie by construction. 400 names give 159,600
      * ordered pairs of distinct souls per matchup.
      */
+    /**
+     * Does this bench's boot constant still agree with the world's? (#1270)
+     *
+     * <p>The ONLY mode here that builds a universe, and the exception is the
+     * point rather than a compromise: every other mode is identity in, fate
+     * out — no seed, no draw, no {@code Simulation} — and that independence is
+     * worth keeping, so the one question that cannot be answered without a
+     * world is the one place a world is constructed.
+     *
+     * <p>What it guards is one row: the Architect's {@code versionFatigue},
+     * which {@code SheetDump} reads off {@code world.version()} and this bench
+     * takes from {@link #BOOT_VERSION}. Move `World`'s initializer and the two
+     * censuses disagree by exactly that row, both green, neither complaining.
+     */
+    private static void bootVersion() throws Exception {
+        Simulation sim = new Simulation(42L, null, null);
+        int world = Probes.world(sim).version();
+        System.out.println("BOOT_VERSION bench=" + BOOT_VERSION + " world=" + world);
+        Probes.leave("VERDICT CAST_BOOT_AGREES bench=" + BOOT_VERSION + " world=" + world,
+                BOOT_VERSION == world ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+    }
+
     private static int bands() throws Exception {
         List<String> pool = namePool();
         Map<Family, List<Sheet>> derived = new EnumMap<>(Family.class);

@@ -216,7 +216,7 @@ table() {
   # The contract on the rows above, read off this table. `by_hand=11` is the
   # honest half of the count: those probes exit with their own code, which is
   # not a lie, only a second place the contract lives (#1214).
-  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=11'
+  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=10'
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
@@ -246,6 +246,7 @@ table() {
   # whose exit code is its verdict (`System.exit(avalanche())`, 1 when the
   # bound is missed), and `run` fails a row on a nonzero exit.
   judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
+  judge SheetBench   'VERDICT CAST_BOOT_AGREES bench=6 world=6' --boot-version
   run   SheetBench   --avalanche
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
