@@ -380,13 +380,22 @@ KNOWN_ROW=no
 # One row's run, printed. The three verbs differ only in what they demand of
 # the output afterwards, so the invocation itself is written once: the class,
 # its own args, stderr folded in, and the exit code kept rather than trusted.
+#
+# Every row's wall clock is accumulated HERE rather than at the three verbs,
+# because a row that fails never reaches its verb's `PASS … secs=` line and its
+# cost would vanish from the attribution — the sweep would report where the time
+# went on a green day and lose the answer on the day somebody needs it (#1216).
 ROW_OUT='' ROW_RC=0
+COSTS=''
 execute() {
-  local cls="$1"; shift
+  local cls="$1" t0; shift
+  t0=$(date +%s)
   set +e
   ROW_OUT="$(java -cp out:probes/out "$cls" "$@" 2>&1)"
   ROW_RC=$?
   set -e
+  COSTS="${COSTS}$(($(date +%s) - t0)) ${cls}
+"
   printf '%s\n' "$ROW_OUT"
 }
 
@@ -610,11 +619,14 @@ settle() {
       printf 'EXEMPT %s whole-row reason="%s"\n' "$cls" "$VARIES"
       return 0
     fi
-    local again2 rc2 cut_a cut_b n_cut
+    local again2 rc2 cut_a cut_b n_cut t0
+    t0=$(date +%s)
     set +e
     again2="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
     rc2=$?
     set -e
+    COSTS="${COSTS}$(($(date +%s) - t0)) ${cls}
+"
     if [ "$rc2" -ne 0 ] && [ "$rc2" -ne 1 ]; then
       DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
       echo "DRIFT $cls second run exited $rc2"
@@ -638,11 +650,17 @@ settle() {
     fi
     return 0
   fi
-  local again rc
+  local again rc t0
+  t0=$(date +%s)
   set +e
   again="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
   rc=$?
   set -e
+  # The second run is the sweep's time too, and under `--twice` it is half of
+  # it. Attribution that counted only judged runs would name the wrong row on
+  # the one invocation whose cost anybody is arguing about.
+  COSTS="${COSTS}$(($(date +%s) - t0)) ${cls}
+"
   # A `known` row's probe is SUPPOSED to exit nonzero, twice. The determinism
   # pass did not know that: it read the second run's code, saw 1, and reported
   # `FAIL KnownFixture second run exited 1` — a declared break counted as an
@@ -876,6 +894,42 @@ roster_check || FAIL=$((FAIL + 1))
 # to think about it, and it cannot silently reach ten minutes.
 BENCH_BUDGET_SECS=${BENCH_BUDGET_SECS:-300}
 BENCH_SECS=$(($(date +%s) - SWEEP_START))
+
+# WHERE THE TIME WENT (#1216). The trailer below carried one number for the
+# whole sweep and a ceiling to compare it against, and when the two approached
+# each other the only way to learn WHICH row had grown was to re-run and read
+# 1,400 lines — the work the trailer exists to save. Worse: a row that quietly
+# doubles is invisible until the total crosses the budget, and then the sweep
+# goes red on the next unit, which had nothing to do with it.
+#
+# ON ITS OWN LINE AND NOT ON THE VERDICT (#1221). #1216 asked for this in the
+# trailer, and the census rule says a number whose CHANGE IS NOT A FINDING may
+# not ride a judged line. Wall clock is that number exactly: it moves between
+# two runs of the same tree, and `PROBE SWEEP FLOOR` greps the trailer. One line
+# above the trailer is adjacent enough to answer the question a reader is
+# actually asking — it is not in the scrollback, which is what #1216 objected
+# to — and it keeps a timing off a line CI judges.
+#
+# PER CLASS, summed, rather than per row: `SheetFence` runs twice with different
+# flags and `probes=67 judged=60` says rows outnumber classes. The question
+# being asked is "what is this probe costing the sweep", and two rows of one
+# class are one answer to it. `--twice` folds the second run in here too, since
+# on that invocation the second run IS half the cost and attribution that
+# ignored it would name the wrong row on the one day anybody argues about the
+# budget.
+#
+# Ties break by name so two runs of the same tree print the same line: awk's
+# `for (k in t)` has no defined order, and a census that reshuffles itself is a
+# diff nobody can read.
+cost_line() {
+  printf '%s' "$COSTS" | awk 'NF == 2 { t[$2] += $1 } END { for (k in t) printf "%d %s\n", t[k], k }' \
+    | sort -k1,1rn -k2,2 | head -3 \
+    | awk '{ printf "%s%s:%s", (NR > 1 ? "," : ""), $2, $1 } END { if (NR == 0) printf "none" }'
+}
+echo "BENCH_COST slowest=$(cost_line)" \
+     "rows_timed=$(printf '%s' "$COSTS" | grep -c . || true)" \
+     "classes_timed=$(printf '%s' "$COSTS" | awk '{print $2}' | sort -u | grep -c . || true)" \
+     " (wall clock, so it moves between two runs of one tree — a census and never a verdict, #1221)"
 
 echo "BENCH probes=$PROBES judged=$JUDGED pass=$PASS fail=$FAIL unexercised=$UNEXERCISED ran=$RAN" \
      "ticks=$TICKS secs=$BENCH_SECS budget=$BENCH_BUDGET_SECS" \

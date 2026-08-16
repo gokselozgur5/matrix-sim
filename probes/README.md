@@ -382,6 +382,35 @@ hardware moves 20% between runs, and `OVER` **prints without failing**. The
 thing being prevented is a lane growing tenfold over a season, which a human
 reads; a bound that reddens under load is a bound that gets switched off.
 
+**And a ceiling on the sum could not say which row spent it (#1216).** The
+trailer reported one number for a two-minute sweep; learning *where it went*
+meant re-running and reading 1,400 lines, which is the work a trailer exists to
+save. The line above it now answers:
+
+    BENCH_COST slowest=UnparkStorm:18,LedgerMirror:17,BondScenario:8 rows_timed=67 classes_timed=49
+
+Three properties of that line, each a decision rather than a detail:
+
+- **Above the trailer, not on it.** #1216 asked for the trailer; the census rule
+  (#1221) says a number whose change is not a finding may not ride a judged
+  line, and wall clock is that number exactly — the lane's own history is
+  `min=296 max=710` for the same work. One line above is adjacent enough to
+  answer the question, and keeps a timing off the line `PROBE SWEEP FLOOR`
+  greps.
+- **Per class, summed.** Rows outnumber classes: `SheetFence` runs twice with
+  different flags. The question being asked is what a probe costs the sweep, and
+  two rows of one class are one answer to it.
+- **Measured in `execute`, not at the verbs.** A row that fails never reaches
+  its verb's `PASS … secs=`, so attribution written there would report where the
+  time went on a green day and lose the answer on the day somebody needs it.
+  `--twice` folds its second runs in for the same reason: on that invocation the
+  second run *is* half the cost.
+
+What it still cannot say is whether a row is too expensive. `slowest=` catches
+one fat row; fifty rows each growing a second move the total the same distance
+and appear nowhere. That is #1348, and it is a decision about whether cost gets
+a rule at all rather than a gap in this one.
+
 Adding a
 probe is a one-row change here, beside the probe — one row per probe, and one
 row per mode where a probe verdicts in more than one. `SheetBench` is the only
