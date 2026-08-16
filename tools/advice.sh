@@ -967,7 +967,28 @@ no_suite=0
 unrun=0
 for tool in tools/*.sh; do
   [ "$tool" = "tools/advice.sh" ] && continue
-  grep -qE '\-\-selftest\b' "$tool" || continue
+  # DOES THIS TOOL PROMISE A SUITE, or does it merely MENTION somebody else's
+  # flag (#1347). A whole-file grep answers the second question with the first
+  # question's confidence: `release.sh` contains `--selftest` because lock 2 of
+  # a release runs `java -cp out matrix.Main --selftest`, the DAEMON's flag,
+  # quoted in the code that runs it. So the tool was asked to produce a suite,
+  # refused the flag through its own positional check, and was counted as a tool
+  # whose `--selftest` reaches no suite. Permanently. `no_suite=1` has read 1 all
+  # day and means nothing.
+  #
+  # #1212 fixed the other half of this same mistake — the same grep once counted
+  # `advice.sh` and `release.sh` as HAVING suites they do not have — by moving
+  # the discriminator to the verdict line. That repaired the false GREEN and left
+  # the false ENTRY into the loop untouched: one side of a two-sided error.
+  #
+  # The answer is one function over. `named_tool()` already carries a list of
+  # external programs so that advice about somebody else's flags is not read as
+  # advice about this tool, and `release.sh`'s occurrence sits inside
+  # `java -cp out matrix.Main --selftest`, which that list catches. Same rule,
+  # same list, second reader.
+  grep -vE '^[[:space:]]*#' "$tool" \
+    | grep -E '\-\-selftest\b' \
+    | grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' || continue
   # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
   # it runs — `litany.sh` — runs tools of its own to check their verdicts
   # (#1169). Without a depth to read, the two call each other without end:
