@@ -440,7 +440,12 @@ public final class SheetDump {
                         continue;
                     }
                     if (entity.alive) {
-                        sheets.add(Sheets.derive(program.purpose, Family.PROGRAM));
+                        // The wing answers for itself since #1312, as the
+                        // human wing has since #658. The stolen-identity half
+                        // of #660 is not here and cannot be: a SmithCopy is a
+                        // MatrixEntity, never a Program, so this loop never
+                        // sees one and `program.sheet()` cannot answer for it.
+                        sheets.add(program.sheet());
                     } else {
                         skipped++;
                     }
