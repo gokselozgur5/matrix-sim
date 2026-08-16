@@ -40,9 +40,26 @@
 #      so its advice is unfalsifiable by construction. That is reported per
 #      tool, because it is the gap the rule in tools/README.md is about.
 #
-# Exit 0 when every found flag exists in the tool it names. The unfalsifiable
-# count is REPORTED, not judged: four tools have no selftest today and turning
-# that into a red build would be a demand this unit has not argued for.
+# Exit 0 when every found flag exists in the tool it names.
+#
+# THE UNFALSIFIABLE COUNT IS NOW JUDGED (#1311). It was REPORTED for a stated
+# reason — "four tools have no selftest today and turning that into a red build
+# would be a demand this unit has not argued for" — and that reason expired:
+# #1307 and #1309 gave the last two their suites, and the count is 0.
+#
+# Zero is the only moment this costs nothing. At zero the gate blocks the next
+# tool that arrives without a suite; at one it demands a unit from whoever trips
+# it, which is how a gate gets argued about instead of added. Leaving a
+# justification whose premise is false is the third option and the worst — it
+# reads as current, which is the shape #1279 and #1284 spent two units on.
+#
+# WHAT THE GATE DEMANDS, precisely, because the wording is the whole risk: every
+# tool must be FALSIFIABLE SOMEWHERE, not that every path is covered.
+# `issuetree.sh` and `subissue.sh` both cover their DOOR and not their till —
+# the token half stays out because a fixture that fakes `gh` tests the fake
+# (#1273) — and both satisfy this gate. A tool with a suite that runs one case
+# satisfies it too. The floor on each lane step is what guards depth; this
+# guards existence.
 
 set -uo pipefail
 
@@ -132,6 +149,7 @@ for tool in tools/*.sh; do
   grep -qE '\-\-(selftest|selfcheck|rulercheck|datecheck|check)\b' "$tool" && has_selftest=yes
   if [ "$has_selftest" = no ]; then
     unfalsifiable=$((unfalsifiable + 1))
+    BREAKS=$((BREAKS + 1))          # judged since #1311, at the moment it cost nothing
     echo "UNFALSIFIABLE $tool has no --selftest: its advice has nowhere to be executed"
   fi
 
@@ -730,6 +748,13 @@ elif [ "$unrun" -gt 0 ]; then
   # performed. Naming it as any of the other three sends the reader to a file
   # where nothing is wrong.
   echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
+elif [ "$unfalsifiable" -gt 0 ]; then
+  # An eighth word (#1311). Not a wrong promise, not a missing row, not an
+  # unrun suite — there is NO suite, so the tool's advice has nowhere to be
+  # executed and every other check in this file is reading prose about a
+  # program nobody can watch fail. Sending the reader to any of the other
+  # seven would send them to a file where nothing is wrong.
+  echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FALSIFY unfalsifiable=$unfalsifiable"
 elif [ "$codes_unspent" -gt 0 ]; then
   # A seventh word (#1276). The mirror of A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME,
   # and a different defect again: the row promises a code the tool cannot give.
