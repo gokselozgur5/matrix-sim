@@ -3,6 +3,8 @@
 #
 # Usage: tools/litany.sh [PATH]        judge .github/workflows/locks.yml
 #        tools/litany.sh --selftest    run every question against built fixtures
+#        tools/litany.sh --shellcheck  parse every run: block as the shell that runs it
+#        tools/litany.sh --floorcheck  does every suite gate carry a floor?
 #
 # THE FINDING THIS EXISTS FOR. In one night `locks.yml` gained floors, lost
 # three swallowing captures, gained two locks, widened one and gained two

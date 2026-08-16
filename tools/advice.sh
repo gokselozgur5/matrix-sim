@@ -174,6 +174,81 @@ for tool in tools/*.sh; do
   echo "UNCATALOGUED $name has no row in tools/README.md — nobody can find out what it is for"
 done
 
+# The manual read in the OTHER direction (#1033).
+#
+# Everything above asks whether the catalog's promises are kept: a row naming
+# `--foo` must belong to a tool that has one. That is the direction a human eye
+# does well, because the reader is holding the row.
+#
+# Nothing asked the reverse — whether a flag the tool PARSES appears in its row
+# at all. #971 fixed two instances of it by hand (`attribution.sh --for`,
+# `balance.sh --events`/`--rulercheck`) and said plainly that it was a
+# correction and not a cure. The first sweep here found seven more, four of
+# them landed the same week the check was written: `--fix-cmd` and `--selftest`
+# on attribution, `--age` and `--selftest` on digest-move, `--floorcheck` and
+# `--shellcheck` on litany, `--pr` on prstate. Invisible capability is a
+# quieter defect than a broken promise and it lasts longer: nobody types a flag
+# they have never read about, so the feature is dead and the tree still pays to
+# maintain it.
+#
+# The accepted set is read two ways, because this directory parses arguments
+# two ways: a `case` arm (`--pr)`, `--for|--pr)`), and a direct comparison
+# (`[ "${1:-}" = "--selftest" ]`, which is how litany.sh and baseline.sh do it).
+# Comments are stripped first — a tool that discusses `--foo` in its header is
+# not parsing it, and this is the fifth time in this file that a checker had to
+# be kept out of its own prose.
+#
+# The advertised set is the WHOLE row rather than its `Usage:` clause, and that
+# is a deliberate weakening. A row's prose legitimately names other programs'
+# flags — `git commit --amend`, `java … --selftest`, `balance.sh --rulercheck`
+# in the row for release.sh — so a strict Usage-only reading reports phantoms
+# that are not phantoms, and a whole-row reading reports none of them. Since
+# the promise direction is already judged above, the only question left for
+# this loop is the one a whole-row read answers exactly: does the manual
+# mention this flag ANYWHERE. It cannot false-positive; it can only miss a flag
+# mentioned in passing but absent from Usage, and #1262 owns that gap.
+flags_parsed=0
+flags_undocumented=0
+tools_no_flags=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  row="$(grep "^| \`$name\`" tools/README.md || true)"
+  [ -n "$row" ] || continue                      # uncatalogued, counted above
+  body="$(grep -vE '^[[:space:]]*#' "$tool" || true)"
+  arms="$(printf '%s\n' "$body" \
+          | grep -oE '^[[:space:]]*--[a-z0-9-]+(\|--[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' || true)"
+  compares="$(printf '%s\n' "$body" \
+          | grep -oE '=[[:space:]]*"?--[a-z0-9-]+' | grep -oE -- '--[a-z0-9-]+' || true)"
+  accepted="$(printf '%s\n%s\n' "$arms" "$compares" | grep -E '^--' | sort -u || true)"
+  if [ -z "$accepted" ]; then
+    # Reported rather than skipped in silence: a sweep that read no flags at
+    # all prints the same green line as one that read forty, and this tree has
+    # met that shape in charset_checked=0 (#1207) and INSTRUMENTS_UNPROVEN
+    # (#970). `issuetree.sh` takes positional arguments only and is the honest
+    # zero.
+    tools_no_flags=$((tools_no_flags + 1))
+    echo "NO_FLAGS $tool parses no long options — positional arguments only"
+    continue
+  fi
+  # Padded with spaces and matched by `case`, never `printf | grep -q`: -q exits
+  # at the first match, the printf takes SIGPIPE, and on ubuntu-latest that
+  # prints `write error: Broken pipe` and takes the exit code with it. The
+  # padding is what keeps `--for` from matching inside `--format`.
+  advertised=" $(printf '%s' "$row" | grep -oE -- '--[a-z][a-z0-9-]*' | sort -u | tr '\n' ' ') "
+  while IFS= read -r flag; do
+    [ -z "$flag" ] && continue
+    flags_parsed=$((flags_parsed + 1))
+    case "$advertised" in
+      *" $flag "*) ;;
+      *)
+        flags_undocumented=$((flags_undocumented + 1))
+        BREAKS=$((BREAKS + 1))
+        echo "UNDOCUMENTED $tool parses '$flag' and its catalog row never names it"
+        ;;
+    esac
+  done <<< "$accepted"
+done
+
 # A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
 # readers added today catch a MISSING row; a WRONG row is prose about a program written by
 # the person who wrote the program, and nothing compares the two ever again — which is
@@ -358,7 +433,8 @@ for tool in tools/*.sh; do
 done
 
 echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined lines=$found flags_checked=$checked" \
-     "unimplemented=$missing unfalsifiable=$unfalsifiable"
+     "unimplemented=$missing unfalsifiable=$unfalsifiable" \
+     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented tools_no_flags=$tools_no_flags"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
@@ -377,6 +453,14 @@ elif [ "$unrun" -gt 0 ]; then
   # performed. Naming it as any of the other three sends the reader to a file
   # where nothing is wrong.
   echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
+elif [ "$flags_undocumented" -gt 0 ]; then
+  # A sixth word (#1033). The mirror of ADVISES_A_FLAG_NOBODY_IMPLEMENTS, and a
+  # different defect: there is no broken promise here, no wrong row and no
+  # missing row — the tool works, the manual is merely silent about part of it.
+  # Sending the reader to "a flag nobody implements" would send them looking for
+  # a flag that exists and works. Invisible capability is the quieter failure and
+  # the longer-lived one: nobody types a flag they have never read about.
+  echo "ADVICE VERDICT A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES undocumented=$flags_undocumented"
 elif [ "$codes_redefined" -gt 0 ]; then
   # A row redefining a UNIVERSAL code is not a wrong promise about one tool — it
   # breaks a reading every caller in the tree relies on, and the reader has to be
