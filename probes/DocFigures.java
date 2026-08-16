@@ -64,8 +64,14 @@ public final class DocFigures {
             "ls", "find", "grep", "wc", "git", "cat", "sort", "head", "tail",
             "sed", "awk", "basename", "java");
 
+    /**
+     * The documents that carry markers. {@code README.md} is the front door —
+     * the first thing a stranger reads and the only document most of them will
+     * read — and it is where the drift was worst: two transcripts stale at
+     * once, one of them stale in MEANING rather than in a stamp (#1081, #922).
+     */
     private static final String[] DEFAULT_DOCS = {
-            "probes/README.md", "tools/README.md",
+            "README.md", "probes/README.md", "tools/README.md",
     };
 
     public static void main(String[] args) throws Exception {

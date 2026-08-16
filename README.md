@@ -199,18 +199,20 @@ Measured on `main` at `1e0e236`, seed 42 — the default when `--seed` is absent
 
 ```bash
 java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400
-# [004331] FATE  the first hull: the Nebuchadnezzar joins the fleet — the census learns to fly
-# [004400] FATE  the Nebuchadnezzar goes down — 0 wires cut, 3 souls lost with the hull
+# [004076] FATE  the first hull: the Nebuchadnezzar joins the fleet — the census learns to fly
+# [004400] FATE  the Nebuchadnezzar goes down — 3 wires cut, 0 souls lost with the hull
 ```
+<!-- figure: java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400 2>/dev/null | grep 'goes down' == [004400] FATE  the Nebuchadnezzar goes down — 3 wires cut, 0 souls lost with the hull -->
 
 One tick number cannot state a scenario that needs three losses to reach. `--sink-every N` can, and it is the only way to run the city past the end of its roster (#806): the fourth keel re-issues the first name under a generation mark.
 
 ```bash
 java -cp out matrix.Main --headless --ticks 20000 --seed 42 --sink-every 500
-# [014630] FATE  hull number 3: the Hammer joins the fleet — the census replaces what it lost
-# [019240] FATE  hull number 4: the Nebuchadnezzar II joins the fleet — the census replaces what it lost
-# [019960] FATE  hull number 5: the Logos II joins the fleet — the census replaces what it lost
+# [009660] FATE  hull number 3: the Hammer joins the fleet — the census replaces what it lost
+# [011150] FATE  hull number 4: the Nebuchadnezzar II joins the fleet — the census replaces what it lost
+# [014130] FATE  hull number 5: the Logos II joins the fleet — the census replaces what it lost
 ```
+<!-- figure: java -cp out matrix.Main --headless --ticks 20000 --seed 42 --sink-every 500 2>/dev/null | grep 'hull number 5' == [014130] FATE  hull number 5: the Logos II joins the fleet — the census replaces what it lost -->
 
 **`--scale N`** is the homecoming dial (#136): it multiplies every Bestiary population while humans, agents, exiles and the arc keep canon counts. `--scale 11` is the ~5,269-entity world D-027's retargeted budget row is measured at. Live runs only — it is refused with `--chronos`/`--replay` (exit 2), because a genesis line carries no scale, and scale 1 is the canonical world byte-for-byte.
 
