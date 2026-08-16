@@ -70,6 +70,7 @@ public final class SheetFence {
     private static final String DEFAULT_LAYER = "src/matrix/character";
 
     public static void main(String[] args) throws IOException {
+        matrix.Streams.utf8();
         List<String> wings = new ArrayList<>(List.of(DEFAULT_WINGS));
         String layer = DEFAULT_LAYER;
 
