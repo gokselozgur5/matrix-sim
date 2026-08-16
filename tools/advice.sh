@@ -258,6 +258,21 @@ done
 # watched, and this file audits eleven programs for exactly that omission
 # while committing it. `--selftest` calls this against fixtures; the ordinary
 # run calls it against the shop.
+unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it spends and the row omits
+  local spends promised code out=''
+  spends="$(grep -vE '^[[:space:]]*#' "$1" | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' \
+            | grep -oE '[0-9]+' | sort -un | tr '\n' ' ')"
+  promised=" $(printf '%s' "$2" | grep -oE 'Exit [^|]*' \
+               | grep -oE '(^Exit |· )[0-9]+' | grep -oE '[0-9]+' | sort -un | tr '\n' ' ')"
+  for code in $spends; do
+    # 0 again: falling off the end spends it, so its absence proves nothing.
+    [ "$code" = 0 ] && continue
+    case "$promised " in *" $code "*) ;; *) out="$out $code" ;; esac
+  done
+  printf '%s' "${out# }"
+}
+
+
 flag_audit() {                                   # flag_audit <tools-dir> <catalog>
   local dir="$1" catalog="$2" tool name row body arms compares accepted advertised flag
   flags_parsed=0
@@ -455,6 +470,58 @@ selftest() {
   no_flags_case positional-only 1 'echo "$1"' "$ROW_WITHOUT"
   no_flags_case has-flags       0 '  --pr) PR=1 ;;' "$ROW_WITH"
 
+  # The exit-code join (#1238). The live rows falsify it too — it found two real
+  # ones the day it was written — but the tree will stop supplying examples the
+  # moment they are fixed, and a check with no case left is a check nobody can
+  # break on purpose.
+  # The fixture is SYNTHESISED from a list of codes rather than written out, and
+  # the reason is the ninth instance of the oldest bug in this file: a program
+  # hunting `exit N` cannot contain `exit N`. The first draft of these cases
+  # spelled their fixtures literally, and the live audit immediately reported
+  # `advice.sh spends exit 3 and its row does not name it` — reading its own
+  # test data as its own behaviour. `printf 'exit %s\n'` carries no digit, so
+  # the format string is invisible to the grep it feeds.
+  ROW_CODES='| `fixture.sh` | does a thing. Exit 0 fine · 2 refused. |'
+  #
+  # The parameters are positional and NOT flags, which is the same finding one
+  # audit over: a `--row)` arm written here was immediately reported as
+  # `A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES undocumented=1`, because the flag audit
+  # reads every `--x)` in the file and cannot tell a tool's door from a suite's
+  # helper. That is a real limit of the flag audit and it has its own issue; here
+  # it is simply avoided.
+  codes_case() {                  # codes_case <name> <want> <codes> [<prefix-line>] [<row>]
+    local name="$1" want="$2" codes="$3" prefix="${4:-}" row="${5:-$ROW_CODES}" got
+    : > "$tmp/codes.sh"
+    [ -n "$prefix" ] && printf '%s\n' "$prefix" >> "$tmp/codes.sh"
+    # shellcheck disable=SC2086
+    [ -n "$codes" ] && printf 'exit %s\n' $codes >> "$tmp/codes.sh"
+    got="$(unnamed_codes "$tmp/codes.sh" "$row")"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  codes_case all-named             ''    '2'
+  codes_case one-missing           '1'   '1 2'
+  codes_case two-missing           '1 3' '1 3'
+  # 0 is unjudgeable in this direction: a script that never writes it still
+  # spends it by falling off the end, so its absence from a row proves nothing.
+  codes_case zero-never-counted    ''    '0'
+  # A `return` is not an exit. This is the case that reported `backlog.sh`'s
+  # `measured_body()` predicate as a third defect until the grep was narrowed —
+  # `*) return 1 ;;` there means FALSE and never reaches `$?` of the process.
+  codes_case return-is-not-exit    ''    '2' 'f() { return 1; }'
+  # A comment quoting a code is prose, not behaviour.
+  codes_case commented-exit        ''    '2' "# a broken suite leaves $(printf 'exit %s' 1)"
+  # `exit_status=1` is an assignment, and the space after the word is what keeps
+  # it out — the same boundary that keeps `EXIT_REFUSED=2` out.
+  codes_case assignment-not-exit   ''    '2' 'exit_status=1'
+  # Numbers OUTSIDE the `Exit …` clause are not promises: a row saying "takes 1
+  # argument" does not document code 1.
+  codes_case number-outside-clause '1'   '1 2' '' \
+        '| `fixture.sh` | takes 1 argument. Exit 0 fine · 2 refused. |'
+
   echo "ADVICE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
@@ -559,8 +626,15 @@ for tool in tools/*.sh; do
   row="$(grep "^| \`$name\`" tools/README.md || true)"
   [ -n "$row" ] || continue
   case "$row" in *"Exit "*) ;; *) continue ;; esac
+  # `exit` ONLY, and that is a correction (#1238). The first draft read
+  # `(exit|return)`, which conflates two unrelated things: a process's exit code
+  # and a shell function's boolean. `backlog.sh`'s `measured_body()` ends
+  # `*) return 1 ;;` to mean FALSE — the predicate the whole tool is built on —
+  # and that 1 never reaches `$?` of the process. Counting it inflated `spends`,
+  # and an inflated `spends` HIDES unspent findings rather than inventing them,
+  # so the defect was silent in both directions of the audit.
   spends="$(grep -vE '^[[:space:]]*#' "$tool" \
-            | grep -oE '(exit|return) [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
+            | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
   # A tool whose codes are all indirect has nothing to compare against.
   [ -n "$spends" ] || continue
   # `exit "$(code_for …)"` is a lookup; `exit $?` is a PASS-THROUGH — the code
@@ -586,6 +660,49 @@ for tool in tools/*.sh; do
         ;;
     esac
   done <<< "$promised"
+done
+
+# The half #1222 asked for and did not implement, three units later (#1238).
+#
+# `codes_undocumented` above asks whether the row says ANYTHING about exits; the
+# literal string `Exit ` satisfies it. A row reading `Exit codes vary.` passes,
+# and so does one naming 0–3 for a tool that spends 0–5. That is a documentation
+# floor, not a join, and #1222's own PR body said the join was missing — which
+# left the other half of a merged rule living in prose on a closed pull request.
+#
+# This is the join, in the direction the floor cannot see: every code the tool
+# spends must appear in its row. It found two, and both are the same shape — a
+# `--selftest` that leaves 1 when a case fails, in a row that documents only the
+# door's refusals. A crew member wiring either suite into a lane reads the row,
+# sees 0 and 2, and has no written reason to expect the code the lane will
+# actually branch on.
+#
+# Why this direction may run on tools the OTHER direction exempts: a lookup or a
+# `$?` pass-through makes the literal grep UNDERCOUNT what a tool spends.
+# Undercounting turns a promise-check into a liar (`prstate.sh` promises 4, 5, 6
+# through `code_for` and no literal shows them), so `codes_unspent` must exempt
+# them — but it can only ever cost this direction a finding it would have made.
+# The asymmetry is the reason the two loops do not share a guard.
+codes_unnamed=0
+codes_returns=0
+for tool in tools/*.sh; do
+  name="$(basename "$tool")"
+  row="$(grep "^| \`$name\`" tools/README.md || true)"
+  [ -n "$row" ] || continue
+  case "$row" in *"Exit "*) ;; *) continue ;; esac
+  # Reported, never judged. A `return N` is a predicate's answer to its caller
+  # UNLESS the function is the script's last statement, in which case it is the
+  # process's code — and telling those apart means running the script in your
+  # head, which is the interpretation #1238 asked to stay out. Both shapes live
+  # here: `backlog.sh` returns 1 for false, `prstate.sh`'s `report()` returns 3
+  # for a pull request it could not read.
+  grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(^|[^_a-zA-Z])return [0-9]+' \
+    && codes_returns=$((codes_returns + 1))
+  for code in $(unnamed_codes "$tool" "$row"); do
+    codes_unnamed=$((codes_unnamed + 1))
+    BREAKS=$((BREAKS + 1))
+    echo "CODES_UNNAMED $name spends exit $code and its row does not name it"
+  done
 done
 
 codes_redefined=0
@@ -727,9 +844,14 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
+# The census rule (#1221): `codes_returns` is a description of the tree, not a
+# claim whose change is a finding — a tool gaining a helper function that
+# returns a boolean moves it, and nothing is wrong. It sits here so the number
+# that CANNOT be judged is still visible beside the ones that can.
+echo "CODES_CENSUS with_returns=$codes_returns rows_read=$(grep -c '^| `[a-z-]*\.sh`' tools/README.md)  (a return is a predicate or an exit depending on where the function sits; unjudged on purpose)"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
@@ -741,6 +863,14 @@ elif [ "$codes_undocumented" -gt 0 ]; then
   # would send the reader looking for a promise, and there is none — that is the
   # defect.
   echo "ADVICE VERDICT A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME undocumented=$codes_undocumented"
+elif [ "$codes_unnamed" -gt 0 ]; then
+  # A ninth word (#1238), and deliberately NOT the fifth one above. That verdict
+  # is for a row with no exit vocabulary at all — the reader finds nothing and
+  # knows it. This one is for a row that HAS a numbered list and is missing an
+  # entry from it, which reads as complete and is not: the reader stops looking
+  # precisely because they found an answer. Sending them to the fifth word would
+  # send them to a row that documents its codes.
+  echo "ADVICE VERDICT A_ROW_NAMES_SOME_OF_A_TOOLS_CODES unnamed=$codes_unnamed"
 elif [ "$unrun" -gt 0 ]; then
   # A fourth failure and a fourth word (#1212). A suite the lane never executes
   # is not a missing flag, not a missing catalog row and not a lying one: the
