@@ -244,6 +244,7 @@ flag_audit() {                                   # flag_audit <tools-dir> <catal
   local dir="$1" catalog="$2" tool name row body arms compares accepted advertised flag
   flags_parsed=0
   flags_undocumented=0
+  flags_phantom=0
   tools_no_flags=0
   for tool in "$dir"/*.sh; do
   [ -f "$tool" ] || continue
@@ -283,6 +284,36 @@ flag_audit() {                                   # flag_audit <tools-dir> <catal
         ;;
     esac
   done <<< "$accepted"
+
+  # THE PHANTOM DIRECTION, now that the row has a boundary (#1263).
+  #
+  # The check above reads the WHOLE row, deliberately: rows legitimately name
+  # other programs' flags (`git commit --amend`, `balance.sh --rulercheck`
+  # inside release.sh's row), so a whole-row read cannot false-positive in the
+  # undocumented direction and cannot be used in this one.
+  #
+  # The `Usage:` clause CAN, once it is bounded. It runs from `Usage: ` to the
+  # first `**` or ` Exit N`, whichever comes first — the two things that end it
+  # in every row here. That bound is what #1263 was opened for: three earlier
+  # extraction rules each traded one error for the other, because `Usage:` is
+  # prose inside a paragraph inside a table cell with the exit grammar and a
+  # bold aside sharing the sentence run.
+  #
+  # Zero phantoms the day this landed, which is the same reading SheetFence's
+  # first green run had: the law was true and nothing was keeping it.
+  usage="$(printf '%s' "$row" | sed -n 's/.*Usage: //p' | sed -e 's/ \*\*.*//' -e 's/ Exit [0-9].*//')"
+  [ -n "$usage" ] || continue
+  while IFS= read -r flag; do
+    [ -z "$flag" ] && continue
+    case " $(printf '%s\n' "$accepted" | tr '\n' ' ') " in
+      *" $flag "*) ;;
+      *)
+        flags_phantom=$((flags_phantom + 1))
+        BREAKS=$((BREAKS + 1))
+        echo "PHANTOM $tool advertises '$flag' in its Usage clause and parses no such flag"
+        ;;
+    esac
+  done <<< "$(printf '%s' "$usage" | grep -oE -- '--[a-z][a-z0-9-]*' | sort -u || true)"
   done
 }
 
@@ -377,6 +408,32 @@ selftest() {
   case_ uncatalogued-skipped   0 '  --pr) PR=1 ;;' '| `other.sh` | not our fixture. |'
 
   # Positional-only tools are reported, not silently passed (#1207's shape).
+  # The phantom direction (#1263): a Usage clause naming a flag the tool refuses.
+  phantom_case() {                # phantom_case <name> <want> <tool-body> <row>
+    local name="$1" want="$2" toolbody="$3" row="$4" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$toolbody" > "$tmp/shop/fixture.sh"
+    printf '%s\n' "$row" > "$tmp/shop/README.md"
+    BREAKS=0
+    flag_audit "$tmp/shop" "$tmp/shop/README.md" >/dev/null 2>&1
+    got="$flags_phantom"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  phantom_case usage-flag-parsed    0 "  $pr) PR=1 ;;" "$ROW_WITH"
+  phantom_case usage-flag-refused   1 '  --other) X=1 ;;' "$ROW_WITH"
+  # The bound is the point: a flag named AFTER the Usage clause — in the exit
+  # grammar, or in a bold aside about another program — is not a promise about
+  # this tool, and an unbounded read reported those as phantoms. release.sh's
+  # row is the live example: it names balance.sh --rulercheck while explaining
+  # which locks a cut skips.
+  phantom_case flag-past-the-bound  0 '  --pr) X=1 ;;' \
+        '| `fixture.sh` | does a thing. Usage: `tools/fixture.sh --pr N`. **Note:** unlike `other.sh --elsewhere`. Exit 0 fine · 2 refused. |'
+
   no_flags_case positional-only 1 'echo "$1"' "$ROW_WITHOUT"
   no_flags_case has-flags       0 '  --pr) PR=1 ;;' "$ROW_WITH"
 
@@ -626,7 +683,7 @@ done
 
 echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
-     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented tools_no_flags=$tools_no_flags"
+     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
 if [ "$BREAKS" -eq 0 ]; then
   echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
 elif [ "$missing" -gt 0 ]; then
