@@ -581,6 +581,25 @@ jobs:
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "ISSUETREE SUITE FLOOR OK cases=$ran floor=$floor"
+      # WHY: #1309 — the last tool with no suite, and writing one found three refusals
+      # spending exit 1 through bash's `${1:?…}` while two hand-written ones in the same
+      # file spent 2. `unfalsifiable=` reaches 0 with this, which is what would let that
+      # counter become a gate rather than a report (#1095 declined to make it one while
+      # four tools had none).
+      - name: tools — the sub-issue cutter's own refusals (#1309)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/subissue.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/subissue-selftest.log"
+          verdict="$(grep -E '^SUBISSUE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/subissue-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the sub-issue cutter's suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=6    # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "SUBISSUE SUITE FLOOR OK cases=$ran floor=$floor"
 
       - name: tools — the backlog classifier's own suite (#1246)
         shell: bash
