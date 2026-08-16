@@ -1,5 +1,8 @@
 package matrix.character;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The one door every wing walks through to ask what a resident is: an
  * identity in, a sheet out, derived on read and stored nowhere (#656).
@@ -59,6 +62,55 @@ public final class SheetDoor {
      */
     public static Sheet at(String nameAtBirth, Family family) {
         return Sheets.derive(nameAtBirth, family);
+    }
+
+    /**
+     * The Matrix's own sheet: derived like every other resident's, except
+     * for the one axis the world already knows the answer to (#661).
+     *
+     * <p>{@code stability}, {@code tolerance} and {@code authority} come
+     * from the name, as a christening should. {@code versionFatigue} does
+     * not: the system has LIVED through its reloads, the count has been in
+     * the digest since v1, and folding the string {@code "the Matrix"} into
+     * a number to describe how tired it is would be inventing a fact the
+     * world is already holding. Six lived versions read 6.
+     *
+     * <p>The charm of the row is that the retroactivity is free. Nothing
+     * new is recorded, no field is added, no tick is spent — an old counter
+     * is finally read as the character trait it always was. An in-run
+     * reboot raises it on the same page, because there is nothing between
+     * the counter and the sheet to go stale.
+     *
+     * <p>The parameter is an {@code int} and not a {@code World}, which is
+     * D-013 doing its job: this layer stays type-blind, the caller does the
+     * reading, and the bridge stays single.
+     *
+     * @param livedVersions the world's version counter, as it stands right now
+     */
+    public static Sheet system(String nameAtBirth, int livedVersions) {
+        Sheet derived = at(nameAtBirth, Family.SYSTEM);
+        List<Integer> values = new ArrayList<>(derived.values());
+        values.set(Family.SYSTEM.axisIndex(Family.FATIGUE_AXIS), band(livedVersions));
+        return new Sheet(Family.SYSTEM, nameAtBirth, values);
+    }
+
+    /**
+     * A lived-version count as a stat: the 1..10 band every axis lives in.
+     *
+     * <p>A version counter is unbounded and a stat is not, so the two meet
+     * somewhere. They meet by SATURATION rather than by modulo, and the
+     * choice is the whole meaning of the axis: {@code Math.floorMod} would
+     * make v11 as fresh as v1, and a system on its eleventh reload being
+     * reported as brand new is the one reading that is definitely wrong. A
+     * saturating band says "past exhausted, still exhausted", which is what
+     * fatigue is.
+     *
+     * <p>v0 bands to 1 rather than 0 because 0 is outside the stat range
+     * and {@link Sheet} refuses it — a world that has never reloaded is at
+     * the bottom of the axis, not off it.
+     */
+    static int band(int livedVersions) {
+        return Math.max(1, Math.min(10, livedVersions));
     }
 
     /**

@@ -290,6 +290,7 @@ table() {
   # that had none were deleted rather than re-derived (#1192).
   judge SheetDump    'VERDICT SHEETDUMP_CATALOG_MATCHES checked=4 of=4' --catalog
   judge SheetFence   'VERDICT ONE_DOOR_NO_CACHE stored=0 foreign_imports=0 cached=0 door_missing=0'
+  judge SystemFatigue 'VERDICT FATIGUE_READS_THE_COUNTER boot=6 reboot=7 v99=10 v0=1 derived_intact=true'
   vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
         --lines '^ALLOC(_NOTE|_BUDGET)? ' --cut 3 \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
