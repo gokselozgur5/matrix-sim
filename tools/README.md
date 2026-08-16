@@ -75,6 +75,15 @@ House rules:
   anybody re-read it. `locks.yml` now builds the reader and asks it (#965), so
   the next page to move moves in a PR.
 
+## Writing a checker here
+
+Read clause 8 of `probes/README.md`'s contract first. Every tool in this directory
+searches a population, and every tool in this directory is a file in one — `advice.sh`
+alone has matched its own comments (#1157), a neighbour's row (#1222), its own suite
+fixture (#1265) and its own `exit` pattern (#1276). That clause names the five repairs;
+choosing among them deliberately costs a minute, and discovering the problem costs a
+red first run at best and a check that silently covers nothing at worst.
+
 ## The exit grammar — what a low code means, and who may spend it
 
 Every program in this tree that a script branches on: eleven tools, forty-odd

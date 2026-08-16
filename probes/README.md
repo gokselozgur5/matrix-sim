@@ -61,6 +61,29 @@ when one of the three D-020 instruments shows a symptom the others cannot explai
    with no locale exported, JDK 17 resolves it to `ANSI_X3.4-1968` and every em dash
    the probe printed becomes `?`. The pin is scanned for in CI, so a probe that
    forgets it fails the lane rather than the next reader.
+8. **A checker is inside the population it checks.** Every instrument here searches a
+   set of files, and every instrument here is a file. Six have found themselves:
+   `litany.sh` matched its own ghost verdict (#1144), `advice.sh` matched its own
+   comments (#1157), a neighbouring row through an unanchored grep (#1222), its own
+   suite fixture (#1265) and its own `exit` pattern (#1276), and `DocFigures` matched
+   its own catalog row — which explains the marker syntax and therefore *is* a marker
+   (#1283).
+
+   Every one was caught on the check's first run, which is why the shape kept getting
+   fixed locally and never written down: it announces itself loudly, and the next
+   author meets it fresh. The five repairs, so the seventh checker's author can choose
+   deliberately rather than discover:
+
+   - **strip comments before counting** — a tool discussing `--foo` is not parsing it;
+   - **assemble the fixture at runtime** so the literal never appears in the file;
+   - **anchor the search** so a neighbour cannot answer for you (`^| \`name\``);
+   - **escape the syntax in prose** when the document is the population;
+   - **exclude yourself explicitly** — and narrow that skip to the checks that read
+     prose. The whole-loop version exempted `advice.sh` from the census it publishes
+     for months (#1265).
+
+   Nothing enforces this clause and nothing can: a check that detected self-matching
+   would have to know which file it is, which is the same problem one level up.
 
 ## Building and running
 
