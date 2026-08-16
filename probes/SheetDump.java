@@ -336,7 +336,7 @@ public final class SheetDump {
         lines.add("CENSUS mode=" + label(mode, wing) + " seed=" + seed + " ticks=" + ticks);
 
         if (mode == Mode.ALL || mode == Mode.CAST) {
-            List<Sheet> cast = SheetBench.namedCast();
+            List<Sheet> cast = SheetBench.namedCast(world.version());
             lines.add("CAST souls=" + cast.size() + " in_world=" + inWorld(cast, wings));
             emit(lines, souls, cast);
         }
