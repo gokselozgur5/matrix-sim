@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tools/backlog.sh — which of the open backlog was measured, and which was recognised (#1246)
 #
-# Usage: tools/backlog.sh              count the open build-units by evidence
+# Usage: tools/backlog.sh              count the open backlog by evidence, every kind with an evidence field
 #        tools/backlog.sh --list       print one row per unmeasured issue
 #        tools/backlog.sh --selftest   run the classifier's cases; no token, no network
 #
@@ -81,6 +81,28 @@ truncated() {                     # truncated <open> <limit>
   [ "$1" -ge "$2" ]
 }
 
+# THE MARKER THE QUERY ABOVE DEPENDS ON (#1251). Every issue template must carry
+# an evidence field whose label opens with the shared word, so one query reaches
+# every kind. The local phrasing rides BEHIND it — `Measured — what the class
+# does today` — because a crown's evidence is not a measurement of a defect and
+# a prompt that pretends otherwise invites `n/a`. This is `vary`'s shape and
+# `# litany: unguarded <reason>`'s: one token for the machine, free prose for
+# the person.
+#
+# JUDGED, in a tool whose issue counts are only reported. #1246's argument is
+# that an issue is not an artefact CI can judge — nobody can be made to write
+# prose in a field, and a lint demanding it is how a required field becomes
+# `n/a`. A TEMPLATE is an artefact: it is a file in this tree, a fourth one is
+# added by a pull request, and the cost of the rule is one word in a label.
+unmarked_templates() {            # unmarked_templates <dir> -> names, one per line
+  local dir="${1:-.github/ISSUE_TEMPLATE}" f
+  [ -d "$dir" ] || return 0
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    grep -qE '^ *label: *Measured( |$)' "$f" || basename "$f"
+  done
+}
+
 selftest() {
   pass=0
   fail=0
@@ -141,6 +163,41 @@ BENCH judged=52
   date_ flow-refuses-prose   2 --flow yesterday
   date_ flow-refuses-partial 2 --flow 2026-08
 
+  # The template marker (#1251). Driven over a scratch directory rather than
+  # over `.github/ISSUE_TEMPLATE`, because the live one is green by the time
+  # this lands and a check with no failing case is a check nobody can break on
+  # purpose.
+  local tmp; tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+  tpl_() {                        # tpl_ <name> <want-count> <label-line…>
+    local name="$1" want="$2" got; shift 2
+    local dir="$tmp/tpl"; rm -rf "$dir"; mkdir -p "$dir"
+    local i=0
+    for line in "$@"; do
+      i=$((i + 1))
+      printf 'name: fixture %s\nbody:\n  - type: textarea\n    attributes:\n%s\n' "$i" "$line" \
+        > "$dir/t$i.yml"
+    done
+    got="$(unmarked_templates "$dir" | grep -c . || true)"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKLOG case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  tpl_ tpl-bare-marker       0 '      label: Measured'
+  tpl_ tpl-marker-and-prose  0 '      label: Measured — what the class does today'
+  tpl_ tpl-local-name-only   1 '      label: The reading behind the concern'
+  # The word must OPEN the label. A field called "How this was measured" is a
+  # different question and would satisfy a substring read while leaving the
+  # query's anchor unwritten.
+  tpl_ tpl-marker-not-first  1 '      label: How this was measured'
+  tpl_ tpl-one-of-two        1 '      label: Measured' '      label: Something else'
+  # An empty directory is zero unmarked, not an error: a tree with no templates
+  # has nothing to be wrong about, and reporting one would be a checker
+  # inventing a defect out of an absence (#1235's shape).
+  tpl_ tpl-no-templates      0
+
   echo "BACKLOG SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
@@ -184,9 +241,32 @@ fi
 # --limit 1000 rather than the default 30, and the number is the whole point of
 # this tool's existence. A count taken at the default is a count of the first
 # page, and nothing in the output says so.
+unmarked="$(unmarked_templates)"
+if [ -n "$unmarked" ]; then
+  printf 'TEMPLATE_UNMARKED %s has no evidence field labelled `Measured …`\n' $unmarked
+  echo "FATAL a template's evidence field is unreachable by the query below — one word in the label is the whole fix (#1251)" >&2
+  exit 1
+fi
+echo "TEMPLATES_MARKED count=$(ls .github/ISSUE_TEMPLATE/*.yml 2>/dev/null | wc -l | tr -d ' ')"
+
 LIMIT=1000
-if ! rows="$(gh issue list --repo "$REPO" --label build-unit --state open \
-             --limit "$LIMIT" --json number,title,body 2>&1)"; then
+# EVERY KIND THAT HAS AN EVIDENCE FIELD, not just build units (#1251). Three
+# templates grew one in two hours and each named it for its own kind of issue —
+# `Measured`, `What the class does today`, `The reading behind the concern` — so
+# a query for one of them returned "all measured" for the other two by searching
+# for a word those templates do not use. The prompts still differ, because a
+# crown's evidence is not a measurement of a defect; the SHARED MARKER is what
+# the query needs, and the local sentence rides behind it.
+#
+# `label:a,b,c` is search's OR and `--label a --label b` is gh's AND, which is
+# the trap: the AND form returns the issues carrying all three, which is
+# usually none, and a count of none reads exactly like a clean backlog. The
+# search form also deduplicates — 499 + 4 + 15 labels return 515 issues, so
+# three carry two — and three tools counted twice would be a defect this tool
+# exists to name in other people's numbers.
+KINDS='build-unit,class-design,decision'
+if ! rows="$(gh issue list --repo "$REPO" --state open --search "label:$KINDS" \
+             --limit "$LIMIT" --json number,title,body,labels 2>&1)"; then
   echo "FATAL could not read the backlog: $rows" >&2
   exit 3
 fi
@@ -205,6 +285,17 @@ while IFS= read -r line; do
     [ "$MODE" = list ] && printf 'UNMEASURED #%s %s\n' "$num" "$(printf '%s' "$title" | cut -c1-80)"
   fi
 done <<< "$(printf '%s' "$rows" | jq -r '.[] | [.number, .title, (.body // "" | gsub("[\n\t]"; " "))] | @tsv')"
+
+# The kinds, so `unmeasured=` can be read. A ratio over one population is a
+# number; a ratio over three whose sizes are invisible is an average of things
+# nobody can name. Census and never a verdict (#1221): a kind's size moves
+# whenever somebody files.
+kinds=''
+for kind in $(printf '%s' "$KINDS" | tr ',' ' '); do
+  kinds="$kinds $kind=$(printf '%s' "$rows" \
+        | jq --arg k "$kind" '[.[] | select(any(.labels[]?; .name == $k))] | length')"
+done
+echo "BACKLOG_KINDS$kinds  (a search OR, deduplicated: an issue wearing two labels is one row)"
 
 measured=$((open - unmeasured))
 echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured limit=$LIMIT"

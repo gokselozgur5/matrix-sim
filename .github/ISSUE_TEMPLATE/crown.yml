@@ -45,7 +45,7 @@ body:
   - type: textarea
     id: today
     attributes:
-      label: What the class does today
+      label: Measured — what the class does today
       description: >-
         The command you ran and what it printed — a probe verdict, a grep over the source,
         a digest line. A crown is a document about code written by whoever wrote the code,

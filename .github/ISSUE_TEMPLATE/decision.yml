@@ -39,7 +39,7 @@ body:
   - type: textarea
     id: reading
     attributes:
-      label: The reading behind the concern
+      label: Measured — the reading behind the concern
       description: >-
         A Y-statement's "facing <concern>" is usually an empirical claim — the sweep costs
         too much, the API is unreliable, the seed diverges. Put the run here. D-060 was
