@@ -46,10 +46,23 @@ for arg in "$@"; do
     --list) LIST=yes ;;
     --no-build) BUILD=no ;;
     --twice) TWICE=yes ;;
-    # The determinism pass, narrowed to the probes a change touches (#1185). --twice
-    # doubles a 208 s sweep against a 300 s ceiling, so it has never been in a lane and
-    # `INSTRUMENTS_DRIFTED` was a verdict nothing read — until it was run by hand and
-    # immediately found one (#1184). This is the shape that matches how the defect
+    # The determinism pass, narrowed to the probes a change touches (#1185).
+    #
+    # WHY NARROWED: `--twice` runs every probe twice, so it costs about double the
+    # sweep — and the sweep's own trailer already measures itself against the lane's
+    # ceiling on every run:
+    #
+    #   bash probes/bench.sh | tail -1        # secs= against budget=, judged WITHIN
+    #
+    # The argument is the RELATIONSHIP and not a figure: a doubled sweep exceeds the
+    # budget, so the full pass has never been in a lane. This comment used to say "a
+    # 208 s sweep", which was true once — the sweep moved 104 → 117 → 166 in a single
+    # day as rows landed, one of which runs a 4,000-tick simulation (#660). The
+    # argument survived that, by thirty-two seconds rather than the hundred the figure
+    # implied, and nobody reading the sentence could have known (#1332).
+    #
+    # `INSTRUMENTS_DRIFTED` was a verdict nothing read until the pass was run by hand
+    # and immediately found one (#1184). This is the shape that matches how the defect
     # arrives: a probe added or edited without its author running the pass. The rest of
     # the bench is not re-run, because a probe nobody touched cannot have started drifting
     # for a reason this pull request is responsible for.
