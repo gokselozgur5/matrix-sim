@@ -23,7 +23,7 @@
 # not import anything from the file it reads. That is the whole reason for a
 # second workflow in a repository that keeps exactly one.
 #
-# SIX QUESTIONS, in the order they can be answered without running a job:
+# SEVEN QUESTIONS, in the order they can be answered without running a job:
 #
 #   1. DOES IT PARSE. Not a YAML library — this repository builds with javac and
 #      nothing else (D-009), and adding a parser to answer one question would be
@@ -58,6 +58,15 @@
 #      neighbours set all three. Twenty-one of twenty-two blocks were uniform and
 #      the odd one out was lock 0, the only lock that judges a claim (#1226). A
 #      block may decline with `# litany: unguarded <reason>` on its first line.
+#
+#   7. AND CAN ITS TESTS EVER BE TRUE (--shellcheck). `bash -n` answers *does
+#      this parse*. `[ "" -ge "" ]` parses, errors at runtime, and can never
+#      pass — it reached a pushed branch, written by an editing tool that
+#      interpolated two variables away, while the YAML parsed, the grep matched
+#      and the floor was present (#1364). The always-false direction is loud;
+#      the always-true one — `[ -z "" ]` — is a gate that passes on everything.
+#      Only a LITERAL empty operand counts: `[ -z "$x" ]` on a variable that
+#      may be empty is ordinary shell.
 #
 # Exit 0 when every question is answered clean, 1 otherwise. The verdict line is
 # the contract, the way a probe's is.
@@ -509,6 +518,39 @@ selftest() {
   shell_guard_case guarded       0 'set -euo pipefail
 echo ok'
   shell_guard_case unguarded     1 'echo ok'
+
+  # A test that cannot be true, or cannot be false (#1364). Same fixtures, same
+  # extractor, third field — a step whose comparison is a constant parses, so
+  # `bash -n` says nothing about it.
+  shell_degen_case() {          # shell_degen_case <name> <want-degenerate> <block-body>
+    local wf="$tmp/wf"
+    rm -rf "$wf"; mkdir -p "$wf"
+    {
+      printf 'name: fixture\njobs:\n  j:\n    steps:\n      - name: s\n        run: |\n'
+      printf '%s\n' "$3" | sed 's/^/          /'
+    } > "$wf/fixture.yml"
+    local got
+    got="$(shellcheck_workflows "$wf" | sed -n 's|.*degenerate=\([0-9]*\).*|\1|p')"
+    shell_verdict "$1" "$2" "$got"
+  }
+  # The shape that reached a branch today: two variables interpolated away by an
+  # editing tool, leaving an integer comparison on empty strings.
+  shell_degen_case empty-ge       1 'set -euo pipefail
+[ "" -ge "" ] || exit 1'
+  # Its mirror, and the dangerous polarity: a gate that passes on everything.
+  shell_degen_case empty-n        1 'set -euo pipefail
+[ -n "" ] || exit 1'
+  shell_degen_case empty-z        1 'set -euo pipefail
+[ -z "" ] && echo always'
+  # One side is enough — the accident does not have to eat both operands.
+  shell_degen_case one-side-empty 1 'set -euo pipefail
+[ "$ran" -ge "" ] || exit 1'
+  # And what must NOT be reported: a variable that is merely allowed to be
+  # empty is ordinary shell, and reporting it would flood the check with the
+  # correct usage of the same operator.
+  shell_degen_case var-may-be-empty 0 'set -euo pipefail
+[ -n "$verdict" ] || exit 1
+[ "$ran" -ge "$floor" ] || exit 1'
   # The exemption, declared. A block that must survive a failing command says so
   # on its first line rather than by omitting a line — `vary`'s move in
   # probes/bench.sh, where the reason rides the row instead of being skipped.
@@ -599,7 +641,7 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
     [ -f "$f" ] || continue
     extract_blocks "$f" "$tmp" "$(basename "$f" | tr -c 'a-zA-Z0-9' '-')"
   done
-  local unguarded=0 first
+  local unguarded=0 degenerate=0 first hit
   for b in "$tmp"/*.sh; do
     [ -f "$b" ] || continue
     blocks=$((blocks + 1))
@@ -622,6 +664,29 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
     # A block may decline, the way a bench row declines the determinism pass:
     # `# litany: unguarded <reason>` on its first line says the difference out
     # loud. Omitting the guard silently is what this refuses.
+    # A TEST THAT CANNOT BE TRUE, OR CANNOT BE FALSE (#1364). `bash -n` answers
+    # *does this parse*; `[ "" -ge "" ]` parses and errors at runtime, so a step
+    # containing it can never pass. That reached a pushed branch today, written
+    # by an editing tool that interpolated two variables away, and every check
+    # over this file stayed green: the YAML parsed, the grep was fine, the floor
+    # was present, and `bash -n` accepted the comparison because whether `-ge`'s
+    # operands are integers is a runtime question.
+    #
+    # The always-FALSE direction is loud — a red build minutes later. The
+    # always-TRUE direction is the dangerous one: the same accident applied to
+    # `[ -n "$verdict" ]` leaves `[ -n "" ]`, and its mirror `[ -z "" ]` is a
+    # gate that passes on everything, silently, forever.
+    #
+    # Only a LITERAL empty operand qualifies. `[ -z "$x" ]` on a variable that
+    # happens to be empty is ordinary and is not this; the constant is the
+    # defect, and it is a grep rather than an analysis because *can this ever be
+    # true* is undecidable in general and trivial for the shape that occurs.
+    while IFS= read -r hit; do
+      [ -z "$hit" ] && continue
+      degenerate=$((degenerate + 1))
+      echo "SHELL_DEGENERATE $(basename "$b") $hit"
+    done < <(grep -nE '\[\[?[[:space:]]+(""|'"''"')[[:space:]]+-(eq|ne|gt|ge|lt|le)[[:space:]]|-(eq|ne|gt|ge|lt|le)[[:space:]]+(""|'"''"')[[:space:]]*\]|\[\[?[[:space:]]+-[nz][[:space:]]+(""|'"''"')[[:space:]]*\]' "$b" || true)
+
     first="$(grep -m1 -vE '^[[:space:]]*$' "$b" || true)"
     case "$first" in
       *'set -euo pipefail'*) ;;
@@ -632,10 +697,10 @@ shellcheck_workflows() {        # shellcheck_workflows [dir] — defaults to the
         ;;
     esac
   done
-  printf 'LITANY SHELL VERDICT %s blocks=%d unparseable=%d unguarded=%d\n' \
-    "$([ "$bad" = 0 ] && [ "$unguarded" = 0 ] && printf PASS || printf FAIL)" \
-    "$blocks" "$bad" "$unguarded"
-  [ "$bad" = 0 ] && [ "$unguarded" = 0 ]
+  printf 'LITANY SHELL VERDICT %s blocks=%d unparseable=%d unguarded=%d degenerate=%d\n' \
+    "$([ "$bad" = 0 ] && [ "$unguarded" = 0 ] && [ "$degenerate" = 0 ] && printf PASS || printf FAIL)" \
+    "$blocks" "$bad" "$unguarded" "$degenerate"
+  [ "$bad" = 0 ] && [ "$unguarded" = 0 ] && [ "$degenerate" = 0 ]
 }
 
 # --------------------------------------------------------------- question 7
