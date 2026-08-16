@@ -258,6 +258,119 @@ done
 # watched, and this file audits eleven programs for exactly that omission
 # while committing it. `--selftest` calls this against fixtures; the ordinary
 # run calls it against the shop.
+# THE VERDICT CHAIN, AS A FUNCTION (#1358). Twelve counters increment `BREAKS`
+# and the chain named nine of them plus a terminal `else`. `flags_phantom` and
+# `charset_drift` were in neither, so a break from either fell through to
+# `A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=0` — a defect report
+# naming the wrong defect, which is the #1170 shape this file cites three lines
+# from the branch that did it.
+#
+# Every unit that adds a counter is supposed to add a word, and the two that did
+# not were both added by units about something else: #1263 was about the
+# extraction boundary, #1207 about connecting two checks. The chain is edited by
+# units that are ABOUT verdicts, and nothing checked the rest.
+#
+# It is a function now because it is a PURE one — no files, no network, no
+# subprocesses, only integers — so the suite can drive every branch over
+# synthetic counts. That is the only part of this tool a real defect had to
+# arrive to exercise.
+#
+# It reads the counters as globals rather than taking twelve arguments: twelve
+# positional parameters is a transposition waiting to happen, which is #1204's
+# argument one directory over, and the suite sets the same names.
+BREAK_COUNTERS='missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
+
+verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
+  if [ "$BREAKS" -eq 0 ]; then
+    echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
+  elif [ "$missing" -gt 0 ]; then
+    echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
+  elif [ "$codes_undocumented" -gt 0 ]; then
+    # A fifth word (#1222). A tool spending codes its row does not name is not a
+    # missing flag, a missing row, a lying row, or an unrun suite: everything is
+    # present and one contract is unwritten. `A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS`
+    # would send the reader looking for a promise, and there is none — that is the
+    # defect.
+    echo "ADVICE VERDICT A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME undocumented=$codes_undocumented"
+  elif [ "$codes_unnamed" -gt 0 ]; then
+    # A ninth word (#1238), and deliberately NOT the fifth one above. That verdict
+    # is for a row with no exit vocabulary at all — the reader finds nothing and
+    # knows it. This one is for a row that HAS a numbered list and is missing an
+    # entry from it, which reads as complete and is not: the reader stops looking
+    # precisely because they found an answer. Sending them to the fifth word would
+    # send them to a row that documents its codes.
+    echo "ADVICE VERDICT A_ROW_NAMES_SOME_OF_A_TOOLS_CODES unnamed=$codes_unnamed"
+  elif [ "$unrun" -gt 0 ]; then
+    # A fourth failure and a fourth word (#1212). A suite the lane never executes
+    # is not a missing flag, not a missing catalog row and not a lying one: the
+    # tool is right, the document is right, and the falsification is simply never
+    # performed. Naming it as any of the other three sends the reader to a file
+    # where nothing is wrong.
+    echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
+  elif [ "$unfalsifiable" -gt 0 ]; then
+    # An eighth word (#1311). Not a wrong promise, not a missing row, not an
+    # unrun suite — there is NO suite, so the tool's advice has nowhere to be
+    # executed and every other check in this file is reading prose about a
+    # program nobody can watch fail. Sending the reader to any of the other
+    # seven would send them to a file where nothing is wrong.
+    echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FALSIFY unfalsifiable=$unfalsifiable"
+  elif [ "$codes_unspent" -gt 0 ]; then
+    # A seventh word (#1276). The mirror of A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME,
+    # and a different defect again: the row promises a code the tool cannot give.
+    # A caller branching on it waits for an answer that never comes, which reads
+    # as the tool hanging rather than as the document being wrong.
+    echo "ADVICE VERDICT A_ROW_PROMISES_A_CODE_THE_TOOL_NEVER_SPENDS unspent=$codes_unspent"
+  elif [ "$flags_undocumented" -gt 0 ]; then
+    # A sixth word (#1033). The mirror of ADVISES_A_FLAG_NOBODY_IMPLEMENTS, and a
+    # different defect: there is no broken promise here, no wrong row and no
+    # missing row — the tool works, the manual is merely silent about part of it.
+    # Sending the reader to "a flag nobody implements" would send them looking for
+    # a flag that exists and works. Invisible capability is the quieter failure and
+    # the longer-lived one: nobody types a flag they have never read about.
+    echo "ADVICE VERDICT A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES undocumented=$flags_undocumented"
+  elif [ "$codes_redefined" -gt 0 ]; then
+    # A row redefining a UNIVERSAL code is not a wrong promise about one tool — it
+    # breaks a reading every caller in the tree relies on, and the reader has to be
+    # sent to the exit-grammar table rather than to the row (#1241).
+    echo "ADVICE VERDICT A_ROW_REDEFINES_A_UNIVERSAL_CODE redefined=$codes_redefined"
+  elif [ "$uncatalogued" -gt 0 ]; then
+    # Three failures, three words. A catalog gap reported as "advises a flag nobody
+    # implements" sends the reader to the wrong file, which is the same class of error as a
+    # defect report that names the wrong defect (#1170) — and a catalog row that promises a
+    # flag is a third thing again: the tool is fine, the document is lying about it.
+    echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FIND uncatalogued=$uncatalogued"
+  elif [ "$flags_phantom" -gt 0 ]; then
+    # A tenth word (#1358). The mirror of A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES, and
+    # it had no branch at all until now: a phantom fell through to the catalog
+    # word because the same row usually trips `catalog_wrong` too, so the count
+    # was nonzero and the wrong verdict read as plausible. That is worse than an
+    # obviously wrong one — nothing in the output says the word is wrong.
+    # Before `catalog_wrong` deliberately: when both fire it is one row and the
+    # phantom is the specific diagnosis, so it is the one to send the reader to.
+    echo "ADVICE VERDICT A_ROW_ADVERTISES_A_FLAG_THE_TOOL_REFUSES phantom=$flags_phantom"
+  elif [ "$charset_drift" -gt 0 ]; then
+    # An eleventh word (#1358), and the one that motivated reading the chain: a
+    # charset drift co-occurs with NOTHING, so alone it printed
+    # `A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=0` — a defect
+    # report naming a defect that did not happen, with a zero beside it. Nobody
+    # had seen it because `charset_checked=0`: nine of twelve tools print no byte
+    # above 0x7f in their suites, so the comparison has never had anything to
+    # compare. An unreachable branch is where a wrong one hides longest.
+    echo "ADVICE VERDICT A_TOOL_ANSWERS_DIFFERENTLY_IN_ANOTHER_LOCALE drift=$charset_drift"
+  elif [ "$catalog_wrong" -gt 0 ]; then
+    # Was the terminal `else` and is now a branch of its own. As a fallback it
+    # answered for every counter nobody had written a word for, which is how two
+    # of twelve came to be named by it.
+    echo "ADVICE VERDICT A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=$catalog_wrong"
+  else
+    # THE BRANCH THAT SHOULD NEVER PRINT (#1358). `BREAKS` moved and no counter
+    # the chain reads is nonzero, which means a unit added a counter and no word
+    # — the defect this whole reordering exists to end. Naming any real defect
+    # here would be a guess, and a guess is what the two branches above were.
+    echo "ADVICE VERDICT A_BREAK_WITH_NO_WORD breaks=$BREAKS  (a counter moved and nothing in the chain names it — add the word beside the counter)"
+  fi
+}
+
 unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it spends and the row omits
   local spends promised code out=''
   spends="$(grep -vE '^[[:space:]]*#' "$1" | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' \
@@ -521,6 +634,62 @@ selftest() {
   # argument" does not document code 1.
   codes_case number-outside-clause '1'   '1 2' '' \
         '| `fixture.sh` | takes 1 argument. Exit 0 fine · 2 refused. |'
+
+  # THE VERDICT CHAIN (#1358). Twelve counters break and nine had words. The two
+  # without them had never been executed by anything but a real defect, and one
+  # of the two is unreachable today — `charset_checked=0`, so the comparison has
+  # never had anything to compare, and an unreachable branch is where a wrong one
+  # hides longest. Driven here over synthetic counts, which is possible at all
+  # because the chain is a pure function of integers.
+  verdict_case() {                # verdict_case <counter|-> <expected word>
+    local set="$1" want="$2" got c
+    BREAKS=0
+    for c in $BREAK_COUNTERS; do eval "$c=0"; done
+    if [ "$set" != '-' ]; then eval "$set=1"; BREAKS=1; fi
+    got="$(verdict_word | sed -E 's/^ADVICE VERDICT ([A-Z_]+).*/\1/')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "verdict:$set" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "verdict:$set" "$want" "$got"
+    fi
+  }
+  verdict_case -                  EVERY_FLAG_ADVISED_EXISTS
+  verdict_case missing            ADVISES_A_FLAG_NOBODY_IMPLEMENTS
+  verdict_case codes_undocumented A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME
+  verdict_case codes_unnamed      A_ROW_NAMES_SOME_OF_A_TOOLS_CODES
+  verdict_case unrun              A_SUITE_NOBODY_RUNS
+  verdict_case unfalsifiable      A_TOOL_NOBODY_CAN_FALSIFY
+  verdict_case codes_unspent      A_ROW_PROMISES_A_CODE_THE_TOOL_NEVER_SPENDS
+  verdict_case flags_undocumented A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES
+  verdict_case codes_redefined    A_ROW_REDEFINES_A_UNIVERSAL_CODE
+  verdict_case uncatalogued       A_TOOL_NOBODY_CAN_FIND
+  verdict_case flags_phantom      A_ROW_ADVERTISES_A_FLAG_THE_TOOL_REFUSES
+  verdict_case charset_drift      A_TOOL_ANSWERS_DIFFERENTLY_IN_ANOTHER_LOCALE
+  verdict_case catalog_wrong      A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS
+  # The case that is the whole point: `BREAKS` moved and no counter did, which is
+  # what a thirteenth counter with no word looks like. It must SAY so rather than
+  # blame the catalog — the state the two missing branches were silently in.
+  BREAKS=1
+  for c in $BREAK_COUNTERS; do eval "$c=0"; done
+  got="$(verdict_word | sed -E 's/^ADVICE VERDICT ([A-Z_]+).*/\1/')"
+  if [ "$got" = A_BREAK_WITH_NO_WORD ]; then
+    pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "verdict:orphan-break" A_BREAK_WITH_NO_WORD "$got"
+  else
+    fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "verdict:orphan-break" A_BREAK_WITH_NO_WORD "$got"
+  fi
+  # Every counter that breaks must be in the list the cases above walk. A unit
+  # adding a thirteenth counter and no word is caught by the orphan case only if
+  # the counter is in `BREAK_COUNTERS`; this compares the list against the file.
+  spent="$(grep -n -B1 'BREAKS + 1' "$0" | grep -oE '^[0-9]+-[[:space:]]*[a-z_]+=' \
+           | grep -oE '[a-z_]+=' | tr -d '=' | sort -u)"
+  listed="$(printf '%s' "$BREAK_COUNTERS" | tr ' ' '\n' | sort -u)"
+  orphans="$(comm -23 <(printf '%s\n' "$spent") <(printf '%s\n' "$listed") | grep -c . || true)"
+  if [ "$orphans" = 0 ]; then
+    pass=$((pass + 1)); printf 'ADVICE case=%-26s want=0 got=%s OK\n' "verdict:every-counter-listed" "$orphans"
+  else
+    fail=$((fail + 1)); printf 'ADVICE case=%-26s want=0 got=%s BROKEN\n' "verdict:every-counter-listed" "$orphans"
+    comm -23 <(printf '%s\n' "$spent") <(printf '%s\n' "$listed") | sed 's/^/  COUNTER_WITH_NO_WORD /'
+  fi
 
   echo "ADVICE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
@@ -852,65 +1021,5 @@ echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogu
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
 # that CANNOT be judged is still visible beside the ones that can.
 echo "CODES_CENSUS with_returns=$codes_returns rows_read=$(grep -c '^| `[a-z-]*\.sh`' tools/README.md)  (a return is a predicate or an exit depending on where the function sits; unjudged on purpose)"
-if [ "$BREAKS" -eq 0 ]; then
-  echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
-elif [ "$missing" -gt 0 ]; then
-  echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
-elif [ "$codes_undocumented" -gt 0 ]; then
-  # A fifth word (#1222). A tool spending codes its row does not name is not a
-  # missing flag, a missing row, a lying row, or an unrun suite: everything is
-  # present and one contract is unwritten. `A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS`
-  # would send the reader looking for a promise, and there is none — that is the
-  # defect.
-  echo "ADVICE VERDICT A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME undocumented=$codes_undocumented"
-elif [ "$codes_unnamed" -gt 0 ]; then
-  # A ninth word (#1238), and deliberately NOT the fifth one above. That verdict
-  # is for a row with no exit vocabulary at all — the reader finds nothing and
-  # knows it. This one is for a row that HAS a numbered list and is missing an
-  # entry from it, which reads as complete and is not: the reader stops looking
-  # precisely because they found an answer. Sending them to the fifth word would
-  # send them to a row that documents its codes.
-  echo "ADVICE VERDICT A_ROW_NAMES_SOME_OF_A_TOOLS_CODES unnamed=$codes_unnamed"
-elif [ "$unrun" -gt 0 ]; then
-  # A fourth failure and a fourth word (#1212). A suite the lane never executes
-  # is not a missing flag, not a missing catalog row and not a lying one: the
-  # tool is right, the document is right, and the falsification is simply never
-  # performed. Naming it as any of the other three sends the reader to a file
-  # where nothing is wrong.
-  echo "ADVICE VERDICT A_SUITE_NOBODY_RUNS unrun=$unrun"
-elif [ "$unfalsifiable" -gt 0 ]; then
-  # An eighth word (#1311). Not a wrong promise, not a missing row, not an
-  # unrun suite — there is NO suite, so the tool's advice has nowhere to be
-  # executed and every other check in this file is reading prose about a
-  # program nobody can watch fail. Sending the reader to any of the other
-  # seven would send them to a file where nothing is wrong.
-  echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FALSIFY unfalsifiable=$unfalsifiable"
-elif [ "$codes_unspent" -gt 0 ]; then
-  # A seventh word (#1276). The mirror of A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME,
-  # and a different defect again: the row promises a code the tool cannot give.
-  # A caller branching on it waits for an answer that never comes, which reads
-  # as the tool hanging rather than as the document being wrong.
-  echo "ADVICE VERDICT A_ROW_PROMISES_A_CODE_THE_TOOL_NEVER_SPENDS unspent=$codes_unspent"
-elif [ "$flags_undocumented" -gt 0 ]; then
-  # A sixth word (#1033). The mirror of ADVISES_A_FLAG_NOBODY_IMPLEMENTS, and a
-  # different defect: there is no broken promise here, no wrong row and no
-  # missing row — the tool works, the manual is merely silent about part of it.
-  # Sending the reader to "a flag nobody implements" would send them looking for
-  # a flag that exists and works. Invisible capability is the quieter failure and
-  # the longer-lived one: nobody types a flag they have never read about.
-  echo "ADVICE VERDICT A_TOOL_PARSES_A_FLAG_ITS_ROW_HIDES undocumented=$flags_undocumented"
-elif [ "$codes_redefined" -gt 0 ]; then
-  # A row redefining a UNIVERSAL code is not a wrong promise about one tool — it
-  # breaks a reading every caller in the tree relies on, and the reader has to be
-  # sent to the exit-grammar table rather than to the row (#1241).
-  echo "ADVICE VERDICT A_ROW_REDEFINES_A_UNIVERSAL_CODE redefined=$codes_redefined"
-elif [ "$uncatalogued" -gt 0 ]; then
-  # Three failures, three words. A catalog gap reported as "advises a flag nobody
-  # implements" sends the reader to the wrong file, which is the same class of error as a
-  # defect report that names the wrong defect (#1170) — and a catalog row that promises a
-  # flag is a third thing again: the tool is fine, the document is lying about it.
-  echo "ADVICE VERDICT A_TOOL_NOBODY_CAN_FIND uncatalogued=$uncatalogued"
-else
-  echo "ADVICE VERDICT A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=$catalog_wrong"
-fi
+verdict_word
 [ "$BREAKS" -eq 0 ]
