@@ -163,7 +163,7 @@ table() {
   judge CapSentinel  'CAP_BREACHES=0'          "$TICKS"
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'  "$TICKS"
   judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
-  judge PirateSever  'VERDICT CONTRACT_HELD'
+  judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'
   judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD' "$TICKS"
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS"
@@ -178,7 +178,7 @@ table() {
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'      "$TICKS" 7
   judge CapSentinel  'CAP_BREACHES=0'             "$TICKS" 7
   judge LinkAudit    'VERDICT CLEAN'              "$TICKS" 7
-  judge PirateSever  'VERDICT CONTRACT_HELD'      "$TICKS" 7
+  judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'      "$TICKS" 7
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD'  "$TICKS" 7
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS" 7
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'     "$TICKS" 7
