@@ -30,7 +30,7 @@ jobs:
     #         | "runs=\(length) min=\(min) max=\(max) mean=\((add/length)|floor)"'
     #   runs=54 min=296 max=710 mean=492
     #
-    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 37 steps (`grep -c "^      - name:" .github/workflows/locks.yml`, 2026-08-17). The two
+    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 38 steps (`grep -c "^      - name:" .github/workflows/locks.yml`, 2026-08-17). The two
     # figures this comment used to carry — 76 s and 103 s — were from a laptop and described
     # a lane with roughly half these steps. A guard argued from a developer's box is a guard
     # nobody has compared against the thing it guards.
@@ -710,6 +710,39 @@ jobs:
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "CROWNS SUITE FLOOR OK cases=$ran floor=$floor"
+
+      # WHY: the crown gate, installed at zero (#1459). `CLAUDE.md` states the rule without
+      # qualification — every class has a crown — and eighteen of eighty-nine did not, seven
+      # of them named in no issue in the repository's history. The count was REPORTED for
+      # exactly as long as it took to earn the zero, which is #1311's rule and the caveat
+      # this repository wrote into tools/README.md today: at one a gate demands a unit from
+      # whoever trips it.
+      #
+      # THE EXEMPTION QUESTION ANSWERED ITSELF. #1459 left open whether all eighty-nine
+      # warrant a record — `Geo`, `Family` and `Origin` looked like enums where a crown is
+      # ceremony. All three turned out to have the strongest arguments of the eleven:
+      # `Family`'s axis ORDER is load-bearing on every sheet in the world, `Geo` owns the
+      # widen-before-subtract law, `Origin` stopped being a String because an unbounded tag
+      # made the census refuse to count. Nobody needed an exemption, so the rule keeps none.
+      #
+      # `classes_none=0` is the other half and it is on the verdict line for the reason the
+      # gate-at-zero caveat gives: a zero qualifies when its population is separately
+      # asserted non-empty, and a reading that found no classes must not print the line a
+      # fully-crowned tree prints (#1207, #970).
+      #
+      # `crownless=` is NOT gated. It rides the census, both of today's two are legitimate —
+      # a crown cut ahead of its class, and a closed crown for a class that has gone — and a
+      # gate on it would refuse the next crown somebody writes before the unit that builds
+      # the class. That is the shape a gate must not have.
+      - name: tools — every class still has a crown (#1459)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/crowns.sh | tee "${RUNNER_TEMP:-/tmp}/crowns.log"
+          grep -qE '^CROWNS VERDICT COUNTED classes=[0-9]+ crowned=[0-9]+ uncrowned=0 classes_none=0$' \
+            "${RUNNER_TEMP:-/tmp}/crowns.log" \
+            || { echo "FATAL a class has no crown, or the census read no classes at all" >&2; exit 1; }
+          echo "CROWNS GATE OK uncrowned=0 classes_none=0"
 
       # WHY: a probe's catalog row is the only place that says what its counters MEAN,
       # and until #1356 nothing compared the two lists. `roster_check` asks whether a probe
