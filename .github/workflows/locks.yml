@@ -30,7 +30,7 @@ jobs:
     #         | "runs=\(length) min=\(min) max=\(max) mean=\((add/length)|floor)"'
     #   runs=54 min=296 max=710 mean=492
     #
-    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 36 steps (`grep -c "^      - name:" .github/workflows/locks.yml`, 2026-08-17). The two
+    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 37 steps (`grep -c "^      - name:" .github/workflows/locks.yml`, 2026-08-17). The two
     # figures this comment used to carry — 76 s and 103 s — were from a laptop and described
     # a lane with roughly half these steps. A guard argued from a developer's box is a guard
     # nobody has compared against the thing it guards.
@@ -741,6 +741,51 @@ jobs:
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "COUNTERS SUITE FLOOR OK cases=$ran floor=$floor"
+
+      # WHY: the gate, installed at zero (#1356, #1311's rule). The reader landed as a
+      # REPORT because its first run was missing=6 and no_row=1, and a gate at one demands
+      # a unit from whoever trips it rather than from whoever caused it. #1472 named the
+      # nine counters and #1473 gave the judged probe with no row a row, so the number is
+      # zero and the gate is honest.
+      #
+      # `missing=0` is the judged half: a probe that grows a pinned counter its catalog row
+      # does not name turns this red, which is the sentence #1356's done-when asked for.
+      # `no_row=0` is judged too, and it is the half `roster_check` cannot cover — that
+      # check compares disk against catalog and disk against bench, and CensusSampleSize
+      # was judged on every push with no row while a sentence in the catalog claimed it had
+      # no bench row either. A stale exemption is worse than no exemption.
+      #
+      # `exempt=` is deliberately NOT judged. It is the guard family — twelve names with
+      # reasons, never a pattern — and a gate on it would break the day a new probe
+      # legitimately carries a `*_none=`. The list is the visible part; growth is a review
+      # question, not a lane question.
+      #
+      # WHY THE GATE IS HERE AND NOT THE TOOL'S EXIT CODE. `counters.sh` documents five
+      # codes already — 0 counted, 1 a suite case failed, 2 refused, 3 unreadable, 4
+      # nothing read — so `missing>0` would either collide with 1, which means the SUITE
+      # broke and sends a reader to the wrong file, or claim a sixth code for a judgement
+      # the lane can make with a grep. `subissue.sh` spent the wrong code for three
+      # refusals until #1309 and neither of `advice.sh`'s exit checks could see it; one
+      # code with two meanings is a defect this shop has already paid for.
+      #
+      # The grep is EXACT-LINE, so `missing=0` can never match `missing=01`, and it is
+      # falsifiable rather than believed: removing the `=` from one counter in one catalog
+      # row prints `UNNAMED GrammarTwins diverged`, `missing=1`, and this step refuses.
+      #
+      # Streamed through tee under tools/README.md's capture rule: the reader prints one
+      # UNNAMED row per finding and then returns, so a capture would take the rows with it
+      # and the rows ARE the report.
+      - name: probes — every pinned counter is named in its catalog row (#1356)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/counters.sh | tee "${RUNNER_TEMP:-/tmp}/counters.log"
+          grep -qE '^COUNTERS VERDICT COUNTED pinned=[0-9]+ named=[0-9]+ missing=0 exempt=[0-9]+ pinned_none=0$' \
+            "${RUNNER_TEMP:-/tmp}/counters.log" \
+            || { echo "FATAL a pinned counter is not named in its probe's catalog row, or nothing was read" >&2; exit 1; }
+          grep -qE '^COUNTERS_CENSUS .* no_row=0 ' "${RUNNER_TEMP:-/tmp}/counters.log" \
+            || { echo "FATAL a class the bench judges has no catalog row — roster_check cannot see this one" >&2; exit 1; }
+          echo "COUNTERS GATE OK missing=0 no_row=0"
 
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
