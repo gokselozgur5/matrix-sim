@@ -6,6 +6,8 @@
 #        tools/attribution.sh --sha SHA       judge one commit
 #        tools/attribution.sh --for OWNER/NAME    name the repository (default: origin)
 #        tools/attribution.sh --fix-cmd      print the repair for this branch, and nothing else
+#        tools/attribution.sh --selftest     the keeper's own cases, against fixtures built
+#                                            out of THIS history (run by CI on every PR)
 #
 # A REPAIR THAT CHANGES WHEN THE WORK HAPPENED IS NOT A REPAIR (#1012). This tool
 # printed `--reset-author` for two hundred commits worth of advice, and that flag

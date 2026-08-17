@@ -5,6 +5,7 @@
 #        tools/prstate.sh                judge every open pull request
 #        tools/prstate.sh --for OWNER/NAME   name the repository (default: origin)
 #        tools/prstate.sh --selftest     run the judge's own cases; no token, no network
+#        tools/prstate.sh --schedules    the same judgement over scheduled runs
 #
 # WHAT THIS EXISTS FOR. The merge rule in this house is *never merge red*. It has no clause
 # for a pull request that is neither red nor green, and that is a state this repository
@@ -64,7 +65,12 @@ while [ $# -gt 0 ]; do
     --for) REPO="${2:-}"; [ -n "$REPO" ] || { echo "FATAL --for wants OWNER/NAME" >&2; exit 2; }; shift 2 ;;
     --selftest) MODE=selftest; shift ;;
     --schedules) MODE=schedules; shift ;;
-    -h|--help) sed -n '2,7p' "$0"; exit 0 ;;
+    # READ TO THE END OF THE USAGE BLOCK, not to a line number. `sed -n '2,7p'`
+    # stopped exactly where the clause ended on the day it was written, so a door
+    # added below line 7 would be absent from `--help` while sitting in the file
+    # two lines above the parser that accepts it — which is how `--schedules` came
+    # to be a flag this tool answers and never mentions (#1382).
+    -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     -*) echo "FATAL unknown flag: $1" >&2; exit 2 ;;
     *)  [ -z "$PR" ] || { echo "FATAL unexpected argument: $1" >&2; exit 2; }; PR="$1"; shift ;;
   esac

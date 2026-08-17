@@ -3,6 +3,11 @@
 # arrive (#884, RULING #212).
 #
 # Usage: tools/digest-move.sh [--base <ref>]     default base: origin/main
+#        tools/digest-move.sh --age              how long this world has stood: the
+#                                                seal's age, reported and never judged
+#        tools/digest-move.sh --selftest         every path this gate has, against
+#                                                fixtures built out of THIS history
+#                                                (lock 9's own suite, run by CI)
 #
 # WHAT THIS EXISTS FOR. Lock 7 refuses an UNDECLARED move: the run prints a sha the pin
 # does not hold, and the build goes red. There is exactly one way to make it green again
@@ -55,7 +60,10 @@ while [ $# -gt 0 ]; do
     --base) BASE="${2:-}"; [ -n "$BASE" ] || { echo "FATAL --base wants a ref" >&2; exit 2; }; shift 2 ;;
     --age) AGE=yes; shift ;;
     --selftest) SELFTEST=yes; shift ;;
-    -h|--help) sed -n '2,5p' "$0"; exit 0 ;;
+    # To the end of the Usage block rather than to line 5 — the same repair as
+    # prstate.sh's, for the same reason: two of this tool's three doors were
+    # below the range and therefore in no `--help` (#1382).
+    -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     *) echo "FATAL unknown argument: $1" >&2; exit 2 ;;
   esac
 done
