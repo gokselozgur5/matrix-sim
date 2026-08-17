@@ -1186,3 +1186,17 @@ echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogu
 # that CANNOT be judged is still visible beside the ones that can.
 echo "CODES_CENSUS tools_with_returns=$codes_returns catalog_rows=$(grep -c '^| `[a-z-]*\.sh`' tools/README.md)  (TOOLS carrying at least one, not returns — it sits beside tools= and would read as a statement count otherwise, #1368; a return is a predicate or an exit depending on where the function sits, so it is unjudged on purpose)"
 verdict_word
+# AND THE CODE THE ROW PROMISES (#1432). The row has said `1 one does not` for
+# as long as it has existed, and `verdict_word` only PRINTS — it was the last
+# statement of the script, so the status was the last echo's and a break verdict
+# left with 0:
+#
+#     $ ( cd /tmp/nt2 && bash x/advice.sh ) | tail -1
+#     ADVICE VERDICT A_TOOL_NOBODY_CAN_FALSIFY unfalsifiable=1
+#     $ echo $?
+#     0
+#
+# `codes_unspent` is the check that asks exactly this and could not see it: the
+# file contains `selftest; exit $?` for its own door, and one pass-through
+# exempts the WHOLE file rather than the path it sits on.
+exit $((BREAKS > 0 ? 1 : 0))

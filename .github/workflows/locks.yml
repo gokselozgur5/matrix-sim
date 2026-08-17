@@ -572,9 +572,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/advice.sh | tee "${RUNNER_TEMP:-/tmp}/advice.log"
+          # The status is CAUGHT rather than allowed to kill the pipeline (#1432).
+          # `advice.sh` now spends the 1 its row promises for a break, and under
+          # `pipefail` that would end this step before the grep below — so the lane
+          # would go red with a bare pipefail instead of the sentence that says what
+          # was found. Caught, then read: a break is 1 and anything above it is the
+          # tool falling over, which is a different report and must not be silent.
+          rc=0
+          bash tools/advice.sh | tee "${RUNNER_TEMP:-/tmp}/advice.log" || rc=$?
           grep -q '^ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS$' "${RUNNER_TEMP:-/tmp}/advice.log" \
             || { echo "FATAL a tool advises a flag nobody implements" >&2; exit 1; }
+          [ "$rc" -le 1 ] \
+            || { echo "FATAL tools/advice.sh left with $rc — that is a crash, not a verdict" >&2; exit 1; }
 
       # WHY: #1265 — the step above judges every program in tools/ on whether their advice can be
       # executed, and the program giving the judgement had no suite of its own. Its checks
