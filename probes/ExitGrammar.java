@@ -184,7 +184,7 @@ public final class ExitGrammar {
         int files = 0;
         for (Path probe : javaFiles()) {
             files++;
-            Matcher m = LITERAL_EXIT.matcher(Files.readString(probe, StandardCharsets.UTF_8));
+            Matcher m = LITERAL_EXIT.matcher(uncommented(probe));
             while (m.find()) {
                 literals++;
                 System.out.println("GRAMMAR_LITERAL " + probe + " leaves with the digit " + m.group(1)
@@ -289,6 +289,41 @@ public final class ExitGrammar {
         try (Stream<Path> walk = Files.list(Path.of("probes"))) {
             return walk.filter(p -> p.getFileName().toString().endsWith(".java")).sorted().toList();
         }
+    }
+
+    /**
+     * The file with its comments removed (#1503). Prose about an exit code is not an
+     * exit code, and this was the only checker in {@code probes/} reading exit spellings
+     * without the strip.
+     *
+     * <p>It cost a build. A javadoc sentence explaining what the reading cannot see —
+     * {@code or spelled System.exit(3) as a literal} — was reported as
+     * {@code GRAMMAR_LITERAL … leaves with the digit 3} in a file whose only exit is
+     * {@code Probes.Outcome.REFUSED.code()}. The oldest bug in the shop, one directory
+     * over: {@code advice.sh} has matched its own comments (#1157), a neighbour's catalog
+     * row (#1222), its own suite fixture (#1265) and its own {@code exit} pattern (#1276),
+     * and {@code LatticeFence} strips comments because {@code package-info.java} says
+     * {@code matrix.Main} out loud while explaining what {@code Main} is for.
+     *
+     * <p><b>The pressure was on the prose, which is the wrong end.</b> This checker's
+     * subject is where the exit grammar lives, so the files most likely to discuss exit
+     * codes are the files most likely to be about it — the check got least usable exactly
+     * where it was most relevant, and the available workaround was to write worse
+     * sentences.
+     *
+     * <p>Block comments first, then line comments, and the order matters: a {@code //}
+     * inside a block comment is part of the block, and stripping lines first would leave
+     * the block's opener orphaned. Line comments are dropped from the marker to the end of
+     * the line rather than the whole line, because a real {@code System.exit} can share a
+     * line with a trailing comment — and the reverse, a {@code //} inside a string
+     * literal, does not occur in {@code probes/} and would only ever HIDE an exit from
+     * this scan, which is the direction that under-reports rather than the one that
+     * invents a finding.
+     */
+    private static String uncommented(Path file) throws IOException {
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        return text.replaceAll("(?s)/\\*.*?\\*/", "")
+                .replaceAll("//[^\n]*", "");
     }
 
     private ExitGrammar() {}
