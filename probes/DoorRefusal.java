@@ -198,18 +198,32 @@ public final class DoorRefusal {
 
     /**
      * Does this source parse a long option at all? A quoted token opening with two
-     * dashes. Deliberately generous: a probe that MENTIONS a flag in a comment is
-     * swept and asked, and being asked costs one JVM start. The reverse mistake —
-     * a probe with a door this reading misses — is the one that matters, and a
-     * generous population is how it is avoided.
+     * dashes, in CODE.
+     *
+     * <p>Deliberately generous about the shape — a comparison, a {@code case} arm and an
+     * {@code args[0].equals} guard are three spellings and this reading takes any quoted
+     * flag rather than trying to recognise a parser. A door this reading MISSES is the
+     * mistake that matters, and a generous shape is how that is avoided.
+     *
+     * <p>It was generous about COMMENTS too, and that was not a decision (#1510). This read
+     * every line, so {@code ConfirmationSweep} was in the population on the strength of a
+     * javadoc quoting D-021's Confirmation verbatim — {@code "--follow on a v1 run emits at
+     * least …"} — a sentence about somebody else's flag, in a probe with no long-option door
+     * at all. It refuses, through #1481's positional reader rather than through a door, so
+     * the verdict was right for the wrong reason.
+     *
+     * <p>That is #1503's finding, one file over and one hour later, in a probe written the
+     * same day: prose about a flag is not a flag. {@code advice.sh} has met it four times
+     * (#1157, #1222, #1265, #1276) and {@code LatticeFence} strips comments because
+     * {@code package-info.java} says {@code matrix.Main} out loud while explaining what
+     * {@code Main} is for. The strip narrows the population and cannot narrow the check: a
+     * door is code, so nothing that stripping comments removes could have been one.
      */
     private static boolean parsesAFlag(Path file) throws IOException {
-        for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
-            if (line.contains("\"--")) {
-                return true;
-            }
-        }
-        return false;
+        String code = Files.readString(file, StandardCharsets.UTF_8)
+                .replaceAll("(?s)/\\*.*?\\*/", "")
+                .replaceAll("//[^\n]*", "");
+        return code.contains("\"--");
     }
 
     /** Every probe source but the shared helper, which has no {@code main}. */
