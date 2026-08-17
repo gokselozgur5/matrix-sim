@@ -251,7 +251,7 @@ probes/              ← the skeptic's bench: read-only diagnostic instruments (
 tools/               ← process jigs: the release cutter and kin (never daemon code)
 ```
 
-Documentation policy: **five canon documents, no more** — new knowledge goes into one of the five or it doesn't go in. Outside the canon, only three kinds of .md exist, none of them knowledge-piles: machine-loading infrastructure (`CLAUDE.md`, `.github/` templates — pointers and forms, never content), MADR records under `docs/adr/` (D-029's law), shop manuals that document a tool in the tool's own directory (`probes/README.md`, `tools/README.md`), and portable specifications under `docs/spec/` (D-058: a rule of the world stated implementation-independently, with conformance vectors — never narrative, rationale, or history). A document that is not one of these five kinds does not get created.
+Documentation policy: **five canon documents, no more** — new knowledge goes into one of the five or it doesn't go in. Outside the canon, only four kinds of .md exist, none of them knowledge-piles: machine-loading infrastructure (`CLAUDE.md`, `.github/` templates — pointers and forms, never content), MADR records under `docs/adr/` (D-029's law), shop manuals that document a tool in the tool's own directory (`probes/README.md`, `tools/README.md`), and portable specifications under `docs/spec/` (D-058: a rule of the world stated implementation-independently, with conformance vectors — never narrative, rationale, or history). A document that is not one of these four kinds, and not one of the five canon documents above, does not get created.
 
 ## Process — everything runs like the Matrix
 
