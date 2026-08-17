@@ -987,8 +987,35 @@ charset_drift=0
 suites=0
 no_suite=0
 unrun=0
+# THE IDENTITY THIS LINE OWES ITS READER (#1377):
+#
+#     tools = suites + no_suite + skipped_self + skipped_no_promise
+#
+# It did not close. The line printed `tools=12 suites=9 no_suite=0` and left a
+# gap of three that a reader could only reconcile by knowing three facts kept in
+# three places — that this file skips itself at the top of the loop, that
+# `release.sh` quotes the daemon's flag and promises no suite of its own
+# (#1347), and that `balance.sh` spells its three suites `--datecheck`,
+# `--rulercheck` and `--judgecheck`. None of that was on the line.
+#
+# It matters because #1347 NARROWED the gate deciding who enters this loop, and
+# the risk a narrowing carries is excluding a real suite — which had no counter
+# at all. A tool dropped by the gate simply stopped appearing in `suites=`,
+# `no_suite=`, `unrun=` and `charset_checked=`, and nothing moved. The
+# falsification #1347 offered was running all twelve by hand and printing which
+# entered: correct, and it exists only in a merged pull request body, which is
+# this file's own complaint about other people's evidence.
+#
+# `probes = stable + drift + exempt + unchecked` is the same shape one directory
+# over, and #970's argument for its fourth field applies verbatim.
+#
+# `skipped_self` is always 1 and always for the same reason, which by #1357's
+# rule makes it a bad gate and does not make it a bad FIELD: a term that is
+# always 1 is exactly what a reader forgets when doing the subtraction by hand.
+skipped_self=0
+skipped_no_promise=0
 for tool in tools/*.sh; do
-  [ "$tool" = "tools/advice.sh" ] && continue
+  [ "$tool" = "tools/advice.sh" ] && { skipped_self=$((skipped_self + 1)); continue; }
   # DOES THIS TOOL PROMISE A SUITE, or does it merely MENTION somebody else's
   # flag (#1347). A whole-file grep answers the second question with the first
   # question's confidence: `release.sh` contains `--selftest` because lock 2 of
@@ -1015,8 +1042,9 @@ for tool in tools/*.sh; do
   # tool would be admitted. Replacing a pipe with a capture changes what "no
   # input" means, and this is the one site where that difference is a verdict.
   mentions="$(grep -E '\-\-selftest\b' <<< "$(uncommented "$tool")" || true)"
-  [ -n "$mentions" ] || continue
-  grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions" || continue
+  [ -n "$mentions" ] || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
+  grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions" \
+    || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
   # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
   # it runs — `litany.sh` — runs tools of its own to check their verdicts
   # (#1169). Without a depth to read, the two call each other without end:
@@ -1092,7 +1120,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
