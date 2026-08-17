@@ -126,7 +126,21 @@ public final class LeaveContract {
             // counting — one contract, one place to change it — but calling it
             // a defect would be calling a style a lie, and this probe's whole
             // subject is the difference.
-            (body.contains("System.exit") ? byHand : noCode).add(probe);
+            //
+            // A REFUSAL EXIT IS NOT A VERDICT CODE (#1502), and reading it as one blinded
+            // this check to the defect it exists for. `Outcome.code()`'s javadoc REQUIRES
+            // a refusal to sit outside `leave` — *a refused invocation has nothing to print
+            // in the bench's grammar, so it reaches System.exit directly* — so every probe
+            // with an argument door carries one, and `contains("System.exit")` was satisfied
+            // by it. Five probes printed a FAILING verdict and fell off the end of main at
+            // exit 0 while being counted as a style preference: HullRoster's ROSTER_BROKEN,
+            // FleetLines' FLEET_LINES_LIE, OrderTable's VACUOUS, AllocMeter's OVER_BUDGET,
+            // UnparkStorm's UNBOUNDED.
+            //
+            // So the exits are counted with the refusal removed. An exit that is ONLY a
+            // refusal leaves the verdict path with nothing, which is `no_code` — the red
+            // case, and the one #1091 was opened for.
+            (spendsBeyondRefusal(body) ? byHand : noCode).add(probe);
         }
 
         for (String probe : noCode) {
@@ -157,6 +171,27 @@ public final class LeaveContract {
         Probes.leave("VERDICT " + (held ? "EVERY_JUDGED_PROBE_HAS_A_CODE" : "A_JUDGED_PROBE_HAS_NO_CODE")
                 + " no_code=" + noCode.size()
                 + " by_hand=" + byHand.size(), held);
+    }
+
+    /**
+     * Does this source leave with a code its VERDICT path can reach? (#1502)
+     *
+     * <p>Every `System.exit` in the file except the argument-refusal door. The refusal is
+     * excluded because the grammar puts it there for an unrelated reason and it says
+     * nothing about what a failing verdict leaves with — reading it as a verdict code is
+     * what let five probes print `ROSTER_BROKEN` and friends at exit 0 while this check
+     * called them stylistically different.
+     *
+     * <p>Textual, and it is honest about that: a probe that reached its refusal code
+     * through a variable, or spelling the refusal as a bare digit, would be read as a
+     * verdict exit. Neither exists here — {@code ExitGrammar} pins the codes and every
+     * refusal in {@code probes/} is written `Probes.Outcome.REFUSED.code()` — and the
+     * direction of the mistake is the safe one: it would count a refusal as a verdict code
+     * and leave a probe in `by_hand` rather than reporting a defect that is not there.
+     */
+    private static boolean spendsBeyondRefusal(String body) {
+        return body.replace("System.exit(Probes.Outcome.REFUSED.code())", "")
+                .contains("System.exit");
     }
 
     private LeaveContract() {}

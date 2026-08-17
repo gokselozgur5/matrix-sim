@@ -279,10 +279,18 @@ table() {
   judge DoorRefusal  'VERDICT EVERY_DOOR_REFUSES swallowed=0 crashed=0 swept_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
-  # The contract on the rows above, read off this table. `by_hand=11` is the
-  # honest half of the count: those probes exit with their own code, which is
-  # not a lie, only a second place the contract lives (#1214).
-  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=10'
+  # The contract on the rows above, read off this table. `by_hand=` is the honest half of
+  # the count: those probes exit with their own code, which is not a lie, only a second
+  # place the contract lives (#1214).
+  #
+  # It read 11, then 10, and it reads 5 now — and the drop is not five probes converting
+  # to the helper. It is #1502: the count included five probes whose ONLY exit was the
+  # argument-refusal door, so their failing verdict fell off the end of main at 0 while
+  # this row called them stylistically different. Those five are fixed and the check no
+  # longer reads a refusal as a verdict code. The comment carries the history because a
+  # number that halved for two different reasons is a number a reader will otherwise
+  # reconstruct wrongly.
+  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=5'
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
