@@ -264,6 +264,13 @@ table() {
   # nobody's push. Costs no universe — it reads Config.
   judge BoundsCensus 'VERDICT EVERY_KNOB_IS_WIRED_OR_SAYS_SO silent=0'
   judge TwoWorlds    'VERDICT WORLDS_INDEPENDENT ticks=2000 worlds=4 diverged=0' 2000
+  # The two copies of the chronos grammar, compared (#1468). ChronosLog spells each
+  # record's field order in a print statement; ChronosLine.grammarOf spells the same
+  # six lists again, one file over. "Copied deliberately" was the argument and nothing
+  # was checking it — #1053's finding surviving one layer down, since that unit removed
+  # the second READER and not the second COPY. Reads two source files, builds no
+  # universe, and order counts: the reader searches by needle and would not notice.
+  judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
   # The contract on the rows above, read off this table. `by_hand=11` is the
   # honest half of the count: those probes exit with their own code, which is
