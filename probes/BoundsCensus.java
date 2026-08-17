@@ -84,7 +84,20 @@ public final class BoundsCensus {
 
     public static void main(String[] args) throws IOException {
         matrix.Streams.utf8();
-        boolean list = args.length > 0 && args[0].equals("--list");
+        // A flag this probe does not know is a REFUSAL and not a no-op (#1479). The
+        // old reading was `args.length > 0 && args[0].equals("--list")`, so `--lst`
+        // ran the census without its listing and printed a green verdict for a
+        // question nobody asked. Twenty-two of twenty-six flag-parsing probes here
+        // already refuse through `Probes.Outcome.REFUSED`; this was one of four that
+        // did not, and nothing said why.
+        boolean list = false;
+        for (String arg : args) {
+            if ("--list".equals(arg)) {
+                list = true;
+            } else {
+                System.exit(Probes.Outcome.REFUSED.code());
+            }
+        }
         Path root = Path.of(".");
         Path config = root.resolve("src/matrix/core/Config.java");
 

@@ -59,7 +59,14 @@ public final class CensusSampleSize {
                         probs[j] = Double.parseDouble(parts[j]);
                     }
                 }
-                default -> { }
+                // AN EXPLICIT EMPTY ARM IS THE WORST SPELLING OF THIS (#1479): it reads
+                // as deliberate, so a reviewer skips it. And every number this probe
+                // prints is a function of these flags, so a typo does not produce
+                // nothing and does not produce an error — `--trails 5000` priced the
+                // DEFAULTS and printed them under a green verdict. A probe whose whole
+                // job is telling somebody how many seeds a claim needs was answering a
+                // different question dressed as statistical rigour.
+                default -> System.exit(Probes.Outcome.REFUSED.code());
             }
         }
 
