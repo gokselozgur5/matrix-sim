@@ -25,6 +25,10 @@ import matrix.realworld.Pod;
 public final class PirateSever {
 
     private static int anomalies = 0;
+    /** Every `fact(...)` is one claim about the sever; the guard is that at least one was made. */
+    private static int checks = 0;
+    /** Derived from the calls that print them, so four cannot drift from the number naming it. */
+    private static int scenarios = 0;
 
     /**
      * The birth a mind built by hand in a vise declares for itself (#847,
@@ -96,12 +100,32 @@ public final class PirateSever {
                 fact("brain_alive", freed.alive()),
                 fact("still_closed", wire4.closed()));
 
-        System.out.println("PIRATESEVER scenarios=4 anomalies=" + anomalies);
-        Probes.leave(anomalies == 0 ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN", anomalies == 0);
+        // TWO NUMBERS, BOTH NOW MEASURED (#1425, one of #1373's twenty-five).
+        //
+        // `scenarios=4` was a literal, and `anomalies == 0` was the whole
+        // verdict — so a version of this probe that asserted nothing would
+        // report the wire's third ending held. `anomalies` counts what went
+        // WRONG, and a count of wrongs is zero both when everything is right
+        // and when nothing was asked.
+        //
+        // `checks=` is the population that matters: every `fact(...)` is one
+        // claim about the sever, and the guard is that at least one was made.
+        // `scenarios=` is derived the same way, from the calls that print them,
+        // so the four cannot drift from the number describing them the way
+        // DocLint's `cases=34` could (#1419).
+        //
+        // Populations on the census, emptiness on the verdict (#1221).
+        System.out.println("PIRATESEVER scenarios=" + scenarios
+                + " checks=" + checks + " anomalies=" + anomalies);
+        boolean held = anomalies == 0 && checks > 0;
+        Probes.leave(held
+                ? "VERDICT CONTRACT_HELD checks_none=0"
+                : "VERDICT CONTRACT_BROKEN checks_none=" + (checks == 0 ? 1 : 0), held);
     }
 
     /** A fact holds or it counts: prints name=held, tallies the anomaly when it does not. */
     private static String fact(String name, boolean held) {
+        checks++;
         if (!held) {
             anomalies++;
         }
@@ -109,6 +133,7 @@ public final class PirateSever {
     }
 
     private static void line(String prefix, String... facts) {
+        scenarios++;
         System.out.println(prefix + " " + String.join(" ", facts));
     }
 
