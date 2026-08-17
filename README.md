@@ -245,6 +245,7 @@ PRINCIPLES.md        ← the why: architectural + development principles, and Th
 docs/ARCHITECTURE.md ← vision + UML: class, sequence, state (mermaid)
 docs/DECISIONS.md    ← decision index: one row per decision
 docs/adr/            ← one ADR record per decision (D-029)
+docs/spec/           ← portable specs: a rule of the world stated implementation-independently, with conformance vectors (D-058)
 CLAUDE.md            ← auto-loaded pointer for AI sessions (a door, not a document)
 src/matrix/          ← core · realworld · machine · entities
 probes/              ← the skeptic's bench: read-only diagnostic instruments (D-030)
