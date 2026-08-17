@@ -246,6 +246,13 @@ table() {
   # still named. Twelve sites, all safe, all now SAYING they are safe — the sentence that was
   # missing from two scratch buffers for as long as they were wrong. Costs no universe.
   judge SharedState  'VERDICT EVERY_SHARE_IS_DECLARED undeclared=0'
+  # The three sentences docs/ARCHITECTURE.md calls "verified by grep", with the grep
+  # (#1417). Nothing read any of them: `entities` importing nothing from `realworld`,
+  # `World` holding no real-world object, nothing depending on `Main`. All three were
+  # true, which is the reason — SheetFence's shape, a law that is true by luck reading
+  # exactly like a law that is enforced. The widest instance of it in the tree: the
+  # entities/realworld split IS this repository's thesis. Reads src/, builds no universe.
+  judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 world_holds=0 main_depended=0 swept_none=0'
   # The row #1153 wrote in its PR body and never committed (#1162). Its `perl` substitution
   # was anchored on `judge SpeciesReach`, which was on a different branch at the time; the
   # pattern matched nothing, perl exited 0, and the tree gained an instrument that ran on
