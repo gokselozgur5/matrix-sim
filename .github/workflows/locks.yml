@@ -689,6 +689,28 @@ jobs:
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "BACKEDGE SUITE FLOOR OK cases=$ran floor=$floor"
 
+      # WHY: #1459 — `CLAUDE.md` says every class has a crown and eighteen of eighty-nine did
+      # not, seven of them named in no issue in the repository's history. A crown is an ISSUE,
+      # so no probe can see the gap — probes read the tree — and this is the only reader the
+      # rule has. What runs here is the SUITE and not the count: the count needs a token, and
+      # the gap is reported rather than judged until #1459's exemption question is answered.
+      # What must not regress is the matcher's ability to tell a crown from a unit issue about
+      # the same class, since counting one as the other reports the gap as smaller than it is.
+      - name: tools — the crown census's own matchers (#1459)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/crowns.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/crowns-selftest.log"
+          verdict="$(grep -E '^CROWNS SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/crowns-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the crown census suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=4   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "CROWNS SUITE FLOOR OK cases=$ran floor=$floor"
+
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
       # solve one leg with the other three standing still, so acting on two of them leaves a leg
