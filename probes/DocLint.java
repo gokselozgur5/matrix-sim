@@ -227,8 +227,8 @@ public final class DocLint {
             root = Path.of(rest.get(1));
             rest = rest.subList(2, rest.size());
         }
-        long ticks = !rest.isEmpty() ? Long.parseLong(rest.get(0)) : 6_000;
-        long seed = rest.size() > 1 ? Long.parseLong(rest.get(1)) : 42;
+        long ticks = !rest.isEmpty() ? Probes.number(rest.get(0), "ticks") : 6_000;
+        long seed = rest.size() > 1 ? Probes.number(rest.get(1), "seed") : 42;
 
         Canon canon = read(root);
         if (canon == null) {

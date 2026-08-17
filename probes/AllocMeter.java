@@ -148,9 +148,9 @@ public final class AllocMeter {
             selfcheck();
             return;
         }
-        long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
+        long seed = args.length > 0 ? Probes.number(args[0], "seed") : 42;
         if (args.length > 1) {
-            int scale = Integer.parseInt(args[1]);
+            int scale = Probes.count(args[1], "scale");
             String refusal = matrix.core.Config.scaleRefusal(scale);
             if (refusal != null) {
                 System.err.println(refusal);

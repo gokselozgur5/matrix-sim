@@ -84,8 +84,8 @@ public final class ConfirmationSweep {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
-        long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
-        long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+        long ticks = args.length > 0 ? Probes.number(args[0], "ticks") : 6_000;
+        long seed = args.length > 1 ? Probes.number(args[1], "seed") : 42;
 
         Tap tap = new Tap();
         Simulation sim = new Simulation(seed, tap, FOLLOW);

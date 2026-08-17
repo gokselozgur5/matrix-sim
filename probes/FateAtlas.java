@@ -129,13 +129,13 @@ public final class FateAtlas {
         long from = DEFAULT_FROM, to = DEFAULT_TO;
         int windows = 600;
         if (args.length > 0 && args[0].equals("--seeds")) {
-            from = args.length > 1 ? Long.parseLong(args[1]) : DEFAULT_FROM;
-            to = args.length > 2 ? Long.parseLong(args[2]) : DEFAULT_TO;
+            from = args.length > 1 ? Probes.number(args[1], "from") : DEFAULT_FROM;
+            to = args.length > 2 ? Probes.number(args[2], "to") : DEFAULT_TO;
             if (args.length > 3) {
-                windows = Integer.parseInt(args[3]);
+                windows = Probes.count(args[3], "windows");
             }
         } else if (args.length > 0) {
-            windows = Integer.parseInt(args[0]);
+            windows = Probes.count(args[0], "windows");
         }
         enumerate(windows, from, to);
     }

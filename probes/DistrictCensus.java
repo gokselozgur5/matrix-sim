@@ -63,7 +63,7 @@ public final class DistrictCensus {
             ceiling();
             return;
         }
-        long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
+        long seed = args.length > 0 ? Probes.number(args[0], "seed") : 42;
         Simulation sim = new Simulation(seed, null, null);
         RealWorld rw = Probes.realWorld(sim);
         List<District> districts = Probes.world(sim).places().districts();

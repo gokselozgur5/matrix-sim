@@ -73,7 +73,7 @@ public final class CensusBeatDrift {
         String shaOverride = null;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--band" -> band = Long.parseLong(args[++i]);
+                case "--band" -> band = Probes.number(args[++i], "--band");
                 case "--baseline" -> baselines.add(args[++i]);
                 case "--baseline-file" -> baselines.addAll(rowsOf(args[++i]));
                 case "--sha" -> shaOverride = args[++i];
@@ -81,7 +81,7 @@ public final class CensusBeatDrift {
             }
         }
         String seedSpec = positional.size() > 0 ? positional.get(0) : "42,7";
-        long ticks = positional.size() > 1 ? Long.parseLong(positional.get(1)) : 6_000;
+        long ticks = positional.size() > 1 ? Probes.number(positional.get(1), "ticks") : 6_000;
 
         String sha = shaOverride != null ? shaOverride : shortSha();
         String[] seeds = seedSpec.split(",");
@@ -91,7 +91,7 @@ public final class CensusBeatDrift {
         long worst = 0;
 
         for (String token : seeds) {
-            long seed = Long.parseLong(token.trim());
+            long seed = Probes.number(token.trim(), "seed");
             Map<String, Long> now = beatsOf(seed, ticks);
             Map<String, Long> before = baselineFor(baselines, seed);
 
