@@ -64,3 +64,5 @@ A scripted scenario (probe or seed hunt): a bonded runner dies, the payback fire
 ## More Information
 
 Related: [D-013](D-013-neurallink-bridge.md) (the law this excepts, once), [D-022](D-022-acceptance-loop.md) (the accounting love unwrites), [D-042](D-042-stat-system.md), [D-043](D-043-named-cast.md). Thread: #215.
+
+Referenced by: [D-046](D-046-cypher-protocol.md).

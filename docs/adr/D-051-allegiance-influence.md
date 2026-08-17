@@ -64,3 +64,5 @@ A recruiter's planted doubt flips one seeded mind SYMPATHIZER (logged, replayed 
 ## More Information
 
 Related: [D-049](D-049-truce-regime.md) (the war this fights), [D-022](D-022-acceptance-loop.md) (the battleground), [D-046](D-046-cypher-protocol.md), [D-042](D-042-stat-system.md) (thresholds may become will/faith reads). Thread: #227. Origin: the Truce architecture dossier (third origin document, tracker #218).
+
+Referenced by: [D-052](D-052-missions.md), [D-053](D-053-favor-economy.md).

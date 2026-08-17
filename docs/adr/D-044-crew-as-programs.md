@@ -63,3 +63,5 @@ A MYTH line names a crew program and cites its real round; if the auditor gains 
 ## More Information
 
 Related: [D-044 depends on D-042](D-042-stat-system.md), [D-025](D-025-supervision-tree.md), [D-030](D-030-agent-operating-model.md). Thread: #214.
+
+Referenced by: [D-050](D-050-live-events.md).

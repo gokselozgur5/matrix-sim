@@ -67,3 +67,5 @@ A named character's stat measurably decides a scene the flat world could not pro
 ## More Information
 
 Related: [D-037](D-037-theory-practice-split.md), [D-031](D-031-system-of-systems.md), [D-036](D-036-finish-line.md) (the finish line stands — Season Three is joy atop it), [D-010](D-010-determinism.md). Thread: #211.
+
+Referenced by: [D-042](D-042-stat-system.md), [D-043](D-043-named-cast.md), [D-048](D-048-districts-with-identity.md), [D-054](D-054-the-year.md).

@@ -64,3 +64,5 @@ A seed can run the Truce as its standing state with the film's arc reachable as 
 ## More Information
 
 Related: [D-036](D-036-finish-line.md) (the epilogue pocket this unpacks), [D-022](D-022-acceptance-loop.md), [D-046](D-046-cypher-protocol.md) (the Cypherite organization lives in this era), [D-025](D-025-supervision-tree.md). Thread: #224.
+
+Referenced by: [D-051](D-051-allegiance-influence.md), [D-053](D-053-favor-economy.md).

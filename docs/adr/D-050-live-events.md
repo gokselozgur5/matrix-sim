@@ -72,3 +72,5 @@ Related: [D-023](D-023-chronos-event-sourcing.md) (the fold this rides), [D-043]
 *The borrowed-field test, and where it went.* The one shipped kind that carries a payload will take a signature and drop it: `{"chronos":"command","tick":150,"cmd":"deja","author":"the Architect","label":"a signed short story"}` folds clean at seed 42 — tick=100 identical at `8c8dfe0e…`, tick=200 moving `aee79788…` → `19401286…` where the verb lands — and audits `AUDIT OK records=3 seals_paired=0`. The author and the label are read by nothing and refused by nothing, so the "signed" half of the Confirmation clause has no field to live in today, not even a borrowed one. The reason it rides through is a defect in the reader rather than in this gate, and it is filed separately as #976.
 
 *Scope.* Docs-only, and it decides nothing: no clause, driver, consequence or option above is changed, and no field or kind is minted here. `DIGEST tick=6000 sha=421d726396ff8269f53f5e81c389c984191afda20073076e3f060ae3e0e3ce10` is byte-identical at seed 42, locks green before and after.
+
+Referenced by: [D-054](D-054-the-year.md).

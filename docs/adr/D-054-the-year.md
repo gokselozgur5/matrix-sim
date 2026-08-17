@@ -74,3 +74,5 @@ Each season closes with: its gates verdicted, its units merged, its skeptic pass
 ## More Information
 
 Related: [D-036](D-036-finish-line.md) (the pocket S7 unpacks), [D-041](D-041-season-three-character-layer.md), [D-050](D-050-live-events.md) (the Chronicle's grammar), [D-039](D-039-unit-pr-granularity.md) (the delivery law the year rides), [D-030](D-030-agent-operating-model.md). Thread: #232.
+
+Referenced by: [D-058](D-058-spec-shelf.md), [D-059](D-059-issue-tree.md), [D-060](D-060-the-balance-law.md).

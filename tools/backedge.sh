@@ -3,6 +3,8 @@
 #
 # Usage: tools/backedge.sh [--check]    report every missing back edge; write nothing
 #        tools/backedge.sh --census     the three counts, no rows
+#        tools/backedge.sh --write      add a `Referenced by:` line to a record that
+#                                       has none; NEVER touch one that exists
 #        tools/backedge.sh --selftest   run every case against built fixtures
 #
 # THE FINDING THIS EXISTS FOR. `docs/adr/README.md` has described this program
@@ -31,12 +33,18 @@
 # which is not what *what leans on this* means. Forward links are the edges the
 # document itself drew.
 #
-# WHAT IT WILL NOT DO. Write. This half only reports, and that is deliberate
-# rather than unfinished: a generator's first run would be its first test, over
-# fifty-nine records at once, with `git diff` as the only referee. The writing
-# half is #1394's second unit and inherits the README's refusal — an existing
-# line is never touched, because several of them carry an ordering a generator
-# would not reproduce.
+# WHAT IT WILL NOT DO. Touch a line that exists. `--write` adds a `Referenced
+# by:` line to a record that has none and declines every record that already
+# carries one — the README's own refusal, kept verbatim, because several of the
+# existing lines carry an ordering a generator would not reproduce.
+#
+# THE PRICE OF THAT REFUSAL, MEASURED. Of the seventy edges missing when this
+# was written, twenty-eight sat on the twelve records with no line and
+# forty-two on twenty-five records whose line existed and named only some of
+# their citers. So `--write` closes the first group and cannot touch the second
+# — and the second is the more dangerous half, because a partial line reads as
+# ANSWERED rather than as absent. Relaxing the refusal is a decision about the
+# records rather than a flag, and it is filed as one.
 #
 # Exit 0 when every forward link has its back edge, 1 when one does not, 2 when
 # the invocation was refused (D-1241's universal code).
@@ -59,6 +67,7 @@ case "${1:-}" in
   '')         MODE=check ;;
   --check)    MODE=check ;;
   --census)   MODE=census ;;
+  --write)    MODE=write ;;
   --selftest) MODE=selftest ;;
   *) echo "FATAL unknown argument '$1' — see the Usage clause at the top of this file" >&2; exit 2 ;;
 esac
@@ -159,6 +168,70 @@ report() {                      # report <dir> <rows: yes|no>
   return 1
 }
 
+# ---------------------------------------------------------------- the writing
+#
+# THE REFUSAL IS THE CONTRACT, and it is `docs/adr/README.md`'s own words: the
+# pass "refuses to touch an existing line". So this writes a `Referenced by:`
+# line only where there is none, and a record that already has one is left
+# exactly as it stands even when the line is incomplete.
+#
+# WHAT THAT COSTS, STATED RATHER THAN DISCOVERED. Of the seventy edges missing
+# today, twenty-eight are on the twelve records with no line at all and
+# forty-two are on twenty-five records whose line exists and names only some of
+# its citers. This mode can close the first group and none of the second — and
+# the second is the more dangerous half, because a partial line reads as
+# ANSWERED rather than as absent. Relaxing the refusal is a decision about the
+# records rather than a flag, and it is filed as one.
+#
+# IDEMPOTENT by the same rule: a second run finds a line and declines, so
+# running it twice is running it once.
+
+citers_of() {                   # citers_of <dir> <target-id> — one D-number per line
+  local dir="$1" want="$2" f self
+  for f in "$dir"/D-*.md; do
+    [ -f "$f" ] || continue
+    self="$(record_id "$f")"
+    [ "$self" = "$want" ] && continue
+    forward_links "$f" | grep -qx "$want" && printf '%s\n' "$self"
+  done
+}
+
+write_edges() {                 # write_edges <dir>
+  local dir="$1" f self line citer slug wrote=0 declined=0 nothing=0
+  for f in "$dir"/D-*.md; do
+    [ -f "$f" ] || continue
+    self="$(record_id "$f")"
+    if grep -qE '^Referenced by:' "$f"; then
+      declined=$((declined + 1))
+      continue
+    fi
+    line=""
+    while IFS= read -r citer; do
+      [ -n "$citer" ] || continue
+      # The link text is the citer's own filename, read off disk rather than
+      # reconstructed, so a renamed record cannot produce a link to a file that
+      # does not exist.
+      slug=""
+      for cand in "$dir/$citer"-*.md; do [ -f "$cand" ] && { slug="$(basename "$cand")"; break; }; done
+      [ -n "$slug" ] || continue
+      [ -n "$line" ] && line="$line, "
+      line="$line[$citer]($slug)"
+    done <<< "$(citers_of "$dir" "$self" | sort -u)"
+    if [ -z "$line" ]; then
+      nothing=$((nothing + 1))
+      continue
+    fi
+    # A blank line before it, because every record in this tree ends its prose
+    # and then its back edge, and a line glued to the last paragraph renders as
+    # part of that paragraph.
+    printf '\nReferenced by: %s.\n' "$line" >> "$f"
+    wrote=$((wrote + 1))
+    echo "BACKEDGE WROTE $self  $line"
+  done
+  printf 'BACKEDGE_WRITE_CENSUS wrote=%d declined=%d no_citers=%d\n' "$wrote" "$declined" "$nothing"
+  echo "BACKEDGE WRITE VERDICT DONE wrote=$wrote"
+}
+
 # ---------------------------------------------------------------- the suite
 #
 # Fixtures, not the tree. The tree is `WEB_INCOMPLETE` today, so a suite that
@@ -245,6 +318,50 @@ selftest() {
   printf '# D-003\n\nReferenced by: [D-001](D-001-a.md).\n' > "$tmp/partial/D-003-c.md"
   count_case partially-named-citers 1 "$tmp/partial"
 
+  # ---- the writing half -----------------------------------------------------
+
+  wrote_case() {                # wrote_case <name> <want-wrote> <dir>
+    local got
+    got="$(write_edges "$3" | grep -oE 'wrote=[0-9]+$' | cut -d= -f2)"
+    if [ "$got" = "$2" ]; then
+      pass=$((pass + 1)); printf 'BACKEDGE case=%-24s want=wrote=%-11s got=wrote=%-11s OK\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKEDGE case=%-24s want=wrote=%-11s got=wrote=%-11s BROKEN\n' "$1" "$2" "$got"
+    fi
+  }
+
+  # A record with a citer and no line gains one, and the line is the citer.
+  mkdir -p "$tmp/w1"
+  printf '# D-001\n\nSee [D-002](D-002-b.md).\n' > "$tmp/w1/D-001-a.md"
+  printf '# D-002\n\nNo line.\n' > "$tmp/w1/D-002-b.md"
+  wrote_case write-adds-a-missing-line 1 "$tmp/w1"
+  if grep -q '^Referenced by: \[D-001\](D-001-a\.md)\.$' "$tmp/w1/D-002-b.md"; then
+    pass=$((pass + 1)); printf 'BACKEDGE case=%-24s want=%-16s got=%-16s OK\n' write-line-names-the-citer present present
+  else
+    fail=$((fail + 1)); printf 'BACKEDGE case=%-24s want=%-16s got=%-16s BROKEN\n' write-line-names-the-citer present absent
+  fi
+  # And the sweep now agrees, which is the only proof that matters: the writer
+  # and the reader must not disagree about what a back edge is.
+  verdict_case write-closes-the-edge WEB_COMPLETE "$tmp/w1"
+  # Idempotent — the second run finds a line and declines.
+  wrote_case write-is-idempotent 0 "$tmp/w1"
+
+  # THE REFUSAL. An INCOMPLETE existing line is left exactly as it stands. This
+  # is `docs/adr/README.md`'s contract and it is also this mode's largest
+  # limitation, so it is driven rather than assumed.
+  mkdir -p "$tmp/w2"
+  printf '# D-001\n\nSee [D-003](D-003-c.md).\n' > "$tmp/w2/D-001-a.md"
+  printf '# D-002\n\nSee [D-003](D-003-c.md).\n' > "$tmp/w2/D-002-b.md"
+  printf '# D-003\n\nReferenced by: [D-001](D-001-a.md).\n' > "$tmp/w2/D-003-c.md"
+  wrote_case write-declines-an-existing-line 0 "$tmp/w2"
+  count_case refusal-leaves-the-debt 1 "$tmp/w2"
+
+  # A record nobody cites gains nothing — an empty `Referenced by:` line would
+  # be a claim that the record was checked, which is exactly what it is not.
+  mkdir -p "$tmp/w3"
+  printf '# D-001\n\nAlone.\n' > "$tmp/w3/D-001-a.md"
+  wrote_case write-adds-nothing-uncited 0 "$tmp/w3"
+
   printf 'BACKEDGE SELFTEST VERDICT %s cases=%d failed=%d\n' \
     "$([ "$fail" -eq 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
   [ "$fail" -eq 0 ]
@@ -258,4 +375,5 @@ case "$MODE" in
   selftest) selftest; exit $? ;;
   census)   report "$ADR_DIR" no; exit $? ;;
   check)    report "$ADR_DIR" yes; exit $? ;;
+  write)    write_edges "$ADR_DIR"; exit $? ;;
 esac

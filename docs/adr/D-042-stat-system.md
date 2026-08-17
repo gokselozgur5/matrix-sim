@@ -66,3 +66,5 @@ contest(a, b) is pure and seeded-deterministic; the AGENT catch at seed 42 re-ru
 ## More Information
 
 Related: [D-041](D-041-season-three-character-layer.md), [D-033](D-033-self-substantiation.md) (the first stat's birthplace), [D-014](D-014-smith-lsp-violation.md), [D-020](D-020-observability-contract.md). Thread: #212.
+
+Referenced by: [D-043](D-043-named-cast.md), [D-044](D-044-crew-as-programs.md), [D-045](D-045-bonds-and-the-kiss.md), [D-046](D-046-cypher-protocol.md), [D-051](D-051-allegiance-influence.md).
