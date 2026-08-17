@@ -72,7 +72,7 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 *The One cycle closes.*
 
-- [x] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in; born at t=1289 for a debt of 30,227 — "the ledger does not forgive; it balances", and the source's own comment says the rest: the One is OWED)
+- [x] Acceptance loop + anomaly ledger replaces the flat counter (D-022) → birth of The One (a real pod in the PodFarm + jack-in; born for a debt the ledger names on the line itself — "the ledger does not forgive; it balances", and the source's own comment says the rest: the One is OWED)
 - [x] Overflow threshold → NEGOTIATION (world freezes, dialogue events) → treaty: mass restore (417 originals in one flush), opt-out (six walk free), Sati, PEACE
 - [x] Overflow without Neo → Architect emergency reload (alternate branch; verified via ops console by the verification skeptic)
 - [x] `reload` command: manual Zion purge
@@ -80,7 +80,7 @@ Phases are numbered like the films. Each phase has three sections: **goal**, **d
 
 **Decision gate:** D-006 (tuning constants) ✅, D-022 (acceptance loop bookkeeping) ✅
 
-**DoD (verified):** `--headless --ticks 6000 --seed 42` plays the full arc in order — `The One is born` (1289) → `I DIDN'T` (1525) → `OVERFLOW` (4284) → `"Peace."` (4304) → `REBOOT v7.0` (4324) — then keeps going: the second Thomas at 5249, because the cycle is the point. Two adversarial rounds (MERGE-READY + verification MERGE-READY, seeds 42 and 7): 0 ghosts, 0 ledger anomalies, 0 cap violations.
+**DoD (verified):** `--headless --ticks 6000 --seed 42` plays the full arc **in order** — `The One is born` → `I DIDN'T` → `OVERFLOW` → the One's flatline → `"Peace."` → the open door → `REBOOT v7.0` — then keeps going: a second Thomas, because the cycle is the point. The ORDER is the definition of done and it is checked on every push by `probes/ArcBeats.java`; the TICKS are not written here, because a second copy of them is a second thing to go stale — this line carried five that had drifted by up to 260 ticks while reading `(verified)` (#1447). The live column lives in `README.md`, where `DocLint` compares it against a run. Two adversarial rounds (MERGE-READY + verification MERGE-READY, seeds 42 and 7): 0 ghosts, 0 ledger anomalies, 0 cap violations.
 
 ---
 
