@@ -85,12 +85,14 @@ public final class SpecDrift {
                     System.exit(Probes.Outcome.REFUSED.code());
                 }
                 spec = args[i];
+            } else if ("--selftest".equals(args[i])) {
+                selftest();
             } else if (args[i].startsWith("--")) {
                 System.exit(Probes.Outcome.REFUSED.code());
             } else if (positional++ == 0) {
-                ticks = Long.parseLong(args[i]);
+                ticks = Probes.number(args[i], "ticks");
             } else {
-                seed = Long.parseLong(args[i]);
+                seed = Probes.number(args[i], "seed");
             }
         }
 
@@ -268,6 +270,63 @@ public final class SpecDrift {
             }
         }
         return out;
+    }
+
+    /**
+     * The splitter's own cases (#1508). {@code fieldsIn} became a pure function of one line
+     * in #1442 and was still driven only through a 6,000-tick arc — the one function here
+     * that parses, that has already been wrong once, and whose comment says its correctness
+     * *worked BY LUCK* because today's continuation tokens happen to contain no {@code =}.
+     *
+     * <p>Both failure directions are silent: a splitter that invents a field reports a drift
+     * that is not there, and one that misses a field reports agreement it never checked.
+     * {@code field_drift} is judged in the sweep, so the second is the one that hides.
+     *
+     * <p>The shipped function is called, never a copy of its expression. Every case is a
+     * real shape of the instrument-line grammar, and {@code text-with-spaces-and-commas} is
+     * the one #606 was filed about.
+     */
+    private static void selftest() {
+        int pass = 0;
+        int fail = 0;
+        String[][] cases = {
+            {"plain", "METRIC tick=6000 blue=812 red=17", "tick,blue,red"},
+            // #606: a naive splitter reads `top="financial` as one token and
+            // `district:49,old` as another, so a quoted TEXT value must run to its
+            // closing quote and belong to the field that opened it.
+            {"text-with-spaces-and-commas",
+                "ATTN tick=6000 top=\"financial district:49,old town:31\" watched=2",
+                "tick,top,watched"},
+            // A value that opens AND closes inside one token must not start a
+            // continuation, or every field after it is swallowed.
+            {"quoted-closed-in-one-token", "ATTN tick=1 top=\"downtown\" watched=1",
+                "tick,top,watched"},
+            // THE CASE THAT IS CURRENTLY CORRECT BY LUCK: nothing in today's lines puts an
+            // `=` inside a quoted value, so a continuation token has never had to be
+            // skipped for a reason other than not looking like a field.
+            {"equals-inside-the-quotes",
+                "ATTN tick=1 top=\"a=1, b=2\" watched=3", "tick,top,watched"},
+            // A token with no `=` is not a field. `at 4,7,8` in the ledger's sweep line is
+            // the live example.
+            {"token-without-an-equals", "LEDGER_SWEEP seeds=0..59 clean=53 at 4,7,8",
+                "seeds,clean"},
+            // A family and nothing else: no fields, and not a parse failure.
+            {"no-fields-at-all", "PERF ", ""},
+        };
+        for (String[] c : cases) {
+            String family = c[1].substring(0, c[1].indexOf(' '));
+            String got = String.join(",", fieldsIn(c[1], family));
+            boolean ok = c[2].equals(got);
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+            System.out.printf("SPEC case=%-28s want=[%s] got=[%s] %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
+        }
+        Probes.leave("SPEC SELFTEST VERDICT " + (fail == 0 ? "PASS" : "FAIL")
+                + " cases=" + (pass + fail) + " failed=" + fail, fail == 0);
     }
 
     /** The field names on one line, in the order printed. A pure function of the line. */
