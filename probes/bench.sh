@@ -970,10 +970,56 @@ cost_line() {
     | sort -k1,1rn -k2,2 | head -3 \
     | awk '{ printf "%s%s:%s", (NR > 1 ? "," : ""), $2, $1 } END { if (NR == 0) printf "none" }'
 }
+
+# THE TAIL, WHICH IS WHERE THIS LANE ACTUALLY GROWS (#1353).
+#
+# `slowest=` names the three fattest rows and they are the same three every week, while
+# the total climbs: 123 -> 178 in two units, and 104 -> 117 -> 166 in a single day. None
+# of those was one fat row — they were rows landing, each cheap, each justified alone,
+# and `slowest=` would barely have moved for any of them. So a reader sees three stable
+# names beside a bigger total and concludes nothing changed, when what changed is
+# everything else.
+#
+# `top3=` and `tail=` are the same numbers already collected, divided once: `top3` is the
+# three `slowest=` names summed, `tail` is everything outside them. Their identity is the
+# point — `top3 + tail` is the whole sweep's row time — so a climb lands in one of two
+# places and the line says which. *One row got fatter* and *the lane got longer* stop
+# looking alike.
+#
+# NO NEW MEASUREMENT, deliberately: the same `$COSTS` the two figures beside it already
+# read. A tail figure that needed its own timing would be a fourth number with a fifth
+# source of drift.
+#
+# NOT JUDGED, and this whole line says why in its own parenthesis: it is wall clock.
+# Measured on ONE unchanged tree, three consecutive runs, 2026-08-17:
+#
+#   top3=46 tail=85 secs=137
+#   top3=44 tail=85 secs=134
+#   top3=41 tail=86 secs=132
+#
+# `tail` moves by 1 second across the three and `top3` by 5 — which is the argument for
+# the split rather than against it: the noise lives in the fat rows, and the number this
+# lane's growth actually lands in is the steadier of the two. The runner's own spread is
+# far wider (296..710 s over 54 runs, measured in locks.yml's hang-guard comment), so a
+# gate on either figure would be a red build caused by load. #1348's prior question,
+# answered before either number was built rather than after.
+#
+# `top3 + tail` is the ROW time and not the sweep's: 131 of 137 above. The remainder is
+# the build, the roster and this trailer, and stating that is cheaper than a reader
+# discovering the six seconds and wondering which figure is lying.
+tail_costs() {                    # tail_costs — seconds outside the three fattest, then the three
+  printf '%s' "$COSTS" | awk 'NF == 2 { t[$2] += $1 } END { for (k in t) printf "%d %s\n", t[k], k }' \
+    | sort -k1,1rn -k2,2 \
+    | awk -v want="$1" 'NR <= 3 { top += $1; next } { tail += $1 } END { printf "%d", (want == "top" ? top : tail) }'
+}
 echo "BENCH_COST slowest=$(cost_line)" \
+     "top3=$(tail_costs top)" \
+     "tail=$(tail_costs tail)" \
      "rows_timed=$(printf '%s' "$COSTS" | grep -c . || true)" \
      "classes_timed=$(printf '%s' "$COSTS" | awk '{print $2}' | sort -u | grep -c . || true)" \
      " (wall clock, so it moves between two runs of one tree — a census and never a verdict, #1221;" \
+     "top3 + tail is the whole sweep's row time, so a climb lands in one of two places and this line" \
+     "says which — the three fattest names are stable and the tail is where rows land (#1353);" \
      "classes_timed counts CLASSES WITH A ROW and sits four lines under probes_on_disk, which counts" \
      ".java files — the difference is the helpers no row invokes, and #1368 is about a reader having" \
      "to know that to reconcile them)"
