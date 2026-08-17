@@ -901,12 +901,32 @@ done
 # escape hatch for a tool that reaches its codes through a lookup — `prstate.sh`
 # does, so its promises cannot be checked this way and it is exempted by the
 # same flag rather than reported as a liar.
+# THE IDENTITY THIS CHECK OWES ITS READER (#1434), the same one #1377 gave the
+# suite loop one loop over:
+#
+#     tools = codes_checked + codes_exempt + codes_no_promise + codes_no_literal
+#
+# `codes_unspent=0` read as a statement about the shop and was a statement about
+# four of thirteen tools: nine carry a pass-through somewhere, and one line skips
+# the WHOLE FILE for it. That silence cost a real defect today - #1432 found
+# advice.sh promising `1 one does not` and always exiting 0 on its main path,
+# which is precisely what this check exists to catch and never looked at,
+# because `selftest; exit $?` for its own door exempted the file.
+#
+# The exemption is right and the silence is not: a pass-through`s codes genuinely
+# cannot be read from a literal grep (#1238), and a tool skipped for a good
+# reason still has to be counted, or the counter reporting on the rest reads as a
+# report on everything.
 codes_unspent=0
+codes_checked=0
+codes_exempt=0
+codes_no_promise=0
+codes_no_literal=0
 for tool in tools/*.sh; do
   name="$(basename "$tool")"
   row="$(grep "^| \`$name\`" tools/README.md || true)"
   [ -n "$row" ] || continue
-  case "$row" in *"Exit "*) ;; *) continue ;; esac
+  case "$row" in *"Exit "*) ;; *) codes_no_promise=$((codes_no_promise + 1)); continue ;; esac
   # `exit` ONLY, and that is a correction (#1238). The first draft read
   # `(exit|return)`, which conflates two unrelated things: a process's exit code
   # and a shell function's boolean. `backlog.sh`'s `measured_body()` ends
@@ -917,14 +937,18 @@ for tool in tools/*.sh; do
   spends="$(grep -vE '^[[:space:]]*#' "$tool" \
             | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
   # A tool whose codes are all indirect has nothing to compare against.
-  [ -n "$spends" ] || continue
+  [ -n "$spends" ] || { codes_no_literal=$((codes_no_literal + 1)); continue; }
   # `exit "$(code_for …)"` is a lookup; `exit $?` is a PASS-THROUGH — the code
   # is whatever the last command produced, so the tool genuinely spends
   # everything that command can. Both are invisible to a literal grep, and both
   # make a promise uncheckable rather than false. `advice.sh` itself is the
   # second shape: `selftest; exit $?` spends 1 on a failing suite, and the first
   # draft of this check reported its own row as a liar.
-  grep -qE '(exit|return) +("?\$\(|\$\?)' <<< "$(uncommented "$tool")" && continue
+  if grep -qE '(exit|return) +("?\$\(|\$\?)' <<< "$(uncommented "$tool")"; then
+    codes_exempt=$((codes_exempt + 1))
+    continue
+  fi
+  codes_checked=$((codes_checked + 1))
   promised="$(printf '%s' "$row" | grep -oE 'Exit [^|]*' \
               | grep -oE '(^Exit |· )[0-9]+' | grep -oE '[0-9]+' | sort -u)"
   while IFS= read -r code; do
@@ -1177,7 +1201,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
