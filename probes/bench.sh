@@ -250,7 +250,7 @@ table() {
   # nobody can falsify is a wish with a filename, so docs/spec/README.md's rule is that a
   # spec lands with its probe in one pull request. This is that probe: the roster in
   # docs/spec/instrument-lines.md against the families a private universe prints.
-  judge SpecDrift    'VERDICT SPEC_HOLDS unpredicted=0 unseen=0 read_none=0' "$TICKS"
+  judge SpecDrift    'VERDICT SPEC_HOLDS unpredicted=0 unseen=0 field_drift=0 read_none=0' "$TICKS"
   # The three sentences docs/ARCHITECTURE.md calls "verified by grep", with the grep
   # (#1417). Nothing read any of them: `entities` importing nothing from `realworld`,
   # `World` holding no real-world object, nothing depending on `Main`. All three were

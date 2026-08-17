@@ -69,6 +69,62 @@ reader that demanded all eight from one universe would be red on a correct
 implementation; one that demanded only what it happened to see would bless a
 roster with a family missing. The column is what lets a checker do neither.
 
+## Field tables
+
+One table per family, in field order. **Field order is the contract**: a reader
+keys on position, so a field renamed, moved or retyped is a breaking change and
+a field appended after the last one is legal evolution (law 5). A conforming
+line's fields must therefore begin with the table's fields, in the table's
+order; anything after them is a later version's append and a v1 parser ignores it.
+
+The two below are the lines every run prints. The remaining six families' tables
+are the sibling nodes of #255 and land separately.
+
+### `METRIC` — the world's vital signs
+
+Emitted every 100 ticks. Arity 8.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `tick` | INT | ticks | ≥ 0 |
+| 2 | `blue` | INT | count | ≥ 0 |
+| 3 | `red` | INT | count | ≥ 0 |
+| 4 | `agents` | INT | count | ≥ 0 |
+| 5 | `total` | INT | count | ≥ 0 |
+| 6 | `infected` | RATIO | ratio | 0..1 |
+| 7 | `anomaly` | REAL1 | residue | finite |
+| 8 | `selfsub` | INT | count | ≥ 0 |
+
+```
+METRIC tick=100 blue=191 red=5 agents=6 total=669 infected=0.000 anomaly=2268.0 selfsub=0
+```
+
+`selfsub` is the append this law already survived: #200 added it at the end of
+the line by hand, correctly, because somebody knew the rule. A v1 parser written
+before it still reads the seven fields it knows.
+
+`infected` is RATIO — three decimals, never scientific, never NaN — and
+`anomaly` is REAL1, one decimal and finite. The difference is grammar, not
+formatting: a parser sizing a field on `%.3f` breaks on `%.1f`, and a retype is
+the change law 5 forbids.
+
+### `DIGEST` — the seal
+
+Emitted every 100 ticks. Arity 2.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `tick` | INT | ticks | ≥ 0 |
+| 2 | `sha` | SHA | sha256 | 64 lowercase hex |
+
+```
+DIGEST tick=100 sha=bf732254d9c287bcd096123c29b5f63c92f60a2b0ea272fec99452c8c11235db
+```
+
+Two fields, and the whole falsifiability of this repository rests on the second:
+same seed, same film, byte for byte. A foreign implementation that reproduces
+the world reproduces this line.
+
 ## What is not an instrument line
 
 **The event log.** D-020 names three instruments — the event log, the `METRIC`
