@@ -65,6 +65,28 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.."
 
+# A tool's body with its comment lines dropped, CAPTURED so that nothing reads it
+# through a pipe (#1398).
+#
+# Under `set -o pipefail`, `grep -v … | grep -q` reports FAILURE whenever the -q
+# quits before the upstream has finished writing: the upstream takes SIGPIPE and
+# pipefail promotes that to the pipeline's status. Whether it happens is a race
+# between two processes, so the boolean it decides — report this tool, or exempt
+# it — was being chosen by the scheduler. On about a third of CI runs this file
+# reported ITSELF as promising an exit code it never spends, because the
+# exemption for a pass-through `exit $?` was skipped by a broken pipe:
+#
+#     grep: write error: Broken pipe
+#     CODES_UNSPENT advice.sh promises exit 1 and never spends it, literals=[2 ]
+#
+# The mechanism is named thirty lines above the `UNIMPLEMENTED` check, where it
+# was diagnosed and repaired — at that one site, and nowhere else. This is the
+# rest of the class. A capture has no upstream to kill, and a here-string is fed
+# by the shell rather than by a process that can be interrupted.
+uncommented() {                 # uncommented <tool> — its body, comment lines dropped
+  grep -vE '^[[:space:]]*#' "$1" || true
+}
+
 LIST=no
 [ "${1:-}" = "--list" ] && LIST=yes
 
@@ -124,7 +146,7 @@ named_tool() {                  # named_tool <line> <default>
   # is advice about gh, and its flags are gh's to implement. The first run of
   # this audit reported balance.sh advising `--user` "at tools/balance.sh, which
   # does not mention it", which was true and not a defect.
-  if printf '%s' "$1" | grep -qE '\b(gh|git|java|javac|bash|sh|curl) '; then
+  if grep -qE '\b(gh|git|java|javac|bash|sh|curl) ' <<< "$1"; then
     printf 'external'
     return
   fi
@@ -781,7 +803,7 @@ for tool in tools/*.sh; do
   # explanation — a checker inside its own search path, for the fifth time in
   # this file's history (#1144's ghost verdict, #1157's comments, #1222's row
   # lookup reading a neighbour, and now this).
-  if grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(exit|return) +"?\$\('; then
+  if grep -qE '(exit|return) +"?\$\(' <<< "$(uncommented "$tool")"; then
     codes_indirect=$((codes_indirect + 1))
     echo "CODES $name indirect: reaches at least one exit through a lookup, literals=[$spends]"
   fi
@@ -842,7 +864,7 @@ for tool in tools/*.sh; do
   # make a promise uncheckable rather than false. `advice.sh` itself is the
   # second shape: `selftest; exit $?` spends 1 on a failing suite, and the first
   # draft of this check reported its own row as a liar.
-  grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(exit|return) +("?\$\(|\$\?)' && continue
+  grep -qE '(exit|return) +("?\$\(|\$\?)' <<< "$(uncommented "$tool")" && continue
   promised="$(printf '%s' "$row" | grep -oE 'Exit [^|]*' \
               | grep -oE '(^Exit |· )[0-9]+' | grep -oE '[0-9]+' | sort -u)"
   while IFS= read -r code; do
@@ -895,7 +917,7 @@ for tool in tools/*.sh; do
   # head, which is the interpretation #1238 asked to stay out. Both shapes live
   # here: `backlog.sh` returns 1 for false, `prstate.sh`'s `report()` returns 3
   # for a pull request it could not read.
-  grep -vE '^[[:space:]]*#' "$tool" | grep -qE '(^|[^_a-zA-Z])return [0-9]+' \
+  grep -qE '(^|[^_a-zA-Z])return [0-9]+' <<< "$(uncommented "$tool")" \
     && codes_returns=$((codes_returns + 1))
   for code in $(unnamed_codes "$tool" "$row"); do
     codes_unnamed=$((codes_unnamed + 1))
@@ -986,9 +1008,15 @@ for tool in tools/*.sh; do
   # advice about this tool, and `release.sh`'s occurrence sits inside
   # `java -cp out matrix.Main --selftest`, which that list catches. Same rule,
   # same list, second reader.
-  grep -vE '^[[:space:]]*#' "$tool" \
-    | grep -E '\-\-selftest\b' \
-    | grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' || continue
+  # Two stages, both off a capture. The empty guard is not decoration: with no
+  # mentions at all the old pipeline fed `grep -qv` no input and exited 1, so the
+  # `|| continue` fired; a here-string of an empty variable is ONE EMPTY LINE,
+  # which does not match the external-program pattern, so `-v` matches it and the
+  # tool would be admitted. Replacing a pipe with a capture changes what "no
+  # input" means, and this is the one site where that difference is a verdict.
+  mentions="$(grep -E '\-\-selftest\b' <<< "$(uncommented "$tool")" || true)"
+  [ -n "$mentions" ] || continue
+  grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions" || continue
   # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
   # it runs — `litany.sh` — runs tools of its own to check their verdicts
   # (#1169). Without a depth to read, the two call each other without end:
@@ -1008,7 +1036,7 @@ for tool in tools/*.sh; do
   # have (#1212). The verdict line is the discriminator: a real suite prints
   # `<NAME> SELFTEST VERDICT …`, and a tool that ran its ordinary self prints
   # something else or refuses the flag outright.
-  if ! printf '%s' "$utf8" | grep -qE '^([A-Z][A-Z0-9_]* )+SELFTEST VERDICT '; then
+  if ! grep -qE '^([A-Z][A-Z0-9_]* )+SELFTEST VERDICT ' <<< "$utf8"; then
     no_suite=$((no_suite + 1))
     echo "SUITE $tool none: --selftest reaches no suite (the flag is not a promise)"
     continue
