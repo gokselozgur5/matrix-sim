@@ -276,7 +276,7 @@ table() {
   # because a refusal is spelled at least three ways in this tree. Runs its siblings, so
   # it costs twenty-six JVM starts and no universe: a refusal returns before the JVM has
   # warmed. `crashed=` rides the census and is reported, not judged (#1481).
-  judge DoorRefusal  'VERDICT EVERY_DOOR_REFUSES swallowed=0 swept_none=0'
+  judge DoorRefusal  'VERDICT EVERY_DOOR_REFUSES swallowed=0 crashed=0 swept_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
   # The contract on the rows above, read off this table. `by_hand=11` is the
