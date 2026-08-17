@@ -64,3 +64,5 @@ The owner issues one console act and the log line names his character; the Oracl
 ## More Information
 
 Related: [D-041](D-041-season-three-character-layer.md), [D-042](D-042-stat-system.md), [D-037](D-037-theory-practice-split.md), [D-034](D-034-session-ritual.md). Thread: #213.
+
+Referenced by: [D-045](D-045-bonds-and-the-kiss.md), [D-047](D-047-dream-reader.md), [D-050](D-050-live-events.md).

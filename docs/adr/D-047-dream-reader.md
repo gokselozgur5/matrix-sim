@@ -64,3 +64,5 @@ One command renders one named mind's full-arc day as deterministic prose; the do
 ## More Information
 
 Related: [D-021](D-021-perception-feed.md) (the promise this keeps), [D-019](D-019-backend-only.md) (the law this respects), [D-043](D-043-named-cast.md) (the Oracle's voice option). Thread: #217.
+
+Referenced by: [D-048](D-048-districts-with-identity.md), [D-052](D-052-missions.md).

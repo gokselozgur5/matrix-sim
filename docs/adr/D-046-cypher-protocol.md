@@ -64,3 +64,5 @@ One petition end-to-end on a byte-stable run: the want measured, the bargain log
 ## More Information
 
 Related: [D-045](D-045-bonds-and-the-kiss.md) (betrayal is a bond's shadow), [D-023](D-023-chronos-event-sourcing.md) (the log that remembers), [D-042](D-042-stat-system.md), [D-011](D-011-human-class.md). Thread: #216.
+
+Referenced by: [D-049](D-049-truce-regime.md), [D-051](D-051-allegiance-influence.md), [D-053](D-053-favor-economy.md).
