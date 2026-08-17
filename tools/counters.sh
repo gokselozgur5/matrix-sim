@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# tools/counters.sh — does a probe's catalog row still name the counters its
+# bench row pins? (#1356, narrowed by #1369)
+#
+# Usage: tools/counters.sh              count the pinned counters and the named ones
+#        tools/counters.sh --list       one row per pinned counter, named or not
+#        tools/counters.sh --selftest   run the reader's cases; no probe is executed
+#
+# THE FINDING. `roster_check` asks whether a probe HAS a row (#1177). Nothing
+# asked whether the row still DESCRIBES the probe, so an instrument can grow a
+# counter, a mode or a whole second question while its row keeps describing the
+# instrument it was two units ago. #1319 repaired two such rows by hand; three
+# counters have arrived since with their rows written in the same PR. The habit
+# took. The mechanism did not, and nothing would catch the fourth.
+#
+# WHY THE BENCH AND NOT THE PROBE. A probe's counters live in two places: the
+# format string in its source, and the EXACT LINE its bench row pins. #1369
+# measured both. The wide reading — every `name=` token in any string literal in
+# a probe's source — gives 621 tokens and 556 missing, a 90% rate that is almost
+# entirely `seed=`, `ticks=` and progress-row noise. A check with that ratio is
+# not a check. The bench row is the narrow reading and the right one: it is the
+# CONTRACT, it is one line, and a counter that is pinned is a counter somebody
+# decided the lane would judge.
+#
+# No probe is executed. This reads two files.
+#
+# REPORTED, NEVER JUDGED — deliberately, and this is the whole reason the unit is
+# split. #1311's rule is that a gate installs at zero and not at one: at one it
+# demands a unit from whoever trips it. The first run finds a backlog, so the
+# order #1369 states is edits first and gate second. This tool is the number that
+# makes the edits finishable and the gate installable at zero.
+
+set -uo pipefail
+
+cd "$(dirname "$0")/.."
+
+BENCH=probes/bench.sh
+CATALOG=probes/README.md
+MODE=count
+case "${1:-}" in
+  '') ;;
+  --list) MODE=list ;;
+  --selftest) MODE=selftest ;;
+  *) echo "FATAL unknown argument: $1 (this tool takes --list, --selftest, or nothing)" >&2; exit 2 ;;
+esac
+
+# THE GUARD FAMILY, EXEMPT BY NAME AND NOT BY PATTERN (#1369, and #1207 is the
+# precedent). These mean the same thing on every probe that carries one: the scan
+# opened nothing, so an empty reading cannot print a clean line. Demanding that
+# each row explain its own `checked_none=` asks for boilerplate rather than
+# information — and a row that says "…_none= guards the empty reading" fifty times
+# is a row nobody reads.
+#
+# A LIST, because a pattern (`*_none$`) exempts every counter a future probe
+# happens to name that way, including one that means something specific. An
+# exemption that grows on its own is a hole. Adding a name here costs a line and
+# a reason, which is the price of the exemption being visible.
+GUARDS='
+births_none        the birth scan opened no birth
+beats_none         no beat arose in the window
+checks_none        the check ran over nothing
+checked_none       the reading opened no file
+compared_none      no pair was compared
+samples_none       the sampler took no sample
+scanned_none       the sweep scanned nothing
+stale_none         no figure was compared
+swept_none         the walk opened no file
+read_none          neither side was read
+sources_none       no source file was found
+rows_none          the table had no rows
+'
+
+guard() {                         # guard <name> — 0 it is an exempt guard
+  grep -qE "^[[:space:]]*$1[[:space:]]" <<< "$GUARDS"
+}
+
+# One bench row's class and the counters its pinned line carries.
+#
+# Continuation lines are joined FIRST, because the fattest rows wrap — the
+# ledger's sweep row carries its arguments two lines down — and a reader that
+# stops at the backslash reads half a contract. #1369's own figure of 44 was
+# approximate for exactly this reason and is superseded by this reading.
+bench_rows() {                    # bench_rows <bench file> — "<Class> <tok> <tok> …" per line
+  awk '{ while (/\\$/) { sub(/\\$/,""); if ((getline nxt) > 0) $0 = $0 " " nxt; else break } print }' "$1" \
+  | grep -E "^[[:space:]]*(judge|known|vary)[[:space:]]" \
+  | while IFS= read -r row; do
+      # `vary '<why>' judge <Class> '<line>'` — the why is a quoted string in
+      # front of the verb, so it is removed before the verb is read. Without this
+      # the class reads as `judge` and the why's own words read as counters.
+      case "$row" in
+        *vary*) row="$(sed -E "s/^[[:space:]]*vary[[:space:]]+'[^']*'[[:space:]]*//" <<< "$row")" ;;
+      esac
+      local cls line
+      cls="$(sed -nE "s/^[[:space:]]*(judge|known|run)[[:space:]]+([A-Za-z][A-Za-z0-9]*).*/\2/p" <<< "$row")"
+      [ -n "$cls" ] || continue
+      line="$(sed -nE "s/^[^']*'([^']*)'.*/\1/p" <<< "$row")"
+      # A row with no quoted line pins nothing — `run` rows are that shape, and a
+      # row whose contract is empty is not a row with zero counters.
+      [ -n "$line" ] || continue
+      printf '%s %s\n' "$cls" \
+          "$(grep -oE '[A-Za-z][A-Za-z0-9_]*=' <<< "$line" | tr -d '=' | sort -u | tr '\n' ' ')"
+    done
+}
+
+# Does this row NAME the counter? The token followed by `=`, and that is a
+# correction rather than a choice (#1369). A substring read reported `ticks` as
+# named because the row said "6,000 ticks", and the published figure was wrong in
+# the direction that hides the finding. The `=` is what makes the mention a
+# mention of a COUNTER and not of the word.
+names() {                         # names <row> <token>
+  case "$2" in "$1") return 1 ;; esac   # unreachable guard: keeps shellcheck honest
+  case "$1" in *"$2="*) return 0 ;; *) return 1 ;; esac
+}
+
+report() {                        # report <bench> <catalog>
+  local bench="$1" catalog="$2"
+  [ -r "$bench" ] || { echo "FATAL cannot read $bench" >&2; return 3; }
+  [ -r "$catalog" ] || { echo "FATAL cannot read $catalog" >&2; return 3; }
+
+  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0
+  local cls toks tok row
+  while read -r cls toks; do
+    rows=$((rows + 1))
+    row="$(grep "^| \`$cls\` |" "$catalog" | head -1)"
+    if [ -z "$row" ]; then
+      # A class with no catalog row is `roster_check`'s finding and not this
+      # one's (#1170): one absence reported by two checks is one defect counted
+      # twice. Counted here so the identity closes.
+      norow=$((norow + 1))
+      continue
+    fi
+    for tok in $toks; do
+      pinned=$((pinned + 1))
+      if guard "$tok"; then
+        exempt=$((exempt + 1))
+        [ "$MODE" = list ] && printf 'COUNTER %-20s %-18s EXEMPT\n' "$cls" "$tok"
+      elif names "$row" "$tok"; then
+        named=$((named + 1))
+        [ "$MODE" = list ] && printf 'COUNTER %-20s %-18s NAMED\n' "$cls" "$tok"
+      else
+        missing=$((missing + 1))
+        printf 'UNNAMED %-20s %-18s its row does not say what this counts\n' "$cls" "$tok"
+      fi
+    done
+  done <<< "$(bench_rows "$bench")"
+
+  # The populations ride the census (#1221). `pinned = named + missing + exempt`
+  # closes by construction and every path through the token loop increments
+  # exactly one term, which the suite's closed-set case asserts rather than argues
+  # (the #1443 lesson, one directory over).
+  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow bench=$bench catalog=$catalog"
+
+  # `pinned_none=` rides the VERDICT, because a reading that found no bench row
+  # must not print the line a fully-named catalog prints (#1207). Nothing read is
+  # the finding, not a clean result over an empty set.
+  if [ "$pinned" -eq 0 ]; then
+    echo "COUNTERS VERDICT NOTHING_READ — an empty reading is not a named catalog" >&2
+    return 4
+  fi
+  echo "COUNTERS VERDICT COUNTED pinned=$pinned named=$named missing=$missing exempt=$exempt pinned_none=0"
+  return 0
+}
+
+selftest() {
+  local pass=0 fail=0
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/counters.XXXXXX")"
+  trap 'rm -rf "${tmp:-}"' EXIT
+
+  row_case() {                    # row_case <name> <want tokens> <bench body>
+    local name="$1" want="$2" got
+    printf '%s\n' "$3" > "$tmp/bench.sh"
+    got="$(bench_rows "$tmp/bench.sh" | tr -s ' ' | sed 's/ $//' | tr '\n' '|')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=[%s] got=[%s] OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=[%s] got=[%s] BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  row_case judge-row       'Alpha a b|'  "  judge Alpha 'VERDICT X a=0 b=1'"
+  # The arguments after the quoted line are not counters. `"\$TICKS"` and
+  # `--sweep 0..59 6000` both sit there and neither is part of the contract.
+  row_case args-after-line 'Beta c|'     "  judge Beta 'VERDICT Y c=0'   \"\$TICKS\" --sweep 0..59"
+  # A wrapped row is one row. The ledger's fattest row wraps, and a reader that
+  # stops at the backslash reads half a contract.
+  row_case wrapped-row     'Gamma d e|'  "  judge Gamma 'VERDICT Z d=0 e=2' \\
+        --sweep 0..59 6000"
+  # `vary` puts a quoted REASON in front of the verb. Read naively the class is
+  # `judge` and the reason's own words are counters.
+  row_case vary-row        'Delta f|'    "  vary  'rates move with the draw' judge Delta 'VERDICT W f=0'"
+  # `known` is the third verb and pins a line like the others (#1231).
+  row_case known-row       'Eps g|'      "  known Eps 'VERDICT BROKEN g=yes' '#1231'"
+  # A row with no quoted line pins nothing, and that is not a row with zero
+  # counters — it is not a contract at all.
+  row_case no-quoted-line  ''            "  run Zeta \"\$TICKS\""
+
+  name_case() {                   # name_case <name> <want 0=named 1=not> <row> <token>
+    local name="$1" want="$2" got
+    if names "$3" "$4"; then got=0; else got=1; fi
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  name_case names-the-counter    0 'the row explains `swept=` at length' swept
+  # THE CASE THAT IS THE WHOLE REASON THE MATCHER IS WHAT IT IS. A substring read
+  # called this named, because the row says the word. The published figure was
+  # wrong in the direction that hides the finding, and this is the correction.
+  name_case names-only-the-word  1 'runs for 6,000 ticks before judging'  ticks
+  name_case empty-row            1 ''                                    swept
+
+  guard_case() {                  # guard_case <name> <want 0=exempt 1=not> <token>
+    local name="$1" want="$2" got
+    if guard "$3"; then got=0; else got=1; fi
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  guard_case guard-listed        0 swept_none
+  # THE EXEMPTION IS A LIST AND NOT A PATTERN, and this is the case that says so:
+  # a name the list does not carry is not exempt however much it looks like one.
+  # A pattern would exempt every future `*_none` including one that means
+  # something specific, and an exemption that grows on its own is a hole.
+  guard_case guard-not-a-pattern 1 harvest_none
+  guard_case guard-ordinary      1 broken
+
+  echo "COUNTERS SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
+  [ "$fail" -eq 0 ]
+}
+
+if [ "$MODE" = selftest ]; then
+  selftest
+  exit $?
+fi
+
+report "$BENCH" "$CATALOG"
+exit $?
