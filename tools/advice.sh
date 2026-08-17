@@ -439,6 +439,22 @@ done
 # It reads the counters as globals rather than taking twelve arguments: twelve
 # positional parameters is a transposition waiting to happen, which is #1204's
 # argument one directory over, and the suite sets the same names.
+#
+# EVERY NAME HERE IS JUDGED, and #1357 said one of them was not. `catalog_wrong=`
+# was the counter it named — the fallback branch of the chain, reachable only when
+# nothing else broke — and that was true when the issue was written and stopped
+# being true in 4920977, the unit whose title is *two of twelve break counters had
+# no verdict word*. It is in this list, it increments BREAKS, it has a word, and
+# `verdict_case catalog_wrong` drives it.
+#
+# ITS ZERO IS EARNED ON THE FIRST OF THE TWO GROUNDS in tools/README.md's
+# gate-at-zero rule: it has a history. b898838 drove it red synthetically at
+# commissioning — `CATALOG_CLAIM tools/release.sh's row promises
+# '--nonexistentflag'` — and its first live run reported a defect that was NOT one,
+# release.sh's row naming a neighbour's flags, which is why the body searched is
+# every tool the row names rather than only the one it is about. A counter that has
+# been both red on purpose and wrong once is not a counter whose zero means nobody
+# is looking.
 BREAK_COUNTERS='rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
 
 verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
