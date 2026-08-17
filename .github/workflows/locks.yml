@@ -656,6 +656,30 @@ jobs:
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "ADVICE SUITE FLOOR OK cases=$ran floor=$floor"
 
+      # WHY: #1394 — `docs/adr/README.md` has described an idempotent back-edge pass since
+      # D-029 and no such program existed, so every `Referenced by:` line in the tree was
+      # typed from memory, which is the one thing that sentence says they are not. The
+      # suite is what is judged here and not the tree: the web is INCOMPLETE today (70 of
+      # 180 links), and a step asserting anything about `docs/adr` would be asserting the
+      # debt and would have to be edited by whoever pays it. What must not regress is the
+      # checker's ability to tell an edge from a mention — the fixture that separates a
+      # prose D-number from a markdown link is the one thing standing between this and a
+      # checker that is green by construction.
+      - name: tools — the back-edge reader's own suite (#1394)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/backedge.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/backedge-selftest.log"
+          verdict="$(grep -E '^BACKEDGE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/backedge-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the back-edge reader's suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=8   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "BACKEDGE SUITE FLOOR OK cases=$ran floor=$floor"
+
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
       # solve one leg with the other three standing still, so acting on two of them leaves a leg
