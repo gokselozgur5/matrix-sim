@@ -149,22 +149,36 @@ public final class DoorRefusal {
             }
         }
 
-        // The populations ride the census (#1221): `swept=` moves whenever a probe gains
-        // or loses a flag, and a count on an exact-line row is a number people edit until
-        // the lane is quiet. `crashed=` rides here too, because it is reported and not
-        // judged — a number on the verdict line reads as a thing the lane refuses.
+        // The POPULATIONS ride the census (#1221): `swept=` and `refused=` move whenever a
+        // probe gains or loses a flag, and a count on an exact-line row is a number people
+        // edit until the lane is quiet.
+        //
+        // `crashed=` moved OFF this line in #1485, and the distinction is the one #1221 is
+        // actually about: a population is how many things there are, and a finding count is
+        // how many of them are wrong. `crashed=` is the second kind. It sat here because the
+        // number was eleven and #1311 forbids installing a gate at one — at one it demands a
+        // unit from whoever trips it. #1481 took it to zero, so it belongs where it can be
+        // judged, which is the state `missing=` was in for two units before #1356's gate.
         System.out.println("DOOR_CENSUS swept=" + swept + " refused=" + refused
-                + " crashed=" + crashed + " wait_s=" + WAIT_SECONDS + " root=" + root);
+                + " wait_s=" + WAIT_SECONDS + " root=" + root);
         notes.forEach(System.out::println);
         offences.forEach(System.out::println);
 
-        // `swept_none=` rides the VERDICT: a reading that found no flag-parsing probe
-        // must not print the line a compliant tree prints (#1207, #970). Nothing read is
-        // the finding, not a clean result over an empty set.
-        boolean held = swallowed == 0 && swept > 0;
+        // ONE WORD, TWO FINDINGS, AND THE WORD COVERS BOTH. `EVERY_DOOR_REFUSES` is false
+        // whether a door swallowed the flag or died on it — neither refused — so both
+        // counters belong on this line rather than one of them being gated elsewhere. What
+        // the counters keep separate is what a reader needs: a swallow means the probe RAN
+        // and judged a question nobody asked, a crash means it stopped and blamed the
+        // contract. The per-probe SWALLOWED and CRASHED rows carry the detail; these two
+        // numbers say which kind to go looking for.
+        //
+        // `swept_none=` rides here too: a reading that found no flag-parsing probe must not
+        // print the line a compliant tree prints (#1207, #970). Nothing read is the finding,
+        // not a clean result over an empty set.
+        boolean held = swallowed == 0 && crashed == 0 && swept > 0;
         Probes.leave(String.format(
-                "VERDICT EVERY_DOOR_REFUSES swallowed=%d swept_none=%d",
-                swallowed, swept == 0 ? 1 : 0), held);
+                "VERDICT EVERY_DOOR_REFUSES swallowed=%d crashed=%d swept_none=%d",
+                swallowed, crashed, swept == 0 ? 1 : 0), held);
     }
 
     /**
