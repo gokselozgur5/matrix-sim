@@ -184,7 +184,7 @@ public final class ExitGrammar {
         int files = 0;
         for (Path probe : javaFiles()) {
             files++;
-            Matcher m = LITERAL_EXIT.matcher(uncommented(probe));
+            Matcher m = LITERAL_EXIT.matcher(Probes.uncommented(probe));
             while (m.find()) {
                 literals++;
                 System.out.println("GRAMMAR_LITERAL " + probe + " leaves with the digit " + m.group(1)
@@ -320,11 +320,6 @@ public final class ExitGrammar {
      * this scan, which is the direction that under-reports rather than the one that
      * invents a finding.
      */
-    private static String uncommented(Path file) throws IOException {
-        String text = Files.readString(file, StandardCharsets.UTF_8);
-        return text.replaceAll("(?s)/\\*.*?\\*/", "")
-                .replaceAll("//[^\n]*", "");
-    }
 
     private ExitGrammar() {}
 }

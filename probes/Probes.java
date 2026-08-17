@@ -3,7 +3,11 @@ import matrix.core.World;
 import matrix.realworld.NeuralLink;
 import matrix.realworld.RealWorld;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -193,6 +197,37 @@ final class Probes {
     @SuppressWarnings("unchecked")
     static List<NeuralLink> rigLinks(matrix.zion.BroadcastRig rig) throws ReflectiveOperationException {
         return (List<NeuralLink>) open(matrix.zion.BroadcastRig.class, "links").get(rig);
+    }
+
+    /**
+     * A source file with its comments removed (#1512).
+     *
+     * <p>Prose about a thing is not the thing, and this shop has paid for that six times:
+     * {@code advice.sh} has matched its own comments (#1157), a neighbour's catalog row
+     * (#1222), its own suite fixture (#1265) and its own {@code exit} pattern (#1276);
+     * {@code ExitGrammar} read a sentence about {@code System.exit} as an exit (#1503); and
+     * {@code DoorRefusal} counted a javadoc quoting D-021's Confirmation as a door (#1510).
+     * The last two were an hour apart, by the same hand, because the fix was fresh and the
+     * sibling was not checked — which is the argument for one home rather than three.
+     *
+     * <p>Two implementations and not one: {@code advice.sh} cannot call this and bash cannot
+     * be called from here, so the boundary is the language. This is the Java one, and every
+     * probe matcher that reads source is expected to go through it.
+     *
+     * <p>Block comments first, then line comments, and the order matters: a {@code //}
+     * inside a block comment belongs to the block, and stripping lines first orphans the
+     * block's opener. Line comments go from the marker to the end of the line rather than
+     * taking the whole line, because real code can carry a trailing comment.
+     *
+     * <p>The one case that goes the other way is a {@code //} inside a string literal, which
+     * would truncate the rest of that line. It does not occur in {@code probes/}, and its
+     * direction is the safe one: it HIDES source from a matcher rather than inventing a
+     * finding, so a checker under-reports instead of accusing.
+     */
+    static String uncommented(Path file) throws IOException {
+        return Files.readString(file, StandardCharsets.UTF_8)
+                .replaceAll("(?s)/\\*.*?\\*/", "")
+                .replaceAll("//[^\n]*", "");
     }
 
     /**
