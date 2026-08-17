@@ -118,7 +118,7 @@ public final class FleetLines {
         film(2, true);
         System.out.println("SWEEP ordinals=" + ordinals + " lines=" + lines
                 + " anomalies=" + anomalies);
-        System.out.println(anomalies == 0 ? "VERDICT FLEET_LINES_TRUE" : "VERDICT FLEET_LINES_LIE");
+        Probes.leave(anomalies == 0 ? "VERDICT FLEET_LINES_TRUE" : "VERDICT FLEET_LINES_LIE", anomalies == 0);
     }
 
     /** One arm of the film, composed the way the city composes it. */

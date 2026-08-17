@@ -160,11 +160,18 @@ public final class OrderTable {
                     + " sha=" + sha);
         }
 
-        System.out.println(orders > 1 && classes.size() == 1
+        // VACUOUS is not a pass, and until #1502 it left with 0 like one. The word means
+        // every permutation produced ONE class — the table cannot have been exercised, so
+        // the probe certified nothing. `leave` pairs the word with a nonzero code, which is
+        // the state the sweep's exact-line grep already treats it as: a row pinned on
+        // ORDER_TABLE_HELD fails on VACUOUS, and a human running it by hand now hears the
+        // same answer.
+        boolean vacuous = orders > 1 && classes.size() == 1;
+        Probes.leave(vacuous
                 ? "VERDICT ORDER_TABLE_VACUOUS orders=" + orders
                         + " classes=" + classes.size() + " silent=" + silent
                 : "VERDICT ORDER_TABLE_HELD orders=" + orders
-                        + " classes=" + classes.size() + " silent=" + silent);
+                        + " classes=" + classes.size() + " silent=" + silent, !vacuous);
     }
 
     /** One universe, ticked with its node list permuted before the first tick. */

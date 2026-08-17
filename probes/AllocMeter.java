@@ -229,9 +229,11 @@ public final class AllocMeter {
         // and about a city these numbers were never measured in — the same
         // failure the scale gate above refuses at the door (#826).
         if (ranAt != 1) {
-            System.out.println("VERDICT ALLOC_UNJUDGED scale=" + ranAt
-                    + " reason=no_byte_budget_at_this_scale");
-            return;
+            // NEVER_AROSE and not HELD (#1502, #1138's three-valued exit): a scaled run
+            // measured a city no record ever priced, so the budget was not kept and was not
+            // broken — it was not asked. Leaving 0 here said the bound held.
+            Probes.leave("VERDICT ALLOC_UNJUDGED scale=" + ranAt
+                    + " reason=no_byte_budget_at_this_scale", Probes.Outcome.NEVER_AROSE);
         }
 
         String over = breaches(steady, gcCount);
@@ -239,8 +241,13 @@ public final class AllocMeter {
                 + " steady_budget=" + STEADY_BUDGET_BYTES_PER_TICK
                 + " gc_collections=" + gcCount
                 + " gc_budget=" + GC_BUDGET_PER_ARC);
-        System.out.println(over.isEmpty() ? "VERDICT ALLOC_IN_BUDGET"
-                : "VERDICT ALLOC_OVER_BUDGET over=" + over);
+        // #1502: the byte counts beside this line move with the JVM and are exempted from
+        // the determinism pass by a declared `vary` row. The VERDICT does not move, and it
+        // used to leave with 0 whichever word it printed — so `ALLOC_OVER_BUDGET` was
+        // indistinguishable from a pass to anyone not reading the text. The exemption is
+        // about the noise on the neighbouring line and was never about the exit.
+        Probes.leave(over.isEmpty() ? "VERDICT ALLOC_IN_BUDGET"
+                : "VERDICT ALLOC_OVER_BUDGET over=" + over, over.isEmpty());
     }
 
     /** Collections across every collector, floored: a bean may report -1 for "unknown". */
@@ -313,7 +320,7 @@ public final class AllocMeter {
         System.out.println("SELFCHECK steady_budget=" + STEADY_BUDGET_BYTES_PER_TICK
                 + " gc_budget=" + GC_BUDGET_PER_ARC
                 + " settle_band_pct=" + STEADY_SETTLE_PCT + " cases=" + casesRun);
-        System.out.println(ok ? "SELFCHECK VERDICT GUARD_FIRES" : "SELFCHECK VERDICT GUARD_DEAD");
+        Probes.leave(ok ? "SELFCHECK VERDICT GUARD_FIRES" : "SELFCHECK VERDICT GUARD_DEAD", ok);
     }
 
     /** One case of the comparison, printed as a fact whether it holds or not. */

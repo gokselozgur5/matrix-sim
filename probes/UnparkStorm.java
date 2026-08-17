@@ -200,7 +200,12 @@ public final class UnparkStorm {
         // its own unpark events; if the two disagree, nothing above is worth
         // reading and the run says so instead of verdicting.
         System.out.println("CHECK unpark_events=" + world.unparks() + " unpark_lines=" + lines);
-        System.out.println(verdict(worst, scale, world.unparks(), lines));
+        // BOUNDED is the only word that held (#1502). UNBOUNDED is the finding; UNJUDGED and
+        // UNREAD are the two ways the probe never got to look — and all four used to leave
+        // with 0, so a human running this by hand could not tell any of them from a pass. The
+        // sweep already told them apart, by exact-line grep on the word.
+        String verdictLine = verdict(worst, scale, world.unparks(), lines);
+        Probes.leave(verdictLine, verdictLine.startsWith("VERDICT UNPARK_STORM_BOUNDED"));
     }
 
     /**
@@ -238,7 +243,7 @@ public final class UnparkStorm {
         ok &= expect("lost_a_line", verdict(834, 11, 2, 1),
                 "VERDICT UNPARK_STORM_UNREAD events=2 lines=1");
         System.out.println("SELFCHECK bound=" + BOUND_MINDS_PER_TICK + " scale=" + JUDGED_SCALE);
-        System.out.println(ok ? "SELFCHECK VERDICT GUARDS_FIRE" : "SELFCHECK VERDICT GUARD_DEAD");
+        Probes.leave(ok ? "SELFCHECK VERDICT GUARDS_FIRE" : "SELFCHECK VERDICT GUARD_DEAD", ok);
     }
 
     private static boolean expect(String name, String got, String want) {
