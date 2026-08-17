@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=28   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=31   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
           verdict="$(grep -E '^LITANY SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
             "${RUNNER_TEMP:-/tmp}/litany-selftest.log" || true)"
@@ -81,6 +81,6 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/litany.sh --floorcheck | tee "${RUNNER_TEMP:-/tmp}/floorcheck.log"
-          grep -q '^LITANY FLOOR VERDICT PASS gates=[1-9][0-9]* unfloored=0$' \
+          grep -q '^LITANY FLOOR VERDICT PASS gates=[1-9][0-9]* unfloored=0 misattributed=0 unreadable=[0-9]*$' \
             "${RUNNER_TEMP:-/tmp}/floorcheck.log" \
             || { echo "FATAL a suite gate asserts that SOME cases ran and nothing about how many" >&2; exit 1; }

@@ -484,6 +484,48 @@ selftest() {
   # `- name:` this case passes while every following block is unguarded.
   case_ shell-does-not-carry 1 'printf "      - name: sets it\n        shell: bash\n        run: |\n          true\n      - name: does not\n        run: |\n          true\n" >> "$tmp/w.yml"'
 
+  # THE FLOOR'S OWNER (#1365). Three cases, and they are the first this mode has
+  # ever had: `--floorcheck` shipped with no fixture at all, so *does every gate
+  # carry a floor* has been asserted on every push and never once seen to say no.
+  floor_owner_case() {          # floor_owner_case <name> <want clean|mismatch|unreadable> <step>
+    local wf="$tmp/fl" out got
+    rm -rf "$wf"; mkdir -p "$wf"
+    { printf 'name: fixture\non: push\njobs:\n  j:\n    steps:\n'
+      printf '%s\n' "$3"; } > "$wf/fixture.yml"
+    out="$(floorcheck_workflows "$wf")"
+    if   printf '%s\n' "$out" | grep -q 'misattributed=[1-9]'; then got=mismatch
+    elif printf '%s\n' "$out" | grep -q 'unreadable=[1-9]';    then got=unreadable
+    else got=clean; fi
+    if [ "$2" = "$got" ]; then
+      pass=$((pass + 1)); printf 'LITANY case=%-22s want=%-10s got=%-10s OK\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'LITANY case=%-22s want=%-10s got=%-10s BROKEN\n' "$1" "$2" "$got"
+    fi
+  }
+  floor_owner_case floor-owner-agrees clean '      - name: tools — a suite
+        run: |
+          floor=7
+          bash tools/attribution.sh --selftest | tee /tmp/x.log
+          verdict="$(grep -E '"'"'^ATTRIBUTION SELFTEST VERDICT PASS cases=[0-9]+ failed=0$'"'"' /tmp/x.log)"
+          echo "ATTRIBUTION SUITE FLOOR OK cases=$ran floor=$floor"'
+  # The defect that happened: a floor and its FLOOR OK line taken from the
+  # neighbouring step, in a file that grows by appending steps which resemble
+  # each other. Every line here is syntactically perfect.
+  floor_owner_case floor-owner-mismatch mismatch '      - name: tools — a suite
+        run: |
+          floor=7
+          bash tools/attribution.sh --selftest | tee /tmp/x.log
+          verdict="$(grep -E '"'"'^PRSTATE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$'"'"' /tmp/x.log)"
+          echo "PRSTATE SUITE FLOOR OK cases=$ran floor=$floor"'
+  # And the gap in the rule, which must be counted rather than skipped: a gate
+  # whose suite is not a `bash tools/x.sh` invocation at all.
+  floor_owner_case floor-owner-unreadable unreadable '      - name: tools — the teleprinter
+        run: |
+          floor=7
+          java -cp out matrix.DreamReader --selftest | tee /tmp/x.log
+          verdict="$(grep -E '"'"'^DREAM SELFTEST VERDICT PASS cases=[0-9]+ failed=0$'"'"' /tmp/x.log)"
+          echo "DREAM SUITE FLOOR OK cases=$ran floor=$floor"'
+
   # Question 5 answers on a different axis — a directory of workflows rather
   # than one file's meaning — so its cases build their own tree instead of
   # mutating `locks.yml`. Four shapes: the clean block, and the three ways the
@@ -763,8 +805,72 @@ floor_breaks() {                # floor_breaks <file> — one line per unfloored
   ' "$f"
 }
 
+# DOES A FLOOR BELONG TO THE SUITE IT BOUNDS? (#1365)
+#
+# `floor_breaks` asks whether every gate HAS a floor. It cannot ask whether the
+# floor is the right one's — and a floor meant for the attribution suite was
+# once written into the teleprinter's exit-grammar step, where both steps stayed
+# syntactically perfect: one would have failed for a reason unrelated to its
+# subject, the other would have passed a suite that shrank.
+#
+# Each gate already names its suite THREE times, and the three must agree:
+#
+#   bash tools/attribution.sh --selftest          the tool invoked
+#   grep -E '^ATTRIBUTION SELFTEST VERDICT PASS   the verdict grepped
+#   echo "ATTRIBUTION SUITE FLOOR OK cases=…"     the line the step prints
+#
+# This is a within-step consistency check over text the file already contains,
+# and it runs nothing. It catches the two ways this file actually goes wrong:
+# a copy-paste that took the neighbour's line, and an edit that landed in the
+# wrong step — both consequences of a file that grows by appending steps which
+# resemble each other.
+#
+# NORMALISATION, and what it cannot do. A tool's name and its verdict token are
+# the same word in different spellings — `digest-move.sh` prints `DIGEST MOVE` —
+# so both sides are reduced to letters and digits, upper-cased. A step whose
+# tool this rule cannot reach is COUNTED and NAMED rather than skipped: a
+# checker that silently covers nothing while printing green is the defect two
+# units in this tree already exist for (#1207, #970).
+floor_owner_breaks() {          # floor_owner_breaks <file> — one row per disagreement
+  awk '
+    function norm(s) { gsub(/[^A-Za-z0-9]/, "", s); return toupper(s) }
+    function flush(  t, v, l) {
+      if (!floored) return
+      t = norm(tool); v = norm(verdict); l = norm(floorline)
+      if (tool == "") { print "FLOOROWNER unreadable step=\"" name "\" reason=no-tool-invocation"; return }
+      if (verdict == "" || floorline == "") {
+        print "FLOOROWNER unreadable step=\"" name "\" reason=no-verdict-or-no-floor-line"; return
+      }
+      if (t != v || t != l) {
+        print "FLOOROWNER mismatch step=\"" name "\" tool=" tool " verdict=" verdict " floorline=" floorline
+      }
+    }
+    /^      - name:/ {
+      flush()
+      name = $0; sub(/^      - name: /, "", name)
+      tool = ""; verdict = ""; floorline = ""; floored = 0
+      next
+    }
+    /floor=[0-9]+/ { floored = 1 }
+    /bash (tools|probes)\/[a-z-]+\.sh/ {
+      if (tool == "") { match($0, /(tools|probes)\/[a-z-]+\.sh/)
+                        tool = substr($0, RSTART, RLENGTH)
+                        sub(/^(tools|probes)\//, "", tool); sub(/\.sh$/, "", tool) }
+    }
+    /SELFTEST VERDICT PASS/ {
+      if (verdict == "") { match($0, /\047\^[A-Z ]+SELFTEST/)
+                           if (RSTART > 0) { verdict = substr($0, RSTART + 2, RLENGTH - 10) } }
+    }
+    /SUITE FLOOR OK/ {
+      if (floorline == "") { match($0, /"[A-Z ]+SUITE FLOOR OK/)
+                             if (RSTART > 0) { floorline = substr($0, RSTART + 1, RLENGTH - 15) } }
+    }
+    END { flush() }
+  ' "$1"
+}
+
 floorcheck_workflows() {
-  local dir="${1:-.github/workflows}" f gates=0 unfloored=0 row
+  local dir="${1:-.github/workflows}" f gates=0 unfloored=0 misattributed=0 unreadable=0 row
   for f in "$dir"/*.yml "$dir"/*.yaml; do
     [ -f "$f" ] || continue
     # `grep -c` prints a count and exits 1 when that count is zero, so `|| echo 0`
@@ -778,10 +884,23 @@ floorcheck_workflows() {
       unfloored=$((unfloored + 1))
       echo "$row file=$(basename "$f")"
     done <<< "$(floor_breaks "$f")"
+    while IFS= read -r row; do
+      [ -n "$row" ] || continue
+      case "$row" in
+        *unreadable*) unreadable=$((unreadable + 1)) ;;
+        *)            misattributed=$((misattributed + 1)) ;;
+      esac
+      echo "$row file=$(basename "$f")"
+    done <<< "$(floor_owner_breaks "$f")"
   done
-  printf 'LITANY FLOOR VERDICT %s gates=%d unfloored=%d\n' \
-    "$([ "$unfloored" = 0 ] && printf PASS || printf FAIL)" "$gates" "$unfloored"
-  [ "$unfloored" = 0 ]
+  # `unreadable=` is REPORTED and `misattributed=` is JUDGED. A step this rule
+  # cannot parse is a gap in the rule, not a defect in the step, and turning it
+  # red would teach the next author to shape a step around the checker. The
+  # count rides the verdict so the gap cannot be zero-by-silence (#1207).
+  printf 'LITANY FLOOR VERDICT %s gates=%d unfloored=%d misattributed=%d unreadable=%d\n' \
+    "$([ "$unfloored" = 0 ] && [ "$misattributed" = 0 ] && printf PASS || printf FAIL)" \
+    "$gates" "$unfloored" "$misattributed" "$unreadable"
+  [ "$unfloored" = 0 ] && [ "$misattributed" = 0 ]
 }
 
 if [ "$FLOORCHECK" = yes ]; then
