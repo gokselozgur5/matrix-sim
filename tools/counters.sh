@@ -37,12 +37,25 @@ cd "$(dirname "$0")/.."
 BENCH=probes/bench.sh
 CATALOG=probes/README.md
 MODE=count
-case "${1:-}" in
-  '') ;;
-  --list) MODE=list ;;
-  --selftest) MODE=selftest ;;
-  *) echo "FATAL unknown argument: $1 (this tool takes --list, --selftest, or nothing)" >&2; exit 2 ;;
-esac
+# `--bench` and `--catalog` point the READING at a scratch pair (#1511). `report` already
+# took both as parameters and nothing could pass them, so the suite drove the three
+# predicates and the reading that joins them was exercised only against the live tree —
+# where every counter is named and `no_row` is zero, so no finding path had ever run.
+#
+# The same shape `flag_audit "$tmp/shop" "$tmp/shop/README.md"` has one directory over, and
+# the reason it matters there is the reason it matters here: a checker whose findings are
+# unreachable from a fixture is a checker whose findings appear for the first time on
+# somebody's pull request.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --list) MODE=list ;;
+    --selftest) MODE=selftest ;;
+    --bench) shift; [ $# -gt 0 ] || { echo "FATAL --bench wants a file" >&2; exit 2; }; BENCH="$1" ;;
+    --catalog) shift; [ $# -gt 0 ] || { echo "FATAL --catalog wants a file" >&2; exit 2; }; CATALOG="$1" ;;
+    *) echo "FATAL unknown argument: $1 (this tool takes --list, --bench FILE, --catalog FILE, --selftest, or nothing)" >&2; exit 2 ;;
+  esac
+  shift
+done
 
 # THE GUARD FAMILY, EXEMPT BY NAME AND NOT BY PATTERN (#1369, and #1207 is the
 # precedent). These mean the same thing on every probe that carries one: the scan
@@ -228,6 +241,64 @@ selftest() {
   # something specific, and an exemption that grows on its own is a hole.
   guard_case guard-not-a-pattern 1 harvest_none
   guard_case guard-ordinary      1 broken
+
+  # ---- the reading itself (#1511) ------------------------------------------
+  #
+  # The three predicates above are pure functions and were the whole suite, so the READING
+  # that joins them ran only against the live tree — where `missing=0` and `no_row=0`, which
+  # means no finding path had ever executed. A checker whose findings are unreachable from a
+  # fixture is a checker whose findings appear for the first time on somebody's pull request.
+  #
+  # `report` already took both files as parameters; nothing could pass them until `--bench`
+  # and `--catalog` landed. Now the join is driven over two-line fixtures, and each case
+  # asserts the whole verdict line rather than one field — a census that agreed on `missing=`
+  # and disagreed on `exempt=` would pass a narrower check.
+  read_case() {                   # read_case <name> <want-tail> <bench-body> <catalog-body>
+    local name="$1" want="$2" got
+    printf '%s\n' "$3" > "$tmp/b.sh"
+    printf '%s\n' "$4" > "$tmp/c.md"
+    got="$(MODE=count report "$tmp/b.sh" "$tmp/c.md" 2>/dev/null | grep '^COUNTERS VERDICT' \
+           | sed 's/^COUNTERS VERDICT //')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=[%s] got=[%s] OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=[%s] got=[%s] BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  read_case read:all-named 'COUNTED pinned=2 named=2 missing=0 exempt=0 pinned_none=0' \
+      "  judge Alpha 'VERDICT X a=0 b=1'" \
+      '| `Alpha` | does a thing. It carries `a=` and `b=`. |'
+  # THE FINDING PATH, executed for the first time by this case: one counter pinned and not
+  # named. Before #1511 nothing in the suite could reach this line.
+  read_case read:one-unnamed 'COUNTED pinned=2 named=1 missing=1 exempt=0 pinned_none=0' \
+      "  judge Alpha 'VERDICT X a=0 b=1'" \
+      '| `Alpha` | does a thing. It carries `a=` and nothing else. |'
+  # A guard is exempt and does not count as named — the third term, reachable only here.
+  read_case read:guard-exempt 'COUNTED pinned=2 named=1 missing=0 exempt=1 pinned_none=0' \
+      "  judge Alpha 'VERDICT X a=0 swept_none=0'" \
+      '| `Alpha` | does a thing. It carries `a=`. |'
+  # `no_row` is the term `roster_check` cannot cover, and it rides the census — so the
+  # VERDICT stays clean while a judged class has no row at all. The fixture carries one
+  # class with a row and one without, because the verdict is what this case reads and a
+  # rowless class alone leaves `pinned=0`, which is the NOTHING_READ refusal on stderr and a
+  # different finding (#1207). That distinction is the reason the case is written this way
+  # rather than with the obvious one-line fixture.
+  read_case read:no-row 'COUNTED pinned=1 named=1 missing=0 exempt=0 pinned_none=0' \
+      "  judge Alpha 'VERDICT X a=0'
+  judge Ghost 'VERDICT Y z=0'" \
+      '| `Alpha` | does a thing. It carries `a=`. |'
+  # And the refusal itself, which is the other end of the same axis: nothing pinned is not a
+  # fully-named catalog, and it leaves 4 rather than printing a clean line.
+  printf '%s\n' "  run Alpha" > "$tmp/b.sh"
+  printf '%s\n' '| `Alpha` | positional only. |' > "$tmp/c.md"
+  rc=0
+  MODE=count report "$tmp/b.sh" "$tmp/c.md" >/dev/null 2>&1 || rc=$?
+  if [ "$rc" = 4 ]; then
+    pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=4 got=%s OK\n' read:nothing-pinned "$rc"
+  else
+    fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=4 got=%s BROKEN\n' read:nothing-pinned "$rc"
+  fi
 
   echo "COUNTERS SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
