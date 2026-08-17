@@ -31,8 +31,21 @@ public final class CapSentinel {
         var links = Probes.links(Probes.realWorld(sim));
 
         long breaches = 0;
+        // HOW MANY TICKS WERE ACTUALLY EXAMINED (#1427, one of #1373's
+        // twenty-five). `breaches` counts what went wrong, and a count of
+        // wrongs is zero both when the cap held everywhere and when nothing was
+        // looked at — so this probe reported the awakening cap intact over a
+        // universe it never ticked:
+        //
+        //     $ java -cp out:probes/out CapSentinel 0 42
+        //     SENTINEL seed=42 ticks=0 cap=20
+        //     CAP_BREACHES=0                              exit 0
+        //
+        // No fixture needed it: a tick budget of zero is an ordinary argument.
+        long samples = 0;
         for (long t = 0; t < ticks; t++) {
             sim.tickOnce();
+            samples++;
             int present = 0, wrapped = 0, fated = 0, visitors = 0;
             for (var e : world.entities()) {
                 if (!e.alive) {
@@ -64,8 +77,15 @@ public final class CapSentinel {
                         + " fated=" + fated + " cap=" + Config.RED_CAP);
             }
         }
-        System.out.println("SENTINEL seed=" + seed + " ticks=" + ticks + " cap=" + Config.RED_CAP);
-        Probes.leave("CAP_BREACHES=" + breaches, breaches == 0);
+        // The population rides the census and the emptiness rides the verdict
+        // (#1221): `samples=` moves with the tick budget the caller chose, and a
+        // count on an exact-line row is a number people edit until the lane is
+        // quiet — while a run that examined no tick must not print the line that
+        // means the cap held.
+        System.out.println("SENTINEL seed=" + seed + " ticks=" + ticks
+                + " cap=" + Config.RED_CAP + " samples=" + samples);
+        Probes.leave("CAP_BREACHES=" + breaches + " samples_none=" + (samples == 0 ? 1 : 0),
+                breaches == 0 && samples > 0);
     }
 
     private static boolean hasResidentLink(
