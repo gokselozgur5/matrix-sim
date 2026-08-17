@@ -132,7 +132,7 @@ public final class HullRoster {
                 + " collisions=" + collisions + " shape_faults=" + shapeFaults);
         System.out.println("HULLROSTER roster=" + roster.length + " ordinals=" + ordinals
                 + " anomalies=" + anomalies);
-        System.out.println(anomalies == 0 ? "VERDICT ROSTER_TOTAL" : "VERDICT ROSTER_BROKEN");
+        Probes.leave(anomalies == 0 ? "VERDICT ROSTER_TOTAL" : "VERDICT ROSTER_BROKEN", anomalies == 0);
     }
 
     /** One pinned ordinal: the name the rule must produce, as a literal. */
