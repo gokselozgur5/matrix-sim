@@ -78,7 +78,13 @@ import java.util.List;
 public final class LedgerMirror {
 
     /** One universe's verdict: the seed, and how many ticks the mirror could not explain. */
-    public record Result(long seed, long anomalies) {}
+    /**
+     * One universe's reading. {@code compared} is the population (#1429): a
+     * count of ANOMALIES is zero both when every delta matched its mirror and
+     * when no delta was ever examined, so the verdict needs the second number
+     * to mean anything.
+     */
+    public record Result(long seed, long anomalies, long compared) {}
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
@@ -93,7 +99,13 @@ public final class LedgerMirror {
         // sweep on its first world (#1214). `run` still prints its MIRROR line;
         // the verdict and the exit code leave together, from one place.
         Result r = run(seed, ticks, true);
-        Probes.leave("LEDGER_ANOMALIES=" + r.anomalies(), r.anomalies() == 0);
+        // A count of ANOMALIES is zero both when every delta matched its mirror
+        // and when no delta was ever examined (#1429, one of #1373's twenty-five).
+        // The population rides the MIRROR census and the emptiness rides the
+        // verdict (#1221).
+        Probes.leave("LEDGER_ANOMALIES=" + r.anomalies()
+                + " compared_none=" + (r.compared() == 0 ? 1 : 0),
+                r.anomalies() == 0 && r.compared() > 0);
     }
 
     /**
@@ -172,6 +184,7 @@ public final class LedgerMirror {
         var links = reflect(() -> Probes.links(reflect(() -> Probes.realWorld(sim))));
 
         long anomalies = 0;
+        long compared = 0;
         long prev = world.ledger().balance();
         // The wheel's own view of the register: refilled each tick, never
         // reallocated.
@@ -199,6 +212,7 @@ public final class LedgerMirror {
                 continue;
             }
             long mirror = 0;
+            compared++;
             // Link residue accrues only on the wheel's window — nodes run at
             // world.tick()+1, so the window is (t+1) % ACCRUE == 0 as the
             // probe reads t post-tick. Off-window, links owe nothing, and
@@ -244,9 +258,10 @@ public final class LedgerMirror {
         if (print) {
             System.out.println("MIRROR seed=" + seed + " ticks=" + ticks
                     + " final_balance=" + world.ledger().balance()
-                    + " unparks=" + world.unparks());
+                    + " unparks=" + world.unparks()
+                    + " compared=" + compared);
         }
-        return new Result(seed, anomalies);
+        return new Result(seed, anomalies, compared);
     }
 
     /** A reflective accessor, called where a checked exception cannot travel. */
