@@ -132,7 +132,7 @@ red first run at best and a check that silently covers nothing at worst.
 ## The exit grammar — what a low code means, and who may spend it
 
 <!-- figure: ls tools/*.sh | wc -l == 14 -->
-<!-- figure: ls probes/*.java | wc -l == 55 -->
+<!-- figure: ls probes/*.java | wc -l == 56 -->
 Every program in this tree that a script branches on: fourteen tools, fifty-odd
 probes, and the teleprinter. Three populations, and until #1241 measured them,
 three different meanings for `2`.
