@@ -56,14 +56,22 @@ jobs:
       # every workflow, parsed by the shell that will execute it — including the
       # blocks in THIS file, which is how the unclosed quote above would have
       # been caught on the day it landed rather than eleven runs later (#1203).
-      - name: tools — every workflow's shell parses, and under what (#1203, #1226)
+      # The pattern carries EVERY counter the verdict prints, anchored at both
+      # ends, and that is a rule with a cost that has now been paid once: #1364
+      # added `degenerate=` to the line and not to this grep, and `unguarded=0$`
+      # stopped matching anything the tool will ever print — red on every push
+      # for a day, with `PASS` on the line above the `FATAL` (#1391). The cost is
+      # that a new counter is two edits. The alternative is a gate that ignores
+      # the fields it does not name, which is how a counter arrives judged by
+      # nothing; a step whose grep must be updated is a step somebody reads.
+      - name: tools — every workflow's shell parses, and under what (#1203, #1226, #1364)
         shell: bash
         run: |
           set -euo pipefail
           bash tools/litany.sh --shellcheck | tee "${RUNNER_TEMP:-/tmp}/shellcheck.log"
-          grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0 unguarded=0$' \
+          grep -q '^LITANY SHELL VERDICT PASS blocks=[1-9][0-9]* unparseable=0 unguarded=0 degenerate=0$' \
             "${RUNNER_TEMP:-/tmp}/shellcheck.log" \
-            || { echo "FATAL a run: block the shell cannot parse, or one with no guard" >&2; exit 1; }
+            || { echo "FATAL a run: block the shell cannot parse, one with no guard, or a test that cannot be true" >&2; exit 1; }
 
       # A gate that asserts SOME cases ran, and nothing about how many, is a gate
       # a shrinking suite walks through (#1213). Two gates already carried a
