@@ -586,11 +586,17 @@ judges it (#906).
 | `BoundsCensus` | Which constants in `Config` actually bind? | #1113's shape — a constant that LOOKS like a bound, is DOCUMENTED as a bound, and cannot cause anything to happen. Reads every `public static final` and classifies it by where its readers are: `binds` (a comparison, an arithmetic term), `reports` (only inside a log or a concatenation), `unread`. 81/0/0 today, which is the answer and not a failure to find one — what it locks is the FUTURE knob that arrives wired to nothing, and the rule is BoundsCensus's own: a knob that binds nothing says so in its comment |
 | `OrderTable` | Is the root door's draw-order table still the order the door draws in? | the keeper #1013 gave a table that never had one (`ORDER_TABLE_HELD orders=6 classes=4 silent=1`). Judged in the sweep since #1175, which measured it at 4.9 s after four months as a self-declared one-off — its own javadoc called it a KEEPER, which is the shape of a thing judged on every push, and nobody had re-read the sentence |
 
-Thirty-four rows for thirty-seven probes. `CensusCensor`, `CensusReverdict` and
+A row per probe, less a known three. `CensusCensor`, `CensusReverdict` and
 `CensusSampleSize` have no row here and none in `bench.sh` either — #816 is the unit
 that gives them both. `UnparkStorm` is the reverse and says so in its own row: a
-catalog entry with no sweep row, on purpose. Nothing reads this table, so until
-#995's `DocLint` comparison lands the gap is found by hand:
+catalog entry with no sweep row, on purpose. Neither side is spelled out as a
+number here, and that is #1342's rule rather than an omission: a figure whose
+producer is the command printed below it does not want a marker, it wants
+deleting. The pair that stood here — *thirty-four rows for thirty-seven probes* —
+was true when typed, went to forty-eight and fifty-one while the difference it
+existed to explain stayed exactly right, and so read as correct to anyone who
+checked the part after the numbers. Nothing reads this table, so until #995's
+`DocLint` comparison lands the gap is found by hand:
 
 ```sh
 comm -23 <(grep -al 'static void main' probes/*.java | sed 's#probes/##;s#\.java##' | sort) \
