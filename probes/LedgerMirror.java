@@ -92,8 +92,8 @@ public final class LedgerMirror {
             sweep(args);
             return;
         }
-        long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
-        long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+        long ticks = args.length > 0 ? Probes.number(args[0], "ticks") : 6_000;
+        long seed = args.length > 1 ? Probes.number(args[1], "seed") : 42;
         // The verdict line is printed HERE rather than inside `run`, because
         // `sweep` calls `run` sixty times and a helper that exits would end the
         // sweep on its first world (#1214). `run` still prints its MIRROR line;

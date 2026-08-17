@@ -102,9 +102,9 @@ public final class UnparkStorm {
             selfcheck();
             return;
         }
-        int ticks = args.length > 0 ? Integer.parseInt(args[0]) : 6_000;
-        long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
-        int scale = args.length > 2 ? Integer.parseInt(args[2]) : JUDGED_SCALE;
+        int ticks = args.length > 0 ? Probes.count(args[0], "ticks") : 6_000;
+        long seed = args.length > 1 ? Probes.number(args[1], "seed") : 42;
+        int scale = args.length > 2 ? Probes.count(args[2], "scale") : JUDGED_SCALE;
 
         String refusal = Config.scaleRefusal(scale);
         if (refusal != null) {

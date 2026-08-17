@@ -87,8 +87,8 @@ public final class BirthInputs {
             source = file.getFileName().toString();
             lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         } else {
-            long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
-            long runSeed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+            long ticks = args.length > 0 ? Probes.number(args[0], "ticks") : 6_000;
+            long runSeed = args.length > 1 ? Probes.number(args[1], "seed") : 42;
             source = "own";
             lines = record(runSeed, ticks);
         }

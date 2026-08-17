@@ -56,8 +56,8 @@ public final class LineLint {
         if (args.length > 0 && args[0].equals("--stdin")) {
             lines = readStdin();
         } else {
-            long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
-            long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+            long ticks = args.length > 0 ? Probes.number(args[0], "ticks") : 6_000;
+            long seed = args.length > 1 ? Probes.number(args[1], "seed") : 42;
             ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 22);
             new Simulation(seed, buf, null).run(ticks);
             lines = List.of(buf.toString(StandardCharsets.UTF_8).split("\n"));

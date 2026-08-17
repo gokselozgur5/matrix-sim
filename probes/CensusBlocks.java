@@ -101,7 +101,7 @@ public final class CensusBlocks {
             } else if (a.equals("--group")) {
                 group = args[++i];
             } else if (a.equals("--threads")) {
-                threads = Integer.parseInt(args[++i]);
+                threads = Probes.count(args[++i], "--threads");
             } else if (a.matches("\\d+")) {
                 ticks = Long.parseLong(a);              // a bare number is the tick budget
             } else {
@@ -301,9 +301,9 @@ public final class CensusBlocks {
             if (p.length != 3) {
                 throw new IllegalArgumentException("bad strided spec: " + spec + " (want A:S:N)");
             }
-            long a = Long.parseLong(p[0]);
-            long s = Long.parseLong(p[1]);
-            int c = Integer.parseInt(p[2]);
+            long a = Probes.number(p[0], "spec A");
+            long s = Probes.number(p[1], "spec S");
+            int c = Probes.count(p[2], "spec N");
             long[] out = new long[c];
             for (int i = 0; i < c; i++) {
                 out[i] = a + (long) i * s;
@@ -314,8 +314,8 @@ public final class CensusBlocks {
         if (dash < 0) {
             throw new IllegalArgumentException("bad spec: " + spec + " (want A-B or A:S:N)");
         }
-        long a = Long.parseLong(spec.substring(0, dash));
-        long b = Long.parseLong(spec.substring(dash + 1));
+        long a = Probes.number(spec.substring(0, dash), "spec low");
+        long b = Probes.number(spec.substring(dash + 1), "spec high");
         if (b < a) {
             throw new IllegalArgumentException("bad range: " + spec);
         }
