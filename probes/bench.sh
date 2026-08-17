@@ -251,6 +251,10 @@ table() {
   # spec lands with its probe in one pull request. This is that probe: the roster in
   # docs/spec/instrument-lines.md against the families a private universe prints.
   judge SpecDrift    'VERDICT SPEC_HOLDS unpredicted=0 unseen=0 field_drift=0 read_none=0' "$TICKS"
+  # The splitter's own cases (#1508). `fieldsIn` became a pure function in #1442 and was
+  # still driven only through a 6,000-tick arc — the one function here that parses, and one
+  # whose comment says its correctness worked BY LUCK. Costs no universe: six string cases.
+  judge SpecDrift    'SPEC SELFTEST VERDICT PASS cases=6 failed=0' --selftest
   # The three sentences docs/ARCHITECTURE.md calls "verified by grep", with the grep
   # (#1417). Nothing read any of them: `entities` importing nothing from `realworld`,
   # `World` holding no real-world object, nothing depending on `Main`. All three were
