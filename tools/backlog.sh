@@ -81,6 +81,30 @@ truncated() {                     # truncated <open> <limit>
   [ "$1" -ge "$2" ]
 }
 
+# SEARCH'S OWN CEILING, WHICH IS NOT THE PAGE (#1352). This tool reaches GitHub
+# through two different surfaces: the census uses the SEARCH api
+# (`--search "label:a,b,c"`, an OR that deduplicates), and `--flow` uses the
+# ISSUES api (`--state all`, filtered by date in jq). They are not the same store
+# — search is an index with its own refresh lag, so an issue filed moments before
+# a run can be absent from one and present in the other.
+#
+# Search also stops at 1,000 RESULTS, hard, whatever `--limit` says. That makes
+# two different facts wear one number today, because `LIMIT` is also 1000: at
+# exactly 1,000 rows the tool cannot tell a page that filled from an api that
+# will not return more — and TRUNCATED tells the reader to raise the limit, which
+# for the second fact is advice that cannot work. #1273's argument was precisely
+# that a tool must not report one fact as another.
+#
+# So the cap gets its own predicate and its own refusal. `truncated` still means
+# *raise the limit*; `capped` means *the limit will not help, narrow the query*.
+# With `LIMIT` at the cap the census's TRUNCATED branch is currently unreachable
+# and that is the honest state of it: today every full page IS the cap, and
+# lowering `LIMIT` makes the page reachable again with its own meaning intact.
+SEARCH_CAP=1000
+capped() {                        # capped <open> <cap>
+  [ "$1" -ge "$2" ]
+}
+
 # THE MARKER THE QUERY ABOVE DEPENDS ON (#1251). Every issue template must carry
 # an evidence field whose label opens with the shared word, so one query reaches
 # every kind. The local phrasing rides BEHIND it — `Measured — what the class
@@ -173,6 +197,28 @@ BENCH judged=52
   page_ exactly-the-page  1000 1000 0
   page_ over-the-page     1001 1000 0
   page_ the-old-default     30   30 0   # #1246's own measurement, as it was taken
+
+  # THE SECOND CEILING (#1352). Search stops at 1,000 results whatever `--limit`
+  # says, so the census has two ways to be short and only one of them is fixable
+  # by raising a number. These drive the predicate the refusal uses.
+  cap_() {                        # cap_ <name> <open> <cap> <want 0=capped 1=not>
+    local name="$1" open="$2" cap="$3" want="$4" got
+    if capped "$open" "$cap"; then got=0; else got=1; fi
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'BACKLOG case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'BACKLOG case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  cap_ under-the-cap       515 1000 1
+  cap_ exactly-the-cap    1000 1000 0
+  # THE CASE THAT SAYS WHY THERE ARE TWO PREDICATES. With the limit lowered below
+  # the cap, a full page is NOT the cap: raising the limit is the right advice and
+  # TRUNCATED is the right word. This is the only configuration in which the two
+  # answers differ, and it is the one the shipped literal does not produce.
+  cap_ page-below-the-cap  100 1000 1
+  page_ page-below-the-cap 100  100 0
 
   # The flow mode's door (#1323). Its counts need the API; its refusals do not,
   # and the refusals are the part a typo meets — `--flow yesterday` must be
@@ -278,7 +324,7 @@ if [ "$MODE" = flow ]; then
     echo "FATAL could not read the day's closed issues: $closed" >&2
     exit 3
   fi
-  echo "BACKLOG FLOW opened=$opened closed=$closed net=$((opened - closed)) since=$SINCE"
+  echo "BACKLOG FLOW opened=$opened closed=$closed net=$((opened - closed)) since=$SINCE store=issues"
   # Both ends of the paging axis, same as the count mode (#1273): a day that
   # filled the page is a page and not a day.
   if truncated "$opened" 1000 || truncated "$closed" 1000; then
@@ -355,7 +401,7 @@ done
 echo "BACKLOG_KINDS$kinds  (a search OR, deduplicated: an issue wearing two labels is one row)"
 
 measured=$((open - unmeasured))
-echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured limit=$LIMIT"
+echo "BACKLOG repo=$REPO open=$open measured=$measured unmeasured=$unmeasured limit=$LIMIT store=search cap=$SEARCH_CAP"
 
 # Reported, never judged. #1246 argues the lane version should not be built —
 # an issue is not an artefact CI can judge — and a tool that exits nonzero on a
@@ -381,6 +427,16 @@ fi
 # statement and the reason this is a refusal rather than a footnote. A backlog
 # of exactly $LIMIT is possible; raising the limit is how you find out, and a
 # tool that guessed would be doing the thing this whole unit is about.
+# THE CAP BEFORE THE PAGE (#1352), because at 1,000 they are the same number and
+# only one of them is fixable by the reader. Search stops at 1,000 results however
+# high `--limit` goes, so TRUNCATED's instruction — raise the limit — is advice
+# that cannot work here. Ordered first for the same reason the verdict chain
+# orders its words: when two facts fire together, the reader is sent to the one
+# they can act on.
+if capped "$open" "$SEARCH_CAP"; then
+  echo "BACKLOG VERDICT SEARCH_CAPPED open=$open cap=$SEARCH_CAP store=search — search stops at the cap whatever the limit says, so narrow the query rather than raising it" >&2
+  exit 6
+fi
 if truncated "$open" "$LIMIT"; then
   echo "BACKLOG VERDICT TRUNCATED open=$open limit=$LIMIT — the answer filled the page, so it is a page and not a backlog" >&2
   exit 5
