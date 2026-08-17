@@ -160,8 +160,8 @@ table() {
   judge LedgerMirror 'LEDGER_SWEEP seeds=0..59 ticks=6000 clean=53 broken=7 at 4,7,8,13,34,49,52' \
                                                --sweep 0..59 6000
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'   "$TICKS"
-  judge CapSentinel  'CAP_BREACHES=0'          "$TICKS"
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'  "$TICKS"
+  judge CapSentinel  'CAP_BREACHES=0 samples_none=0'          "$TICKS"
   judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'
   judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
@@ -176,7 +176,7 @@ table() {
   # asserting them at another seed would be asserting a different measurement.
   # Measured: six rows, 6.4 s. The lane's budget is 300 s (#1115).
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'      "$TICKS" 7
-  judge CapSentinel  'CAP_BREACHES=0'             "$TICKS" 7
+  judge CapSentinel  'CAP_BREACHES=0 samples_none=0'             "$TICKS" 7
   judge LinkAudit    'VERDICT CLEAN'              "$TICKS" 7
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'      "$TICKS" 7
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD'  "$TICKS" 7
