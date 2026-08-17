@@ -87,7 +87,7 @@ public final class LatticeFence {
         Path entitiesDir = Path.of(root, "matrix", "entities");
         for (Path file : files) {
             swept++;
-            List<String> code = code(file);
+            List<String> code = Probes.uncommentedLines(file);
 
             // CLAUSE 1 — the bridge is one-way. `entities` may not reach out.
             if (file.startsWith(entitiesDir)) {
@@ -175,39 +175,6 @@ public final class LatticeFence {
         }
     }
 
-    /** The file with comments removed, so the checker cannot find its own subject. */
-    private static List<String> code(Path file) throws IOException {
-        List<String> out = new ArrayList<>();
-        boolean inBlock = false;
-        for (String raw : Files.readAllLines(file, StandardCharsets.UTF_8)) {
-            String line = raw;
-            if (inBlock) {
-                int end = line.indexOf("*/");
-                if (end < 0) {
-                    out.add("");
-                    continue;
-                }
-                line = line.substring(end + 2);
-                inBlock = false;
-            }
-            int start = line.indexOf("/*");
-            if (start >= 0) {
-                int end = line.indexOf("*/", start + 2);
-                if (end < 0) {
-                    inBlock = true;
-                    line = line.substring(0, start);
-                } else {
-                    line = line.substring(0, start) + line.substring(end + 2);
-                }
-            }
-            int slashes = line.indexOf("//");
-            if (slashes >= 0) {
-                line = line.substring(0, slashes);
-            }
-            out.add(line);
-        }
-        return out;
-    }
 
     private LatticeFence() {}
 }
