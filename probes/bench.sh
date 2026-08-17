@@ -6,6 +6,12 @@
 #        probes/bench.sh --no-build     sweep without recompiling
 #        probes/bench.sh --twice        sweep, then run each probe a second
 #                                       time and byte-compare the two outputs
+#        probes/bench.sh --twice-changed <classes...>
+#                                       the same second run, narrowed to the
+#                                       probes a change touched (#1185). This is
+#                                       the form the lane passes; a probe nobody
+#                                       edited cannot have started drifting for a
+#                                       reason this pull request is answerable for
 #        probes/bench.sh --without-probes
 #                                       build src/ and selftest with probes/
 #                                       deleted, in a throwaway copy of HEAD
