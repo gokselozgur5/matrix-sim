@@ -86,6 +86,14 @@ public final class CensusReverdict {
         for (int i = 0; i < args.length; i++) {
             if ("--sd-ratio".equals(args[i])) {
                 sdRatio = Double.parseDouble(args[++i]);
+            } else if (args[i].startsWith("--")) {
+                // An unknown long option was becoming a POSITIONAL (#1479), which is
+                // worse than being ignored: `--sd-ration 2` fed `--sd-ration` and `2`
+                // to the table arguments, so the probe read a flag as a filename and
+                // refused for the wrong reason. Two positionals are still positional —
+                // the tables are named without flags on purpose — so only `--` is
+                // caught here.
+                System.exit(Probes.Outcome.REFUSED.code());
             } else {
                 positional.add(args[i]);
             }
