@@ -50,7 +50,18 @@ public final class KnownFixture {
 
     public static void main(String[] args) {
         matrix.Streams.utf8();
-        boolean healed = args.length > 0 && args[0].equals("--heal");
+        // The fifth door that swallowed an unknown flag (#1479), and it is the one that
+        // would have hidden longest: this probe's PASS condition is a nonzero exit, so
+        // `--heel` printed the by-design break and left 1 — indistinguishable from the
+        // flag working, in the one probe whose whole job is to be broken on purpose.
+        boolean healed = false;
+        for (String arg : args) {
+            if ("--heal".equals(arg)) {
+                healed = true;
+            } else {
+                System.exit(Probes.Outcome.REFUSED.code());
+            }
+        }
         // Not Probes.leave: this probe's verdict word does not change with its
         // exit code, and `leave` pairs the two. Here they are deliberately
         // separable, because the falsification is exactly "same line, other
