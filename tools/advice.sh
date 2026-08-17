@@ -87,6 +87,35 @@ uncommented() {                 # uncommented <tool> — its body, comment lines
   grep -vE '^[[:space:]]*#' "$1" || true
 }
 
+# DOES THIS FILE PROMISE A SUITE OF ITS OWN? (#1376)
+#
+# A function rather than three piped lines inside the loop, because this gate
+# decides which tools are checked AT ALL and its failure is silent by
+# construction: a tool wrongly excluded is not reported as anything — it stops
+# appearing in `suites=`, `no_suite=`, `unrun=` and `charset_checked=`, and no
+# counter moves. It has been wrong twice, #1212 and #1347, and both times the
+# falsification was a transcript in a pull request because there was nothing to
+# drive.
+#
+# Two questions, in order. Does the file mention the flag at all, outside its
+# comments — #1157's shape, a checker reading its own explanation. And is every
+# mention somebody ELSE's flag: `release.sh` carries `java -cp out matrix.Main
+# --selftest` because lock 2 of a release runs the daemon, and `advice.sh` itself
+# runs `bash tools/x.sh --selftest` for every tool it audits. The external list is
+# `named_tool()`'s, deliberately the same one, so advice about another program's
+# flags and a promise of one's own are told apart by a single rule (#1347).
+#
+# A file that quotes another program's flag AND parses its own is asked, because
+# `grep -qv` asks whether ANY mention is the tool's own. Nothing in the tree does
+# both today, which is exactly why the case is written: the behaviour was unknown
+# rather than correct.
+promises_a_suite() {            # promises_a_suite <file> — 0 it promises one, 1 it does not
+  local mentions
+  mentions="$(grep -E '\-\-selftest\b' <<< "$(uncommented "$1")" || true)"
+  [ -n "$mentions" ] || return 1
+  grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions"
+}
+
 LIST=no
 [ "${1:-}" = "--list" ] && LIST=yes
 
@@ -743,6 +772,37 @@ selftest() {
     comm -23 <(printf '%s\n' "$spent") <(printf '%s\n' "$listed") | sed 's/^/  COUNTER_WITH_NO_WORD /'
   fi
 
+  # ---- the suite gate (#1376) ----------------------------------------------
+  #
+  # Six shapes, five of which have actually occurred in this tree. The gate is
+  # a pure function of one file's text, so the cases are the file's text — the
+  # shipped function is called, never a copy of its expression.
+  gate_case() {                 # gate_case <name> <want yes|no> <tool-body>
+    local f="$tmp/gate.sh" got
+    printf '%s\n' "$3" > "$f"
+    if promises_a_suite "$f"; then got=yes; else got=no; fi
+    if [ "$2" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%-3s got=%-3s OK\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%-3s got=%-3s BROKEN\n' "$1" "$2" "$got"
+    fi
+  }
+
+  gate_case gate:own-case-arm        yes '  --selftest) MODE=selftest ;;'
+  # #1347: release.sh quotes the DAEMON's flag because lock 2 of a release runs it.
+  gate_case gate:quotes-the-daemon   no  'java -cp out matrix.Main --selftest'
+  # advice.sh runs every tool's suite, so its own file is full of somebody else's flag.
+  gate_case gate:quotes-another-tool no  'timeout 60 bash "$tool" --selftest'
+  # #1157's shape: a checker reading its own explanation.
+  gate_case gate:comment-only        no  '# the --selftest flag is discussed here and parsed nowhere'
+  # balance.sh: its three suites are spelled --datecheck, --rulercheck, --judgecheck.
+  gate_case gate:no-mention-at-all   no  '  --datecheck) MODE=datecheck ;;'
+  # THE ONE NOTHING IN THE TREE DOES, which is why it is written down: a tool that
+  # runs another program's suite AND has one of its own must still be asked. The
+  # expression's behaviour here was unknown rather than correct.
+  gate_case gate:quotes-and-parses   yes 'bash tools/x.sh --selftest
+  --selftest) MODE=selftest ;;'
+
   echo "ADVICE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
@@ -1041,10 +1101,7 @@ for tool in tools/*.sh; do
   # which does not match the external-program pattern, so `-v` matches it and the
   # tool would be admitted. Replacing a pipe with a capture changes what "no
   # input" means, and this is the one site where that difference is a verdict.
-  mentions="$(grep -E '\-\-selftest\b' <<< "$(uncommented "$tool")" || true)"
-  [ -n "$mentions" ] || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
-  grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions" \
-    || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
+  promises_a_suite "$tool" || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
   # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
   # it runs — `litany.sh` — runs tools of its own to check their verdicts
   # (#1169). Without a depth to read, the two call each other without end:
