@@ -1110,13 +1110,24 @@ public final class DocLint {
                         "Not applicable until the verdict lands."))),
                         arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=34 broken=" + broken);
+        System.out.println("SELFCHECK cases=" + casesRun + " broken=" + broken);
         System.out.println(broken == 0
                 ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
                 : "SELFCHECK VERDICT DOCLINT_BLIND");
     }
 
+    /**
+     * How many cases actually ran. This was the literal {@code 34} inside the
+     * trailer's format string (#1419) — correct on the day it was typed, and
+     * guarded by nothing: the lane pins the verdict word and not the count, so a
+     * case added without bumping it would have printed a wrong number and turned
+     * nothing red. Every other {@code cases=} in this tree is derived from a run;
+     * this was the one that was typed.
+     */
+    private static int casesRun = 0;
+
     private static int expect(String name, String want, Report got) {
+        casesRun++;
         String moved = moved(got);
         boolean ok = moved.equals(want);
         System.out.println("SELFCHECK case=" + name + " expect=" + want + " got=" + moved
