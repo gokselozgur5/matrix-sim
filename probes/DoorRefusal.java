@@ -220,10 +220,10 @@ public final class DoorRefusal {
      * door is code, so nothing that stripping comments removes could have been one.
      */
     private static boolean parsesAFlag(Path file) throws IOException {
-        String code = Files.readString(file, StandardCharsets.UTF_8)
-                .replaceAll("(?s)/\\*.*?\\*/", "")
-                .replaceAll("//[^\n]*", "");
-        return code.contains("\"--");
+        // Through the shared strip since #1512 rather than a third copy of four lines. The
+        // copy this replaces and `ExitGrammar`'s were written an hour apart for the same
+        // bug, which is the argument for one home per language.
+        return Probes.uncommented(file).contains("\"--");
     }
 
     /** Every probe source but the shared helper, which has no {@code main}. */
