@@ -866,6 +866,79 @@ selftest() {
   gate_case gate:quotes-and-parses   yes 'bash tools/x.sh --selftest
   --selftest) MODE=selftest ;;'
 
+  # ---- the two identities (#1443) ------------------------------------------
+  #
+  # `tools = suites + no_suite + skipped_self + skipped_no_promise` and
+  # `tools = codes_checked + codes_exempt + codes_no_promise + codes_no_literal
+  #  + codes_no_row` both held by construction, which is a property of control
+  # flow and not an assertion. These cases assert the property the sums rest on:
+  # each head classifies a file into EXACTLY ONE word from a closed set.
+  #
+  # Driving the counters themselves would need the loops parameterised on a
+  # directory the way `flag_audit` is. Driving the classifier is the smaller
+  # move and covers the same failure — a fifth exit added to a head either
+  # returns a word these cases do not expect, or returns nothing at all, and
+  # both are a BROKEN row here rather than a census line that quietly stops
+  # adding up.
+  class_case() {                # class_case <name> <fn> <want> <tool-body> [<row>]
+    local f="$tmp/class.sh" got
+    printf '%s\n' "$4" > "$f"
+    if [ "$2" = suite_class ]; then got="$(suite_class "$f")"; else got="$(code_class "$f" "${5:-}")"; fi
+    if [ "$3" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%-10s got=%-10s OK\n' "$1" "$3" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%-10s got=%-10s BROKEN\n' "$1" "$3" "$got"
+    fi
+  }
+
+  # `self` cannot be driven through a fixture: the arm compares the PATH against
+  # this file's own, which is the whole point of the arm. Asked of the real name.
+  if [ "$(suite_class tools/advice.sh)" = self ]; then
+    pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%-10s got=%-10s OK\n' class:suite-self self self
+  else
+    fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%-10s got=%-10s BROKEN\n' \
+        class:suite-self self "$(suite_class tools/advice.sh)"
+  fi
+  class_case class:suite-no-promise suite_class no_promise '  --datecheck) MODE=x ;;'
+  class_case class:suite-admitted   suite_class admitted   '  --selftest) MODE=selftest ;;'
+
+  # The row is the second argument here, and the fixtures below are SYNTHESISED
+  # from a code list for the ninth instance of the oldest bug in this file: a
+  # program hunting `exit N` cannot contain `exit N`. `printf 'exit %s\n'` carries
+  # no digit, so the format string is invisible to the grep it feeds.
+  ROW_CLASS='| `class.sh` | does a thing. Exit 0 fine · 2 refused. |'
+  class_case class:code-no-row      code_class no_row     "$(printf 'exit %s\n' 2)" ''
+  class_case class:code-no-promise  code_class no_promise "$(printf 'exit %s\n' 2)" \
+        '| `class.sh` | does a thing and promises no codes. |'
+  class_case class:code-no-literal  code_class no_literal 'echo hello'              "$ROW_CLASS"
+  # `exempt` needs BOTH a literal code and a pass-through, and the case is
+  # written that way because the first draft was not: a fixture whose only exit
+  # was `exit $?` came back `no_literal`, since the empty-spends test runs first.
+  # That ordering is the shipped behaviour and it is right — with no literal
+  # there is nothing to compare and the exemption has no work to do — but the two
+  # words are reachable from the same file and only one of them says why. This is
+  # `advice.sh`'s own shape: literal refusals plus `selftest; exit $?`.
+  class_case class:code-exempt      code_class exempt     "$(printf 'exit %s\n' 2)"'
+exit $?'                                                                            "$ROW_CLASS"
+  class_case class:code-checked     code_class checked    "$(printf 'exit %s\n' 2)" "$ROW_CLASS"
+
+  # THE CASE THAT IS THE WHOLE POINT: every tool in the REAL shop classifies to a
+  # word in each closed set. A fixture proves the words exist; this proves nothing
+  # falls between them — which is what a fifth exit added to a head looks like
+  # from the outside, and it is the only shape a synthetic fixture cannot show.
+  local stray=0 t w
+  for t in tools/*.sh; do
+    w="$(suite_class "$t")"
+    case "$w" in self|no_promise|admitted) ;; *) stray=$((stray + 1)); echo "  UNCLASSED suite_class $t -> '$w'" ;; esac
+    w="$(code_class "$t" "$(grep "^| \`$(basename "$t")\`" tools/README.md || true)")"
+    case "$w" in no_row|no_promise|no_literal|exempt|checked) ;; *) stray=$((stray + 1)); echo "  UNCLASSED code_class $t -> '$w'" ;; esac
+  done
+  if [ "$stray" = 0 ]; then
+    pass=$((pass + 1)); printf 'ADVICE case=%-26s want=0 got=%s OK\n' class:closed-over-the-shop "$stray"
+  else
+    fail=$((fail + 1)); printf 'ADVICE case=%-26s want=0 got=%s BROKEN\n' class:closed-over-the-shop "$stray"
+  fi
+
   echo "ADVICE SELFTEST VERDICT $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) cases=$((pass + fail)) failed=$fail"
   [ "$fail" -eq 0 ]
 }
