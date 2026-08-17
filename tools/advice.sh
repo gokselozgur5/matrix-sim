@@ -109,6 +109,29 @@ uncommented() {                 # uncommented <tool> — its body, comment lines
 # `grep -qv` asks whether ANY mention is the tool's own. Nothing in the tree does
 # both today, which is exactly why the case is written: the behaviour was unknown
 # rather than correct.
+# WHICH LINES ARE THE DOOR AND WHICH BELONG TO A HELPER (#1341).
+#
+# Bash does not make "which `case` reads $1 at top level" decidable by grep, and a
+# checker that guesses is the thing this file exists to refuse — its own words. So
+# the rule is stated rather than inferred, and it is a rule about THIS SHOP's
+# spelling: a top-level function opens with `name() {` at column zero and closes
+# with `}` at column zero. Every tool here is written that way, and an inner
+# function (`case_()` inside `selftest()`) is indented, so it neither opens nor
+# closes a scope by this reading.
+#
+# What the rule cannot do: find a door parsed inside a `main()`. No tool here has
+# one, the reading would report that tool as having no flags at all, and
+# `tools_no_flags=` is loud when it is wrong — which is why that counter is
+# reported rather than skipped in silence (#1207). Stating the assumption is the
+# option #1341 ranked first; guessing at scope is the one it refuses.
+by_scope() {                    # by_scope <file> <door|helper>
+  awk -v want="$2" '
+    /^[a-zA-Z_][a-zA-Z0-9_]*\(\)[[:space:]]*\{[[:space:]]*$/ { inside = 1; next }
+    inside && /^\}/                                          { inside = 0; next }
+    (inside ? "helper" : "door") == want                     { print }
+  ' "$1"
+}
+
 promises_a_suite() {            # promises_a_suite <file> — 0 it promises one, 1 it does not
   local mentions
   mentions="$(grep -E '\-\-selftest\b' <<< "$(uncommented "$1")" || true)"
@@ -530,22 +553,53 @@ unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it s
 
 
 flag_audit() {                                   # flag_audit <tools-dir> <catalog>
-  local dir="$1" catalog="$2" tool name row body arms compares accepted advertised flag
+  local dir="$1" catalog="$2" tool name row body helper arms compares accepted advertised flag
   flags_parsed=0
   flags_undocumented=0
   flags_phantom=0
   tools_no_flags=0
+  flags_in_helpers=0
   for tool in "$dir"/*.sh; do
   [ -f "$tool" ] || continue
   name="$(basename "$tool")"
   row="$(grep "^| \`$name\`" "$catalog" || true)"
   [ -n "$row" ] || continue                      # uncatalogued, counted above
-  body="$(grep -vE '^[[:space:]]*#' "$tool" || true)"
+  # THE DOOR, AND ONLY THE DOOR (#1341). This read the whole file, and the audit's
+  # premise — a `--x)` arm is a promise to a user — holds for a tool's argument
+  # parser and fails for everything else in it: a suite helper's parameter, an
+  # inner parse over a synthetic argv, a fixture body. `advice.sh` reported ITSELF
+  # for `--row)`, a parameter to a function inside `--selftest`, unreachable from
+  # a command line, and #1238 dodged it by making that helper positional — a
+  # workaround in one file, not a repair.
+  #
+  # The expensive direction is the second one. The natural "fix" for a false
+  # positive is to document the private parameter in the catalog; the row then
+  # promises a flag the door refuses, `flags_phantom` fires, and two checks
+  # disagree about one string. Nobody reads that as a defect in the audit — they
+  # read it as noise and add an exemption.
+  body="$(grep -vE '^[[:space:]]*#' <<< "$(by_scope "$tool" door)" || true)"
+  helper="$(grep -vE '^[[:space:]]*#' <<< "$(by_scope "$tool" helper)" || true)"
   arms="$(printf '%s\n' "$body" \
           | grep -oE '^[[:space:]]*--[a-z0-9-]+(\|--[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' || true)"
   compares="$(printf '%s\n' "$body" \
           | grep -oE '=[[:space:]]*"?--[a-z0-9-]+' | grep -oE -- '--[a-z0-9-]+' || true)"
   accepted="$(printf '%s\n%s\n' "$arms" "$compares" | grep -E '^--' | sort -u || true)"
+
+  # REPORTED, NOT DROPPED, and that is the whole difference between a bound and an
+  # exemption (#1207). A flag parsed only inside a function body is not judged
+  # against the catalog, and it is still counted and named — so the day the rule
+  # is wrong about a tool, the output says which flags it stopped looking at
+  # instead of going quietly smaller. `flags_in_helpers=` never breaks the build.
+  while IFS= read -r flag; do
+    [ -z "$flag" ] && continue
+    case "$(printf '%s\n' "$accepted")" in
+      *"$flag"*) continue ;;
+    esac
+    flags_in_helpers=$((flags_in_helpers + 1))
+    echo "HELPER_FLAG $tool parses '$flag' inside a function body — not a door, not judged"
+  done <<< "$(printf '%s\n' "$helper" \
+              | grep -oE '^[[:space:]]*--[a-z0-9-]+(\|--[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' \
+              | sort -u || true)"
   if [ -z "$accepted" ]; then
     # Reported rather than skipped in silence: a sweep that read no flags at
     # all prints the same green line as one that read forty, and this tree has
@@ -865,6 +919,91 @@ selftest() {
   # expression's behaviour here was unknown rather than correct.
   gate_case gate:quotes-and-parses   yes 'bash tools/x.sh --selftest
   --selftest) MODE=selftest ;;'
+
+  # ---- the door and the helper (#1341) -------------------------------------
+  #
+  # THE FALSE POSITIVE AND THE TRUE POSITIVE IN THE SAME SUITE, which is #1341's
+  # explicit ask: one without the other is how an exemption becomes a hole. A
+  # bound that only ever proves it stopped looking is indistinguishable from a
+  # check that stopped working.
+  scope_case() {                # scope_case <name> <want-undoc> <want-helpers> <tool-body> <row>
+    local name="$1" want="$2 $3" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$4" > "$tmp/shop/fixture.sh"
+    printf '%s\n' "$5" > "$tmp/shop/README.md"
+    BREAKS=0
+    flag_audit "$tmp/shop" "$tmp/shop/README.md" >/dev/null 2>&1
+    got="$flags_undocumented $flags_in_helpers"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  # THE CASE THAT IS #1341's OWN TRANSCRIPT: a private parameter to a function
+  # inside a suite, reported as an undocumented door flag. #1238 dodged it by
+  # making that helper positional; this is the repair.
+  scope_case scope:flag-in-a-helper 0 1 '  --pr) PR=1 ;;
+helper() {
+  case "$1" in
+    --row) ROW=1 ;;
+  esac
+}' "$ROW_WITH"
+  # THE TRUE POSITIVE, unchanged by the bound: a flag in the DOOR that the row
+  # does not name is still the finding this audit exists for.
+  scope_case scope:flag-in-the-door 1 0 '  --row) ROW=1 ;;' "$ROW_WITH"
+  # A flag in both places is the door's, counted once, and NOT reported as a
+  # helper flag — which is the live shape in this file: `--selftest)` is the door
+  # at line 221 and a fixture STRING inside the suite, and the whole-file read
+  # counted the fixture as a parse.
+  scope_case scope:same-flag-both   0 0 '  --pr) PR=1 ;;
+helper() {
+  case "$1" in
+    --pr) PR=1 ;;
+  esac
+}' "$ROW_WITH"
+
+  # The rule itself, driven directly. It is a rule about THIS SHOP's spelling —
+  # `name() {` at column zero opens, `}` at column zero closes — so the cases are
+  # that spelling, including the one that would break a naive reading.
+  scope_lines() {               # scope_lines <name> <door|helper> <want> <body>
+    local name="$1" got
+    printf '%s\n' "$4" > "$tmp/scope.sh"
+    got="$(by_scope "$tmp/scope.sh" "$2" | tr -d ' \n')"
+    if [ "$3" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] OK\n' "$name" "$3" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=[%s] got=[%s] BROKEN\n' "$name" "$3" "$got"
+    fi
+  }
+
+  scope_lines scope:door-lines   door   'AB' 'A
+f() {
+X
+}
+B'
+  scope_lines scope:helper-lines helper 'X'  'A
+f() {
+X
+}
+B'
+  # AN INDENTED INNER FUNCTION NEITHER OPENS NOR CLOSES A SCOPE, and this is the
+  # case that keeps the rule usable: `case_()` inside `selftest()` is written that
+  # way in three tools here, and a reading that let its `}` close the outer scope
+  # would hand the rest of the suite back to the door.
+  # Asked of the DOOR rather than the helper, because the door is where the damage
+  # would land: a reading that let the inner `}` close the outer scope would hand
+  # `Y` and everything after it back to the door and judge a suite's parameters as
+  # promises. The helper side would still contain `X` and look fine.
+  scope_lines scope:inner-function door 'AB' 'A
+f() {
+X
+  g() {
+  }
+Y
+}
+B'
 
   # ---- the two identities (#1443) ------------------------------------------
   #
@@ -1344,7 +1483,7 @@ done
 
 echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_no_row=$codes_no_row codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
-     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
+     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags flags_in_helpers=$flags_in_helpers"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
 # claim whose change is a finding — a tool gaining a helper function that
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
