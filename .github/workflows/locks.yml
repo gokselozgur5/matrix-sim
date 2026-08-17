@@ -16,6 +16,18 @@ on:
 jobs:
   locks:
     runs-on: ubuntu-latest
+    # WHY THIS BLOCK EXISTS AT ALL: the crown gate is the first step in this lane that
+    # reads the ISSUE API, and the runner's token could not. `tools/crowns.sh` said so
+    # correctly — `CROWNS VERDICT UNREADABLE limit=2000` and exit 3 — which is the refusal
+    # working, on the first push after the gate landed.
+    #
+    # READ-ONLY, AND NARROW. Declaring `permissions` at all replaces the default with
+    # exactly this list, and every step in this lane reads: the checkout wants `contents`,
+    # the crown census wants `issues`, and nothing here writes anything. A lane that judges
+    # a pull request has no business holding a token that could change one.
+    permissions:
+      contents: read
+      issues: read
     # WHY: backstop only — the litany finishes in minutes; a hung JVM must not eat the meter.
     # 15 until #1052 put the release gate in the lane. That step runs this lane's own floor a
     # second time, from a clean out/, because a release gate that reused someone else's build
@@ -735,6 +747,10 @@ jobs:
       # gate on it would refuse the next crown somebody writes before the unit that builds
       # the class. That is the shape a gate must not have.
       - name: tools — every class still has a crown (#1459)
+        env:
+          # The census reads the issue API and the lane had no token for it. Read-only,
+          # same repository, and the job's permissions block above narrows it to issues.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
