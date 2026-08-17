@@ -23,7 +23,21 @@ Closes #
 
 ## Evidence
 
-**Baseline:** <!-- the main sha you measured against: `git rev-parse --short HEAD` before you branched -->
+**Baseline:** <!-- the main sha you measured against: `git rev-parse --short origin/main` before you branched.
+
+     STACKED ON ANOTHER UNIT? Write MAIN's sha anyway, and name the parent PR on
+     the next line. Not because it is the honest answer — it is not: your numbers
+     were produced with the parent's changes present, so the tree you measured is
+     the parent's head and not this one. It is the answer lock 0 can check.
+
+     The parent's head cannot be used, and three PRs failed the lock on it in one
+     day (#1453): the ritual rebases before every push, a rebase rewrites the
+     parent's sha, and the lock then reports `the stated baseline <sha> is not a
+     commit in this repository` — about evidence that was never wrong. Naming a
+     sha that a mandated step destroys is a field nobody can fill correctly.
+
+     So: main's sha, the parent named beside it, and the gap stated rather than
+     hidden. -->
 
 <!-- One line per claim: the command and the line it printed. Probes welcome (probes/README.md).
 
