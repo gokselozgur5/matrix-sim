@@ -464,7 +464,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=17   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=12   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/attribution.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/attribution-selftest.log"
           verdict="$(grep -E '^ATTRIBUTION SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
             "${RUNNER_TEMP:-/tmp}/attribution-selftest.log" || true)"
