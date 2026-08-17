@@ -161,7 +161,7 @@ table() {
                                                --sweep 0..59 6000
   judge OneTrace     'VERDICT CONTRACT_HELD'   "$TICKS"
   judge CapSentinel  'CAP_BREACHES=0'          "$TICKS"
-  judge ArcBeats     'VERDICT BEATS_IN_ORDER'  "$TICKS"
+  judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'  "$TICKS"
   judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
   judge PirateSever  'VERDICT CONTRACT_HELD'
   judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
@@ -181,7 +181,7 @@ table() {
   judge PirateSever  'VERDICT CONTRACT_HELD'      "$TICKS" 7
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD'  "$TICKS" 7
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS" 7
-  judge ArcBeats     'VERDICT BEATS_IN_ORDER'     "$TICKS" 7
+  judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'     "$TICKS" 7
   judge BondBook     'VERDICT BOOK_TURNS_OVER'    "$TICKS" 7
   judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
   # Three probes that declared themselves ONE-OFF and were not (#1175). #1163's exemption
