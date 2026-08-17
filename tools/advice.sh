@@ -116,6 +116,69 @@ promises_a_suite() {            # promises_a_suite <file> — 0 it promises one,
   grep -qvE '\b(gh|git|java|javac|bash|sh|curl)\b[^|;&]*--selftest' <<< "$mentions"
 }
 
+# THE SUITE LOOP'S CLASSIFICATION, AS A FUNCTION OF ONE FILE (#1443).
+#
+# `tools = suites + no_suite + skipped_self + skipped_no_promise` held BY
+# CONSTRUCTION — every path through the loop head incremented exactly one
+# counter — and by-construction is not the same as guarded. A fifth exit added
+# to the head breaks the sum silently: no verdict word, no counter, and the
+# census line simply stops adding up, which is the condition both counters were
+# added to make visible. Two reviews asked for this in the same words.
+#
+# So the head's decision becomes a total function returning ONE WORD from a
+# CLOSED SET, and the cases drive every word. A path that classifies as nothing
+# returns the empty string and fails the closed-set case; a path that classifies
+# as something new fails it too. The remaining two terms (`suites`/`no_suite`)
+# are not decidable from the file — they need the tool RUN — so they stay in the
+# loop and `admitted` is the word for reaching them.
+suite_class() {                 # suite_class <tool> -> self|no_promise|admitted
+  [ "$1" = "tools/advice.sh" ] && { printf 'self'; return 0; }
+  promises_a_suite "$1" || { printf 'no_promise'; return 0; }
+  printf 'admitted'
+}
+
+# The literal exit codes a tool spends, space-separated and sorted unique.
+# `exit` ONLY, and that is a correction (#1238): the first draft read
+# `(exit|return)`, which conflates a process's exit code with a shell function's
+# boolean. `backlog.sh`'s `measured_body()` ends `*) return 1 ;;` to mean FALSE
+# and that 1 never reaches `$?` of the process. Counting it inflated the answer,
+# and an inflated answer HIDES unspent findings rather than inventing them.
+spends_of() {                   # spends_of <tool>
+  grep -vE '^[[:space:]]*#' "$1" \
+    | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' '
+}
+
+# `exit "$(code_for …)"` is a lookup; `exit $?` is a PASS-THROUGH — the code is
+# whatever the last command produced, so the tool genuinely spends everything
+# that command can. Both are invisible to a literal grep, and both make a
+# promise uncheckable rather than false.
+passes_through() {              # passes_through <tool> — 0 it computes its code
+  grep -qE '(exit|return) +("?\$\(|\$\?)' <<< "$(uncommented "$1")"
+}
+
+# THE EXIT-CODE LOOP'S CLASSIFICATION, under the same rule — and it found a real
+# hole while being written (#1443). The stated identity was
+#
+#     tools = codes_checked + codes_exempt + codes_no_promise + codes_no_literal
+#
+# and there is a FIFTH path: a tool with no catalog row is skipped by
+# `[ -n "$row" ] || continue` and counted by nothing here. The sum holds today
+# only because `uncatalogued=0` — a different counter, computed in a different
+# loop, reported under a different verdict word. An identity that depends on
+# another check passing is not an identity, and the tool that lands without a
+# row is precisely the tool whose codes nobody is reading.
+#
+# `no_row` is that path, named. It is a CENSUS field and not a break: the
+# population already breaks the build through `uncatalogued`, and a second
+# report of one absence is how one defect is counted twice (#1170).
+code_class() {                  # code_class <tool> <row> -> no_row|no_promise|no_literal|exempt|checked
+  [ -n "$2" ] || { printf 'no_row'; return 0; }
+  case "$2" in *"Exit "*) ;; *) printf 'no_promise'; return 0 ;; esac
+  [ -n "$(spends_of "$1")" ] || { printf 'no_literal'; return 0; }
+  passes_through "$1" && { printf 'exempt'; return 0; }
+  printf 'checked'
+}
+
 LIST=no
 [ "${1:-}" = "--list" ] && LIST=yes
 
@@ -902,9 +965,19 @@ done
 # does, so its promises cannot be checked this way and it is exempted by the
 # same flag rather than reported as a liar.
 # THE IDENTITY THIS CHECK OWES ITS READER (#1434), the same one #1377 gave the
-# suite loop one loop over:
+# suite loop one loop over — and it was one term short until #1443 wrote the
+# cases that drive it:
 #
 #     tools = codes_checked + codes_exempt + codes_no_promise + codes_no_literal
+#            + codes_no_row
+#
+# The fifth term is the tool with no catalog row, skipped here and counted by
+# nothing. The four-term sum held only while `uncatalogued=0` — a counter from
+# another loop, under another verdict word — which makes it an identity that
+# depends on a different check passing, and the tool that lands without a row is
+# exactly the one whose codes nobody is reading. `codes_no_row` is a census field
+# rather than a break: that population already fails the build through
+# `uncatalogued`, and one absence reported twice is one defect counted twice.
 #
 # `codes_unspent=0` read as a statement about the shop and was a statement about
 # four of thirteen tools: nine carry a pass-through somewhere, and one line skips
@@ -922,33 +995,22 @@ codes_checked=0
 codes_exempt=0
 codes_no_promise=0
 codes_no_literal=0
+codes_no_row=0
 for tool in tools/*.sh; do
   name="$(basename "$tool")"
   row="$(grep "^| \`$name\`" tools/README.md || true)"
-  [ -n "$row" ] || continue
-  case "$row" in *"Exit "*) ;; *) codes_no_promise=$((codes_no_promise + 1)); continue ;; esac
-  # `exit` ONLY, and that is a correction (#1238). The first draft read
-  # `(exit|return)`, which conflates two unrelated things: a process's exit code
-  # and a shell function's boolean. `backlog.sh`'s `measured_body()` ends
-  # `*) return 1 ;;` to mean FALSE — the predicate the whole tool is built on —
-  # and that 1 never reaches `$?` of the process. Counting it inflated `spends`,
-  # and an inflated `spends` HIDES unspent findings rather than inventing them,
-  # so the defect was silent in both directions of the audit.
-  spends="$(grep -vE '^[[:space:]]*#' "$tool" \
-            | grep -oE '(^|[^_a-zA-Z])exit [0-9]+' | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
-  # A tool whose codes are all indirect has nothing to compare against.
-  [ -n "$spends" ] || { codes_no_literal=$((codes_no_literal + 1)); continue; }
-  # `exit "$(code_for …)"` is a lookup; `exit $?` is a PASS-THROUGH — the code
-  # is whatever the last command produced, so the tool genuinely spends
-  # everything that command can. Both are invisible to a literal grep, and both
-  # make a promise uncheckable rather than false. `advice.sh` itself is the
-  # second shape: `selftest; exit $?` spends 1 on a failing suite, and the first
-  # draft of this check reported its own row as a liar.
-  if grep -qE '(exit|return) +("?\$\(|\$\?)' <<< "$(uncommented "$tool")"; then
-    codes_exempt=$((codes_exempt + 1))
-    continue
-  fi
+  # One word from a closed set, and the counters are its only readers: the head
+  # no longer decides anything a case cannot drive (#1443). `advice.sh` itself is
+  # the live `exempt` — `selftest; exit $?` spends 1 on a failing suite, and the
+  # first draft of this check reported its own row as a liar.
+  case "$(code_class "$tool" "$row")" in
+    no_row)     codes_no_row=$((codes_no_row + 1)); continue ;;
+    no_promise) codes_no_promise=$((codes_no_promise + 1)); continue ;;
+    no_literal) codes_no_literal=$((codes_no_literal + 1)); continue ;;
+    exempt)     codes_exempt=$((codes_exempt + 1)); continue ;;
+  esac
   codes_checked=$((codes_checked + 1))
+  spends="$(spends_of "$tool")"
   promised="$(printf '%s' "$row" | grep -oE 'Exit [^|]*' \
               | grep -oE '(^Exit |· )[0-9]+' | grep -oE '[0-9]+' | sort -u)"
   while IFS= read -r code; do
@@ -1099,7 +1161,10 @@ unrun=0
 skipped_self=0
 skipped_no_promise=0
 for tool in tools/*.sh; do
-  [ "$tool" = "tools/advice.sh" ] && { skipped_self=$((skipped_self + 1)); continue; }
+  # One word from a closed set (#1443). The two words below are the head's whole
+  # decision; `admitted` means the remaining two terms are not decidable from the
+  # file and the tool has to be RUN.
+  #
   # DOES THIS TOOL PROMISE A SUITE, or does it merely MENTION somebody else's
   # flag (#1347). A whole-file grep answers the second question with the first
   # question's confidence: `release.sh` contains `--selftest` because lock 2 of
@@ -1125,7 +1190,10 @@ for tool in tools/*.sh; do
   # which does not match the external-program pattern, so `-v` matches it and the
   # tool would be admitted. Replacing a pipe with a capture changes what "no
   # input" means, and this is the one site where that difference is a verdict.
-  promises_a_suite "$tool" || { skipped_no_promise=$((skipped_no_promise + 1)); continue; }
+  case "$(suite_class "$tool")" in
+    self)       skipped_self=$((skipped_self + 1)); continue ;;
+    no_promise) skipped_no_promise=$((skipped_no_promise + 1)); continue ;;
+  esac
   # MATRIX_TOOL_DEPTH: this is a tool running other tools, and one of the tools
   # it runs — `litany.sh` — runs tools of its own to check their verdicts
   # (#1169). Without a depth to read, the two call each other without end:
@@ -1201,7 +1269,7 @@ for tool in tools/*.sh; do
   fi
 done
 
-echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
+echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_no_row=$codes_no_row codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
