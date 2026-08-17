@@ -92,14 +92,32 @@ report() {
     return 5
   fi
 
-  local classes crowned uncrowned total have missing
+  # THE IDENTITY THIS CENSUS OWES ITS READER, and it did not close (#1459 follow-up):
+  #
+  #     classes = crowned + uncrowned
+  #
+  # `crowned` counted the CROWNS and not the crowned CLASSES, so the day the last
+  # class got its record the line read `classes=89 crowned=91 uncrowned=0` — a
+  # count larger than the population it is a count of, with 89 + 0 != 91 and
+  # nothing saying why. A reader cannot tell that from a duplicate crown, a crown
+  # for a deleted class, or a broken matcher, and one of those three is a defect.
+  #
+  # Both extras are legitimate and neither is visible without a number of its own:
+  # #887 `Class: Chronicle` is a crown cut AHEAD of its class (the v6.0 parser, born
+  # with #542's PR, which has not landed), and #89 `Class: OpsConsole` is CLOSED for
+  # a class that has since gone. So the fourth term is not an error count — it is
+  # the other direction of the same question, and it earns its own name.
+  local classes crowned crownedHere crownless uncrowned total have missing extra
   classes="$(classes_in src)"
   crowned="$(crowns_in "$titles")"
+  crownedHere="$(comm -12 <(printf '%s\n' "$classes") <(printf '%s\n' "$crowned"))"
   uncrowned="$(comm -23 <(printf '%s\n' "$classes") <(printf '%s\n' "$crowned"))"
+  crownless="$(comm -13 <(printf '%s\n' "$classes") <(printf '%s\n' "$crowned"))"
 
   total="$(printf '%s\n' "$classes" | grep -c '[^[:space:]]' || true)"
-  have="$(printf '%s\n' "$crowned" | grep -c '[^[:space:]]' || true)"
+  have="$(printf '%s\n' "$crownedHere" | grep -c '[^[:space:]]' || true)"
   missing="$(printf '%s\n' "$uncrowned" | grep -c '[^[:space:]]' || true)"
+  extra="$(printf '%s\n' "$crownless" | grep -c '[^[:space:]]' || true)"
 
   if [ "$MODE" = list ]; then
     # Beside each name, how many issue titles mention it at all: a class with a
@@ -109,16 +127,24 @@ report() {
       [ -n "$c" ] || continue
       printf 'UNCROWNED %-18s mentions=%s\n' "$c" "$(grep -c "\b$c\b" "$titles" || true)"
     done <<< "$uncrowned"
+    # The other direction, under --list only: a crown naming no class in src/. Both
+    # of today's are legitimate — one cut ahead of its class, one closed for a class
+    # that has gone — and a reader who sees `crownless=2` needs to know WHICH before
+    # they can tell that from a matcher fault.
+    while IFS= read -r c; do
+      [ -n "$c" ] || continue
+      printf 'CROWNLESS %-18s no class of that name in src/\n' "$c"
+    done <<< "$crownless"
   fi
 
-  echo "CROWNS_CENSUS issues_read=$read_rows limit=$LIMIT repo=$REPO"
+  echo "CROWNS_CENSUS issues_read=$read_rows limit=$LIMIT crownless=$extra repo=$REPO"
   if [ "$total" -eq 0 ]; then
     # A sweep that found no classes is red: an empty reading must not print the
     # line a complete one prints (#1207, #970).
-    echo "CROWNS VERDICT NOTHING_READ classes=0 crowned=0 uncrowned=0"
+    echo "CROWNS VERDICT NOTHING_READ classes=0 crowned=0 uncrowned=0 classes_none=1"
     return 4
   fi
-  echo "CROWNS VERDICT COUNTED classes=$total crowned=$have uncrowned=$missing"
+  echo "CROWNS VERDICT COUNTED classes=$total crowned=$have uncrowned=$missing classes_none=0"
   return $rc
 }
 
