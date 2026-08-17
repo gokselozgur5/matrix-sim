@@ -411,15 +411,27 @@ selftest() {
   trap 'rm -rf "$tmp"' EXIT
 
   case_() {                     # case_ <name> <want-breaks 0|1+> <mutate-sed>
-    local name="$1" want="$2" mutate="$3" got
+    local name="$1" want="$2" mutate="$3" got rows
     cp "$FILE" "$tmp/w.yml"
     [ -n "$mutate" ] && eval "$mutate"
     BREAKS=()
-    got=$(judge "$tmp/w.yml" 2>&1 | tail -1 | sed -E 's/.* breaks=([0-9]+)$/\1/')
+    # Captured, not streamed — the count has to be read off the summary line. So
+    # the rows are HELD rather than discarded: `judge` prints one row per
+    # breakage and a case that fails is the one moment those rows are the whole
+    # report (#1387). `litany.yml` states the rule one step below, about the bare
+    # run — "the failing rows ARE the report" — and this suite was doing the
+    # opposite two lines above it, which is how a lane stayed red for a day
+    # saying only that two integers differed.
+    rows="$(judge "$tmp/w.yml" 2>&1)"
+    got=$(printf '%s\n' "$rows" | tail -1 | sed -E 's/.* breaks=([0-9]+)$/\1/')
     if { [ "$want" = 0 ] && [ "$got" = 0 ]; } || { [ "$want" != 0 ] && [ "$got" != 0 ]; }; then
       pass=$((pass + 1)); printf 'LITANY case=%-22s want=%s got=%s OK\n' "$name" "$want" "$got"
     else
       fail=$((fail + 1)); printf 'LITANY case=%-22s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+      # Attributed to the case, because the suite runs fourteen of them and an
+      # unlabelled block of rows in a log is a second puzzle. Only on failure:
+      # a green suite stays the fourteen lines a reader already knows.
+      printf '%s\n' "$rows" | sed "s/^/    case=$name | /"
     fi
   }
 
