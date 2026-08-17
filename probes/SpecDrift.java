@@ -312,9 +312,14 @@ public final class SpecDrift {
                 "seeds,clean"},
             // A family and nothing else: no fields, and not a parse failure.
             {"no-fields-at-all", "PERF ", ""},
+            // A line that IS its family, with no trailing space. `walk` never hands one over —
+            // it checks for the space first — so this was safe on the live path and threw on
+            // the pure function, which is the half a fixture reaches (#1514).
+            {"family-and-nothing-after", "PERF", ""},
         };
         for (String[] c : cases) {
-            String family = c[1].substring(0, c[1].indexOf(' '));
+            int sp = c[1].indexOf(' ');
+            String family = sp < 0 ? c[1] : c[1].substring(0, sp);
             String got = String.join(",", fieldsIn(c[1], family));
             boolean ok = c[2].equals(got);
             if (ok) {
@@ -346,7 +351,15 @@ public final class SpecDrift {
         // opened it.
         List<String> names = new ArrayList<>();
         boolean inQuotes = false;
-        for (String token : line.substring(family.length() + 1).trim().split(" +")) {
+        // A family and nothing after it is no fields, not an exception (#1514). This read
+        // `line.substring(family.length() + 1)` and threw StringIndexOutOfBoundsException on
+        // a line that is exactly its family — `walk` never hands it one, because it checks
+        // for the space first, so the live path was safe and the PURE FUNCTION was not. A
+        // total function is the point of extracting one (#1442), and the suite's
+        // `no-fields-at-all` case sat one character away from finding this: it used
+        // `"PERF "`, with the trailing space that keeps the substring in range.
+        String rest = line.length() > family.length() ? line.substring(family.length()) : "";
+        for (String token : rest.trim().split(" +")) {
             if (inQuotes) {
                 if (token.endsWith("\"")) {
                     inQuotes = false;
