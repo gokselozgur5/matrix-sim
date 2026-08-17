@@ -87,8 +87,24 @@ public final class ArcBeats {
                 lastTick = beat.tick();
             }
         }
-        System.out.println("ARC seed=" + arc.seed() + " ticks=" + arc.ticks() + " lines=" + arc.lines());
-        Probes.leave(ok ? "VERDICT BEATS_IN_ORDER" : "VERDICT ARC_BROKEN", ok);
+        // HOW MANY BEATS WERE COMPARED (#1421, one of #1373's twenty-five). The
+        // loop above does not run on an empty list, `ok` stays true, and this
+        // probe used to report that the film played in order having compared
+        // nothing. The needles are a hand-written list, so emptying them is a
+        // plausible refactor rather than a hypothetical.
+        //
+        // The count rides the CENSUS and the emptiness rides the VERDICT
+        // (#1221): the number of beats moves whenever D-036's list moves, and a
+        // count on an exact-line row is a number people edit until the lane is
+        // quiet — while a run that compared nothing must not be able to print a
+        // clean film's line.
+        int beats = arc.beats().size();
+        System.out.println("ARC seed=" + arc.seed() + " ticks=" + arc.ticks()
+                + " lines=" + arc.lines() + " beats=" + beats);
+        boolean held = ok && beats > 0;
+        Probes.leave(held
+                ? "VERDICT BEATS_IN_ORDER beats_none=0"
+                : "VERDICT ARC_BROKEN beats_none=" + (beats == 0 ? 1 : 0), held);
     }
 
     private ArcBeats() {}
