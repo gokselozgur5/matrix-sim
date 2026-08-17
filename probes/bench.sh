@@ -965,56 +965,67 @@ BENCH_SECS=$(($(date +%s) - SWEEP_START))
 # Ties break by name so two runs of the same tree print the same line: awk's
 # `for (k in t)` has no defined order, and a census that reshuffles itself is a
 # diff nobody can read.
-cost_line() {
-  printf '%s' "$COSTS" | awk 'NF == 2 { t[$2] += $1 } END { for (k in t) printf "%d %s\n", t[k], k }' \
-    | sort -k1,1rn -k2,2 | head -3 \
-    | awk '{ printf "%s%s:%s", (NR > 1 ? "," : ""), $2, $1 } END { if (NR == 0) printf "none" }'
-}
-
-# THE TAIL, WHICH IS WHERE THIS LANE ACTUALLY GROWS (#1353).
+# ONE ORDERING, ONE CUT, READ THREE TIMES (#1506). `slowest=`, `top3=` and `tail=` used to
+# come from two pipelines whose first two stages were identical — sum by class, sort
+# descending, ties by name — and whose cut was the literal `3` in two places: `head -3`
+# decided which names were printed and `NR <= 3` decided which rows were summed.
 #
-# `slowest=` names the three fattest rows and they are the same three every week, while
-# the total climbs: 123 -> 178 in two units, and 104 -> 117 -> 166 in a single day. None
-# of those was one fat row — they were rows landing, each cheap, each justified alone,
-# and `slowest=` would barely have moved for any of them. So a reader sees three stable
-# names beside a bigger total and concludes nothing changed, when what changed is
-# everything else.
+# Nothing coupled them, and nothing would have noticed. `top3 + tail` equals the row total
+# whatever the split, so the identity the trailer advertises would have held while its two
+# halves described different sets — which is worse than a broken identity, because the check
+# that exists passes.
 #
-# `top3=` and `tail=` are the same numbers already collected, divided once: `top3` is the
-# three `slowest=` names summed, `tail` is everything outside them. Their identity is the
-# point — `top3 + tail` is the whole sweep's row time — so a climb lands in one of two
-# places and the line says which. *One row got fatter* and *the lane got longer* stop
-# looking alike.
+# Two copies of one list is #789's sweep, #880's workflow, #1162's bench table and #1053's
+# two readers of one grammar. This is the same shape at its smallest: two copies of one
+# ORDER.
 #
-# NO NEW MEASUREMENT, deliberately: the same `$COSTS` the two figures beside it already
-# read. A tail figure that needed its own timing would be a fourth number with a fifth
-# source of drift.
+# WHY THE SPLIT EXISTS AT ALL (#1353): `slowest=` names the three fattest rows and they are
+# the same three every week while the total climbs — 123 -> 178 in two units, 104 -> 117 ->
+# 166 in a single day — and none of those was one fat row. They were rows landing, each
+# cheap, each justified alone. `top3 + tail` is the sweep's ROW time, so a climb lands in one
+# of two places and the line says which.
 #
-# NOT JUDGED, and this whole line says why in its own parenthesis: it is wall clock.
-# Measured on ONE unchanged tree, three consecutive runs, 2026-08-17:
+# NEITHER IS JUDGED, and the reason is measured. One unchanged tree, three consecutive runs,
+# 2026-08-17:
 #
 #   top3=46 tail=85 secs=137
 #   top3=44 tail=85 secs=134
 #   top3=41 tail=86 secs=132
 #
-# `tail` moves by 1 second across the three and `top3` by 5 — which is the argument for
-# the split rather than against it: the noise lives in the fat rows, and the number this
-# lane's growth actually lands in is the steadier of the two. The runner's own spread is
-# far wider (296..710 s over 54 runs, measured in locks.yml's hang-guard comment), so a
-# gate on either figure would be a red build caused by load. #1348's prior question,
-# answered before either number was built rather than after.
+# `tail` moves by 1 second and `top3` by 5, which is the argument FOR the split: the noise
+# lives in the fat rows and the growth lands in the steadier number. The runner's own spread
+# is far wider (296..710 s over 54 runs, in locks.yml's hang-guard comment), so a gate on
+# either would be a red build caused by load. `top3 + tail` is the row time and not the
+# sweep's — 131 of 137 above; the remainder is the build, the roster and this trailer.
 #
-# `top3 + tail` is the ROW time and not the sweep's: 131 of 137 above. The remainder is
-# the build, the roster and this trailer, and stating that is cheaper than a reader
-# discovering the six seconds and wondering which figure is lying.
-tail_costs() {                    # tail_costs — seconds outside the three fattest, then the three
-  printf '%s' "$COSTS" | awk 'NF == 2 { t[$2] += $1 } END { for (k in t) printf "%d %s\n", t[k], k }' \
-    | sort -k1,1rn -k2,2 \
-    | awk -v want="$1" 'NR <= 3 { top += $1; next } { tail += $1 } END { printf "%d", (want == "top" ? top : tail) }'
+# CHANGING TOP_N CHANGES A FIELD NAME. `top3=` carries the number in its spelling, so the
+# cut is not free to move: an instrument line is a byte contract (D-020) and a `top3=` that
+# summed four rows would be the exact lie this unit removed, wearing a different mask.
+TOP_N=3
+
+# The row time per class, heaviest first, ties by name. One producer; the ordering is a fact
+# about this run and not three functions' private opinion of it.
+costs_ranked() {
+  printf '%s' "$COSTS" \
+    | awk 'NF == 2 { t[$2] += $1 } END { for (k in t) printf "%d %s\n", t[k], k }' \
+    | sort -k1,1rn -k2,2
+}
+
+# The $TOP_N heaviest, named with their seconds.
+cost_line() {
+  costs_ranked | head -"$TOP_N" \
+    | awk '{ printf "%s%s:%s", (NR > 1 ? "," : ""), $2, $1 } END { if (NR == 0) printf "none" }'
+}
+
+# Seconds inside the $TOP_N, or outside them. Same ordering, same cut, one argument.
+cost_split() {                    # cost_split top|tail
+  costs_ranked \
+    | awk -v want="$1" -v n="$TOP_N" \
+        'NR <= n { top += $1; next } { tail += $1 } END { printf "%d", (want == "top" ? top : tail) }'
 }
 echo "BENCH_COST slowest=$(cost_line)" \
-     "top3=$(tail_costs top)" \
-     "tail=$(tail_costs tail)" \
+     "top3=$(cost_split top)" \
+     "tail=$(cost_split tail)" \
      "rows_timed=$(printf '%s' "$COSTS" | grep -c . || true)" \
      "classes_timed=$(printf '%s' "$COSTS" | awk '{print $2}' | sort -u | grep -c . || true)" \
      " (wall clock, so it moves between two runs of one tree — a census and never a verdict, #1221;" \
