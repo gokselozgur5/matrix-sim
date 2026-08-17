@@ -313,7 +313,16 @@ judge() {                       # judge <file> — prints rows, fills BREAKS
         continue
       fi
       unmatched=$((unmatched + 1))
-      note "UNPRINTED grep=\"$lit\" — its producer was RUN and printed no line matching it"
+      # AND WHAT IT PRINTED INSTEAD (#1389). The output is in hand at exactly
+      # this point and used to be dropped, so the row could name a mismatch and
+      # not the evidence for it — #1387's defect, one frame deeper. The last
+      # non-empty line is the verdict for all six producers here; a producer
+      # that has stopped closing with its verdict makes this row say so, which
+      # is the finding rather than a limitation.
+      local ran_cmd ran_last
+      ran_cmd="$(producer_of "$(printf '%s' "$lit" | awk '{print $1}')")"
+      ran_last="$(printf '%s\n' "$ran_output" | grep -v '^[[:space:]]*$' | tail -1)"
+      note "UNPRINTED grep=\"$lit\" — \`$ran_cmd\` was RUN and printed no line matching it; it closed with \"$ran_last\""
       continue
     fi
     matched="$(printed_prefix "$lit")"
