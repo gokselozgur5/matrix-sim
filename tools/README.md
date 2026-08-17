@@ -130,6 +130,52 @@ fixture (#1265) and its own `exit` pattern (#1276). That clause names the five r
 choosing among them deliberately costs a minute, and discovering the problem costs a
 red first run at best and a check that silently covers nothing at worst.
 
+## A gate installs at zero, and the zero has to be earned
+
+The rule first, as #1311 wrote it and #1345 reused it four hours later:
+
+> At zero the gate costs nothing and blocks the next tool that arrives without a suite.
+> At one it demands a unit from whoever trips it, which is how a gate gets argued about
+> instead of added.
+
+It has been applied five times since and it lived in issue bodies, which is the state
+every unwritten convention in this tree has been found in — `docs/ARCHITECTURE.md`'s
+*verified by grep* with no grep (#1417), the twenty-two probes that refused an unknown
+flag by habit (#1479). A rule nobody can read is a rule the next unit re-derives or
+skips.
+
+**The caveat it has never carried** (#1357). A counter reads zero for three different
+reasons and only one of them earns a gate:
+
+| the zero means | the gate is |
+|---|---|
+| the work was done — a unit drove the counter down | free, and it holds |
+| the measurement is broken — the grep stopped matching, a loop returns early, the pattern was never right | green forever over nothing |
+| the population is empty — nothing was scanned, so nothing could be found | green forever over nothing |
+
+The second and third are #970's `INSTRUMENTS_UNPROVEN` and #1207's silent skip, and this
+tree carries a counter against them in almost every checker for exactly that reason:
+`checked_none=`, `swept_none=`, `scanned_none=`, `charset_nothing=`, `NOTHING_READ`. The
+rule as written invited the failure those counters exist to catch.
+
+**So a zero qualifies when one of two things is true**, and both are cheap:
+
+- **it has a history** — `git log -S'<counter>' -- <file>` names the unit that drove it
+  down. `crashed=` has one: eleven on the day it was measured, zero the same day
+  (#1479 → #1481), and #1485 moved it onto the verdict once it did;
+- **its population is separately asserted non-empty** — the `*_none=` counter beside it,
+  which most already have. `missing=0` is gated in `locks.yml` next to a grep for
+  `pinned_none=0`, so an empty reading cannot print a compliant tree's line.
+
+A zero with neither is a candidate for measurement, not for a gate. Say which one in the
+commit that installs it.
+
+**And a finding count is not a population.** #1221 pushes numbers onto census lines, and
+the boundary is what a number MEANS: how many things there are belongs on a census, how
+many of them are wrong belongs where it can be judged. `crashed=` was on a census while
+it read eleven — correctly, because #1311 forbids the gate at one — and moved to the
+verdict when it reached zero (#1485). `swept=` and `refused=` stayed.
+
 ## The exit grammar — what a low code means, and who may spend it
 
 <!-- figure: ls tools/*.sh | wc -l == 15 -->
