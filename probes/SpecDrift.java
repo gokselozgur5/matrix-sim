@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -96,7 +97,10 @@ public final class SpecDrift {
         Set<String> declared = new TreeSet<>();
         Set<String> always = new TreeSet<>();
         roster(Path.of(spec), declared, always);
-        Set<String> printed = families(ticks, seed);
+        // ONE UNIVERSE (#1442). The roster reading and the field readings are the same
+        // walk asked two questions, so they are one walk.
+        Map<String, List<String>> run = walk(ticks, seed);
+        Set<String> printed = run.keySet();
 
         Set<String> unpredicted = new TreeSet<>(printed);
         unpredicted.removeAll(declared);
@@ -130,7 +134,7 @@ public final class SpecDrift {
         int tablesRead = 0;
         for (Map.Entry<String, List<String>> table : tables(Path.of(spec)).entrySet()) {
             tablesRead++;
-            List<String> seen = fieldsOf(table.getKey(), ticks, seed);
+            List<String> seen = run.getOrDefault(table.getKey(), List.of());
             if (seen.isEmpty()) {
                 continue;   // conditional family this universe did not print
             }
@@ -227,71 +231,82 @@ public final class SpecDrift {
         return out;
     }
 
-    /** The field names of the first line of a family, in the order printed. */
-    private static List<String> fieldsOf(String family, long ticks, long seed) {
-        ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 22);
-        new Simulation(seed, buf, null).run(ticks);
-        for (String line : buf.toString(StandardCharsets.UTF_8).split("\n")) {
-            if (!line.startsWith(family + " ")) {
-                continue;
-            }
-            // A TEXT value holds spaces and commas, so the line cannot simply be
-            // split on whitespace (#606). `ATTN`'s `top="financial district:49,…"`
-            // is the case: a naive splitter reads `top="financial` as one token
-            // and `district:49,old` as another.
-            //
-            // Until now this worked BY LUCK — the continuation tokens happen to
-            // contain no `=`, so they were skipped rather than misread. That is
-            // one quoted value away from inventing a field, which is the shape
-            // this whole document exists to refuse.
-            //
-            // The delimiter is the contract: a value that opens with `"` runs to
-            // the next `"`, and everything between belongs to the field that
-            // opened it.
-            List<String> names = new ArrayList<>();
-            boolean inQuotes = false;
-            for (String token : line.substring(family.length() + 1).trim().split(" +")) {
-                if (inQuotes) {
-                    if (token.endsWith("\"")) {
-                        inQuotes = false;
-                    }
-                    continue;
-                }
-                int eq = token.indexOf('=');
-                if (eq <= 0) {
-                    continue;
-                }
-                names.add(token.substring(0, eq));
-                String value = token.substring(eq + 1);
-                if (value.startsWith("\"") && !(value.length() > 1 && value.endsWith("\""))) {
-                    inQuotes = true;
-                }
-            }
-            return names;
-        }
-        return List.of();
-    }
-
     /**
-     * The families a run actually prints. Its own private universe (clause 2),
-     * quiet sink, explicit seed.
+     * ONE UNIVERSE, WALKED ONCE (#1442): every family the run printed, mapped to the
+     * field names of that family's FIRST line, in the order printed.
+     *
+     * <p>This was two readings of the same output and one universe each. {@code families}
+     * walked the stream for the roster and threw the fields away; {@code fieldsOf} built a
+     * fresh universe per family that had a table and threw everything but one line away. At
+     * seven tables that is EIGHT 6,000-tick arcs per invocation, in a probe the bench runs on
+     * every push — and each table was a reasonable addition on its own with nobody holding the
+     * sum, which is the shape {@code probes/bench.sh}'s own header warns about one level up.
+     *
+     * <p>The two readings are the same walk asked two questions, so they are one walk now.
+     * A family with no table is walked for free; a table for a family this universe did not
+     * print is absent from the map, which is the same *conditional family* answer the old
+     * reading gave by returning an empty list.
      */
-    private static Set<String> families(long ticks, long seed) {
+    private static Map<String, List<String>> walk(long ticks, long seed) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 22);
         new Simulation(seed, buf, null).run(ticks);
-        Set<String> out = new TreeSet<>();
-        for (String line : List.of(buf.toString(StandardCharsets.UTF_8).split("\n"))) {
+        Map<String, List<String>> out = new TreeMap<>();
+        for (String line : buf.toString(StandardCharsets.UTF_8).split("\n")) {
             if (line.isBlank() || isEventLine(line)) {
                 continue;
             }
             int space = line.indexOf(' ');
-            String first = space < 0 ? line : line.substring(0, space);
-            if (first.matches("[A-Z][A-Z0-9_]*")) {
-                out.add(first);
+            String family = space < 0 ? line : line.substring(0, space);
+            if (!family.matches("[A-Z][A-Z0-9_]*")) {
+                continue;
+            }
+            // The FIRST line of each family wins, which is what `fieldsOf` returned and
+            // what law 5's prefix check is about — a later line of the same family may
+            // legally carry an appended field the first one does not.
+            if (!out.containsKey(family)) {
+                out.put(family, space < 0 ? List.of() : fieldsIn(line, family));
             }
         }
         return out;
     }
+
+    /** The field names on one line, in the order printed. A pure function of the line. */
+    private static List<String> fieldsIn(String line, String family) {
+        // A TEXT value holds spaces and commas, so the line cannot simply be
+        // split on whitespace (#606). `ATTN`'s `top="financial district:49,…"`
+        // is the case: a naive splitter reads `top="financial` as one token
+        // and `district:49,old` as another.
+        //
+        // Until now this worked BY LUCK — the continuation tokens happen to
+        // contain no `=`, so they were skipped rather than misread. That is
+        // one quoted value away from inventing a field, which is the shape
+        // this whole document exists to refuse.
+        //
+        // The delimiter is the contract: a value that opens with `"` runs to
+        // the next `"`, and everything between belongs to the field that
+        // opened it.
+        List<String> names = new ArrayList<>();
+        boolean inQuotes = false;
+        for (String token : line.substring(family.length() + 1).trim().split(" +")) {
+            if (inQuotes) {
+                if (token.endsWith("\"")) {
+                    inQuotes = false;
+                }
+                continue;
+            }
+            int eq = token.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            names.add(token.substring(0, eq));
+            String value = token.substring(eq + 1);
+            if (value.startsWith("\"") && !(value.length() > 1 && value.endsWith("\""))) {
+                inQuotes = true;
+            }
+        }
+        return names;
+    }
+
 
     /**
      * The spec's boundary, applied. An event line opens with a bracketed tick:
