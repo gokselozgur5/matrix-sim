@@ -24,7 +24,17 @@ part of the shop.
 
 House rules:
 
-- A tool never mutates `src/` or `docs/`; it builds, verifies, tags, publishes.
+- A tool never mutates `src/`, and never a document's content; it builds,
+  verifies, tags, publishes. **One exception, and it is D-029's rather than this
+  file's:** *backlinks are navigation, not content — they are the one part of a
+  record that may be regenerated*, and `docs/adr/README.md` commissions the pass
+  that regenerates them. `backedge.sh --write` is that pass and the only tool
+  inside the exception; it appends a `Referenced by:` line to a record that has
+  none and refuses to touch one that exists. Everything else stands: a record's
+  prose, its front matter, its Y-statement and anything under `src/` are not a
+  tool's to write. The rule and the exception lived in two directories and
+  neither named the other until #1413, which is how a tool commissioned by one
+  document arrived forbidden by the other.
 - A tool's failure mode is loud and early (`set -euo pipefail`, explicit FATAL
   lines) — a half-cut release is worse than none.
 - Evidence is produced at run time, never pasted from memory. If a lock cannot
