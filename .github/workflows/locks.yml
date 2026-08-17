@@ -30,7 +30,7 @@ jobs:
     #         | "runs=\(length) min=\(min) max=\(max) mean=\((add/length)|floor)"'
     #   runs=54 min=296 max=710 mean=492
     #
-    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 33 steps. The two
+    # 710 s against a 1,500 s guard: 47% at the worst observed run, with 36 steps (`grep -c "^      - name:" .github/workflows/locks.yml`, 2026-08-17). The two
     # figures this comment used to carry — 76 s and 103 s — were from a laptop and described
     # a lane with roughly half these steps. A guard argued from a developer's box is a guard
     # nobody has compared against the thing it guards.
@@ -710,6 +710,37 @@ jobs:
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "CROWNS SUITE FLOOR OK cases=$ran floor=$floor"
+
+      # WHY: a probe's catalog row is the only place that says what its counters MEAN,
+      # and until #1356 nothing compared the two lists. `roster_check` asks whether a probe
+      # HAS a row; a row can keep describing the instrument it was two units ago while the
+      # probe grows a counter, a mode, or a second question. #1319 repaired two such rows by
+      # hand and nothing would have caught the third.
+      #
+      # What runs here is the SUITE and not the count, and the reason is #1311's rule: a gate
+      # installs at zero and not at one, because at one it demands a unit from whoever trips
+      # it. The first reading is missing=6, so the order #1369 states is edits first and gate
+      # second — this step protects the READER until the gate can be installed honestly.
+      #
+      # The two things that must not regress are the two the reader gets wrong most easily:
+      # the token matcher (a substring read called `ticks` named because a row says "6,000
+      # ticks", which is wrong in the direction that hides findings) and the guard exemption
+      # being a LIST rather than a pattern, since a pattern exempts every future counter
+      # named that way including one that means something specific.
+      - name: tools — the counter-row reader's own cases (#1356)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/counters.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/counters-selftest.log"
+          verdict="$(grep -E '^COUNTERS SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/counters-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the counter-row suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=12   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "COUNTERS SUITE FLOOR OK cases=$ran floor=$floor"
 
       # WHY: #952 — the lane above judges whether the VERDICT is right about the day it was
       # given; nothing judged the REMEDY printed under it. The DEFICIT line's four numbers each
