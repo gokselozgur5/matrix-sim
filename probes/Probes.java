@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -225,9 +226,58 @@ final class Probes {
      * finding, so a checker under-reports instead of accusing.
      */
     static String uncommented(Path file) throws IOException {
-        return Files.readString(file, StandardCharsets.UTF_8)
-                .replaceAll("(?s)/\\*.*?\\*/", "")
-                .replaceAll("//[^\n]*", "");
+        return String.join("\n", uncommentedLines(file));
+    }
+
+    /**
+     * The same rule, LINE-PRESERVING: one entry per source line, comments blanked rather
+     * than removed.
+     *
+     * <p>This is the implementation and {@link #uncommented} is a join of it (#1512, second
+     * option). It came from {@code LatticeFence.code}, which needed the line count intact
+     * because it reads FIELD DECLARATIONS one line at a time — a strip that deleted a block
+     * comment's newlines would join the line before it to the line after, and the joined
+     * result is a member declaration that was never written.
+     *
+     * <p>That is why the two signatures share one body rather than one regex serving both.
+     * A regex strip is fine for a {@code contains} or a {@code find}; it is wrong for
+     * anything that counts lines or reads them in order, and having both spellings of the
+     * rule in one place is what keeps the difference from being rediscovered.
+     *
+     * <p>It also makes the join SAFER than the regex it replaces: a block comment followed
+     * immediately by code on the next line can no longer be spliced into one line.
+     */
+    static List<String> uncommentedLines(Path file) throws IOException {
+        List<String> out = new ArrayList<>();
+        boolean inBlock = false;
+        for (String raw : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+            String line = raw;
+            if (inBlock) {
+                int end = line.indexOf("*/");
+                if (end < 0) {
+                    out.add("");
+                    continue;
+                }
+                line = line.substring(end + 2);
+                inBlock = false;
+            }
+            int start = line.indexOf("/*");
+            if (start >= 0) {
+                int end = line.indexOf("*/", start + 2);
+                if (end < 0) {
+                    inBlock = true;
+                    line = line.substring(0, start);
+                } else {
+                    line = line.substring(0, start) + line.substring(end + 2);
+                }
+            }
+            int slashes = line.indexOf("//");
+            if (slashes >= 0) {
+                line = line.substring(0, slashes);
+            }
+            out.add(line);
+        }
+        return out;
     }
 
     /**
