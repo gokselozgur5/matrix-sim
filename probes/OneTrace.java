@@ -69,7 +69,27 @@ public final class OneTrace {
             }
         }
         System.out.println("ONETRACE seed=" + seed + " ticks=" + ticks + " births=" + births);
-        Probes.leave(ok ? "VERDICT CONTRACT_HELD" : "VERDICT CONTRACT_BROKEN", ok);
+        // A CONTRACT NOBODY ENTERED IS NOT A CONTRACT THAT HELD (#1423, one of
+        // #1373's twenty-five). `lives` is empty when no TheOne was ever born,
+        // the loop above does not run, and `ok` stays true — so this probe
+        // reported that the One's death closed his link on the same tick, in a
+        // universe with no One. It needed no fixture to reach:
+        //
+        //     $ java -cp out:probes/out OneTrace 100 42
+        //     ONETRACE seed=42 ticks=100 births=0
+        //     VERDICT CONTRACT_HELD                       exit 0
+        //
+        // The number was already printed, one line above the verdict that
+        // contradicted it. What was missing was the verdict consulting it.
+        //
+        // Not a hypothetical population: SeedAtlas reads 20 seeds as 17
+        // FULL_ARC, 2 TREATY, 1 QUIET, and the bench runs this row only at 42
+        // and 7 for 6,000 ticks — where the One always arrives, so the lane has
+        // never seen the empty case it passes.
+        boolean held = ok && births > 0;
+        Probes.leave(held
+                ? "VERDICT CONTRACT_HELD births_none=0"
+                : "VERDICT CONTRACT_BROKEN births_none=" + (births == 0 ? 1 : 0), held);
     }
 
     private OneTrace() {}
