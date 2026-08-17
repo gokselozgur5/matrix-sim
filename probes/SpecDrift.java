@@ -49,6 +49,9 @@ public final class SpecDrift {
 
     private static final String DEFAULT_SPEC = "docs/spec/instrument-lines.md";
 
+    /** Marks a table row the spec calls optional, so a shorter arity is not drift. */
+    private static final String OPTIONAL = "?";
+
     /**
      * A roster row: the family in backticks, then the condition cell. The second
      * column is read rather than skipped, and that is the whole correctness of
@@ -133,7 +136,14 @@ public final class SpecDrift {
             }
             for (int i = 0; i < table.getValue().size(); i++) {
                 String want = table.getValue().get(i);
+                boolean optional = want.startsWith(OPTIONAL);
+                if (optional) {
+                    want = want.substring(OPTIONAL.length());
+                }
                 String got = i < seen.size() ? seen.get(i) : "(absent)";
+                if (optional && i >= seen.size()) {
+                    continue;   // a legal shorter arity, not a drift
+                }
                 if (!want.equals(got)) {
                     fieldDrift++;
                     System.out.println("SPEC field " + table.getKey() + " position " + (i + 1)
@@ -201,7 +211,14 @@ public final class SpecDrift {
             }
             Matcher row = FIELD_ROW.matcher(line);
             if (row.find()) {
-                out.get(family).add(row.group(1));
+                // A field the table marks OPTIONAL is a legal arity's rider, not
+                // a demand (#605). ZION's trace pair is the case: it prints
+                // exactly when open pirate links exist AND both populations are
+                // measurable, so a short line is a legal prefix and not drift.
+                // The marker is a word in the domain cell rather than a column,
+                // because the alternative is a sixth column on every table to
+                // carry a fact four rows in the document need.
+                out.get(family).add(line.contains("optional") ? OPTIONAL + row.group(1) : row.group(1));
             } else if (line.startsWith("## ")) {
                 family = null;
             }

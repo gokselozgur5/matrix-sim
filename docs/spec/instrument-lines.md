@@ -77,7 +77,8 @@ a field appended after the last one is legal evolution (law 5). A conforming
 line's fields must therefore begin with the table's fields, in the table's
 order; anything after them is a later version's append and a v1 parser ignores it.
 
-The two below are the lines every run prints. The remaining six families' tables
+The first two below are the lines every run prints; `ZION`, `SUBSTRATE` and `PERF`
+follow. `ATTN`, `ECO` and `BIRTH`
 are the sibling nodes of #255 and land separately.
 
 ### `METRIC` — the world's vital signs
@@ -124,6 +125,92 @@ DIGEST tick=100 sha=bf732254d9c287bcd096123c29b5f63c92f60a2b0ea272fec99452c8c112
 Two fields, and the whole falsifiability of this repository rests on the second:
 same seed, same film, byte for byte. A foreign implementation that reproduces
 the world reproduces this line.
+
+### `ZION` — the real world's mirror
+
+Emitted every 100 ticks. Arities 9 and 11.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `tick` | INT | ticks | ≥ 0 |
+| 2 | `census` | INT | count | ≥ 0 |
+| 3 | `fleet` | INT | count | ≥ 0 |
+| 4 | `links` | INT | count | ≥ 0 |
+| 5 | `traced` | INT | count | ≥ 0 |
+| 6 | `deferred` | INT | count | ≥ 0 |
+| 7 | `treaty` | INT | count | ≥ 0 |
+| 8 | `selfsub` | INT | count | ≥ 0 |
+| 9 | `living` | INT | count | ≥ 0 |
+| 10 | `trace_mnn_cm` | INT | cm | ≥ 0 · optional |
+| 11 | `red_baseline_cm` | INT | cm | ≥ 0 · optional |
+
+```
+ZION tick=100 census=0 fleet=0 links=0 traced=0 deferred=0 treaty=0 selfsub=0 living=0
+```
+
+**Two arities, and the shorter one is a prefix of the longer.** Fields 10 and 11
+ride the line exactly when open pirate links exist *and* both populations are
+measurable, so `links>0` alone does not promise them. That is why every mandatory
+column added since — `deferred`, `treaty`, `selfsub`, `living` — went at the end
+of the mandatory block and pushed the pair right, rather than being written after
+it: a reader keys on position, and a column past the optional rider would sit at
+9 on the short line and 11 on the long one. No single sequence describes both,
+and the short line would then read as `trace_mnn_cm` renamed.
+
+The trace pair has a fixed **suffix** position rather than a fixed index. That is
+a different promise from every other field in this document, and it is the one
+shape law 5 cannot express — stated here rather than left for a parser author to
+infer from two arities.
+
+### `SUBSTRATE` — the farm as compute
+
+Emitted every 100 ticks. Arity 5.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `pods` | PAIR | count | n/n |
+| 2 | `budget` | INT | permille | ≥ 0 |
+| 3 | `slots` | INT | count | ≥ 0 |
+| 4 | `stretch` | INT | count | ≥ 0 |
+| 5 | `glitches` | INT | count | ≥ 0 |
+
+```
+SUBSTRATE pods=196/196 budget=1000 slots=6 stretch=1 glitches=0
+```
+
+**No `tick`.** This is the machine wing's own line and the only family in the
+document whose first field is not the tick — a parser keying position 1 to a tick
+across families would misread every SUBSTRATE line as tick 196.
+
+`pods` is PAIR — two whole numbers joined by a slash — which is a type and not a
+formatting choice: a reader splitting it as INT gets `196/196` and fails.
+
+### `PERF` — the clock
+
+Emitted once, at the end of a run. Arities 3 and 5.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `ticks_per_s` | INT | rate | ≥ 0 |
+| 2 | `entities` | INT | count | ≥ 0 |
+| 3 | `ticks` | INT | ticks | ≥ 0 |
+| 4 | `far_max` | INT | count | ≥ 0 · optional |
+| 5 | `far_ceiling` | INT | count | ≥ 0 · optional |
+
+```
+PERF ticks_per_s=2080 entities=669 ticks=300 far_max=2 far_ceiling=76
+```
+
+**The only line here that measures the box rather than the world.**
+`ticks_per_s` is the wall clock and will differ on every machine; every other
+field in this document is deterministic. A conformance check that compares
+`PERF` values across implementations is comparing hardware. Fields 4 and 5 are
+#825's append — the far-mover ledger's high-water mark and the ceiling it is
+judged against — and both are deterministic, on a line whose first column is not.
+
+`PERF` is the family the world does not print: it is emitted by the runner around
+the world, which is why the roster marks it conditional and why a probe holding
+its own universe never sees one.
 
 ## What is not an instrument line
 
