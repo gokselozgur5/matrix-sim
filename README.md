@@ -250,9 +250,10 @@ CLAUDE.md            ← auto-loaded pointer for AI sessions (a door, not a docu
 src/matrix/          ← core · realworld · machine · entities
 probes/              ← the skeptic's bench: read-only diagnostic instruments (D-030)
 tools/               ← process jigs: the release cutter and kin (never daemon code)
+ci/fixtures/         ← what the lane holds the world against: the sealed NEUTRAL chain, with its own manual
 ```
 
-Documentation policy: **five canon documents, no more** — new knowledge goes into one of the five or it doesn't go in. Outside the canon, only four kinds of .md exist, none of them knowledge-piles: machine-loading infrastructure (`CLAUDE.md`, `.github/` templates — pointers and forms, never content), MADR records under `docs/adr/` (D-029's law), shop manuals that document a tool in the tool's own directory (`probes/README.md`, `tools/README.md`), and portable specifications under `docs/spec/` (D-058: a rule of the world stated implementation-independently, with conformance vectors — never narrative, rationale, or history). A document that is not one of these four kinds, and not one of the five canon documents above, does not get created.
+Documentation policy: **five canon documents, no more** — new knowledge goes into one of the five or it doesn't go in. Outside the canon, only four kinds of .md exist, none of them knowledge-piles: machine-loading infrastructure (`CLAUDE.md`, `.github/` templates — pointers and forms, never content), MADR records under `docs/adr/` (D-029's law), shop manuals that document a tool — or a fixture — in its own directory (`probes/README.md`, `tools/README.md`, `ci/fixtures/README.md`: a fixture is not a tool, nobody runs it and it has no flags, and its manual belongs beside it for the same reason a tool's does), and portable specifications under `docs/spec/` (D-058: a rule of the world stated implementation-independently, with conformance vectors — never narrative, rationale, or history). A document that is not one of these four kinds, and not one of the five canon documents above, does not get created.
 
 ## Process — everything runs like the Matrix
 
