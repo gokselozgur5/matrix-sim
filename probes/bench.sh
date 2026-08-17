@@ -140,7 +140,7 @@ done
 #                 markers run the daemon (#1302, #1328)
 # ---------------------------------------------------------------------------
 table() {
-  judge LedgerMirror 'LEDGER_ANOMALIES=0'      "$TICKS"
+  judge LedgerMirror 'LEDGER_ANOMALIES=0 compared_none=0'      "$TICKS"
   # The sweep the javadoc used to assert in prose (#1130). The row names the
   # broken seeds rather than demanding zero, because #1090 is open and a lane
   # that goes red for a known defect gets switched off — but it is regenerated
