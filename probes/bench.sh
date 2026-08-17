@@ -378,7 +378,19 @@ table() {
   judge SheetFence   'VERDICT ONE_DOOR_NO_CACHE stored=0 foreign_imports=0 cached=0 door_missing=0 swept_none=0 impure_adapters=0'
   judge SheetFence   'VERDICT CROSSINGS_STABLE checked=4 drifted=0' --crossings
   judge SystemFatigue 'VERDICT FATIGUE_READS_THE_COUNTER boot=6 reboot=7 v99=10 v0=1 derived_intact=true bypass_refused=true'
-  vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick, while the steady median it sits beside holds at 367 (#817)' \
+  # The reason text said the median "holds at 367", and 367 was wrong in two ways at once
+  # (#1477). It is 351 on Temurin 17 today — sixteen bytes per tick stale in the figure the
+  # exemption uses to argue everything else on the line is trustworthy — and `holds` was
+  # doing work it had not earned: the median holds against repetition, warmup and the JIT,
+  # and not against a JVM. Measured, three runs each, same class files, same seed:
+  #
+  #   Temurin 17.0.20  steady_bytes_per_tick=351 351 351   full_run_mb=5
+  #   OpenJDK 25.0.1   steady_bytes_per_tick=290 290 290   full_run_mb=4
+  #
+  # So the reason now says which JVM it is a figure OF, the way SealHygiene's pinned hashes
+  # name theirs. The exemption itself is unchanged and was never the problem: `steady_max`
+  # genuinely is a cold uncompiled sample. What it must not do is vouch for a neighbour.
+  vary  'prints its own instrument noise: steady_max is a cold uncompiled sample by construction and lands anywhere in 2.0-7.9 KB/tick (#817), and the steady median it sits beside is a per-JVM constant rather than a property of this code — 351 on Temurin 17.0.20, 290 on OpenJDK 25.0.1, three of three runs each, so it is stable to repeat and not to upgrade (#1477); the budget comparison in ALLOC_BUDGET is the honest reading of it' \
         --lines '^ALLOC(_NOTE|_BUDGET)? ' --cut 3 \
         judge AllocMeter 'VERDICT ALLOC_IN_BUDGET' 42
   judge AllocMeter   'SELFCHECK VERDICT GUARD_FIRES' --selfcheck
