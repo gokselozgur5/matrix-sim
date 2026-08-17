@@ -312,12 +312,23 @@ public final class AllocMeter {
         ok &= verdictCase("unsettled_over_band", "no", settled(106, 100) ? "yes" : "no");
         System.out.println("SELFCHECK steady_budget=" + STEADY_BUDGET_BYTES_PER_TICK
                 + " gc_budget=" + GC_BUDGET_PER_ARC
-                + " settle_band_pct=" + STEADY_SETTLE_PCT + " cases=6");
+                + " settle_band_pct=" + STEADY_SETTLE_PCT + " cases=" + casesRun);
         System.out.println(ok ? "SELFCHECK VERDICT GUARD_FIRES" : "SELFCHECK VERDICT GUARD_DEAD");
     }
 
     /** One case of the comparison, printed as a fact whether it holds or not. */
+    /**
+     * How many cases actually ran. This was the literal {@code 6} in the
+     * trailer's format string (#1449, #1419's shape one probe over) — correct on
+     * the day it was typed, and guarded by nothing: the bench pins
+     * {@code SELFCHECK VERDICT GUARD_FIRES} and never the count, so a case added
+     * without bumping it would have printed a wrong number and turned nothing
+     * red. Every other {@code cases=} in this tree is derived from a run.
+     */
+    private static int casesRun = 0;
+
     private static boolean verdictCase(String name, String want, String got) {
+        casesRun++;
         String shown = got.isEmpty() ? "-" : got;
         boolean ok = want.equals(shown);
         System.out.println("CASE " + name + " want=" + want + " got=" + shown

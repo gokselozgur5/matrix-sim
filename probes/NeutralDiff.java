@@ -374,7 +374,7 @@ public final class NeutralDiff {
                 "seal_out_of_order path=- line=2 tick=100 previous_tick=200");
         ok &= parseCase("seal_empty", List.of(), "seal_empty path=-");
 
-        System.out.println("SELFCHECK cases=12 universes=0 ticks=0");
+        System.out.println("SELFCHECK cases=" + casesRun + " universes=0 ticks=0");
         System.out.println(ok ? "SELFCHECK VERDICT REFEREE_HOLDS"
                 : "SELFCHECK VERDICT REFEREE_BROKEN");
         if (!ok) {
@@ -397,7 +397,18 @@ public final class NeutralDiff {
         return caseLine("parse", name, want, got);
     }
 
+    /**
+     * How many cases actually ran. This was the literal {@code 12} in the
+     * trailer (#1449, #1419's shape one probe over): correct when typed, and
+     * guarded by nothing, because the bench pins
+     * {@code SELFCHECK VERDICT REFEREE_HOLDS} and never the count. It sits here
+     * rather than in the two {@code *Case} helpers, since both route through
+     * this line and a counter in each would be two places to remember.
+     */
+    private static int casesRun = 0;
+
     private static boolean caseLine(String leg, String name, String want, String got) {
+        casesRun++;
         boolean ok = want.equals(got);
         // Single quotes on the outside: three of these cases carry a detail
         // line that quotes the offending seal text with double quotes of its
