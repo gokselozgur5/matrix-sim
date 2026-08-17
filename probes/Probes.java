@@ -195,6 +195,53 @@ final class Probes {
         return (List<NeuralLink>) open(matrix.zion.BroadcastRig.class, "links").get(rig);
     }
 
+    /**
+     * A positional number, or a refusal — never a stack trace (#1481).
+     *
+     * <p>Eleven probes read a tick count or a seed with a bare
+     * {@code Long.parseLong(args[0])}, so an argument that is not a number left
+     * through {@code NumberFormatException} and the JVM spent <b>1</b>. In this
+     * tree 1 means <i>the claim does not hold</i> — {@code tools/README.md}'s
+     * exit grammar and {@code probes/ExitGrammar} both say so — so a mistyped
+     * argument reported a broken contract. An operator reading the sweep sees a
+     * probe leave 1 and concludes the instrument found the thing it exists to
+     * catch. #1170's finding with the labels swapped: a defect report naming the
+     * wrong defect, except here there is no defect.
+     *
+     * <p>Refuses rather than defaults, and that is the whole distinction being
+     * drawn: an ABSENT argument is the caller declining to choose, and every
+     * caller here already handles that with its own default. A PRESENT argument
+     * that is not a number is a mistake, and quietly using the default for it is
+     * how {@code CensusSampleSize} priced the wrong question under a green
+     * verdict (#1479).
+     *
+     * <p>One reader rather than eleven guarded parses, because eleven copies of
+     * one rule is the shape #1053 was filed about and the eleventh copy is where
+     * the twelfth goes.
+     *
+     * @param arg   the argument as typed, never null
+     * @param what  the name this number has in the probe, for the refusal line
+     */
+    static long number(String arg, String what) {
+        try {
+            return Long.parseLong(arg);
+        } catch (NumberFormatException e) {
+            System.err.println("FATAL " + what + " wants a number, not '" + arg + "'");
+            System.exit(Outcome.REFUSED.code());
+            throw new AssertionError("unreachable");   // System.exit does not return
+        }
+    }
+
+    /** The same reader where the probe's field is an {@code int}. */
+    static int count(String arg, String what) {
+        long v = number(arg, what);
+        if (v < Integer.MIN_VALUE || v > Integer.MAX_VALUE) {
+            System.err.println("FATAL " + what + " does not fit an int: '" + arg + "'");
+            System.exit(Outcome.REFUSED.code());
+        }
+        return (int) v;
+    }
+
     private static Field open(Class<?> type, String name) throws NoSuchFieldException {
         Field f = type.getDeclaredField(name);
         f.setAccessible(true);
