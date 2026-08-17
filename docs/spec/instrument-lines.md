@@ -212,6 +212,66 @@ judged against — and both are deterministic, on a line whose first column is n
 the world, which is why the roster marks it conditional and why a probe holding
 its own universe never sees one.
 
+### `ATTN` — who is being watched
+
+Emitted every 100 ticks. Arity 5.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `tick` | INT | ticks | ≥ 0 |
+| 2 | `regions` | INT | count | ≥ 0 |
+| 3 | `hot` | INT | count | ≥ 0 |
+| 4 | `cold` | INT | count | ≥ 0 |
+| 5 | `top` | TEXT | text | double-quoted |
+
+```
+ATTN tick=100 regions=6 hot=6 cold=0 top="financial district:49,old city:39,chinatown:34"
+```
+
+**`top` is the first value in this document that cannot be split on whitespace.**
+It is TEXT — double-quoted, and it holds spaces and commas — so a parser that
+tokenises a line on spaces and then splits each token on `=` reads
+`top="financial` as a field and `district:49,old` as noise.
+
+The delimiter is the contract. A TEXT value begins with `"` and ends at the next
+`"`, and everything between belongs to the field that opened it. That is why the
+type exists as a distinct name from WORD, which is a bare token out of a closed
+set: swapping one for the other is a retype, and law 5 forbids it.
+
+`top` is also the only field here whose *contents* are not specified. It is a
+human-facing summary of which quarters are watched; a conforming implementation
+prints its own quarters, and nothing in this document says what they are called.
+
+### `ECO` — the rendered ecosystem
+
+Emitted every 100 ticks. Arities 2 and 8.
+
+| # | Field | Type | Unit | Domain |
+|---|---|---|---|---|
+| 1 | `tick` | INT | ticks | ≥ 0 |
+| 2 | `birds` | INT | count | ≥ 0 |
+| 3 | `flock_mnn_cm` | INT | cm | ≥ 0 · optional |
+| 4 | `random_baseline_cm` | INT | cm | ≥ 0 · optional |
+| 5 | `insects` | INT | count | ≥ 0 · optional |
+| 6 | `flora` | INT | count | ≥ 0 · optional |
+| 7 | `mammals` | INT | count | ≥ 0 · optional |
+| 8 | `weather` | INT | count | ≥ 0 · optional |
+
+```
+ECO tick=100 birds=140 flock_mnn_cm=11012 random_baseline_cm=11952 insects=150 flora=90 mammals=10 weather=70
+```
+
+**The short arity is two fields, and the reason is a measurement that does not
+exist rather than one that is missing.** `flock_mnn_cm` is a mean nearest-neighbour
+distance; with fewer than two birds there is no such distance, and the collector
+emits the short line rather than a zero. That is this tree's precedent for
+*undefined is absence* — a field omitted says *there was nothing to measure*,
+while a field present and zero says *the measurement was taken and came back
+zero*, and the two are different facts.
+
+A conforming implementation may print either arity at any tick. A parser must
+therefore key on the field name it finds rather than on the count of fields.
+
 ## What is not an instrument line
 
 **The event log.** D-020 names three instruments — the event log, the `METRIC`

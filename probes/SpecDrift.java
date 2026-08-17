@@ -235,11 +235,36 @@ public final class SpecDrift {
             if (!line.startsWith(family + " ")) {
                 continue;
             }
+            // A TEXT value holds spaces and commas, so the line cannot simply be
+            // split on whitespace (#606). `ATTN`'s `top="financial district:49,…"`
+            // is the case: a naive splitter reads `top="financial` as one token
+            // and `district:49,old` as another.
+            //
+            // Until now this worked BY LUCK — the continuation tokens happen to
+            // contain no `=`, so they were skipped rather than misread. That is
+            // one quoted value away from inventing a field, which is the shape
+            // this whole document exists to refuse.
+            //
+            // The delimiter is the contract: a value that opens with `"` runs to
+            // the next `"`, and everything between belongs to the field that
+            // opened it.
             List<String> names = new ArrayList<>();
+            boolean inQuotes = false;
             for (String token : line.substring(family.length() + 1).trim().split(" +")) {
+                if (inQuotes) {
+                    if (token.endsWith("\"")) {
+                        inQuotes = false;
+                    }
+                    continue;
+                }
                 int eq = token.indexOf('=');
-                if (eq > 0) {
-                    names.add(token.substring(0, eq));
+                if (eq <= 0) {
+                    continue;
+                }
+                names.add(token.substring(0, eq));
+                String value = token.substring(eq + 1);
+                if (value.startsWith("\"") && !(value.length() > 1 && value.endsWith("\""))) {
+                    inQuotes = true;
                 }
             }
             return names;
