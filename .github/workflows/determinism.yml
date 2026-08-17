@@ -8,6 +8,8 @@
 # runner image change, or a probe somebody added months ago that has been quietly noisy
 # since.
 #
+# WHY IT RUNS ON TWO JVMS (#1477). The matrix is on the job below and its argument is there.
+#
 # WHY IT RUNS HERE AND NOT ON A LAPTOP. `--twice` had never run at all until 2026-08-15,
 # and when it did it found one immediately (#1184). What it found, it found on ONE Apple
 # Silicon box, on one JDK build, in one afternoon — which is not evidence about the
@@ -34,14 +36,43 @@ jobs:
   determinism:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # THE ONE BULLET #1194 CLOSED WITHOUT ANSWERING (#1477). That issue listed four things
+    # `stable=53` was not evidence about — another architecture, another JVM, a loaded box,
+    # another locale — and this lane answers three: it runs on x86-64 ubuntu-latest, on
+    # shared hardware, and `--twice` takes its second run under `LC_ALL=C`. It ran on ONE
+    # JVM, so the JVM question stayed open, and it is not hypothetical:
+    #
+    #   AllocMeter, same class files, same seed, three runs each
+    #   Temurin 17.0.20   steady_bytes_per_tick=351  351  351   full_run_mb=5
+    #   OpenJDK 25.0.1    steady_bytes_per_tick=290  290  290   full_run_mb=4
+    #
+    # Perfectly stable inside a JVM and 17% apart across two — the opposite shape from
+    # noise, which is what `cascade_bytes_per_tick` does (631/596/628 on one build).
+    #
+    # WHY 17 AND 25 AND NOT 21. 17 is what the locks are calibrated on and what
+    # `--release 17` targets. 25 is the one that has actually been run: sixty-three judged
+    # rows green on both, and every non-timing difference in the whole sweep is an ALLOC
+    # line. 21 is absent deliberately — adding a lane whose behaviour nobody has measured
+    # buys a red weekly run nobody expected, and this lane's job is to find drift, not to
+    # be the first place a guess is tested. To add it, measure first:
+    #
+    #   for v in 17 21 25; do JAVA_HOME=… bash probes/bench.sh > /tmp/$v.log; done
+    #   diff /tmp/17.log /tmp/21.log
+    #
+    # fail-fast is off because the whole point is which JVMs disagree. One red lane must
+    # not cancel the run that would have said whether the other is red too.
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ['17', '25']
     steps:
       - uses: actions/checkout@v4
 
-      - name: put JDK 17 on PATH
+      - name: put JDK ${{ matrix.jdk }} on PATH
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: ${{ matrix.jdk }}
 
       # The whole sweep, twice, with nothing narrowed. `unchecked=0` is the field that
       # separates this from #1185's per-PR pass: there most probes go unchecked and the
