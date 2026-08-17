@@ -4,7 +4,7 @@ Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* �
 
 ## Architectural principles
 
-**A1 — The mind is never uploaded.** Package boundary = deployment boundary. `entities` must never import `realworld`; the only bridge is `NeuralLink`. If you ever feel the urge to hand a `Brain` to something inside the Matrix, stop — that is exactly how uploads happen.
+**A1 — The mind is never uploaded.** Package boundary = deployment boundary. `entities` must never import `realworld`; the only bridge is `NeuralLink`. If you ever feel the urge to hand a `Brain` to something inside the Matrix, stop — that is exactly how uploads happen. `probes/LatticeFence.java` is what says no: it reads the same rule from `docs/ARCHITECTURE.md`'s wording and is judged on every push, so this principle is the rare one a build can fail.
 
 **A2 — Backend only; the dream is the frontend.** No glyphs, colors or render priorities anywhere in the domain (D-019). We observe the system the way operators do — logs, metrics, digests — and one day through the perception feed itself (D-021). The Matrix's real output was never a screen.
 
