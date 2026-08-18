@@ -85,8 +85,11 @@ public final class CatalogFlags {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        if (args.length > 0 && args[0].equals("--selfcheck")) {
+            System.exit(selfcheck(Files.createTempDirectory("catalogflags")));
+        }
         if (args.length > 0 && args[0].startsWith("--")) {
-            System.err.println("FATAL unknown flag: " + args[0] + " (this probe takes [repo-root])");
+            System.err.println("FATAL unknown flag: " + args[0] + " (this probe takes [repo-root] or --selfcheck)");
             System.exit(Probes.Outcome.REFUSED.code());
         }
         Path root = Path.of(args.length > 0 ? args[0] : ".");
@@ -142,7 +145,7 @@ public final class CatalogFlags {
             checked++;
             int missing = 0;
             for (String flag : doors) {
-                if (!row.contains(flag)) {
+                if (!namedBy(row, flag)) {
                     missing++;
                     undocumented.add(probe + " " + flag);
                 }
@@ -219,7 +222,131 @@ public final class CatalogFlags {
         return null;
     }
 
+
+    /**
+     * Does this row NAME this flag? (#1576)
+     *
+     * <p>A plain {@code contains} is wrong and the case that found it is in the suite:
+     * a row saying {@code --prefix} contains {@code --pr}, so a flag the row never
+     * mentions reads as documented. That is the substring trap {@code advice.sh} solved
+     * by padding both sides with spaces and matching with {@code case} — <em>the padding
+     * is what keeps `--for` from matching inside `--format`</em> (#1033) — and this file
+     * had it in the direction that hides a finding rather than inventing one.
+     *
+     * <p>The boundary is "not a flag character": a long option is followed by a space, a
+     * backtick, a comma, a full stop or the end of the row, and never by a letter, a digit
+     * or a hyphen.
+     */
+    private static boolean namedBy(String row, String flag) {
+        int at = row.indexOf(flag);
+        while (at >= 0) {
+            int after = at + flag.length();
+            if (after >= row.length()) {
+                return true;
+            }
+            char c = row.charAt(after);
+            if (!Character.isLetterOrDigit(c) && c != '-') {
+                return true;
+            }
+            at = row.indexOf(flag, at + 1);
+        }
+        return false;
+    }
+
     /** Every long option this source COMPARES against, comments stripped (#1531). */
+
+    /**
+     * The reading's own cases, over fixtures written to a temp directory (#1576).
+     *
+     * <p>This probe reads fifty-five sources with a textual rule that has a KNOWN false
+     * positive — a greedy read of {@code DocLint} collects {@code --is-shallow-repository}
+     * and {@code --verify}, which it hands to {@code git} — and until now that correction
+     * was asserted in a javadoc and demonstrated nowhere. The same shape has been re-broken
+     * twice in this tree: {@code advice.sh} was bitten by self-matching test data five
+     * times, and #1531 found {@code LeaveContract} reading {@code System.exit} inside a
+     * comment. Both were repaired by a reader that had cases.
+     *
+     * <p>Four spellings means four cases, because a four-branch alternation has four ways
+     * to be wrong — and the reversed {@code "--x".equals(…)} is the one the first three
+     * miss, which is why {@code NeutralDiff} is the probe that found it.
+     */
+    private static int selfcheck(Path tmp) throws IOException {
+        int pass = 0;
+        int fail = 0;
+        String dash = "--";
+
+        // name, source, want (comma-joined doors, or "" for none)
+        String[][] cases = {
+            {"door-case-arm", "class A { void m(String s) { switch (s) { case \"" + dash + "pr\": break; } } }", dash + "pr"},
+            {"door-equals", "class A { void m(String s) { if (s.equals(\"" + dash + "pr\")) { } } }", dash + "pr"},
+            {"door-starts-with", "class A { void m(String s) { if (s.startsWith(\"" + dash + "pr\")) { } } }", dash + "pr"},
+            // THE ONE THE OTHER THREE MISS. NeutralDiff writes it, and a reader without
+            // this alternation reports that probe as parsing no flags at all.
+            {"door-reversed-equals", "class A { void m(String s) { if (\"" + dash + "pr\".equals(s)) { } } }", dash + "pr"},
+            // THE FALSE POSITIVE THAT COST advice.sh A UNIT (#1341), here as a case rather
+            // than as a sentence: an argument handed to another program is not this
+            // probe's door.
+            {"another-programs-flag",
+                "class A { void m() { new ProcessBuilder(\"git\", \"rev-parse\", \"" + dash + "verify\", \"HEAD\"); } }", ""},
+            // A flag DISCUSSED is not a flag PARSED (#1531). The strip is Probes'; this
+            // asserts the reading goes through it.
+            {"flag-in-a-comment",
+                "class A {\n  /** takes " + dash + "pr, one day. */\n  void m() { }\n}", ""},
+            // Two doors in one file, and the set is a SET: a probe writing the same arm
+            // twice must not read as two flags.
+            {"two-doors-and-a-repeat",
+                "class A { void m(String s) { if (s.equals(\"" + dash + "pr\")) { } if (s.equals(\"" + dash + "sha\")) { }"
+                        + " if (s.equals(\"" + dash + "pr\")) { } } }", dash + "pr," + dash + "sha"},
+        };
+
+        for (String[] c : cases) {
+            Path f = tmp.resolve(c[0] + ".java");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            String got = String.join(",", doorsOf(f));
+            boolean ok = got.equals(c[2]);
+            System.out.printf("CATALOG case=%-24s want=%-14s got=%-14s %s%n",
+                    c[0], c[2].isEmpty() ? "<none>" : c[2], got.isEmpty() ? "<none>" : got,
+                    ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // The join with the ROW, which is the other half of the reading and has its own
+        // way to be wrong: a row naming a LONGER flag must not satisfy a shorter one.
+        // `--base` is not documented by a row that only says `--baseline`.
+        // THE JOIN WITH THE ROW, which has its own way to be wrong and did: a plain
+        // `contains` reads `--prefix` as naming `--pr`, so a flag the row never
+        // mentions counts as documented. That is the substring trap `advice.sh`
+        // solved by padding both sides with spaces (#1033), in the direction that
+        // HIDES a finding rather than inventing one — which is why nothing noticed.
+        String[][] rowCases = {
+            {"row-names-it", "| `Fix` | q | takes `" + dash + "pr` and nothing else. |", dash + "pr", "true"},
+            {"row-silent", "| `Fix` | q | takes nothing worth saying. |", dash + "pr", "false"},
+            {"row-names-a-longer-flag", "| `Fix` | q | takes `" + dash + "prefix`. |", dash + "pr", "false"},
+            {"row-names-both", "| `Fix` | q | takes `" + dash + "prefix` and `" + dash + "pr`. |", dash + "pr", "true"},
+            {"row-ends-with-it", "| `Fix` | q | takes " + dash + "pr", dash + "pr", "true"},
+        };
+        for (String[] c : rowCases) {
+            boolean named = namedBy(c[1], c[2]);
+            boolean ok = String.valueOf(named).equals(c[3]);
+            System.out.printf("CATALOG case=%-24s want=%-14s got=%-14s %s%n",
+                    c[0], c[3], named, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        Probes.leave("CATALOG SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
+                + " cases=" + (pass + fail) + " failed=" + fail,
+                fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+        return fail;
+    }
+
     private static Set<String> doorsOf(Path src) throws IOException {
         Set<String> found = new LinkedHashSet<>();
         Matcher m = DOOR.matcher(Probes.uncommented(src));
