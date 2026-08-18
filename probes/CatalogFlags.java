@@ -71,9 +71,16 @@ public final class CatalogFlags {
      * <p>{@code case "--x"}, {@code .equals("--x")}, {@code startsWith("--x")} and the
      * reversed {@code "--x".equals(…)}, which {@code NeutralDiff} uses and the first three
      * miss.
+     *
+     * <p>A fourth alternative — {@code switch ("--x")} — was here and was UNREACHABLE
+     * (#1572): a switch takes the variable, not the literal, so nothing in this
+     * directory could ever have matched it. It cost nothing and it was a branch no
+     * fixture drives, which is where a wrong one hides longest (#1358 found two verdict
+     * chain branches in exactly that state, and one of them printed a defect report
+     * naming the wrong defect).
      */
     private static final Pattern DOOR = Pattern.compile(
-            "(?:case\\s+|\\.equals\\(|\\.startsWith\\(|switch\\s*\\()\"(--[a-z][a-z0-9-]*)\""
+            "(?:case\\s+|\\.equals\\(|\\.startsWith\\()\"(--[a-z][a-z0-9-]*)\""
                     + "|\"(--[a-z][a-z0-9-]*)\"\\.(?:equals|startsWith)\\(");
 
     public static void main(String[] args) throws Exception {
@@ -150,6 +157,15 @@ public final class CatalogFlags {
                     + " — the probe parses it and its catalog row never names it");
         }
 
+        // THE MEMBERS, NOT ONLY THE COUNT (#1572). `undocumented=` is pinned, so a
+        // flag documented while another arrives undocumented is a green row over a
+        // different twenty — the swap #1550 closed for `LeaveContract` and
+        // `VacuousGuard`, and left open here because this probe already prints one
+        // UNDOCUMENTED_FLAG row per finding. Those rows are not enough: they come out
+        // in bench-table order, so moving a row in `bench.sh` reorders them and a diff
+        // of two sweeps reports a reordering as a change. Sorted and joined on ONE
+        // line is what makes two sweeps of one tree byte-identical.
+        System.out.println("CATALOG_FLAGS_MEMBERS undocumented=" + join(undocumented));
         // The populations ride their own line, unpinned (#1221). Every one of them moves
         // when a probe is added, and a census inside an exact-line row is a number people
         // learn to edit until the lane is quiet.
@@ -178,6 +194,22 @@ public final class CatalogFlags {
      * #1370 gave `.gitattributes` a merge driver for, and the property that makes this a
      * substring search rather than a parse.
      */
+    /**
+     * A population as a sorted, comma-joined string, or {@code none} (#1572).
+     *
+     * <p>Sorted so two sweeps of one tree produce byte-identical text: the order the
+     * bench table lists rows in is not information, and an unsorted list would make a
+     * diff of two runs report a reordering as a change.
+     */
+    private static String join(List<String> names) {
+        if (names.isEmpty()) {
+            return "none";
+        }
+        List<String> sorted = new ArrayList<>(names);
+        java.util.Collections.sort(sorted);
+        return String.join(",", sorted);
+    }
+
     private static String rowFor(String catalog, String probe) {
         for (String line : catalog.split("\n")) {
             if (line.startsWith("| `" + probe + "`")) {
