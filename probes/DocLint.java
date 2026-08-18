@@ -234,9 +234,26 @@ public final class DocLint {
         if (canon == null) {
             Probes.leave("VERDICT DOCS_DRIFT", false);
         }
+        // `gaps=` RIDES THE VERDICT SINCE #1627, and `unannotated_gaps=` was not
+        // enough. A hole with no explanation in the index has always been red; a
+        // hole WITH one has always been green, and writing that sentence is exactly
+        // what a person creating the gap would do. So the check caught carelessness
+        // and the document's claim is about habit — `docs/DECISIONS.md` says the
+        // D-055–D-057 gap is a numbering artifact and not three lost decisions, and
+        // a fourth annotated hole would leave that sentence saying `three` while the
+        // artifact became a practice.
+        //
+        // This is #1623's argument a second time: a gap is created by a deliberate
+        // act — a number claimed in a commit subject whose record is never written —
+        // so the pin costs an author one more line rather than teaching them to edit
+        // a number that drifts on its own (#1221 is about the second kind).
+        //
+        // The DOCS_DRIFT above this leaves with no field at all, and that stays: it
+        // is the parse-failed path, where there is no census to report and a number
+        // printed there would be an invention.
         Report report = lint(canon, ArcBeats.measure(ticks, seed), resolver(root), true);
         print(report);
-        Probes.leave(report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT",
+        Probes.leave((report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT") + " gaps=" + report.gaps(),
                 report.docsTrue());
     }
 
@@ -252,7 +269,6 @@ public final class DocLint {
                 + " missing_confirmation=" + r.missingConfirmation()
                 + " confirmations_excused=" + r.confirmationsExcused()
                 + " confirmation_stale=" + r.staleConfirmations()
-                + " gaps=" + r.gaps()
                 + " unannotated_gaps=" + r.unannotatedGaps()
                 + " beat_claims=" + r.beatClaims()
                 + " beat_drift=" + r.beatDrift()
