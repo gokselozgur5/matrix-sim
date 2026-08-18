@@ -556,7 +556,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=32   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=39   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/prstate.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/prstate.log"
           verdict="$(grep -E '^PRSTATE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
             "${RUNNER_TEMP:-/tmp}/prstate.log" || true)"
