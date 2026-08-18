@@ -6,6 +6,7 @@
 #        tools/prstate.sh --for OWNER/NAME   name the repository (default: origin)
 #        tools/prstate.sh --selftest     run the judge's own cases; no token, no network
 #        tools/prstate.sh --schedules    the same judgement over scheduled runs
+#        tools/prstate.sh --sweepcost [N]  what the probe sweep has actually cost
 #
 # WHAT THIS EXISTS FOR. The merge rule in this house is *never merge red*. It has no clause
 # for a pull request that is neither red nor green, and that is a state this repository
@@ -52,6 +53,7 @@
 set -euo pipefail
 
 MODE=judge
+SWEEP_RUNS=20
 PR=""
 REPO=""
 # Mergeability is computed lazily on GitHub's side and asking is what starts it, so a first
@@ -65,6 +67,7 @@ while [ $# -gt 0 ]; do
     --for) REPO="${2:-}"; [ -n "$REPO" ] || { echo "FATAL --for wants OWNER/NAME" >&2; exit 2; }; shift 2 ;;
     --selftest) MODE=selftest; shift ;;
     --schedules) MODE=schedules; shift ;;
+    --sweepcost) MODE=sweepcost; SWEEP_RUNS="${2:-20}"; case "$SWEEP_RUNS" in ""|*[!0-9]*) SWEEP_RUNS=20; shift ;; *) shift 2 ;; esac ;;
     # READ TO THE END OF THE USAGE BLOCK, not to a line number. `sed -n '2,7p'`
     # stopped exactly where the clause ended on the day it was written, so a door
     # added below line 7 would be absent from `--help` while sitting in the file
@@ -264,6 +267,28 @@ base_eligible() {
 
 # ---- the suite ---------------------------------------------------------------
 
+# THE ARITHMETIC IS A PURE FUNCTION OF A LIST, so it can be watched being wrong
+# without a token and without a network (#1348). It sits ABOVE `selftest` because
+# bash binds a function when it reaches the definition and the suite runs before the
+# fetching half is defined — the split is fetch-then-compute, and only the compute
+# half has cases, which is the division `checkage.sh` makes for the same reason.
+sweep_stats() {                 # sweep_stats <budget> <secs, one per line>
+  local budget="$1" list="$2"
+  printf '%s\n' "$list" | awk -v budget="$budget" '
+    /^[0-9]+$/ { v[n++] = $1; total += $1; if ($1 > budget) over++ }
+    END {
+      if (n == 0) { print "SWEEP COST UNREADABLE runs=0"; exit }
+      # Insertion sort: n is twenty-odd and this keeps the whole statistic in one
+      # awk with no pipe to lose an exit status in.
+      for (i = 1; i < n; i++) { x = v[i]; for (j = i - 1; j >= 0 && v[j] > x; j--) v[j+1] = v[j]; v[j+1] = x }
+      # The LOWER median on an even count, stated rather than left to be inferred:
+      # a mean of the middle two would invent a duration nothing measured.
+      median = v[int((n - 1) / 2)]
+      printf "SWEEP COST runs=%d min=%d median=%d mean=%d max=%d budget=%d over=%d headroom=%d%% source=step\n",
+             n, v[0], median, int(total / n), v[n-1], budget, over + 0, int((budget - v[n-1]) * 100 / budget)
+    }'
+}
+
 selftest() {
   local pass=0 fail=0 seen=""
   check() { # check <name> <pr-state> <mergeable> <rows> <want> [base] [patterns]
@@ -372,6 +397,39 @@ selftest() {
   # exactly the state `determinism.yml` was in on the day it was written.
   sched never-ran           '0 4 * * 0' none 'NEVER_RAN period=7d'
 
+  # THE SWEEP-COST ARITHMETIC (#1348), over synthetic lists. No token, no network:
+  # everything above `sweep_stats` fetches and everything below computes, and only
+  # the computing half is testable — which is the split `checkage.sh` makes for the
+  # same reason.
+  cost_case() {                 # cost_case <name> <secs-list> <want-line>
+    local got
+    got="$(sweep_stats 300 "$2")"
+    if [ "$got" = "$3" ]; then
+      pass=$((pass + 1)); printf 'CASE %-26s OK    %s\n' "$1" "$got"
+    else
+      fail=$((fail + 1)); printf 'CASE %-26s FAIL  got=[%s] want=[%s]\n' "$1" "$got" "$3"
+    fi
+  }
+  cost_case cost-one-run '210' \
+    'SWEEP COST runs=1 min=210 median=210 mean=210 max=210 budget=300 over=0 headroom=30% source=step'
+  # Odd count: the median is the middle element and not an average of anything.
+  cost_case cost-odd-median "$(printf '100\n300\n200\n')" \
+    'SWEEP COST runs=3 min=100 median=200 mean=200 max=300 budget=300 over=0 headroom=0% source=step'
+  # EVEN count takes the LOWER median deliberately: a mean of the middle two would
+  # invent a duration nothing measured, which is the shape #1221 objects to.
+  cost_case cost-even-median "$(printf '100\n200\n300\n400\n')" \
+    'SWEEP COST runs=4 min=100 median=200 mean=250 max=400 budget=300 over=1 headroom=-33% source=step'
+  # A sweep AT the budget is within it — `over` counts breaches, and 300 is not one.
+  cost_case cost-at-the-budget '300' \
+    'SWEEP COST runs=1 min=300 median=300 mean=300 max=300 budget=300 over=0 headroom=0% source=step'
+  # Headroom goes NEGATIVE rather than clamping at zero, because "how far past" is
+  # the number somebody raising the budget needs and a clamped zero hides it.
+  cost_case cost-over-the-budget '450' \
+    'SWEEP COST runs=1 min=450 median=450 mean=450 max=450 budget=300 over=1 headroom=-50% source=step'
+  # An empty read is refused rather than reported as a fast sweep — #1235's shape:
+  # an answer nobody could read is not an answer.
+  cost_case cost-nothing-read '' 'SWEEP COST UNREADABLE runs=0'
+
   # A suite that reaches one verdict is not a suite. The five states are the whole claim of
   # this tool, so the cases must be shown to separate them before their verdict counts.
   local missing=""
@@ -394,6 +452,70 @@ selftest() {
 if [ "$MODE" = selftest ]; then selftest; exit $?; fi
 
 # ---- the live schedule reading -----------------------------------------------
+
+
+# WHAT HAS THE SWEEP ACTUALLY COST? (#1348)
+#
+# `BENCH_BUDGET_SECS=300` bounds the SUM of the probe sweep and nothing bounds a
+# row, and #1348 lists three ways to close that — a per-row ratio, a pinned cost
+# table, or reporting forever. It also says which question comes first, and that
+# nobody had answered it: *has the sweep ever been near 300?* The trailer prints
+# `secs=` on every run and nothing keeps them.
+#
+# WHY THE STEP AND NOT THE LOG. `secs=` lives inside the sweep's own stdout, and
+# reading it means fetching a log archive per run. The lane's step timings are on
+# the jobs API — started_at and completed_at, one request per run — and the step
+# named for the sweep IS the sweep plus process startup. That is a proxy and this
+# says so on the line: `source=step`, not `source=trailer`.
+#
+# WHY A REPORT AND NOT A GATE. Wall clock on a shared runner is not stable, and
+# this mode exists to measure how unstable before anyone writes a floor against
+# it — #1221's argument in its original form, and the reason the cost line inside
+# the sweep is a census. What comes out of here decides which of #1348's three
+# options is worth building, or whether 300 is the number that needs revisiting.
+SWEEP_STEP='probe sweep'
+SWEEP_BUDGET=300
+SWEEP_TMP="${TMPDIR:-/tmp}/prstate-sweep.$$"
+
+
+sweep_cost() {                  # sweep_cost [runs]
+  local want="${1:-20}" ids id secs n=0 min= max= total=0 over=0 sorted median
+  ids="$(gh run list --workflow locks.yml --status success --limit "$want" \
+           --json databaseId -q '.[].databaseId' 2>/dev/null || true)"
+  if [ -z "$ids" ]; then
+    echo "SWEEP COST UNREADABLE runs=0 (the API returned no completed locks run)" >&2
+    return 3
+  fi
+  : > "$SWEEP_TMP"
+  for id in $ids; do
+    # One request per run. `started_at`/`completed_at` are RFC 3339 and are
+    # subtracted through epoch seconds, so no `date(1)` dialect is involved —
+    # #901's lesson, which `balance.sh` pays for in two spellings.
+    secs="$(gh api "repos/${REPO}/actions/runs/$id/jobs" \
+              -q ".jobs[].steps[] | select(.name | startswith(\"$SWEEP_STEP\")) | \"\(.started_at) \(.completed_at)\"" \
+              2>/dev/null | head -1 | while read -r a b; do
+                sa="$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$a" +%s 2>/dev/null || date -u -d "$a" +%s 2>/dev/null)"
+                sb="$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$b" +%s 2>/dev/null || date -u -d "$b" +%s 2>/dev/null)"
+                [ -n "$sa" ] && [ -n "$sb" ] && echo $(( sb - sa ))
+              done)"
+    [ -n "$secs" ] || continue
+    n=$((n + 1))
+    total=$((total + secs))
+    [ -z "$min" ] || [ "$secs" -lt "$min" ] && min="$secs"
+    [ -z "$max" ] || [ "$secs" -gt "$max" ] && max="$secs"
+    [ "$secs" -le "$SWEEP_BUDGET" ] || over=$((over + 1))
+    printf '%s\n' "$secs" >> "$SWEEP_TMP"
+    printf 'SWEEP run=%s secs=%s\n' "$id" "$secs"
+  done
+  if [ "$n" -eq 0 ]; then
+    echo "SWEEP COST UNREADABLE runs=0 (no run carried a step named \"$SWEEP_STEP\")" >&2
+    rm -f "$SWEEP_TMP"
+    return 3
+  fi
+  sweep_stats "$SWEEP_BUDGET" "$(cat "$SWEEP_TMP")"
+  rm -f "$SWEEP_TMP"
+  [ "$over" -eq 0 ]
+}
 
 schedules() {
   local f cron period last age verdict why worst=0 n=0
@@ -442,6 +564,9 @@ if [ -z "$REPO" ]; then
 fi
 [[ "$REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] \
   || { echo "FATAL cannot tell which repository this is; pass --for OWNER/NAME" >&2; exit 2; }
+
+# AFTER the repository is resolved, because this mode reads the jobs API by slug.
+if [ "$MODE" = sweepcost ]; then sweep_cost "${SWEEP_RUNS:-20}"; exit $?; fi
 
 report() { # report <pr-number> -> prints its rows and verdict line, returns its exit code
   local n="$1" fields state mergeable head base rows verdict runs green red pending why i
