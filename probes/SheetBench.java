@@ -45,6 +45,80 @@ public final class SheetBench {
      */
     private static final double CORR_BOUND = 0.15;
 
+    /**
+     * The two bounds, applied to numbers rather than to a run (#1092).
+     *
+     * <p>{@code BITFLIP_TOLERANCE} has one reader — the line above — and nothing in the
+     * tree would notice a wrong value. Set it to {@code 0.5} and the mixer would have to
+     * be perfect to pass, with the sweep going red for a reason no line explains; set it
+     * to {@code 0.4} and everything passes forever. The value is correct today and
+     * nothing establishes that it is, which is the argument #1002 made about the beat
+     * band one instrument over: <em>a declared convention, not a measured tolerance.</em>
+     *
+     * <p>Pulling the comparison out of the measurement is what makes it falsifiable. The
+     * bounds cannot be derived — a stated property of the mixer that makes 0.01 the right
+     * number does not exist — so the cheaper half of #1092 is the one taken: a synthetic
+     * pair of figures that MUST fail, so each bound has been seen to say no.
+     *
+     * @return {@code true} when the measured pair is inside both bounds
+     */
+    private static boolean avalancheHolds(double meanBitflip, double worstCorr) {
+        return Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE && worstCorr <= CORR_BOUND;
+    }
+
+    /**
+     * Has each bound been watched refusing something? (#1092)
+     *
+     * <p>Both are {@code <=}, so the boundary cases are the ones that matter: a figure
+     * exactly at the tolerance PASSES and the first figure past it fails. Written as
+     * offsets from the constants rather than as literals, so tightening a bound moves the
+     * cases with it instead of turning this suite red for the wrong reason.
+     */
+    private static int avalancheSelfcheck() {
+        int pass = 0;
+        int fail = 0;
+        double half = 0.5;
+        double[][] cases = {
+            // meanBitflip, worstCorr, want (1 = holds)
+            {half, 0.0, 1},
+            // JUST INSIDE AND JUST OUTSIDE, NOT ON THE LINE. `0.5 + 0.01` is
+            // 0.5100000000000000088817841970012523233890533447265625 in binary
+            // doubles, so `|x - 0.5| <= 0.01` is FALSE at what a reader would
+            // call the boundary — the first draft of this suite asserted the
+            // boundary passes and went red on two cases. That is not a defect
+            // in the bound; it is the bound being applied to a number that
+            // cannot be written exactly, and a case asserting otherwise would
+            // be a case asserting arithmetic that does not exist.
+            {half + BITFLIP_TOLERANCE * 0.99, 0.0, 1},
+            {half - BITFLIP_TOLERANCE * 0.99, 0.0, 1},
+            {half + BITFLIP_TOLERANCE * 1.01, 0.0, 0},
+            {half - BITFLIP_TOLERANCE * 1.01, 0.0, 0},
+            {half, CORR_BOUND * 0.99, 1},
+            {half, CORR_BOUND * 1.01, 0},
+            // Both breached at once still fails, and it fails for two reasons: a
+            // conjunction that reported only its first false conjunct would send a
+            // reader to one bound while the other was also breached.
+            {half + BITFLIP_TOLERANCE * 1.01, CORR_BOUND * 1.01, 0},
+        };
+        for (double[] c : cases) {
+            boolean want = c[2] == 1;
+            boolean got = avalancheHolds(c[0], c[1]);
+            System.out.println(String.format(Locale.ROOT,
+                    "AVALANCHE case bitflip=%.4f corr=%.4f want=%s got=%s %s",
+                    c[0], c[1], want, got, want == got ? "OK" : "BROKEN"));
+            if (want == got) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+        System.out.println(String.format(Locale.ROOT,
+                "AVALANCHE SELFCHECK VERDICT %s cases=%d failed=%d bitflip_tolerance=%s corr_bound=%s",
+                fail == 0 ? "BOUNDS_REFUSE" : "BOUNDS_BROKEN",
+                pass + fail, fail, bound(BITFLIP_TOLERANCE), bound(CORR_BOUND)));
+        return fail == 0 ? 0 : 1;
+    }
+
     /** A strict-avalanche mixer flips half the output bits; this is the tolerance around it. */
     private static final double BITFLIP_TOLERANCE = 0.01;
 
@@ -83,12 +157,13 @@ public final class SheetBench {
             case "--hunt-axis" -> huntAxis();
             case "--discipline" -> discipline();
             case "--avalanche" -> System.exit(avalanche());
+            case "--avalanche-selfcheck" -> System.exit(avalancheSelfcheck());
             case "--bands" -> System.exit(bands());
             case "--boot-version" -> bootVersion();
             case "" -> cast();
             default -> {
                 System.err.println("unknown mode: " + mode
-                        + " (try --vocab, --hunt-axis, --discipline, --avalanche, --bands, --boot-version)");
+                        + " (try --vocab, --hunt-axis, --discipline, --avalanche, --avalanche-selfcheck, --bands, --boot-version)");
                 System.exit(Probes.Outcome.REFUSED.code());
             }
         }
@@ -272,10 +347,13 @@ public final class SheetBench {
         }
 
         double meanBitflip = (double) flips / trials;
+        // The two legs are still reported separately, and the CONJUNCTION is the shared
+        // predicate the suite drives (#1092) — so a bound that has been watched refusing
+        // a synthetic figure is the same bound applied here.
         boolean avalancheOk = Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE;
         boolean corrOk = worstCorr <= CORR_BOUND;
         System.out.println(String.format(Locale.ROOT, "AVALANCHE names=%d axes=%d mean_bitflip=%.4f"
-                        + " max_axis_corr=%.4f pair=%s bound=%.2f VERDICT %s",
+                        + " max_axis_corr=%.4f pair=%s corr_bound=%.2f VERDICT %s",
                 pool.size(), axes, meanBitflip, worstCorr, worstPair, CORR_BOUND,
                 avalancheOk && corrOk ? "PASS" : "FAIL"));
         // The line above verdicts on two conjuncts and prints one of their
