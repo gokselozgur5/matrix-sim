@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,10 +39,41 @@ final class Probes {
      *
      * @param verdict the line the bench greps, printed verbatim
      * @param held    true when the contract this probe judges was kept
+
+
      */
     static void leave(String verdict, boolean held) {
         System.out.println(verdict);
         System.exit(held ? 0 : 1);
+    }
+
+    /**
+     * A population as a sorted, comma-joined string, or {@code none} (#1574).
+     *
+     * <p>Three probes wrote this the same day for the same reason — {@code LeaveContract}
+     * and {@code VacuousGuard} in #1550, {@code CatalogFlags} in #1572 — and the argument
+     * that kept them apart was about TWO copies: a helper added for two callers is one the
+     * next thirty inherit. Three copies written in one afternoon is the sentence #1512
+     * settled about the comment strip: <em>written an hour apart for the same bug, which is
+     * the argument for one home per language.</em>
+     *
+     * <p><b>Sorted</b>, so two sweeps of one tree produce byte-identical text. The order a
+     * population comes out of the bench table is not information, and an unsorted list
+     * would make a diff of two runs report a reordering as a change — which is the whole
+     * purpose of these lines: a pinned COUNT cannot show a swap, and a sorted member list
+     * can.
+     *
+     * <p><b>{@code none} rather than an empty field</b>, because a trailing {@code =}
+     * followed by nothing reads as a truncated line rather than as an empty set. That is a
+     * decision, and a decision copied three times is a decision nobody can change.
+     */
+    static String joined(List<String> names) {
+        if (names.isEmpty()) {
+            return "none";
+        }
+        List<String> sorted = new ArrayList<>(names);
+        Collections.sort(sorted);
+        return String.join(",", sorted);
     }
 
     /**

@@ -167,7 +167,7 @@ public final class VacuousGuard {
         // #1531 — one probe out, one in, the number unmoved. The set rides its own line,
         // sorted and joined, UNPINNED: a member list in an exact-line grep is a list every
         // unit edits (#1192, #884).
-        System.out.println("VACUOUS_MEMBERS unguarded=" + join(unguarded));
+        System.out.println("VACUOUS_MEMBERS unguarded=" + Probes.joined(unguarded));
         System.out.println("VACUOUS_CENSUS judged=" + rows.size()
                 + " by_field=" + byField.size()
                 + " by_word=" + byWord.size()
@@ -182,21 +182,6 @@ public final class VacuousGuard {
     }
 
 
-    /**
-     * A population as a sorted, comma-joined string, or {@code none} (#1550).
-     *
-     * <p>Sorted so two sweeps of one tree produce byte-identical text: the order the bench
-     * table lists rows in is not information, and an unsorted list would make a diff of two
-     * runs report a reordering as a change.
-     */
-    private static String join(List<String> names) {
-        if (names.isEmpty()) {
-            return "none";
-        }
-        List<String> sorted = new ArrayList<>(names);
-        java.util.Collections.sort(sorted);
-        return String.join(",", sorted);
-    }
 
     private VacuousGuard() {}
 }
