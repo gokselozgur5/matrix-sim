@@ -276,6 +276,9 @@ found=0
 checked=0
 missing=0
 unfalsifiable=0
+doors_ok=0
+doorless=0
+doors_wrong=0
 BREAKS=0
 
 for tool in tools/*.sh; do
@@ -459,11 +462,28 @@ done
 # every tool the row names rather than only the one it is about. A counter that has
 # been both red on purpose and wrong once is not a counter whose zero means nobody
 # is looking.
-BREAK_COUNTERS='rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
+BREAK_COUNTERS='doorless doors_wrong rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
 
 verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
   if [ "$BREAKS" -eq 0 ]; then
     echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
+  elif [ "$doorless" -gt 0 ]; then
+    # A thirteenth word (#1410). Its own, and not a flag word: `--help` is the one
+    # flag whose absence neither existing direction can see. `flags_undocumented`
+    # reads arms against the row and `flags_phantom` reads the row against the
+    # arms; a tool with NO door has nothing on either side to disagree, so both
+    # are silent and both are correct. Sending the reader to either would send
+    # them to a file where the rows and the parser agree perfectly.
+    echo "ADVICE VERDICT A_TOOL_THAT_WILL_NOT_SAY_WHAT_IT_DOES doorless=$doorless"
+  elif [ "$doors_wrong" -gt 0 ]; then
+    # A fourteenth (#1410), and the quieter of the pair. The door opens and the
+    # answer is not the clause — a stale line range, a wrong file, a truncated
+    # block. `checkage.sh` printed one line too many for its whole life and
+    # nobody saw it (#1520), because nobody diffs `--help` against the header.
+    # Distinct from `doorless` for the reason every word in this chain is
+    # distinct: "it will not answer" sends a reader to the parser, and the
+    # parser is fine.
+    echo "ADVICE VERDICT A_DOOR_THAT_DOES_NOT_PRINT_THE_CLAUSE wrong=$doors_wrong"
   elif [ "$missing" -gt 0 ]; then
     echo "ADVICE VERDICT ADVISES_A_FLAG_NOBODY_IMPLEMENTS unimplemented=$missing"
   elif [ "$codes_undocumented" -gt 0 ]; then
@@ -571,6 +591,86 @@ unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it s
   printf '%s' "${out# }"
 }
 
+
+
+# THE DOOR EVERY TOOL NOW HAS, AND NOTHING WAS WATCHING (#1410).
+#
+# Thirteen tools and `probes/bench.sh` learned to answer `--help` across #1517,
+# #1520, #1522, #1525, #1527 and #1529 — and every one of those units was verified
+# by a transcript pasted into a pull request. A paste is not a lock. The doors can
+# rot one at a time, silently, and the next tool written can simply not have one.
+#
+# THE CHECK IS THE ONE THING NEITHER EXISTING DIRECTION COULD SEE. `flags_parsed`
+# reads a tool's ARMS and `flags_phantom` reads its ROW; both are satisfied by a
+# `-h|--help)` arm that prints nothing, prints the wrong file, or exits 2. What
+# makes this checkable at all is that the answer has a KNOWN correct value: the
+# block reader over the tool's own header, which is what every door here runs.
+#
+# SO THIS ONE EXECUTES THE TOOL, and that is a departure this file argues against
+# elsewhere: it will not run a tool's ADVICE, because `git commit --amend` inside
+# an audit is a tool damaging the tree to check whether it damages the tree. A
+# `--help` door is the one invocation in the shop that is a pure function of the
+# file — it prints a comment block and exits, before any parser, any network call
+# and any write. `release.sh --help` cannot cut a tag; that is the whole point of
+# where the arm sits.
+#
+# THREE OUTCOMES, and the middle one is why `doorless` is not the only counter:
+#   doorless=    the tool refuses --help, or exits nonzero for it
+#   doors_wrong= it answers, and the answer is not its header clause
+#   doors_ok=    it answers with exactly the clause the block reader prints
+#
+# A door printing the wrong thing is the quieter failure and the longer-lived one:
+# `checkage.sh` spent its whole life printing one line too many (#1520) and nobody
+# saw it, because nobody diffs `--help` against the header.
+help_audit() {                                   # help_audit <tools-dir> [extra-tools...]
+  local dir="$1"; shift
+  local tool out want
+  doors_ok=0
+  doorless=0
+  doors_wrong=0
+  for tool in "$dir"/*.sh "$@"; do
+    [ -f "$tool" ] || continue
+    # The reader the doors themselves run: to the END of the comment block, never
+    # to a line number (#1382). Quoted here rather than imported, because a shared
+    # helper would mean the check and its subject read the file the same way BY
+    # CONSTRUCTION and the comparison would be vacuous.
+    want="$(awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$tool")"
+    # THE TEXTUAL TEST COMES FIRST, AND IT IS NOT AN OPTIMISATION (#1410). Running
+    # a tool that has no door does not print a refusal — it runs the TOOL. The
+    # first draft of this audit executed every file unconditionally and
+    # `tools/backlog.sh` with its arm deleted did not refuse `--help`: it read the
+    # flag as nothing and started paging the issues API, a thousand results at a
+    # time, and the audit hung. An auditor whose failure case is "perform the
+    # subject's whole job" is not one this shop can run in a lane.
+    #
+    # So: no arm, no execution. The read is a grep for `--help)` on a line that is
+    # not a comment — looser than the arm reader `flag_audit` uses, and on purpose.
+    # That one demands the arm at line start, which is the shop's spelling but not
+    # the only working one; a folded `case … in -h|--help) … esac` is a door that
+    # works, and reporting it NO_DOOR would be this check inventing a defect out of
+    # a style. Comments are excluded because a file that only DISCUSSES `--help)` is
+    # a file with no door, and running it is the thing this paragraph is about.
+    if ! grep -qE '^[^#]*--help\)' "$tool"; then
+      doorless=$((doorless + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "NO_DOOR $tool has no --help arm to run"
+      continue
+    fi
+    if ! out="$(bash "$tool" --help 2>/dev/null)"; then
+      doorless=$((doorless + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "NO_DOOR $tool has a --help arm and leaves nonzero for it"
+      continue
+    fi
+    if [ "$out" != "$want" ]; then
+      doors_wrong=$((doors_wrong + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "DOOR_WRONG $tool answers --help with something other than its header clause"
+      continue
+    fi
+    doors_ok=$((doors_ok + 1))
+  done
+}
 
 flag_audit() {                                   # flag_audit <tools-dir> <catalog>
   local dir="$1" catalog="$2" tool name row body helper arms compares accepted advertised flag
@@ -824,6 +924,55 @@ selftest() {
   no_flags_case positional-only 1 'echo "$1"' "$ROW_WITHOUT"
   no_flags_case has-flags       0 '  --pr) PR=1 ;;' "$ROW_WITH"
 
+  # THE DOOR AUDIT'S OWN CASES (#1410). Three tools in a scratch shop, one per
+  # outcome, because the two failures are different defects and a suite that only
+  # drove `doorless` would let `doors_wrong` be an unreachable branch — the state
+  # `charset_drift` sat in for its whole life (#1358).
+  door_case() {                 # door_case <name> <want-ok/less/wrong> <tool-body>
+    local name="$1" want="$2" body="$3" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$body" > "$tmp/shop/fixture.sh"
+    BREAKS=0
+    help_audit "$tmp/shop" >/dev/null 2>&1
+    got="$doors_ok/$doorless/$doors_wrong"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  # The clause is two comment lines under the shebang; the door prints them with
+  # the same block reader every real door here runs.
+  local CLAUSE='#!/usr/bin/env bash
+# fixture.sh — does a thing
+#
+# Usage: fixture.sh [--pr N]'
+  local READER='awk '"'"'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}'"'"' "$0"; exit 0'
+
+  door_case door-open      1/0/0 "$CLAUSE
+case \"\${1:-}\" in -h|--help) $READER ;; esac"
+  # No arm at all: the tool refuses, or treats --help as an argument and leaves
+  # nonzero. Either way there is no door.
+  door_case door-absent    0/1/0 "$CLAUSE
+echo \"FATAL unknown argument: \$1\" >&2; exit 2"
+  # THE QUIET ONE. The door opens, exits 0, prints something — and it is not the
+  # clause. A line range that has drifted looks exactly like this from outside,
+  # and nothing before #1410 could tell it from a correct door.
+  door_case door-wrong-text 0/0/1 "$CLAUSE
+case \"\${1:-}\" in -h|--help) sed -n '2,2p' \"\$0\"; exit 0 ;; esac"
+  # A door that prints the clause and then leaves nonzero is doorless, not wrong:
+  # a caller checking \$? never reads the text.
+  door_case door-bad-exit  0/1/0 "$CLAUSE
+case \"\${1:-}\" in -h|--help) awk 'NR==1 {next} !/^#/ {exit} {print}' \"\$0\"; exit 1 ;; esac"
+  # THE CASE THE FIRST DRAFT'S HANG ARGUES FOR. A file that only DISCUSSES the door
+  # in a comment has no door, and must be reported WITHOUT being run — the body here
+  # would otherwise take a minute and print nothing this audit asked for, which is
+  # what `backlog.sh` did with its arm deleted.
+  door_case door-in-comment 0/1/0 "$CLAUSE
+# the arm would be -h|--help) here if this tool had one
+sleep 60"
+
   # The exit-code join (#1238). The live rows falsify it too — it found two real
   # ones the day it was written — but the tree will stop supplying examples the
   # moment they are fixed, and a check with no case left is a check nobody can
@@ -895,6 +1044,8 @@ selftest() {
     fi
   }
   verdict_case -                  EVERY_FLAG_ADVISED_EXISTS
+  verdict_case doorless           A_TOOL_THAT_WILL_NOT_SAY_WHAT_IT_DOES
+  verdict_case doors_wrong        A_DOOR_THAT_DOES_NOT_PRINT_THE_CLAUSE
   verdict_case missing            ADVISES_A_FLAG_NOBODY_IMPLEMENTS
   verdict_case codes_undocumented A_TOOL_SPENDS_CODES_ITS_ROW_DOES_NOT_NAME
   verdict_case codes_unnamed      A_ROW_NAMES_SOME_OF_A_TOOLS_CODES
@@ -1133,6 +1284,10 @@ if [ "$SELFTEST" = yes ]; then
 fi
 
 flag_audit tools tools/README.md
+# The bench is not in `tools/` and is the one a stranger is most likely to run, so it
+# is named rather than swept — `probes/` holds fifty-seven Java files and one shell
+# program, and a glob there would ask a probe for a door it has no reason to have.
+help_audit tools probes/bench.sh
 
 # A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
 # readers added today catch a MISSING row; a WRONG row is prose about a program written by
@@ -1527,7 +1682,8 @@ done
 
 echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_no_row=$codes_no_row codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
-     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags flags_in_helpers=$flags_in_helpers"
+     "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags flags_in_helpers=$flags_in_helpers" \
+     "doors_ok=$doors_ok doorless=$doorless doors_wrong=$doors_wrong"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
 # claim whose change is a finding — a tool gaining a helper function that
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
