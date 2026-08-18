@@ -7,6 +7,7 @@
 #                                            (default: the PR's own base, or main)
 #        tools/checkage.sh ... --for OWNER/NAME    name the repository (default: origin)
 #        tools/checkage.sh --selftest        the age arithmetic's own cases, no token, no network
+#        tools/checkage.sh --help | -h      print this clause, and stop
 #
 # WHAT THIS EXISTS FOR. `gh pr checks` reports the checks attached to the current head, and
 # a head that has not moved keeps the run it already has. That run stays green forever —
@@ -74,7 +75,13 @@ while [ $# -gt 0 ]; do
     --base)     BASE="${2:-}";           [ -n "$BASE" ] || { echo "FATAL --base wants a ref after it" >&2; exit 2; }; shift 2 ;;
     --for)      REPO="${2:-}";           [ -n "$REPO" ] || { echo "FATAL --for wants OWNER/NAME after it" >&2; exit 2; }; shift 2 ;;
     --selftest) MODE=selftest; shift ;;
-    -h|--help)  sed -n '2,10p' "$0"; exit 0 ;;
+    # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520). `2,10p`
+    # was right the day it was written and had already drifted by one — it printed
+    # the blank comment line below the clause — and the direction that matters is
+    # the other one: a door documented below the number is absent from `--help`
+    # while sitting above the parser that accepts it. That is how `--schedules`
+    # became a flag prstate.sh answered and never mentioned.
+    -h|--help)  awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     *) echo "FATAL unknown argument: $1" >&2; exit 2 ;;
   esac
 done
