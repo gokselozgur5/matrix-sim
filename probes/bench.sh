@@ -382,7 +382,7 @@ table() {
   judge SheetBench   'AVALANCHE SELFCHECK VERDICT BOUNDS_REFUSE cases=12 failed=0 bitflip_tolerance=0.01 corr_bound=0.15' --avalanche-selfcheck
   judge SheetBench   'VERDICT CAST_BOOT_AGREES bench=6 world=6' --boot-version
   run   SheetBench   --avalanche
-  judge DocLint      'VERDICT DOCS_TRUE gaps=3'         "$TICKS"
+  judge DocLint      'VERDICT DOCS_TRUE gaps=D-055,D-056,D-057'         "$TICKS"
   judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
   judge DocsRoster   'VERDICT EVERY_DOCUMENT_IS_NAMED orphans=0 scanned_none=0'
   # Three populations exit with codes a script branches on, and until #1219 two
