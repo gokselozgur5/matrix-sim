@@ -276,6 +276,9 @@ found=0
 checked=0
 missing=0
 unfalsifiable=0
+doors_pure=0
+doors_shell=0
+doors_network=0
 refusals_ok=0
 refusals_wrong=0
 refusals_hung=0
@@ -465,11 +468,19 @@ done
 # every tool the row names rather than only the one it is about. A counter that has
 # been both red on purpose and wrong once is not a counter whose zero means nobody
 # is looking.
-BREAK_COUNTERS='refusals_wrong refusals_hung doorless doors_wrong rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
+BREAK_COUNTERS='doors_network refusals_wrong refusals_hung doorless doors_wrong rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
 
 verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
   if [ "$BREAKS" -eq 0 ]; then
     echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
+  elif [ "$doors_network" -gt 0 ]; then
+    # A seventeenth word (#1555), and it is about THIS FILE rather than about the
+    # tool it names. `help_audit` and `refusal_audit` execute every tool on the
+    # argument that its door is reached before anything happens; a door below a
+    # `gh` call makes that argument false, and the audit then makes a network call
+    # while checking whether a flag is refused. Sending the reader to a door word
+    # would send them to a door that works.
+    echo "ADVICE VERDICT A_DOOR_BELOW_THE_NETWORK reached=$doors_network"
   elif [ "$refusals_wrong" -gt 0 ]; then
     # A fifteenth word (#1552). Not a flag word and not a row word: the tool
     # refused, correctly, and spent the wrong code doing it. Every text-against-
@@ -640,6 +651,86 @@ unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it s
 # A door printing the wrong thing is the quieter failure and the longer-lived one:
 # `checkage.sh` spent its whole life printing one line too many (#1520) and nobody
 # saw it, because nobody diffs `--help` against the header.
+
+
+# IS THE DOOR REACHABLE BEFORE ANYTHING HAPPENS? (#1555)
+#
+# Two checks in this file EXECUTE every tool — `help_audit` feeds `--help` and
+# `refusal_audit` feeds a flag nobody parses. #1410's argument for the first was
+# that a `--help` door is a pure function of the file: it prints a comment block
+# and exits before any parser, any network call and any write, so
+# `release.sh --help` cannot cut a tag. That was true of every door the day it was
+# written and it was never a property the audit ENFORCED. #1552 could not make the
+# argument at all — a refusal happens after whatever the parser does first, and
+# `subissue.sh` had its flags read AFTER two `gh` calls until #1309 moved them.
+#
+# THE WATCHDOG BOUNDS DURATION, NOT EFFECT. A tool that reaches an API before its
+# refusal has already made the call when the kill lands. This file's own rule
+# elsewhere is stricter and says so — *it will not run the advice, because
+# `git commit --amend` inside an audit would be a tool damaging the tree to check
+# whether it damages the tree* — and two checks now sit on the other side of that
+# line with an argument rather than a guarantee.
+#
+# So the argument becomes a check. In the tool's DOOR scope — `by_scope` already
+# isolates the top-level parser from helper bodies — no side-effecting command may
+# appear above the first arm the audits invoke. That is decidable from the text
+# and it is the same shape of question `promises_a_suite` already asks.
+#
+# WHAT COUNTS, AND WHY THE LIST IS SPLIT. The first draft used one list — `gh`,
+# `curl`, `git`, `rm`, `mv`, `mkdir`, `tee` — and broke the build on three tools,
+# none of which is a hazard:
+#
+#   baseline.sh   `git rev-parse --show-toplevel` at door line 5   (a READ)
+#   litany.sh     `trap 'rm -rf "$PRODUCER_CACHE"' EXIT` at 11     (REGISTERS a trap)
+#   subissue.sh   `trap 'rm -rf "$tmp"' EXIT` at 10                (the same)
+#
+# A trap does not run where it is written, and a `git rev-parse` reads. Breaking on
+# those teaches the next author to spell around the checker, which is exactly what
+# #1207 says a bound must not do. So:
+#
+#   NETWORK is the break. `gh` and `curl` have unbounded effect and a watchdog
+#   cannot undo a request that has already left. This is the set the audits'
+#   argument is actually about.
+#   SHELL is a report. Another program above the door is worth seeing — it is how
+#   a network call arrives later — and it is not a defect today.
+#
+# Trap registrations are excluded from both: the body of a trap runs at exit, which
+# is after the door has printed and left, and every one in this shop removes a
+# temp directory the tool itself made.
+DOOR_NETWORK='gh|curl|wget'
+DOOR_SHELL='git|java|javac|mktemp|mv|rm|mkdir|touch|tee'
+
+door_purity() {                 # door_purity <tools-dir>
+  local dir="$1" tool body arm_line net_line shell_line
+  doors_pure=0
+  doors_shell=0
+  doors_network=0
+  for tool in "$dir"/*.sh; do
+    [ -f "$tool" ] || continue
+    # Comments out, trap REGISTRATIONS out, then the door scope only — `by_scope`
+    # already separates the top-level parser from helper bodies, and the audits'
+    # invocation reaches nothing else before the tool starts working.
+    body="$(grep -vE '^[[:space:]]*#' <<< "$(by_scope "$tool" door)" | grep -vE '^[[:space:]]*trap[[:space:]]' || true)"
+    arm_line="$(printf '%s\n' "$body" | grep -nE -- '--help\)' | head -1 | cut -d: -f1)"
+    if [ -z "$arm_line" ]; then
+      # No door at all is `help_audit`'s finding; reporting it twice would be one
+      # defect counted twice (#1170).
+      continue
+    fi
+    net_line="$(printf '%s\n' "$body" | grep -nE "(^|[^-a-zA-Z_])($DOOR_NETWORK)[[:space:]]" | head -1 | cut -d: -f1)"
+    shell_line="$(printf '%s\n' "$body" | grep -nE "(^|[^-a-zA-Z_])($DOOR_SHELL)[[:space:]]" | head -1 | cut -d: -f1)"
+    if [ -n "$net_line" ] && [ "$net_line" -lt "$arm_line" ]; then
+      doors_network=$((doors_network + 1))
+      BREAKS=$((BREAKS + 1))
+      echo "DOOR_BELOW_THE_NETWORK $tool reaches the network at door line $net_line, above its --help arm at $arm_line"
+    elif [ -n "$shell_line" ] && [ "$shell_line" -lt "$arm_line" ]; then
+      doors_shell=$((doors_shell + 1))
+      echo "DOOR_BELOW_A_COMMAND $tool runs another program at door line $shell_line, above its --help arm at $arm_line"
+    else
+      doors_pure=$((doors_pure + 1))
+    fi
+  done
+}
 
 # IS A REFUSAL A 2? (#1552)
 #
@@ -1097,6 +1188,39 @@ sleep 60"
   # does its job. This is what `backlog.sh` did to #1410's first door audit.
   refusal_case refusal-never     0/0/1 'sleep 30'
 
+  # THE DOOR-PURITY CASES (#1555). Four, because the rule has three outcomes and a
+  # trap registration is the false positive that broke the first draft on three
+  # real tools.
+  purity_case() {               # purity_case <name> <want-pure/shell/network> <tool-body>
+    local name="$1" want="$2" body="$3" got
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$body" > "$tmp/shop/fixture.sh"
+    BREAKS=0
+    door_purity "$tmp/shop" >/dev/null 2>&1
+    got="$doors_pure/$doors_shell/$doors_network"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  local ARM='case "${1:-}" in -h|--help) echo hi; exit 0 ;; esac'
+  purity_case door-first        1/0/0 "$ARM"
+  # The break: an unbounded effect above the door, so the audits above would make
+  # a network call while asking whether a flag is refused.
+  purity_case door-below-network 0/0/1 "root=\$(gh api user)
+$ARM"
+  # Reported, not broken: another program above the door is worth seeing — it is
+  # how a network call arrives later — and is not a defect today.
+  purity_case door-below-command 0/1/0 "root=\$(git rev-parse --show-toplevel)
+$ARM"
+  # THE FALSE POSITIVE THAT COST THE FIRST DRAFT THREE TOOLS. A trap does not run
+  # where it is written; its body runs at exit, after the door has printed and
+  # left, and every one in this shop removes a temp directory the tool made.
+  purity_case trap-is-not-an-effect 1/0/0 "trap 'rm -rf /tmp/x' EXIT
+$ARM"
+
   # The exit-code join (#1238). The live rows falsify it too — it found two real
   # ones the day it was written — but the tree will stop supplying examples the
   # moment they are fixed, and a check with no case left is a check nobody can
@@ -1168,6 +1292,7 @@ sleep 60"
     fi
   }
   verdict_case -                  EVERY_FLAG_ADVISED_EXISTS
+  verdict_case doors_network      A_DOOR_BELOW_THE_NETWORK
   verdict_case refusals_wrong     A_REFUSAL_SPENDS_THE_WRONG_CODE
   verdict_case refusals_hung      A_TOOL_THAT_DOES_NOT_REFUSE
   verdict_case doorless           A_TOOL_THAT_WILL_NOT_SAY_WHAT_IT_DOES
@@ -1414,6 +1539,7 @@ flag_audit tools tools/README.md
 # is named rather than swept — `probes/` holds fifty-seven Java files and one shell
 # program, and a glob there would ask a probe for a door it has no reason to have.
 help_audit tools probes/bench.sh
+door_purity tools
 refusal_audit tools
 
 # A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
@@ -1811,7 +1937,8 @@ echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogu
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags flags_in_helpers=$flags_in_helpers" \
      "doors_ok=$doors_ok doorless=$doorless doors_wrong=$doors_wrong" \
-     "refusals_ok=$refusals_ok refusals_wrong=$refusals_wrong refusals_hung=$refusals_hung"
+     "refusals_ok=$refusals_ok refusals_wrong=$refusals_wrong refusals_hung=$refusals_hung" \
+     "doors_pure=$doors_pure doors_shell=$doors_shell doors_network=$doors_network"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
 # claim whose change is a finding — a tool gaining a helper function that
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
