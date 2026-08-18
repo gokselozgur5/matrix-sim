@@ -88,50 +88,6 @@ rows_none          the table had no rows
 '
 
 
-# DOES THIS SOURCE PRINT A `name=value` ANYWHERE? (#1579, given a home by #1583)
-#
-# The third comment strip in this tree, and the one that needed an argument. #1512
-# settled the rule as ONE HOME PER LANGUAGE: `Probes.uncommented` reads Java and has
-# cases (#1580), `advice.sh`'s reads shell. This is a SHELL tool reading JAVA, and
-# the tested Java strip lives in a class a shell script cannot call — so the third
-# home is forced by the language boundary rather than chosen.
-#
-# What was not forced is that it had no cases and dropped whole lines:
-#
-#   grep -vE '^[[:space:]]*(\*|//|/\*)'
-#
-# That removes a line OPENING with a comment marker and keeps a trailing one, so
-# `int n = c;   // note x=1` reads as a printed counter. Both halves are handled
-# here, and the granularity that remains is stated rather than left to be found: a
-# block comment opening mid-line takes the rest of that line and nothing after it,
-# because a shell filter reading line by line cannot carry state across lines the
-# way `Probes.uncommentedLines` does.
-#
-# THE ERROR DIRECTION IS THE SAFE ONE EITHER WAY. Anything this misses is a comment
-# read as code, which finds a counter that is not printed — so `prints_no_counter=`
-# UNDERSTATES the population and can never invent a member of it (#1207).
-prints_a_counter() {              # prints_a_counter <java file> — 0 it prints one
-  [ -f "$1" ] || return 1
-  # NOT `sed … | grep -q`, AND THE REASON IS ON RECORD ONE FILE OVER. Under
-  # `pipefail` — which this script sets — `grep -q` exits at the first match, the
-  # `sed` upstream takes SIGPIPE, and the PIPELINE's status is the failure. The
-  # function then answers "prints nothing" about a probe printing twenty-one
-  # counters, which is what it did: `SheetBench` and `DocLint` were both reported.
-  # `advice.sh` documents the identical trap beside its own `case` match — *-q exits
-  # at the first match, the printf takes SIGPIPE, and on ubuntu-latest that prints
-  # `write error: Broken pipe` and takes the exit code with it*.
-  local stripped
-  # THE ORDER OF THE FOUR RULES IS THE WHOLE READING, and the third arrived from a
-  # case. A leading `*/` CLOSES a block comment and is followed by code on the same
-  # line — ` */ System.out.println("A census=1");` — so a rule that drops any line
-  # opening with `*` eats the code after the close. It is stripped first, then the
-  # javadoc-continuation drop, then the opener, then trailing `//`.
-  stripped="$(sed -e 's@^[[:space:]]*\*/@@' \
-                  -e '/^[[:space:]]*\*/d' \
-                  -e 's@/\*.*@@' \
-                  -e 's@//.*@@' "$1")"
-  printf '%s' "$stripped" | grep -cE '"[^"]*[a-z_]+=' > /dev/null 2>&1
-}
 
 guard() {                         # guard <name> — 0 it is an exempt guard
   grep -qE "^[[:space:]]*$1[[:space:]]" <<< "$GUARDS"
@@ -180,7 +136,7 @@ report() {                        # report <bench> <catalog>
   [ -r "$bench" ] || { echo "FATAL cannot read $bench" >&2; return 3; }
   [ -r "$catalog" ] || { echo "FATAL cannot read $catalog" >&2; return 3; }
 
-  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0 nocounter=0 printsnone=0
+  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0
   local cls toks tok row
   while read -r cls toks; do
     rows=$((rows + 1))
@@ -191,46 +147,6 @@ report() {                        # report <bench> <catalog>
       # twice. Counted here so the identity closes.
       norow=$((norow + 1))
       continue
-    fi
-    # TWO POPULATIONS, NOT ONE (#1579). `row_no_counter=` asks whether the PINNED
-    # verdict carries a field — a real property, because an exact-line row with
-    # nothing in it that can move goes green on a probe whose numbers all changed.
-    # It is NOT the property #1372 asked about, and the sentence beside the old
-    # single count said the second thing: `SameTick` prints five counters and pins a
-    # word, so it landed in the subclass while being one of the better-instrumented
-    # probes in the directory.
-    #
-    # `prints_no_counter=` is the harder half: does the probe print a `name=value`
-    # ANYWHERE. A probe in both is one nothing can watch. A probe in the first only
-    # is a row that should probably pin one of the fields it already prints, which
-    # is a repair with an obvious shape — and the reason separating them is worth a
-    # second counter rather than a footnote.
-    #
-    # The read is textual and generous: any `name=` inside a string literal, with
-    # javadoc and comment lines dropped first. It over-counts a probe that mentions
-    # `x=` in prose it prints, which understates the finding and can never invent
-    # one — the safe direction for a census (#1207).
-    # It counts ROWS and not probes, beside
-    # `rows=` and for the same reason: a probe with two judged rows is two pinned
-    # lines and either can be the one nothing can move. `VERDICT X_HELD` and nothing after it
-    # cannot be told apart from a row that always prints that line: there is no
-    # number in it to move, so the only way to watch the probe fail is to break the
-    # world it judges and look. #1372 asked for this subclass to be MEASURED, and it
-    # is the decidable half of that issue — the other half, *has this probe ever been
-    # seen red*, has three sources and none of them is a lane check.
-    #
-    # REPORTED, never judged, and the reason is in the issue: many of these judge a
-    # SIMULATION, and their falsifier is the world itself — `BondScenario` reads a
-    # 40,000-tick run and would report differently on a broken one with no counter to
-    # show for it. A gate here would demand a number from a probe that has nothing to
-    # count, which is how a rule gets exempted the first time it is inconvenient.
-    if [ -z "$toks" ]; then
-      nocounter=$((nocounter + 1))
-      [ "$MODE" = list ] && printf 'NO_COUNTER %-20s the verdict on this row carries no field that can move\n' "$cls"
-      if [ -f "probes/$cls.java" ] && ! prints_a_counter "probes/$cls.java"; then
-        printsnone=$((printsnone + 1))
-        [ "$MODE" = list ] && printf 'PRINTS_NO_COUNTER %-14s and its source prints no name=value anywhere\n' "$cls"
-      fi
     fi
     for tok in $toks; do
       pinned=$((pinned + 1))
@@ -251,7 +167,7 @@ report() {                        # report <bench> <catalog>
   # closes by construction and every path through the token loop increments
   # exactly one term, which the suite's closed-set case asserts rather than argues
   # (the #1443 lesson, one directory over).
-  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow row_no_counter=$nocounter prints_no_counter=$printsnone bench=$bench catalog=$catalog"
+  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow bench=$bench catalog=$catalog"
 
   # `pinned_none=` rides the VERDICT, because a reading that found no bench row
   # must not print the line a fully-named catalog prints (#1207). Nothing read is
@@ -369,122 +285,6 @@ selftest() {
       "  judge Alpha 'VERDICT X a=0 swept_none=0'" \
       '| `Alpha` | does a thing. It carries `a=`. |'
 
-  # THE NO-COUNTER SUBCLASS (#1372), driven over the CENSUS line rather than the
-  # verdict, because that is where it rides — the verdict pins the contract and the
-  # census carries populations (#1221).
-  census_case() {                 # census_case <name> <want-row_no_counter> <bench-body> <catalog-body>
-    local name="$1" want="$2" got
-    printf '%s\n' "$3" > "$tmp/b.sh"
-    printf '%s\n' "$4" > "$tmp/c.md"
-    got="$(MODE=count report "$tmp/b.sh" "$tmp/c.md" 2>/dev/null | grep '^COUNTERS_CENSUS' \
-           | sed 's/.*row_no_counter=\([0-9]*\).*/\1/')"
-    if [ "$want" = "$got" ]; then
-      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
-    else
-      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
-    fi
-  }
-  # A verdict with a field is not in the subclass, however few fields it has.
-  census_case census:has-a-counter 0 \
-      "  judge Alpha 'VERDICT X a=0'" \
-      '| `Alpha` | does a thing. It carries `a=`. |'
-  # THE SUBCLASS: a word and nothing after it. Nothing in the line can move, so the
-  # row cannot be told apart from a row that always prints it.
-  census_case census:bare-verdict 1 \
-      "  judge Alpha 'VERDICT X_HELD'" \
-      '| `Alpha` | does a thing. |'
-  # It counts ROWS, not probes: a probe with two judged rows and one bare verdict is
-  # one finding, not zero and not two.
-  census_case census:two-rows-one-bare 1 \
-      "  judge Alpha 'VERDICT X_HELD'
-  judge Alpha 'VERDICT Y b=1'" \
-      '| `Alpha` | does a thing. It carries `b=`. |'
-  # A row whose class has no catalog entry is roster_check's finding and is skipped
-  # BEFORE this count, so it cannot inflate the subclass (#1170).
-  census_case census:no-row-is-not-bare 0 \
-      "  judge Ghost 'VERDICT X_HELD'" \
-      '| `Alpha` | does a thing. |'
-
-  # THE SECOND POPULATION (#1579), which needs a probe SOURCE and not only a bench
-  # row — so the fixtures write one. `prints_no_counter` is a SUBSET of
-  # `row_no_counter` by construction: it is only asked of a row already in the
-  # first, which is the relationship the two cases below pin.
-  prints_case() {                 # prints_case <name> <want> <bench-body> <catalog-body> <source>
-    local name="$1" want="$2" got
-    printf '%s\n' "$3" > "$tmp/b.sh"
-    printf '%s\n' "$4" > "$tmp/c.md"
-    mkdir -p "$tmp/probes"
-    printf '%s\n' "$5" > "$tmp/probes/Alpha.java"
-    got="$(cd "$tmp" && MODE=count report b.sh c.md 2>/dev/null | grep '^COUNTERS_CENSUS' \
-           | sed 's/.*prints_no_counter=\([0-9]*\).*/\1/')"
-    if [ "$want" = "$got" ]; then
-      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
-    else
-      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
-    fi
-  }
-  # THE LIVE SHAPE, and the whole point of the split: a bare pinned verdict on a
-  # probe that prints five counters. `SameTick` is this, and the single count read
-  # it as a probe nobody can watch.
-  prints_case prints:bare-row-rich-probe 0 \
-      "  judge Alpha 'VERDICT X_HELD'" \
-      '| `Alpha` | does a thing. |' \
-      'class Alpha { void m() { System.out.println("ALPHA census=1 late=0"); } }'
-  # And the population that is actually blind: nothing pinned and nothing printed.
-  prints_case prints:bare-row-bare-probe 1 \
-      "  judge Alpha 'VERDICT X_HELD'" \
-      '| `Alpha` | does a thing. |' \
-      'class Alpha { void m() { System.out.println("VERDICT X_HELD"); } }'
-  # A counter named only in a COMMENT is not printed. Same self-matching shape the
-  # Java-side readers have met five times (#1531).
-  prints_case prints:counter-in-a-comment 1 \
-      "  judge Alpha 'VERDICT X_HELD'" \
-      '| `Alpha` | does a thing. |' \
-      'class Alpha {
-  /** prints census=N one day. */
-  void m() { System.out.println("VERDICT X_HELD"); }
-}'
-  # `no_row` is the term `roster_check` cannot cover, and it rides the census — so the
-
-  # THE THIRD COMMENT STRIP'S OWN CASES (#1583). It is a SHELL tool reading JAVA,
-  # so `Probes.uncommented` — which reads Java and has cases since #1580 — is in a
-  # class this script cannot call: the third home is forced by the language
-  # boundary rather than chosen. What was not forced is that it had none of its own.
-  strip_case() {                  # strip_case <name> <want prints|none> <source>
-    local name="$1" want="$2" got
-    printf '%s\n' "$3" > "$tmp/Alpha.java"
-    if prints_a_counter "$tmp/Alpha.java"; then got=prints; else got=none; fi
-    if [ "$want" = "$got" ]; then
-      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%-7s got=%-7s OK\n' "$name" "$want" "$got"
-    else
-      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%-7s got=%-7s BROKEN\n' "$name" "$want" "$got"
-    fi
-  }
-  strip_case strip:prints-a-counter prints 'class A { void m() { System.out.println("A census=1"); } }'
-  strip_case strip:prints-a-word    none   'class A { void m() { System.out.println("VERDICT HELD"); } }'
-  # THE HALF THE FIRST SPELLING MISSED. A whole-line drop removes a line OPENING
-  # with a comment marker and keeps a trailing one, so this read as a printed
-  # counter — the strip finding a counter in a comment about a counter.
-  strip_case strip:trailing-comment none   'class A { void m() { int n = 1; // note x=1
-    System.out.println("VERDICT HELD"); } }'
-  # A javadoc line is dropped whole, which is what the first spelling got right.
-  strip_case strip:javadoc-counter  none   'class A {
-  /**
-   * prints census=N one day.
-   */
-  void m() { System.out.println("VERDICT HELD"); } }'
-  # THE GRANULARITY THAT REMAINS, pinned rather than left to be found: a block
-  # comment OPENING mid-line takes the rest of that line and nothing after it,
-  # because a line-by-line shell filter cannot carry state the way
-  # `Probes.uncommentedLines` does. Here the counter on the NEXT line survives the
-  # comment and is read as printed — which is the safe direction (#1207).
-  strip_case strip:block-mid-line   prints 'class A { void m() { int n = 1; /* note
-     */ System.out.println("A census=1"); } }'
-  # VERDICT stays clean while a judged class has no row at all. The fixture carries one
-  # class with a row and one without, because the verdict is what this case reads and a
-  # rowless class alone leaves `pinned=0`, which is the NOTHING_READ refusal on stderr and a
-  # different finding (#1207). That distinction is the reason the case is written this way
-  # rather than with the obvious one-line fixture.
   read_case read:no-row 'COUNTED pinned=1 named=1 missing=0 exempt=0 pinned_none=0' \
       "  judge Alpha 'VERDICT X a=0'
   judge Ghost 'VERDICT Y z=0'" \

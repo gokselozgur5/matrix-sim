@@ -62,6 +62,17 @@ public final class CatalogFlags {
     private static final Pattern ROW =
             Pattern.compile("^\\s+(judge|known|run)\\s+(\\w+)\\b");
 
+    /**
+     * A JUDGED row with its pinned verdict: `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000`.
+     *
+     * <p>Separate from {@link #ROW} because that one answers <em>which probes are on the
+     * bench</em> and this one answers <em>what does this ROW pin</em> — and the second is
+     * per row, not per probe: a probe with two judged rows is two pinned lines and either
+     * can be the one nothing can move (#1372).
+     */
+    private static final Pattern JUDGED =
+            Pattern.compile("^\\s+(judge|known)\\s+(\\w+)\\s+'([^']*)'");
+
     /** The bench's own exemption grammar, read rather than re-listed. */
     private static final Pattern VARY = Pattern.compile("^\\s+vary\\b");
 
@@ -109,6 +120,55 @@ public final class CatalogFlags {
             Matcher m = ROW.matcher(line);
             if (m.find()) {
                 probes.add(m.group(2));
+            }
+        }
+
+        // THE TWO NO-COUNTER POPULATIONS, MOVED HERE FROM `counters.sh` (#1586).
+        //
+        // They were in a SHELL tool, which meant that tool read Java and carried the
+        // tree's third comment strip — four `sed` rules in a fixed order, with five
+        // cases of its own, forced by the language boundary rather than chosen (#1583).
+        // It is only forced while the counter lives in a script. This class already
+        // reads the bench table, the catalog and probe sources through
+        // `Probes.uncommented`, which carries state across lines and has cases (#1580),
+        // so the move deletes a parser rather than porting one.
+        //
+        // `row_no_counter=` is *the grep on this row cannot move*: a pinned verdict
+        // reading `VERDICT X_HELD` with nothing after it cannot be told apart from a
+        // row that always prints that line.
+        //
+        // `prints_no_counter=` is *this probe prints no number at all*, asked ONLY of
+        // rows already in the first, so it is a subset by construction. Zero of the
+        // twenty-seven: every one of those rows belongs to a probe that prints counters
+        // and pins none of them, which is the measurement that separates the two
+        // readings (#1579) — `SameTick` prints five and pins a word.
+        int rowNoCounter = 0;
+        int printsNoCounter = 0;
+        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
+            if (VARY.matcher(line).find()) {
+                continue;
+            }
+            Matcher m = JUDGED.matcher(line);
+            if (!m.find()) {
+                continue;
+            }
+            String probe = m.group(2);
+            // A class with no catalog row is `roster_check`'s finding and is skipped
+            // BEFORE this count, so it cannot inflate the subclass (#1170).
+            if (rowFor(rows, probe) == null) {
+                continue;
+            }
+            if (COUNTER.matcher(m.group(3)).find()) {
+                continue;
+            }
+            rowNoCounter++;
+            System.out.println("NO_COUNTER " + probe
+                    + " — the verdict on this row carries no field that can move");
+            Path psrc = root.resolve("probes/" + probe + ".java");
+            if (Files.isReadable(psrc) && !printsACounter(psrc)) {
+                printsNoCounter++;
+                System.out.println("PRINTS_NO_COUNTER " + probe
+                        + " — and its source prints no name=value anywhere");
             }
         }
 
@@ -176,7 +236,9 @@ public final class CatalogFlags {
                 + " checked=" + checked
                 + " no_flags=" + noFlags
                 + " no_row=" + noRow
-                + " no_source=" + noSource);
+                + " no_source=" + noSource
+                + " row_no_counter=" + rowNoCounter
+                + " prints_no_counter=" + printsNoCounter);
 
         // `checked_none=` IS the guard, and this probe would otherwise have been the
         // twenty-eighth row VacuousGuard reports as unable to tell a full population
@@ -234,6 +296,38 @@ public final class CatalogFlags {
                 return true;
             }
             at = row.indexOf(flag, at + 1);
+        }
+        return false;
+    }
+
+
+    /**
+     * A `name=value` field on a pinned verdict, or in a printed string (#1372, #1579).
+     *
+     * <p>One pattern for both readings, because they are the same question asked of two
+     * texts: <em>is there a number here that can move.</em>
+     */
+    private static final Pattern COUNTER = Pattern.compile("[a-z_]+=");
+
+    /**
+     * Does this source print a {@code name=value} anywhere? (#1586)
+     *
+     * <p>Through {@code Probes.uncommented}, which is the point of the move: the shell
+     * version carried four `sed` rules in a fixed order and got two of them wrong before a
+     * case caught it (#1583), because a line-by-line filter cannot carry state across a
+     * block comment. This one can, and has cases (#1580).
+     *
+     * <p>The read is still generous — any {@code name=} inside a string literal — so it
+     * over-counts a probe that prints {@code x=} in prose it emits. That UNDERSTATES the
+     * population and can never invent a member of it, which is the safe direction for a
+     * census (#1207).
+     */
+    private static boolean printsACounter(Path src) throws IOException {
+        for (String line : Probes.uncommented(src).split("\n")) {
+            int quote = line.indexOf('"');
+            if (quote >= 0 && COUNTER.matcher(line.substring(quote)).find()) {
+                return true;
+            }
         }
         return false;
     }
@@ -326,6 +420,59 @@ public final class CatalogFlags {
             }
         }
 
+        // THE TWO NO-COUNTER READINGS (#1586), moved here with their populations. The
+        // shell versions had five cases of their own; these replace them, and the
+        // `strip:*` family is gone entirely because `Probes.uncommented` is the strip now.
+        String[][] counterCases = {
+            {"counter-a-field", "VERDICT X a=0", "true"},
+            {"counter-a-word", "VERDICT X_HELD", "false"},
+            // The pattern must not be satisfied by an `=` with nothing in front of it.
+            {"counter-bare-equals", "VERDICT X =0", "false"},
+            {"counter-underscored", "VERDICT X late_ticks=0", "true"},
+        };
+        for (String[] c : counterCases) {
+            boolean got = COUNTER.matcher(c[1]).find();
+            boolean ok = String.valueOf(got).equals(c[2]);
+            System.out.printf("CATALOG case=%-24s want=%-14s got=%-14s %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+
+        // `printsACounter` over sources, through the strip. The shell version got two of
+        // its four `sed` rules wrong and a case caught each (#1583); these are the same
+        // shapes, answered by a reader that carries state across lines and has cases of
+        // its own (#1580).
+        String[][] printCases = {
+            {"prints-a-counter", "class A { void m() { System.out.println(\"A census=1\"); } }", "true"},
+            {"prints-a-word", "class A { void m() { System.out.println(\"VERDICT HELD\"); } }", "false"},
+            {"prints-trailing-comment", "class A { void m() { int n = 1; // note x=1\n"
+                    + "System.out.println(\"VERDICT HELD\"); } }", "false"},
+            {"prints-javadoc-counter", "class A {\n  /**\n   * prints census=N one day.\n   */\n"
+                    + "  void m() { System.out.println(\"VERDICT HELD\"); } }", "false"},
+            // THE SHAPE THE SHELL STRIP GOT WRONG: a leading `*/` closes a block comment
+            // and is followed by code on the same line. A line-by-line filter that drops
+            // any line opening with `*` eats the code after the close; this reader does not.
+            {"prints-after-block-close", "class A { void m() { int n = 1; /* note\n"
+                    + "   */ System.out.println(\"A census=1\"); } }", "true"},
+        };
+        for (String[] c : printCases) {
+            Path f = tmp.resolve(c[0] + ".java");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            boolean got = printsACounter(f);
+            boolean ok = String.valueOf(got).equals(c[2]);
+            System.out.printf("CATALOG case=%-24s want=%-14s got=%-14s %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
         Probes.leave("CATALOG SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
                 + " cases=" + (pass + fail) + " failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);

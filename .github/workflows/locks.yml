@@ -785,8 +785,12 @@ jobs:
                        "${RUNNER_TEMP:-/tmp}/counters-selftest.log" || true)"
           [ -n "$verdict" ] \
             || { echo "FATAL the counter-row suite did not reach a passing verdict" >&2; exit 1; }
+          # 29 -> 17 (#1586): twelve cases went to CatalogFlags with the two readings they
+          # drive. A floor coming DOWN is a claim and this is it — the cases exist, one
+          # probe over, under CATALOG SELFCHECK, and that gate floor moved up by the same
+          # twelve. Lowering it without saying so is the thing this comment forbids.
           ran="${verdict##*cases=}"; ran="${ran%% *}"
-          floor=29   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=17   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "COUNTERS SUITE FLOOR OK cases=$ran floor=$floor"
