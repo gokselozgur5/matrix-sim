@@ -442,6 +442,39 @@ public final class LeaveContract {
                 fail++;
             }
         }
+
+        // `verbShaped` (#1600), the mirror reader. It is deliberately blind to WHICH word,
+        // so its cases are about SHAPE: what counts as a row-shaped line and what does not.
+        String[][] shapes = {
+            {"shape-judge", "  judge Alpha 'VERDICT X'", "judge"},
+            {"shape-vary", "  vary  'why' \\\\", ""},
+            // A fourth verb is exactly what this exists for: it must come through NAMED,
+            // because a count could not tell it from `vary`.
+            {"shape-unknown-verb", "  measure Alpha 'VERDICT X'", "measure"},
+            // A comment is not a row, whatever it says. `bench.sh` is prose-heavy and every
+            // one of its comments opens with `#`.
+            {"shape-comment", "  # judge Alpha is discussed here", ""},
+            // Shell inside the file: a lowercase word followed by something that is not a
+            // CamelCase class.
+            {"shape-shell-line", "  local cls line", ""},
+            // And the class shape is what makes the rule tight: a lowercase second word is
+            // not a probe.
+            {"shape-lowercase-second", "  judge alpha 'VERDICT X'", ""},
+        };
+        for (String[] c : shapes) {
+            Path f = tmp.resolve(c[0] + ".sh");
+            Files.writeString(f, c[1] + "\n", StandardCharsets.UTF_8);
+            String got = String.join(",", Probes.verbShaped(f));
+            boolean ok = got.equals(c[2]);
+            System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
+                    c[0], c[2].isEmpty() ? "<none>" : c[2], got.isEmpty() ? "<none>" : got,
+                    ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
         Probes.leave("LEAVE SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
                 + " cases=" + (pass + fail) + " failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);

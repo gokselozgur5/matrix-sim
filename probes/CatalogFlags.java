@@ -217,8 +217,30 @@ public final class CatalogFlags {
         // compares these two integers now, so the next divergence is a red build rather
         // than an accident somebody notices while writing a second reader.
         long judgedRows = table.stream().filter(Probes.BenchRow::judged).count();
+        // THE MIRROR DIRECTION (#1600). Every other check here reads a READER; this
+        // reads the FILE. A verb the readers do not know makes them ignore every row
+        // that uses it — and they then agree perfectly about the rows they can see, so
+        // #1590's cross-language comparison cannot help: two readers with one blind
+        // spot agree.
+        //
+        // The gap is reported as WORDS and not as a number. `vary` in it is accounted
+        // for — a modifier decorates a row rather than being one — and anything else
+        // is a verb nothing reads. A count alone could not tell those apart.
+        java.util.Set<String> known = java.util.Set.of("judge", "known", "run", "vary");
+        java.util.List<String> strangers = new ArrayList<>();
+        for (String verb : Probes.verbShaped(bench)) {
+            if (!known.contains(verb)) {
+                strangers.add(verb);
+            }
+        }
+        for (String verb : strangers) {
+            System.out.println("UNREAD_VERB " + verb
+                    + " — a line in the bench table opens with it and no reader knows it");
+        }
         System.out.println("CATALOG_FLAGS_CENSUS probes=" + probes.size()
                 + " bench_rows=" + judgedRows
+                + " verb_shaped=" + Probes.verbShaped(bench).size()
+                + " unread_verbs=" + strangers.size()
                 + " checked=" + checked
                 + " no_flags=" + noFlags
                 + " no_row=" + noRow
@@ -232,7 +254,9 @@ public final class CatalogFlags {
         // that cannot say whether they read anything. A sweep that checked NO probe
         // must not print a clean count; that is #970's INSTRUMENTS_UNPROVEN and the
         // reason five siblings carry a `_none=` field.
-        boolean held = noSource == 0 && noRow == 0 && checked > 0;
+        // `unread_verbs` IS the break, unlike the two no-counter populations beside it:
+        // a row nothing reads is not a style preference, it is a row nothing reads.
+        boolean held = noSource == 0 && noRow == 0 && checked > 0 && strangers.isEmpty();
         Probes.leave("VERDICT " + (held ? "CATALOG_FLAGS_COUNTED" : "CATALOG_FLAGS_UNREAD")
                 + " undocumented=" + undocumented.size()
                 + " checked_none=" + (checked == 0 ? 1 : 0), held);
