@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Shared reflection openers for the probe bench. Reflection is allowed here
@@ -183,6 +185,65 @@ final class Probes {
     static void leave(String verdict, Outcome outcome) {
         System.out.println(verdict);
         System.exit(outcome.code);
+    }
+
+
+    /**
+     * One row of {@code probes/bench.sh}'s table: the verb, the class, and the pinned
+     * verdict when there is one (#1590).
+     *
+     * @param verb    {@code judge}, {@code known} or {@code run}
+     * @param probe   the class the row invokes
+     * @param verdict the quoted line the bench greps, or empty for a {@code run} row
+     */
+    record BenchRow(String verb, String probe, String verdict) {
+
+        /** A judged row is one whose verdict the bench greps — `judge` or `known`. */
+        boolean judged() {
+            return !verdict.isEmpty();
+        }
+    }
+
+    /** `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000` — verb, class, and the quoted line. */
+    private static final Pattern BENCH_ROW =
+            Pattern.compile("^\\s+(judge|known|run)\\s+(\\w+)\\b(?:[^']*'([^']*)')?");
+
+    /** The bench's own exemption grammar: `vary '<why>' … judge <Class> '<line>'`. */
+    private static final Pattern BENCH_VARY = Pattern.compile("^\\s+vary\\b");
+
+    /**
+     * Every row of the bench table, read once (#1590).
+     *
+     * <p>Four readers parsed this table before this method existed — three probes in Java
+     * and {@code counters.sh} in shell — each with its own regex. #1588 found the shell one
+     * returning <b>67 of 70</b> rows for the whole life of the file: a {@code vary} block is
+     * three lines held together by backslashes, it joins into one whose first token is the
+     * modifier, and that reading anchored on the start. It was found by accident, because a
+     * Java reader answered the same question and disagreed.
+     *
+     * <p>The three Java copies agreed with each other, which is weaker evidence than it
+     * looks: {@code LeaveContract} and {@code VacuousGuard} were written from one template
+     * and {@code CatalogFlags} from theirs, so they agree <em>by descent</em> and not
+     * independently. One home per language is #1512's settled rule; this is the Java home.
+     *
+     * <p><b>A {@code vary} line is skipped and the row it modifies is not.</b> The modifier
+     * sits on its own source line and the {@code judge} it decorates on another, so reading
+     * line by line takes the row and drops the decoration — which is what all three Java
+     * readers already did, correctly, and is stated here because the shell reader's bug was
+     * exactly the opposite mistake.
+     */
+    static List<BenchRow> benchRows(Path bench) throws IOException {
+        List<BenchRow> rows = new ArrayList<>();
+        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
+            if (BENCH_VARY.matcher(line).find()) {
+                continue;
+            }
+            Matcher m = BENCH_ROW.matcher(line);
+            if (m.find()) {
+                rows.add(new BenchRow(m.group(1), m.group(2), m.group(3) == null ? "" : m.group(3)));
+            }
+        }
+        return rows;
     }
 
     static RealWorld realWorld(Simulation sim) throws ReflectiveOperationException {

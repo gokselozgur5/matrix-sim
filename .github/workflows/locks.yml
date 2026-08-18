@@ -797,6 +797,24 @@ jobs:
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "COUNTERS SUITE FLOOR OK cases=$ran floor=$floor"
 
+      # WHY: #1590 — two readers of one table, and until #1588 nothing compared them.
+      # `counters.sh` walks `probes/bench.sh` in shell and `CatalogFlags` in Java, and
+      # the shell one returned 67 of 70 rows for the file's whole life. It was found by
+      # accident: a Java reader answered the same question and disagreed. One home per
+      # language is #1512's rule and it cannot make two languages agree — only a
+      # comparison can, and this is it. Two integers, both already printed.
+      - name: probes — the two bench readers agree on how many rows there are (#1590)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shell_rows="$(bash tools/counters.sh | grep -oE '^COUNTERS_CENSUS rows=[0-9]+' | grep -oE '[0-9]+')"
+          java_rows="$(java -cp out:probes/out CatalogFlags | grep -oE 'bench_rows=[0-9]+' | grep -oE '[0-9]+')"
+          echo "BENCH READERS shell=$shell_rows java=$java_rows"
+          [ -n "$shell_rows" ] && [ -n "$java_rows" ] \
+            || { echo "FATAL one of the two readers printed no row count" >&2; exit 1; }
+          [ "$shell_rows" = "$java_rows" ] \
+            || { echo "FATAL the two readers of probes/bench.sh disagree: shell=$shell_rows java=$java_rows" >&2; exit 1; }
+
       # WHY: the gate, installed at zero (#1356, #1311's rule). The reader landed as a
       # REPORT because its first run was missing=6 and no_row=1, and a gate at one demands
       # a unit from whoever trips it rather than from whoever caused it. #1472 named the
