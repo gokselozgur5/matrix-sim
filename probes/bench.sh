@@ -332,7 +332,7 @@ table() {
   # to git — and that correction was asserted in a javadoc and demonstrated nowhere.
   # Writing the cases found a defect in the OTHER half: the row join was a plain
   # contains, so a row saying --prefix read as naming --pr.
-  judge CatalogFlags 'CATALOG SELFCHECK VERDICT READER_HOLDS cases=12 failed=0' --selfcheck
+  judge CatalogFlags 'CATALOG SELFCHECK VERDICT READER_HOLDS cases=21 failed=0' --selfcheck
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
