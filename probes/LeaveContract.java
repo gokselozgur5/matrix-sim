@@ -316,6 +316,94 @@ public final class LeaveContract {
                 fail++;
             }
         }
+
+        // THE SHARED HELPERS' OWN CASES (#1592). `Probes` carries four things every probe
+        // can reach and two of them had none: `joined` (#1574) and `benchRows` (#1590).
+        // Their evidence was four numbers across three probes that did not move — real
+        // regression evidence, and neither pins a RULE. #1580 made this argument about the
+        // comment strip in the same suite: *a strip that removed one line too many would
+        // fail those cases for a reason neither names*, which is exactly how the shell
+        // reader's three-row loss stayed invisible for a year (#1588).
+        //
+        // They live here rather than on `Probes`, which has no `main` and no bench row —
+        // the compromise #1580 stated rather than preferred.
+        String[][] joins = {
+            {"joined-sorts", "c,a,b", "a,b,c"},
+            // `none`, not an empty field: a trailing `=` followed by nothing reads as a
+            // truncated line rather than as an empty set (#1550).
+            {"joined-empty-is-none", "", "none"},
+            {"joined-one", "only", "only"},
+            // Sorting is what makes two sweeps byte-identical, so a list already in order
+            // must come back unchanged and one out of order must not.
+            {"joined-already-sorted", "a,b,c", "a,b,c"},
+        };
+        for (String[] c : joins) {
+            List<String> in = c[1].isEmpty() ? new ArrayList<>()
+                    : new ArrayList<>(java.util.Arrays.asList(c[1].split(",")));
+            String got = Probes.joined(in);
+            boolean ok = got.equals(c[2]);
+            System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // `benchRows`, over fixture tables. The `vary`-then-plain shape is the one that has
+        // actually gone wrong — in shell, where the block joined into one line and the row
+        // after it was lost (#1588). The Java reader takes the row and drops the modifier,
+        // which is the OPPOSITE mistake and is why it is pinned here.
+        String[][] tables = {
+            {"bench-judge", "  judge Alpha 'VERDICT X a=0'", "judge/Alpha/VERDICT X a=0"},
+            {"bench-run-has-no-verdict", "  run   Alpha   6000", "run/Alpha/"},
+            {"bench-known", "  known Alpha 'VERDICT Y'", "known/Alpha/VERDICT Y"},
+            // The modifier line is skipped and the row it decorates is not.
+            {"bench-vary-then-row", "  vary  'why' \\\n        --lines '^N ' --cut 1 \\\n"
+                    + "  judge Alpha 'VERDICT X a=0'", "judge/Alpha/VERDICT X a=0"},
+            // And the shape the shell reader lost: a plain row FOLLOWING a vary block.
+            {"bench-vary-then-two", "  vary  'why' \\\n  judge Alpha 'VERDICT X a=0'\n"
+                    + "  judge Alpha 'SELFCHECK VERDICT Y b=1'",
+                "judge/Alpha/VERDICT X a=0|judge/Alpha/SELFCHECK VERDICT Y b=1"},
+        };
+        for (String[] c : tables) {
+            Path f = tmp.resolve(c[0] + ".sh");
+            Files.writeString(f, c[1] + "\n", StandardCharsets.UTF_8);
+            StringBuilder sb = new StringBuilder();
+            for (Probes.BenchRow r : Probes.benchRows(f)) {
+                if (sb.length() > 0) {
+                    sb.append('|');
+                }
+                sb.append(r.verb()).append('/').append(r.probe()).append('/').append(r.verdict());
+            }
+            boolean ok = sb.toString().equals(c[2]);
+            System.out.printf("LEAVE helper=%-24s %s%n     want=[%s]%n     got =[%s]%n",
+                    c[0], ok ? "OK" : "BROKEN", c[2], sb);
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+        // `judged()` is *has a quoted line*, not *the verb is judge* — the distinction two
+        // of the three replaced regexes did not have to make, because they required a
+        // verdict and never saw a `run` row at all.
+        {
+            Path f = tmp.resolve("judged.sh");
+            Files.writeString(f, "  judge Alpha 'VERDICT X'\n  run   Beta 6000\n", StandardCharsets.UTF_8);
+            List<Probes.BenchRow> rs = Probes.benchRows(f);
+            boolean ok = rs.size() == 2 && rs.get(0).judged() && !rs.get(1).judged();
+            System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
+                    "bench-judged-predicate", "true/false",
+                    rs.size() == 2 ? rs.get(0).judged() + "/" + rs.get(1).judged() : "size=" + rs.size(),
+                    ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
         Probes.leave("LEAVE SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
                 + " cases=" + (pass + fail) + " failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
