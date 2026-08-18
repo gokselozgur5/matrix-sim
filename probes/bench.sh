@@ -315,7 +315,7 @@ table() {
   # and that suite had a temp directory. Their verdict word was about EXIT CODES and
   # their floor guarded the sum of six subjects, so forty could leave one subject and
   # forty arrive in another with nothing moving. The two floors move independently now.
-  judge HelperSuite 'HELPER SELFCHECK VERDICT HELPERS_HOLD cases=31 failed=0' --selfcheck
+  judge HelperSuite 'HELPER SELFCHECK VERDICT HELPERS_HOLD strip=5 joined=4 rows=13 shapes=6 verbs=3 failed=0' --selfcheck
   # A verdict with no denominator cannot tell the contract holding over everything
   # from the contract holding over nothing (#1373, re-measured by #1540). Two guards
   # are already in use here — a `_none=` field on the pinned line, and a NEVER_AROSE

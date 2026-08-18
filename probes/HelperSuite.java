@@ -50,9 +50,41 @@ public final class HelperSuite {
         selfcheck(Files.createTempDirectory("helpersuite"));
     }
 
+    /**
+     * The per-subject tally (#1620).
+     *
+     * <p>#1615 split this suite out of {@code LeaveContract} because a single
+     * {@code cases=} summed six subjects, and a case leaving one while another
+     * arrived was an invisible swap. It moved the problem from six subjects to
+     * five rather than removing it: {@code cases=31} added up the strip,
+     * {@code joined}, the bench rows, the shapes and the verb list, and thirty
+     * could move between them with the row still green.
+     *
+     * <p>So the verdict carries FIVE numbers and the total goes to the census.
+     * An exact-line row pins each subject, a case moving between two of them
+     * changes two of the numbers, and the row is red. A sixth pinned total that
+     * the five already determine is one more thing to edit (#884, #1221).
+     *
+     * <p>Insertion order, so two runs of one tree print the same line.
+     */
+    private static final java.util.Map<String, int[]> TALLY = new java.util.LinkedHashMap<>();
+
+    private static void tally(String subject, boolean ok) {
+        int[] c = TALLY.computeIfAbsent(subject, k -> new int[2]);
+        c[ok ? 0 : 1]++;
+    }
+
+    private static String tallyLine() {
+        StringBuilder sb = new StringBuilder();
+        for (java.util.Map.Entry<String, int[]> e : TALLY.entrySet()) {
+            sb.append(e.getKey()).append('=').append(e.getValue()[0] + e.getValue()[1]).append(' ');
+        }
+        return sb.toString();
+    }
+
     private static void selfcheck(Path tmp) throws IOException {
-        int pass = 0;
-        int fail = 0;
+
+
 
         // THE STRIP'S OWN CASES (#1580). `Probes.uncommented` makes four checkers correct
         // — this one, `DoorRefusal`, `CatalogFlags`, `SheetFence` — and had none. Its
@@ -96,11 +128,7 @@ public final class HelperSuite {
                 System.out.printf("     want=[%s]%n     got =[%s]%n",
                         c[2].replace("\n", "\\n"), got.replace("\n", "\\n"));
             }
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("strip", ok);
         }
 
         // THE SHARED HELPERS' OWN CASES (#1592). `Probes` carries four things every probe
@@ -130,11 +158,7 @@ public final class HelperSuite {
             boolean ok = got.equals(c[2]);
             System.out.printf("HELPER case=%-24s want=%-10s got=%-10s %s%n",
                     c[0], c[2], got, ok ? "OK" : "BROKEN");
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("joined", ok);
         }
 
         // `benchRows`, over fixture tables. The `vary`-then-plain shape is the one that has
@@ -204,11 +228,7 @@ public final class HelperSuite {
             boolean ok = sb.toString().equals(c[2]);
             System.out.printf("HELPER case=%-24s %s%n     want=[%s]%n     got =[%s]%n",
                     c[0], ok ? "OK" : "BROKEN", c[2], sb);
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("rows", ok);
         }
         // `judged()` is *has a quoted line*, not *the verb is judge* — the distinction two
         // of the three replaced regexes did not have to make, because they required a
@@ -222,11 +242,7 @@ public final class HelperSuite {
                     "bench-judged-predicate", "true/false",
                     rs.size() == 2 ? rs.get(0).judged() + "/" + rs.get(1).judged() : "size=" + rs.size(),
                     ok ? "OK" : "BROKEN");
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("rows", ok);
         }
 
         // `verbShaped` (#1600), the mirror reader. It is deliberately blind to WHICH word,
@@ -255,11 +271,7 @@ public final class HelperSuite {
             System.out.printf("HELPER case=%-24s want=%-10s got=%-10s %s%n",
                     c[0], c[2].isEmpty() ? "<none>" : c[2], got.isEmpty() ? "<none>" : got,
                     ok ? "OK" : "BROKEN");
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("shapes", ok);
         }
 
         // THE LIST AND THE PATTERN ARE ONE THING (#1602), asserted rather than assumed:
@@ -275,14 +287,17 @@ public final class HelperSuite {
             System.out.printf("HELPER case=%-24s want=%-10s got=%-10s %s%n",
                     "verb-list:" + verb, verb,
                     rs.isEmpty() ? "<none>" : rs.get(0).verb(), ok ? "OK" : "BROKEN");
-            if (ok) {
-                pass++;
-            } else {
-                fail++;
-            }
+            tally("verbs", ok);
         }
+        int total = 0;
+        int fail = 0;
+        for (int[] c : TALLY.values()) {
+            total += c[0] + c[1];
+            fail += c[1];
+        }
+        System.out.println("HELPER_CENSUS cases=" + total + " subjects=" + TALLY.size());
         Probes.leave("HELPER SELFCHECK VERDICT " + (fail == 0 ? "HELPERS_HOLD" : "HELPERS_BROKEN")
-                + " cases=" + (pass + fail) + " failed=" + fail,
+                + " " + tallyLine() + "failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
