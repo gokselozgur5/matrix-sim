@@ -78,6 +78,7 @@ public final class DoorRefusal {
         }
 
         int swept = 0;
+        int noDoor = 0;
         int refused = 0;
         int crashed = 0;
         int swallowed = 0;
@@ -86,6 +87,20 @@ public final class DoorRefusal {
         for (Path file : sources(Path.of(root))) {
             String cls = file.getFileName().toString().replace(".java", "");
             if (!parsesAFlag(file)) {
+                // THE DENOMINATOR (#1544). `swept=26` beside a verdict word reading
+                // EVERY_DOOR_REFUSES reads as *every probe*, and thirty-two of the
+                // fifty-eight sources have no long-option door for this check to judge.
+                // `OrderTable` was one of them, and a typo in either of its positional
+                // arguments left with 1 — the word for the contract this tree judges
+                // having broken — until #1536. That is the defect this probe exists to
+                // prevent, in a probe it has never run.
+                //
+                // Counted and NEVER judged: a probe with no long-option door is not a
+                // defect, and `advice.sh` prints NO_FLAGS for the same shape one
+                // directory over rather than breaking (#1207). What it buys is that
+                // `swept + no_door` adds up to the sources walked, so the reader can
+                // see the population instead of inferring it.
+                noDoor++;
                 continue;
             }
             swept++;
@@ -160,6 +175,7 @@ public final class DoorRefusal {
         // unit from whoever trips it. #1481 took it to zero, so it belongs where it can be
         // judged, which is the state `missing=` was in for two units before #1356's gate.
         System.out.println("DOOR_CENSUS swept=" + swept + " refused=" + refused
+                + " no_door=" + noDoor
                 + " wait_s=" + WAIT_SECONDS + " root=" + root);
         notes.forEach(System.out::println);
         offences.forEach(System.out::println);
