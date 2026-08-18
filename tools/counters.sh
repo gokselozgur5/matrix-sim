@@ -134,7 +134,7 @@ report() {                        # report <bench> <catalog>
   [ -r "$bench" ] || { echo "FATAL cannot read $bench" >&2; return 3; }
   [ -r "$catalog" ] || { echo "FATAL cannot read $catalog" >&2; return 3; }
 
-  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0 nocounter=0
+  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0 nocounter=0 printsnone=0
   local cls toks tok row
   while read -r cls toks; do
     rows=$((rows + 1))
@@ -146,7 +146,25 @@ report() {                        # report <bench> <catalog>
       norow=$((norow + 1))
       continue
     fi
-    # A ROW WITH NO COUNTER AT ALL (#1372). It counts ROWS and not probes, beside
+    # TWO POPULATIONS, NOT ONE (#1579). `row_no_counter=` asks whether the PINNED
+    # verdict carries a field — a real property, because an exact-line row with
+    # nothing in it that can move goes green on a probe whose numbers all changed.
+    # It is NOT the property #1372 asked about, and the sentence beside the old
+    # single count said the second thing: `SameTick` prints five counters and pins a
+    # word, so it landed in the subclass while being one of the better-instrumented
+    # probes in the directory.
+    #
+    # `prints_no_counter=` is the harder half: does the probe print a `name=value`
+    # ANYWHERE. A probe in both is one nothing can watch. A probe in the first only
+    # is a row that should probably pin one of the fields it already prints, which
+    # is a repair with an obvious shape — and the reason separating them is worth a
+    # second counter rather than a footnote.
+    #
+    # The read is textual and generous: any `name=` inside a string literal, with
+    # javadoc and comment lines dropped first. It over-counts a probe that mentions
+    # `x=` in prose it prints, which understates the finding and can never invent
+    # one — the safe direction for a census (#1207).
+    # It counts ROWS and not probes, beside
     # `rows=` and for the same reason: a probe with two judged rows is two pinned
     # lines and either can be the one nothing can move. `VERDICT X_HELD` and nothing after it
     # cannot be told apart from a row that always prints that line: there is no
@@ -163,6 +181,11 @@ report() {                        # report <bench> <catalog>
     if [ -z "$toks" ]; then
       nocounter=$((nocounter + 1))
       [ "$MODE" = list ] && printf 'NO_COUNTER %-20s the verdict on this row carries no field that can move\n' "$cls"
+      if [ -f "probes/$cls.java" ] \
+         && [ "$(grep -vE '^[[:space:]]*(\*|//|/\*)' "probes/$cls.java" | grep -coE '"[^"]*[a-z_]+=')" = 0 ]; then
+        printsnone=$((printsnone + 1))
+        [ "$MODE" = list ] && printf 'PRINTS_NO_COUNTER %-14s and its source prints no name=value anywhere\n' "$cls"
+      fi
     fi
     for tok in $toks; do
       pinned=$((pinned + 1))
@@ -183,7 +206,7 @@ report() {                        # report <bench> <catalog>
   # closes by construction and every path through the token loop increments
   # exactly one term, which the suite's closed-set case asserts rather than argues
   # (the #1443 lesson, one directory over).
-  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow no_counter=$nocounter bench=$bench catalog=$catalog"
+  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow row_no_counter=$nocounter prints_no_counter=$printsnone bench=$bench catalog=$catalog"
 
   # `pinned_none=` rides the VERDICT, because a reading that found no bench row
   # must not print the line a fully-named catalog prints (#1207). Nothing read is
@@ -304,12 +327,12 @@ selftest() {
   # THE NO-COUNTER SUBCLASS (#1372), driven over the CENSUS line rather than the
   # verdict, because that is where it rides — the verdict pins the contract and the
   # census carries populations (#1221).
-  census_case() {                 # census_case <name> <want-no_counter> <bench-body> <catalog-body>
+  census_case() {                 # census_case <name> <want-row_no_counter> <bench-body> <catalog-body>
     local name="$1" want="$2" got
     printf '%s\n' "$3" > "$tmp/b.sh"
     printf '%s\n' "$4" > "$tmp/c.md"
     got="$(MODE=count report "$tmp/b.sh" "$tmp/c.md" 2>/dev/null | grep '^COUNTERS_CENSUS' \
-           | sed 's/.*no_counter=\([0-9]*\).*/\1/')"
+           | sed 's/.*row_no_counter=\([0-9]*\).*/\1/')"
     if [ "$want" = "$got" ]; then
       pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
     else
@@ -336,6 +359,46 @@ selftest() {
   census_case census:no-row-is-not-bare 0 \
       "  judge Ghost 'VERDICT X_HELD'" \
       '| `Alpha` | does a thing. |'
+
+  # THE SECOND POPULATION (#1579), which needs a probe SOURCE and not only a bench
+  # row — so the fixtures write one. `prints_no_counter` is a SUBSET of
+  # `row_no_counter` by construction: it is only asked of a row already in the
+  # first, which is the relationship the two cases below pin.
+  prints_case() {                 # prints_case <name> <want> <bench-body> <catalog-body> <source>
+    local name="$1" want="$2" got
+    printf '%s\n' "$3" > "$tmp/b.sh"
+    printf '%s\n' "$4" > "$tmp/c.md"
+    mkdir -p "$tmp/probes"
+    printf '%s\n' "$5" > "$tmp/probes/Alpha.java"
+    got="$(cd "$tmp" && MODE=count report b.sh c.md 2>/dev/null | grep '^COUNTERS_CENSUS' \
+           | sed 's/.*prints_no_counter=\([0-9]*\).*/\1/')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  # THE LIVE SHAPE, and the whole point of the split: a bare pinned verdict on a
+  # probe that prints five counters. `SameTick` is this, and the single count read
+  # it as a probe nobody can watch.
+  prints_case prints:bare-row-rich-probe 0 \
+      "  judge Alpha 'VERDICT X_HELD'" \
+      '| `Alpha` | does a thing. |' \
+      'class Alpha { void m() { System.out.println("ALPHA census=1 late=0"); } }'
+  # And the population that is actually blind: nothing pinned and nothing printed.
+  prints_case prints:bare-row-bare-probe 1 \
+      "  judge Alpha 'VERDICT X_HELD'" \
+      '| `Alpha` | does a thing. |' \
+      'class Alpha { void m() { System.out.println("VERDICT X_HELD"); } }'
+  # A counter named only in a COMMENT is not printed. Same self-matching shape the
+  # Java-side readers have met five times (#1531).
+  prints_case prints:counter-in-a-comment 1 \
+      "  judge Alpha 'VERDICT X_HELD'" \
+      '| `Alpha` | does a thing. |' \
+      'class Alpha {
+  /** prints census=N one day. */
+  void m() { System.out.println("VERDICT X_HELD"); }
+}'
   # `no_row` is the term `roster_check` cannot cover, and it rides the census — so the
   # VERDICT stays clean while a judged class has no row at all. The fixture carries one
   # class with a row and one without, because the verdict is what this case reads and a
