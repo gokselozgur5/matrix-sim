@@ -1169,10 +1169,24 @@ public final class DocLint {
                         "Not applicable until the verdict lands."))),
                         arc, RESOLVING, false));
 
-        System.out.println("SELFCHECK cases=" + casesRun + " broken=" + broken);
+        // `cases=` AND `broken=` RIDE THE VERDICT SINCE #1633, and the census line
+        // that used to carry them is gone rather than duplicated. The row greped one
+        // word: delete every case in this file and the probe printed
+        // `SELFCHECK cases=0 broken=0` and `DOCLINT_FALSIFIABLE`, and the lane was
+        // green. That is the third instance of one shape in eight units — #1615
+        // found `LEAVE SELFCHECK`'s floor guarding the sum of six subjects, #1623
+        // found a deleted figure marker leaving `DocFigures` green — and the worst
+        // place for it: a suite that exists to prove a checker can say no is a suite
+        // whose emptiness is indistinguishable from its success. `broken=0` over
+        // zero cases is the literal sentence *nothing disagreed with me* (#1207,
+        // #1373).
+        //
+        // The EXACT count, not a floor. A floor cannot see a swap — three cases
+        // leaving while three arrive is #1615's finding — and this suite's cases are
+        // each a named break, so an exchange is a real change of subject.
         System.out.println(broken == 0
-                ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE"
-                : "SELFCHECK VERDICT DOCLINT_BLIND");
+                ? "SELFCHECK VERDICT DOCLINT_FALSIFIABLE cases=" + casesRun + " broken=" + broken
+                : "SELFCHECK VERDICT DOCLINT_BLIND cases=" + casesRun + " broken=" + broken);
     }
 
     /**

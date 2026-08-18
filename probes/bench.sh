@@ -383,7 +383,7 @@ table() {
   judge SheetBench   'VERDICT CAST_BOOT_AGREES bench=6 world=6' --boot-version
   run   SheetBench   --avalanche
   judge DocLint      'VERDICT DOCS_TRUE gaps=D-055,D-056,D-057'         "$TICKS"
-  judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE' --selfcheck
+  judge DocLint      'SELFCHECK VERDICT DOCLINT_FALSIFIABLE cases=37 broken=0' --selfcheck
   judge DocsRoster   'VERDICT EVERY_DOCUMENT_IS_NAMED orphans=0 scanned_none=0'
   # Three populations exit with codes a script branches on, and until #1219 two
   # documents each said they agreed. They do not: 2 is NEVER_AROSE here and a
