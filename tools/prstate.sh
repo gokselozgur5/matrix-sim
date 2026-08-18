@@ -479,7 +479,7 @@ SWEEP_TMP="${TMPDIR:-/tmp}/prstate-sweep.$$"
 
 
 sweep_cost() {                  # sweep_cost [runs]
-  local want="${1:-20}" ids id secs n=0 min= max= total=0 over=0 sorted median
+  local want="${1:-20}" ids id secs n=0 line over
   ids="$(gh run list --workflow locks.yml --status success --limit "$want" \
            --json databaseId -q '.[].databaseId' 2>/dev/null || true)"
   if [ -z "$ids" ]; then
@@ -500,10 +500,6 @@ sweep_cost() {                  # sweep_cost [runs]
               done)"
     [ -n "$secs" ] || continue
     n=$((n + 1))
-    total=$((total + secs))
-    [ -z "$min" ] || [ "$secs" -lt "$min" ] && min="$secs"
-    [ -z "$max" ] || [ "$secs" -gt "$max" ] && max="$secs"
-    [ "$secs" -le "$SWEEP_BUDGET" ] || over=$((over + 1))
     printf '%s\n' "$secs" >> "$SWEEP_TMP"
     printf 'SWEEP run=%s secs=%s\n' "$id" "$secs"
   done
@@ -512,9 +508,26 @@ sweep_cost() {                  # sweep_cost [runs]
     rm -f "$SWEEP_TMP"
     return 3
   fi
-  sweep_stats "$SWEEP_BUDGET" "$(cat "$SWEEP_TMP")"
+  # THE FETCHER COUNTS AND NOTHING ELSE (#1560). It accumulated `min`, `max`,
+  # `total` and `over` while reading, and then handed the same list to
+  # `sweep_stats`, which computes all four again — two implementations of one
+  # statistic, and only the one with cases was tested. The untested copy used
+  #
+  #     [ -z "$min" ] || [ "$secs" -lt "$min" ] && min="$secs"
+  #
+  # which is `([ -z ] || [ -lt ]) && min=` in shell, not the C-like reading a
+  # person sees. It was correct for this input by luck. `n` survives because
+  # emptiness is the fetcher's own question, and the RETURN CODE is read back
+  # off the verdict line rather than counted twice.
+  line="$(sweep_stats "$SWEEP_BUDGET" "$(cat "$SWEEP_TMP")")"
   rm -f "$SWEEP_TMP"
-  [ "$over" -eq 0 ]
+  printf '%s\n' "$line"
+  # The count is read back with the same parameter expansion locks.yml uses on every
+  # suite gate (`ran="${verdict##*cases=}"`), not with a glob: ` over=0 ` would also
+  # have to be spelled carefully enough not to match ` over=01 `, which is the exact
+  # trap the bench's exact-line greps exist to avoid.
+  over="${line##*over=}"; over="${over%% *}"
+  [ "$over" = 0 ]
 }
 
 schedules() {
