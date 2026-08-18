@@ -133,7 +133,24 @@ public final class VacuousGuard {
             // The second guard, which #1373 did not count: an empty population
             // that leaves with NEVER_AROSE prints a different word, so the
             // pinned row goes red with no number on the line at all.
-            if (Probes.uncommented(src).contains("Outcome.NEVER_AROSE")) {
+            // ASSEMBLED, BECAUSE A SEARCH FOR X CANNOT BE WRITTEN AS X (#1607). The search
+            // was `contains("Outcome.NEVER_AROSE")` — which is the string on this very line,
+            // so this probe counted ITSELF as guarded, by the string it uses to count
+            // guards. A checker exempting itself is the sixth instance of one shape here:
+            // `advice.sh` five times (#1033, #1157, #1222, #1265, #1276), `LeaveContract`
+            // reading `System.exit` inside a comment (#1531), and `LEAVE_BY_HAND` satisfied
+            // by prose about `LEAVE_BY_HAND` (#1605).
+            //
+            // Qualifying the name does NOT fix it — the qualified literal is still the
+            // literal. Neither does the strip: the string is CODE. Only assembling it does,
+            // which is the idiom `advice.sh` reaches for when it builds `--pr` from `$dash`
+            // for exactly this reason. It hides what is searched for, which is the price,
+            // and the alternative is a checker that cannot see itself.
+            //
+            // The probe is NOT excluded from its own population instead. `LeaveContract`
+            // states why one directory over: a check that excluded itself would report a
+            // number nobody could reproduce by counting the file.
+            if (Probes.uncommented(src).contains("Probes.Outcome." + "NEVER_" + "AROSE")) {
                 byWord.add(probe);
             } else {
                 unguarded.add(probe);
@@ -167,9 +184,16 @@ public final class VacuousGuard {
         // `no_source` IS judged — a judged row naming a class with no file means
         // this read was over a population it could not see, which is the one
         // condition under which the count means nothing.
-        boolean held = missing.isEmpty();
+        // AND THE PROBE THAT MEASURES VACUOUS GUARDS SHOULD NOT BE ONE (#1607). Breaking
+        // the self-match put this probe into its own `unguarded=` population, correctly:
+        // its pinned verdict carried `unguarded=` and nothing else, and `unguarded=0` is
+        // not the same statement as "the read opened a table". `judged_none=` is that
+        // statement — the guard five siblings carry, and the one #970's
+        // INSTRUMENTS_UNPROVEN is about.
+        boolean held = missing.isEmpty() && !rows.isEmpty();
         Probes.leave("VERDICT " + (held ? "VACUOUS_GUARD_COUNTED" : "VACUOUS_GUARD_UNREAD")
-                + " unguarded=" + unguarded.size(), held);
+                + " unguarded=" + unguarded.size()
+                + " judged_none=" + (rows.isEmpty() ? 1 : 0), held);
     }
 
 
