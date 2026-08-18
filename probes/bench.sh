@@ -408,7 +408,7 @@ table() {
   # fixed while the census moves.
   vary  'prints its own wall-clock: two of its markers run the daemon (4,500 and 20,000 ticks) and the second run of a pair is warmer, so secs= lands anywhere in 4-6 while checked= and docs= hold (#1302, #1328)' \
         --lines '^FIGURE_CENSUS ' --cut 1 \
-        judge DocFigures   'VERDICT FIGURES_AGREE checked=5 stale=0 refused=0 checked_none=0'
+        judge DocFigures   'VERDICT FIGURES_AGREE checked=10 stale=0 refused=0 checked_none=0'
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.

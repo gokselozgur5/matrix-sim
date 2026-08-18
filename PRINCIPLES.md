@@ -2,6 +2,10 @@
 
 Code tells you *what*. DECISIONS tells you *which*. This file tells you *why* — and it is addressed as much to the next AI on this project as to any human.
 
+<!-- figure: grep -c '^..A[0-9]' PRINCIPLES.md == 10 -->
+<!-- figure: grep -c '^..Dev[0-9]' PRINCIPLES.md == 14 -->
+<!-- figure: grep -c '^..Ag[0-9]' PRINCIPLES.md == 9 -->
+
 ## Architectural principles
 
 **A1 — The mind is never uploaded.** Package boundary = deployment boundary. `entities` must never import `realworld`; the only bridge is `NeuralLink`. If you ever feel the urge to hand a `Brain` to something inside the Matrix, stop — that is exactly how uploads happen. `probes/LatticeFence.java` is what says no: it reads the same rule from `docs/ARCHITECTURE.md`'s wording and is judged on every push, so this principle is the rare one a build can fail.
