@@ -229,8 +229,25 @@ final class Probes {
      * would have shipped with the bug it was written to remove.
      */
 
-    /** The three verbs a bench row can open with, in ONE place (#1598). */
-    private static final String BENCH_VERBS = "(?:judge|known|run)";
+    /**
+     * The verbs a bench row can open with, as data (#1602).
+     *
+     * <p>The list was in two places for three units — this one, and a {@code Set.of} in
+     * {@code CatalogFlags} that decides which verb-shaped line is a stranger — and #1598
+     * had just collapsed two into one for exactly the reason two are dangerous: nothing
+     * asserts they agree. Add a fifth verb here and not there, and the file-reader reports
+     * the READER'S OWN verb as unread — a false accusation about the file, which is the
+     * class of defect {@code advice.sh} spent #1341 removing from its own reading.
+     *
+     * <p>They were never the same list, which is why merging them would have been wrong:
+     * the other one is this plus {@code vary}. The MODIFIER is known to the file and not to
+     * the reader — it decorates a row rather than being one — and that is precisely why
+     * {@code verb_shaped=} and {@code bench_rows=} differ by seven.
+     */
+    static final List<String> BENCH_VERB_WORDS = List.of("judge", "known", "run");
+
+    /** The same three as an alternation, for the one pattern that reads a row (#1598). */
+    private static final String BENCH_VERBS = "(?:" + String.join("|", BENCH_VERB_WORDS) + ")";
 
     private static final Pattern BENCH_ROW =
             Pattern.compile("^\\s+(?:vary\\b.*\\s(?=" + BENCH_VERBS + "\\s+\\w+\\s+'))?"

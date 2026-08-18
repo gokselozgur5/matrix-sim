@@ -309,7 +309,7 @@ table() {
   # code at all — read as a probe that spends its own. Two of these five cases go
   # red against the pre-#1531 raw read; three hold either way and say what the
   # matcher is FOR, which is the pair a fixture suite needs to be worth running.
-  judge LeaveContract 'LEAVE SELFCHECK VERDICT READER_HOLDS cases=33 failed=0' --selfcheck
+  judge LeaveContract 'LEAVE SELFCHECK VERDICT READER_HOLDS cases=36 failed=0' --selfcheck
   # A verdict with no denominator cannot tell the contract holding over everything
   # from the contract holding over nothing (#1373, re-measured by #1540). Two guards
   # are already in use here — a `_none=` field on the pinned line, and a NEVER_AROSE
