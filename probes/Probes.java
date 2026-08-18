@@ -212,6 +212,17 @@ final class Probes {
     private static final Pattern BENCH_VARY = Pattern.compile("^\\s+vary\\b");
 
     /**
+     * Everything on a joined `vary` line up to the LAST verb on it (#1594).
+     *
+     * <p>Greedy, and the first draft was not — which put `run` inside a `vary` reason
+     * ("two of its markers run the daemon") ahead of the real verb, and produced a row
+     * whose class was the word `the`. That is #1588 exactly, in Java, arriving through the
+     * fix for the Java version of the same bug: anchor on the LAST verb, never the first.
+     */
+    private static final Pattern BENCH_VARY_PREFIX =
+            Pattern.compile("^.*(?=\\s(judge|known|run)\\s)");
+
+    /**
      * Every row of the bench table, read once (#1590).
      *
      * <p>Four readers parsed this table before this method existed — three probes in Java
@@ -234,9 +245,38 @@ final class Probes {
      */
     static List<BenchRow> benchRows(Path bench) throws IOException {
         List<BenchRow> rows = new ArrayList<>();
-        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
-            if (BENCH_VARY.matcher(line).find()) {
+        // BACKSLASH CONTINUATIONS ARE JOINED FIRST (#1594). `counters.sh` has always
+        // joined them; this read line by line, and that was correct for every row in the
+        // file only because the sole continued shape is a `vary` block whose `judge` sits
+        // on the last line. The row nobody has written yet —
+        //
+        //     judge SomeProbe \
+        //           'VERDICT SPLIT_BEFORE_THE_QUOTE a=0'
+        //
+        // — reads as a `judge` with no quoted verdict, which `judged()` calls a `run` row:
+        // `LeaveContract` moves it to `reporting`, `VacuousGuard` drops it, `CatalogFlags`
+        // skips it, and #1590's lane step reports two readers disagreeing on a pull request
+        // whose author was writing a long line. A correct check naming the wrong cause is
+        // #1170's shape.
+        //
+        // THE ORDER IS THE TRAP. Joining first makes a `vary` block one line whose FIRST
+        // token is `vary`, so skipping that line would drop the row it decorates — which is
+        // exactly the bug #1588 found in the shell reader, arriving here by way of the fix.
+        // So the `vary` prefix is STRIPPED from a joined line rather than the line being
+        // skipped, and the row after it is read from the verb.
+        StringBuilder held = new StringBuilder();
+        for (String raw : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
+            String line = raw;
+            if (line.endsWith("\\")) {
+                held.append(line, 0, line.length() - 1).append(' ');
                 continue;
+            }
+            if (held.length() > 0) {
+                line = held + line.trim();
+                held.setLength(0);
+            }
+            if (BENCH_VARY.matcher(line).find()) {
+                line = BENCH_VARY_PREFIX.matcher(line).replaceFirst("  ");
             }
             Matcher m = BENCH_ROW.matcher(line);
             if (m.find()) {

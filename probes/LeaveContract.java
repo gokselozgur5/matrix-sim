@@ -360,6 +360,13 @@ public final class LeaveContract {
             {"bench-run-has-no-verdict", "  run   Alpha   6000", "run/Alpha/"},
             {"bench-known", "  known Alpha 'VERDICT Y'", "known/Alpha/VERDICT Y"},
             // The modifier line is skipped and the row it decorates is not.
+            // A ROW SPLIT BEFORE ITS QUOTE (#1594): the shape nobody has written, which
+            // read as a `judge` with no verdict — and `judged()` calls that a `run` row.
+            {"bench-split-before-quote", "  judge Alpha \\\\\n        'VERDICT SPLIT a=0'",
+                "judge/Alpha/VERDICT SPLIT a=0"},
+            // A row continued AFTER its quote, which is the harmless half and must stay so.
+            {"bench-split-after-quote", "  judge Alpha 'VERDICT X a=0' \\\\\n        --flag v",
+                "judge/Alpha/VERDICT X a=0"},
             {"bench-vary-then-row", "  vary  'why' \\\n        --lines '^N ' --cut 1 \\\n"
                     + "  judge Alpha 'VERDICT X a=0'", "judge/Alpha/VERDICT X a=0"},
             // And the shape the shell reader lost: a plain row FOLLOWING a vary block.
