@@ -378,10 +378,16 @@ table() {
   # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
   # the other six, and comparing that against a 6,000-tick row would report the
   # argument as drift. The probe refuses the mismatch rather than judging it —
-  # `CensusBeatDrift 42,7 2000 --baseline-file probes/beatdrift.baseline` exits 2
-  # with a FATAL naming both budgets. Band and denominator ride in the
-  # judged line, so widening the tolerance — or reading a pin that names none of
-  # the beats — is an edit to this row and not a quiet pass.
+  # `CensusBeatDrift 42,7 2000 --baseline-file probes/beatdrift.baseline` leaves with
+  # `Probes.Outcome.REFUSED` and a FATAL naming both budgets. The CONSTANT is quoted
+  # here and the number is not, deliberately (#1533): this sentence said "exits 2"
+  # and the probe has exited 3 since #1219 moved the refusal off NEVER_AROSE, and
+  # nothing in the tree could have noticed — `ExitGrammar` pins the codes the probes
+  # SPEND, `counters.sh` reads catalog rows against bench rows, and neither reads
+  # shell prose for a bare digit. A name moves when the enum moves; a digit does not.
+  # Band and denominator ride in the judged line, so widening the tolerance — or
+  # reading a pin that names none of the beats — is an edit to this row and not a
+  # quiet pass.
   judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=200' \
         42,7 6000 --band 200 --baseline-file probes/beatdrift.baseline
   run   DrawMeter    "$TICKS"
