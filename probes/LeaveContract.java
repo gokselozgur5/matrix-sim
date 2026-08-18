@@ -381,6 +381,18 @@ public final class LeaveContract {
             // StringBuilder deciding by accident.
             {"bench-dangling-backslash", "  judge Alpha 'VERDICT X a=0'\n  judge Beta \\\\",
                 "judge/Alpha/VERDICT X a=0"},
+            // A VERDICT WHOSE OWN TEXT CONTAINS A VERB (#1598), and the one place the new
+            // reading is strictly BETTER than the two it replaced. The greedy skip is
+            // allowed only when the line opens with `vary`, so a plain row anchors at its
+            // own verb and a `run Beta` inside its verdict is just text. The old stripper
+            // had no such guard: it found the last verb anywhere on any line given to it.
+            {"bench-verdict-says-run", "  judge Alpha 'VERDICT X run Beta'",
+                "judge/Alpha/VERDICT X run Beta"},
+            // The decorated form of the same text, where the skip IS allowed: the reason
+            // may say anything and the row is still read from the verb that follows it.
+            {"bench-vary-reason-and-verdict-say-run",
+                "  vary  'markers run the daemon' \\\\\n  judge Alpha 'VERDICT X run Beta'",
+                "judge/Alpha/VERDICT X run Beta"},
             {"bench-split-before-quote", "  judge Alpha \\\\\n        'VERDICT SPLIT a=0'",
                 "judge/Alpha/VERDICT SPLIT a=0"},
             // A row continued AFTER its quote, which is the harmless half and must stay so.

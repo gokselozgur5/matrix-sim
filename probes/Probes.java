@@ -204,23 +204,39 @@ final class Probes {
         }
     }
 
-    /** `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000` — verb, class, and the quoted line. */
-    private static final Pattern BENCH_ROW =
-            Pattern.compile("^\\s+(judge|known|run)\\s+(\\w+)\\b(?:[^']*'([^']*)')?");
-
-    /** The bench's own exemption grammar: `vary '<why>' … judge <Class> '<line>'`. */
-    private static final Pattern BENCH_VARY = Pattern.compile("^\\s+vary\\b");
-
     /**
-     * Everything on a joined `vary` line up to the LAST verb on it (#1594).
+     * A row read from its LAST verb: `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000`.
      *
-     * <p>Greedy, and the first draft was not — which put `run` inside a `vary` reason
-     * ("two of its markers run the daemon") ahead of the real verb, and produced a row
-     * whose class was the word `the`. That is #1588 exactly, in Java, arriving through the
-     * fix for the Java version of the same bug: anchor on the LAST verb, never the first.
+     * <p>One pattern, one rule (#1598). There were two — one anchored at the start of the
+     * line to read the row, and one that found the last verb to strip a joined {@code vary}
+     * block's prefix — and nothing asserted they held the same verb list. Adding a fourth
+     * verb to one and not the other passed every case: to the reader only, and a
+     * {@code vary} decorating it keeps its prefix so the class reads as a word from the
+     * reason; to the stripper only, and the row is unmatched and DISAPPEARS. The second is
+     * a silent row loss, which is what #1588, #1590, #1594 and #1596 have all been about.
+     *
+     * <p>Both were answering one question from opposite ends — <em>where does the row
+     * start</em> — so the rule is stated once: <b>read from the last verb on the line.</b>
+     * The leading {@code .*} is greedy, which is what makes it the last; that lesson has
+     * cost two units in two languages (#1588, then #1594 inside its own fix) and is a case
+     * here rather than a sentence.
+     *
+     * <p><b>The skip is bounded by what a row LOOKS like</b>, not by the verb alone. A
+     * decorated row whose verdict says `VERDICT X run Beta` has two verbs on the joined
+     * line, and the greedy skip took the second — reading the row as `run/Beta/`. The
+     * lookahead demands verb + class + quote, which the verdict text does not supply, so
+     * the skip stops at the real verb. That case is in the suite; without it this reading
+     * would have shipped with the bug it was written to remove.
      */
-    private static final Pattern BENCH_VARY_PREFIX =
-            Pattern.compile("^.*(?=\\s(judge|known|run)\\s)");
+
+    /** The three verbs a bench row can open with, in ONE place (#1598). */
+    private static final String BENCH_VERBS = "(?:judge|known|run)";
+
+    private static final Pattern BENCH_ROW =
+            Pattern.compile("^\\s+(?:vary\\b.*\\s(?=" + BENCH_VERBS + "\\s+\\w+\\s+'))?"
+                    + "(" + BENCH_VERBS + ")\\s+(\\w+)\\b(?:[^']*'([^']*)')?");
+
+
 
     /**
      * Every row of the bench table, read once (#1590).
@@ -274,9 +290,6 @@ final class Probes {
             if (held.length() > 0) {
                 line = held + line.trim();
                 held.setLength(0);
-            }
-            if (BENCH_VARY.matcher(line).find()) {
-                line = BENCH_VARY_PREFIX.matcher(line).replaceFirst("  ");
             }
             Matcher m = BENCH_ROW.matcher(line);
             if (m.find()) {
