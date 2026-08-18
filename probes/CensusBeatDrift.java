@@ -156,13 +156,20 @@ public final class CensusBeatDrift {
         // compared, not NO_BASELINE.
         String judged = " compared=" + compared + "/" + pairs + " band=" + band;
         System.out.println("BAND ticks=" + band + " seeds=" + seedSpec);
+        // THE VERDICT LEAVES WITH A CODE THAT AGREES WITH IT (#1531). All three arms
+        // printed and fell off the end of main, so DRIFT_FLAGGED told the shell the
+        // beats had held — #1091's defect, in the probe whose subject is drift, hidden
+        // from LeaveContract because a javadoc sentence downstream contains the words
+        // `System.exit`. The three-valued grammar is #1138's and this is its shape:
+        // NO_BASELINE is not a pass and not a failure, it is a comparison that never
+        // happened, and nothing compared is exactly what NEVER_AROSE means.
         if (flagged) {
-            System.out.println("VERDICT DRIFT_FLAGGED" + judged);
+            Probes.leave("VERDICT DRIFT_FLAGGED" + judged, Probes.Outcome.BROKE);
         } else if (compared == 0) {
-            System.out.println("VERDICT NO_BASELINE" + judged);
+            Probes.leave("VERDICT NO_BASELINE" + judged, Probes.Outcome.NEVER_AROSE);
         } else {
             System.out.println("MAX_DELTA " + worst);
-            System.out.println("VERDICT DRIFT_WITHIN_BAND" + judged);
+            Probes.leave("VERDICT DRIFT_WITHIN_BAND" + judged, Probes.Outcome.HELD);
         }
     }
 

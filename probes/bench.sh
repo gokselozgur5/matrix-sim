@@ -299,6 +299,14 @@ table() {
   # number that halved for two different reasons is a number a reader will otherwise
   # reconstruct wrongly.
   judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=5'
+  # THE READER'S OWN CASES (#1531). This check spent its whole life reading probe
+  # sources with no way to be watched misreading one, and the misreading it was
+  # capable of is the one that matters: it read comments. A javadoc sentence with
+  # the words `System.exit` in it made CensusBeatDrift — a probe with no verdict
+  # code at all — read as a probe that spends its own. Two of these five cases go
+  # red against the pre-#1531 raw read; three hold either way and say what the
+  # matcher is FOR, which is the pair a fixture suite needs to be worth running.
+  judge LeaveContract 'LEAVE SELFCHECK VERDICT READER_HOLDS cases=5 failed=0' --selfcheck
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
