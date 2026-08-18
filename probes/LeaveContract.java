@@ -475,6 +475,26 @@ public final class LeaveContract {
                 fail++;
             }
         }
+
+        // THE LIST AND THE PATTERN ARE ONE THING (#1602), asserted rather than assumed:
+        // every word in `BENCH_VERB_WORDS` must be a verb `benchRows` actually reads. The
+        // pattern is BUILT from the list, so this can only fail if somebody rebuilds one
+        // and not the other — which is the state the tree was in for three units, with a
+        // `Set.of` in `CatalogFlags` copying the same three words.
+        for (String verb : Probes.BENCH_VERB_WORDS) {
+            Path f = tmp.resolve("verb-" + verb + ".sh");
+            Files.writeString(f, "  " + verb + " Alpha 'VERDICT X'\n", StandardCharsets.UTF_8);
+            List<Probes.BenchRow> rs = Probes.benchRows(f);
+            boolean ok = rs.size() == 1 && rs.get(0).verb().equals(verb);
+            System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
+                    "verb-list:" + verb, verb,
+                    rs.isEmpty() ? "<none>" : rs.get(0).verb(), ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
         Probes.leave("LEAVE SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
                 + " cases=" + (pass + fail) + " failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);

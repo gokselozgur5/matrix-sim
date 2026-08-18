@@ -217,16 +217,18 @@ public final class CatalogFlags {
         // compares these two integers now, so the next divergence is a red build rather
         // than an accident somebody notices while writing a second reader.
         long judgedRows = table.stream().filter(Probes.BenchRow::judged).count();
-        // THE MIRROR DIRECTION (#1600). Every other check here reads a READER; this
-        // reads the FILE. A verb the readers do not know makes them ignore every row
-        // that uses it — and they then agree perfectly about the rows they can see, so
-        // #1590's cross-language comparison cannot help: two readers with one blind
-        // spot agree.
+        // ONE VERB LIST, PLUS THE MODIFIER (#1602). This was a `Set.of` with the reader's
+        // three words copied into it, three units after #1598 collapsed two verb lists into
+        // one — and in a unit whose subject was *the checks read the readers and nothing
+        // reads the file*. Add a fifth verb to the reader and not here, and this reports
+        // the reader's own verb as unread: a false accusation about the file.
         //
-        // The gap is reported as WORDS and not as a number. `vary` in it is accounted
-        // for — a modifier decorates a row rather than being one — and anything else
-        // is a verb nothing reads. A count alone could not tell those apart.
-        java.util.Set<String> known = java.util.Set.of("judge", "known", "run", "vary");
+        // They are not the same list and merging them would be wrong. This one is the
+        // reader's plus `vary`, because the MODIFIER is known to the file and not to the
+        // reader — it decorates a row rather than being one — and that is exactly why
+        // `verb_shaped=` and `bench_rows=` differ by seven.
+        java.util.Set<String> known = new java.util.LinkedHashSet<>(Probes.BENCH_VERB_WORDS);
+        known.add("vary");
         java.util.List<String> strangers = new ArrayList<>();
         for (String verb : Probes.verbShaped(bench)) {
             if (!known.contains(verb)) {
