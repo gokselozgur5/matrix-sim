@@ -327,6 +327,12 @@ table() {
   # because twenty row edits is twenty judgements about what each row should say
   # (#1207, #1095 -> #1311).
   judge CatalogFlags 'VERDICT CATALOG_FLAGS_COUNTED undocumented=20 checked_none=0'
+  # The reading's own cases (#1576). This probe reads fifty-five sources with a rule
+  # that has a KNOWN false positive — a greedy read collects the flags DocLint hands
+  # to git — and that correction was asserted in a javadoc and demonstrated nowhere.
+  # Writing the cases found a defect in the OTHER half: the row join was a plain
+  # contains, so a row saying --prefix read as naming --pr.
+  judge CatalogFlags 'CATALOG SELFCHECK VERDICT READER_HOLDS cases=12 failed=0' --selfcheck
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
