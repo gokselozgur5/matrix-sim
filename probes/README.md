@@ -5,6 +5,12 @@ once and died with its scratchpad. This directory is where they live instead. A 
 is not a test and not a feature: it is an instrument you point at a running universe
 when one of the three D-020 instruments shows a symptom the others cannot explain.
 
+**If this file conflicts, do not take a side** — the catalog rows below are one
+line each, so two units editing two different rows collide across both, and
+taking one whole side silently reverts the other's row. `.gitattributes` sets
+`merge=union` here: the merge completes with both versions present and the
+duplicate is the thing to repair, not a row to choose between (#1370).
+
 ## The probe contract
 
 1. **Read-only, with one carve-out that is now stated rather than inferred.** A probe
