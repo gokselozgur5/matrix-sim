@@ -299,6 +299,44 @@ final class Probes {
         return rows;
     }
 
+
+    /**
+     * A line SHAPED like a bench row: whitespace, a lowercase word, a CamelCase class.
+     *
+     * <p>Deliberately blind to which word it is (#1600). Every other check in this family
+     * reads a READER — {@code benchRows} knows three verbs, {@code counters.sh} knows the
+     * same three, and #1590's lane step asserts the two agree. If {@code bench.sh} grows a
+     * FOURTH verb, both readers ignore every row that uses it, they agree perfectly about
+     * the rows they can see, and the lane is green. Two readers with one blind spot agree.
+     */
+    private static final Pattern VERB_SHAPED =
+            Pattern.compile("^\\s+([a-z][a-z-]*)\\s+[A-Z][A-Za-z0-9]*\\b");
+
+    /**
+     * Every line in the bench table that LOOKS like a row, whatever verb it opens with.
+     *
+     * <p>The mirror of {@link #benchRows}, and the direction nothing had. A verb the
+     * readers do not know shows up here the moment it is written, and the gap between this
+     * count and theirs is the question: {@code read=70} beside {@code verb_shaped=77} says
+     * seven lines look like rows and are not being read.
+     *
+     * <p>Seven is the right answer today — {@code vary} is a modifier, not a verb, and it
+     * decorates a row rather than being one. That is exactly why the two numbers differ,
+     * and it is why this returns the WORDS rather than a count: a reader seeing
+     * {@code vary} in the gap knows the gap is accounted for, and seeing anything else
+     * knows it is not.
+     */
+    static List<String> verbShaped(Path bench) throws IOException {
+        List<String> verbs = new ArrayList<>();
+        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
+            Matcher m = VERB_SHAPED.matcher(line);
+            if (m.find()) {
+                verbs.add(m.group(1));
+            }
+        }
+        return verbs;
+    }
+
     static RealWorld realWorld(Simulation sim) throws ReflectiveOperationException {
         return (RealWorld) open(Simulation.class, "realWorld").get(sim);
     }
