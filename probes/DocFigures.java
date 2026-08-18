@@ -141,11 +141,28 @@ public final class DocFigures {
         // determinism hazard for the same reason AllocMeter's byte counts are
         // not: the census line is exempt from the --twice byte compare by
         // being off the verdict, and the bench row greps the verdict alone.
-        System.out.println("FIGURE_CENSUS checked=" + checked + " docs=" + docs.size()
+        System.out.println("FIGURE_CENSUS docs=" + docs.size()
                 + " secs=" + ((System.nanoTime() - started) / 1_000_000_000L));
 
+        // `checked=` IS ON THE VERDICT SINCE #1623, and the census keeps a copy of
+        // nothing: deleting a marker used to print `checked=4` here and a green
+        // verdict there, so a figure could stop being checked with no line saying
+        // so. This probe is OPT-IN by design — an unmarked paragraph is prose it has
+        // no opinion about — and the cost of opt-in is that opting OUT is free. It
+        // was free and silent; now it is free and loud.
+        //
+        // #1302's argument for keeping `secs=` off the verdict does NOT transfer.
+        // A timing moves on a slow box for a reason nobody chose, and pinning it
+        // teaches people to edit the number (#1221, #884). A marker count moves only
+        // when a person edits a figure comment, deliberately, in a diff. That is the
+        // `LEAVE_BY_HAND` case: what the pin buys is not correctness but one more
+        // line an author has to write, with their name on it.
+        //
+        // `docs=` stays on the census. `--docs` takes a list, so it is an argument of
+        // the RUN rather than a property of the tree, and a caller pointing this at
+        // two documents would go red for having asked a smaller question.
         boolean held = stale == 0 && refused == 0 && checked > 0;
-        Probes.leave("VERDICT FIGURES_AGREE stale=" + stale + " refused=" + refused
+        Probes.leave("VERDICT FIGURES_AGREE checked=" + checked + " stale=" + stale + " refused=" + refused
                         + " checked_none=" + (checked == 0 ? 1 : 0),
                 held ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
