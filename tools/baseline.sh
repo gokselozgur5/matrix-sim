@@ -3,6 +3,7 @@
 #
 # Usage: tools/baseline.sh <pr-body-file> <base-sha>
 #        tools/baseline.sh --selftest        run every case against this history
+#        tools/baseline.sh --help | -h       print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. PR #207 shipped a full evidence table — a 196-tick
 # park at seed 5, a refusal at 4265, an ECO dip at 5300 — and none of it
@@ -190,6 +191,11 @@ selftest() {
     "$([ "$fail" = 0 ] && printf PASS || printf FAIL)" "$((pass + fail))" "$fail"
   [ "$fail" = 0 ]
 }
+
+# THE DOOR IS READ BEFORE THE POSITIONAL ARGUMENTS (#1527). This tool takes two positional arguments, so an unread --help becomes a pr-body-file that does not exist.
+case "${1:-}" in
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
+esac
 
 BODY="${1:-}"
 BASE="${2:-}"

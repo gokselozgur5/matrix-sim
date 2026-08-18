@@ -3,6 +3,7 @@
 #
 # Usage: tools/release.sh vX.Y.Z "Release title" path/to/notes.md
 #        tools/release.sh --check            (run the locks, cut nothing)
+#        tools/release.sh --help | -h        (print this clause, and stop)
 #
 # The script refuses to release unless the evidence is green RIGHT NOW: it
 # rebuilds from a clean out/, runs the daemon's own locks — both selftests,
@@ -35,6 +36,11 @@
 set -euo pipefail
 
 CHECK=0
+# THE DOOR IS READ BEFORE THE POSITIONAL ARGUMENTS (#1527). Below this the first argument is a version string, so an unread --help is refused as "version must be vX.Y.Z" — a message about the wrong thing.
+case "${1:-}" in
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
+esac
+
 [[ "${1:-}" == "--check" ]] && { CHECK=1; shift; }
 
 if (( CHECK )); then

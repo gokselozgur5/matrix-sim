@@ -5,6 +5,7 @@
 #        tools/litany.sh --selftest    run every question against built fixtures
 #        tools/litany.sh --shellcheck  parse every run: block as the shell that runs it
 #        tools/litany.sh --floorcheck  does every suite gate carry a floor?
+#        tools/litany.sh --help | -h   print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. In one night `locks.yml` gained floors, lost
 # three swallowing captures, gained two locks, widened one and gained two
@@ -82,6 +83,11 @@ FLOORCHECK=no
 # `run_producing` for why it is a directory and not an array.
 PRODUCER_CACHE="$(mktemp -d)"
 trap 'rm -rf "${PRODUCER_CACHE:-}"' EXIT
+# THE DOOR IS READ BEFORE THE POSITIONAL ARGUMENTS (#1527). The three flags below are compared one at a time and anything else is a PATH, so an unread --help becomes a workflow file that does not exist.
+case "${1:-}" in
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
+esac
+
 [ "${1:-}" = "--selftest" ] && { SELFTEST=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--shellcheck" ] && { SHELLCHECK=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--floorcheck" ] && { FLOORCHECK=yes; FILE=.github/workflows/locks.yml; }

@@ -15,6 +15,7 @@
 #        probes/bench.sh --without-probes
 #                                       build src/ and selftest with probes/
 #                                       deleted, in a throwaway copy of HEAD
+#        probes/bench.sh --help | -h   print this clause, and stop
 #
 # The bench was fifteen programs invoked by hand while CI judged four of them,
 # with the expected verdict lines inlined in a workflow file most contributors
@@ -74,6 +75,9 @@ for arg in "$@"; do
     # for a reason this pull request is responsible for.
     --twice-changed) TWICE=yes; TWICE_ONLY="__next__" ;;
     --without-probes) WITHOUT=yes ;;
+    # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door
+    # added below it is in `--help` the moment it is in the header.
+    -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     *)
       # A positional argument is the tick budget, unless --twice-changed is waiting for
       # its class list, in which case it is that.

@@ -3,6 +3,7 @@
 #
 # Usage: tools/advice.sh            audit every tool's printed advice
 #        tools/advice.sh --list     print the advice lines it found, and stop
+#        tools/advice.sh --help | -h   print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. Three units in one day fixed the same defect in
 # three different tools, and it was the same defect each time: a tool printed a
@@ -219,6 +220,9 @@ SELFTEST=no
 case "${1:-}" in
   ''|--list) ;;
   --selftest) SELFTEST=yes ;;
+  # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door
+  # added below it is in `--help` the moment it is in the header.
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
   *) echo "FATAL unknown argument: $1 (this tool takes --list, --selftest, or nothing)" >&2; exit 2 ;;
 esac
 
