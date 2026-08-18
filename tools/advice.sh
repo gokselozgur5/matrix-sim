@@ -125,6 +125,35 @@ uncommented() {                 # uncommented <tool> — its body, comment lines
 # `tools_no_flags=` is loud when it is wrong — which is why that counter is
 # reported rather than skipped in silence (#1207). Stating the assumption is the
 # option #1341 ranked first; guessing at scope is the one it refuses.
+
+# WHAT DIFFERS BETWEEN TWO TWINS (#1561), as a function of a name and a catalog, so
+# it can be watched being wrong with no shop and no tools.
+#
+# `rows_duplicated` has fired twice for real — both times `merge=union` doing what
+# #1370 adopted it for — and both times the repair was to delete the STALE twin,
+# which the report could not name. Two rows of six thousand characters differ
+# somewhere in the middle, and choosing wrong is SILENT: the build goes green the
+# moment there is one row, whichever survives. That is the failure union was
+# adopted to prevent, arriving one step later in the same motion.
+#
+# Word by word rather than character by character: `tr` to one token per line,
+# `sort -u`, `comm`. No history read and no rule about which twin is newer — it
+# turns the comparison into the handful of words that actually moved, which in both
+# live firings were `--sweepcost`, `licence`, `doors_ok`, `--floorage`: the thing
+# the newer unit added, and exactly what a person needs to know which twin to keep.
+row_words() {                   # row_words <name> <catalog> <which>
+  grep "^| \`$1\`" "$2" | sed -n "${3}p" \
+    | tr -cs 'A-Za-z0-9_.=-' '\n' | sort -u
+}
+
+row_diff() {                    # row_diff <name> <catalog> — two DUPLICATE_DIFF lines
+  local first later
+  first="$(comm -23 <(row_words "$1" "$2" 1) <(row_words "$1" "$2" 2) | tr '\n' ' ')"
+  later="$(comm -13 <(row_words "$1" "$2" 1) <(row_words "$1" "$2" 2) | tr '\n' ' ')"
+  echo "DUPLICATE_DIFF $1 first-only: ${first:-<nothing>}"
+  echo "DUPLICATE_DIFF $1 later-only: ${later:-<nothing>}"
+}
+
 by_scope() {                    # by_scope <file> <door|helper>
   awk -v want="$2" '
     /^[a-zA-Z_][a-zA-Z0-9_]*\(\)[[:space:]]*\{[[:space:]]*$/ { inside = 1; next }
@@ -390,6 +419,11 @@ for tool in tools/*.sh; do
   rows_duplicated=$((rows_duplicated + 1))
   BREAKS=$((BREAKS + 1))
   echo "DUPLICATE_ROW $name opens $n rows in tools/README.md — every check here reads them as one"
+  # Two lines naming the words unique to each twin (#1561): only the first pair is
+  # diffed, because three twins is not a shape this has ever met and a rule for it
+  # would be a rule nobody has watched work (#1207).
+  row_diff "$name" tools/README.md
+  [ "$n" -gt 2 ] && echo "DUPLICATE_DIFF $name has $n rows; only the first two are compared"
 done
 
 # The manual read in the OTHER direction (#1033).
@@ -1220,6 +1254,43 @@ $ARM"
   # left, and every one in this shop removes a temp directory the tool made.
   purity_case trap-is-not-an-effect 1/0/0 "trap 'rm -rf /tmp/x' EXIT
 $ARM"
+
+  # THE TWIN DIFF (#1561). `rows_duplicated` has fired twice for real and the report
+  # could not say which twin to delete; these pin what the diff says instead.
+  diff_case() {                 # diff_case <name> <want> <catalog-lines>
+    local got
+    rm -rf "$tmp/dup"; mkdir -p "$tmp/dup"
+    printf '%s\n' "$3" > "$tmp/dup/README.md"
+    got="$(row_diff fixture.sh "$tmp/dup/README.md" | tr '\n' '|')"
+    if [ "$got" = "$2" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$1" "$2" "$got"
+    fi
+  }
+  # The live shape both times: the later twin carries the word the newer unit added.
+  diff_case dup-later-added \
+    'DUPLICATE_DIFF fixture.sh first-only: <nothing>|DUPLICATE_DIFF fixture.sh later-only: NEWFLAG |' \
+    '| `fixture.sh` | does a thing. |
+| `fixture.sh` | does a thing. NEWFLAG |'
+  # The other order, which a merge produces just as often — the OLDER twin can land
+  # second — so the report must not imply that "later" means "newer".
+  diff_case dup-first-added \
+    'DUPLICATE_DIFF fixture.sh first-only: NEWFLAG |DUPLICATE_DIFF fixture.sh later-only: <nothing>|' \
+    '| `fixture.sh` | does a thing. NEWFLAG |
+| `fixture.sh` | does a thing. |'
+  # Two twins that differ in BOTH directions: each unit added a word the other has
+  # not, which is what a genuine two-sided edit of one row looks like.
+  diff_case dup-both-moved \
+    'DUPLICATE_DIFF fixture.sh first-only: ALPHA |DUPLICATE_DIFF fixture.sh later-only: BETA |' \
+    '| `fixture.sh` | does a thing. ALPHA |
+| `fixture.sh` | does a thing. BETA |'
+  # Identical twins: a duplication with nothing to choose between, which is still a
+  # break and must not print a misleading difference.
+  diff_case dup-identical \
+    'DUPLICATE_DIFF fixture.sh first-only: <nothing>|DUPLICATE_DIFF fixture.sh later-only: <nothing>|' \
+    '| `fixture.sh` | does a thing. |
+| `fixture.sh` | does a thing. |'
 
   # The exit-code join (#1238). The live rows falsify it too — it found two real
   # ones the day it was written — but the tree will stop supplying examples the
