@@ -2,6 +2,7 @@
 # tools/issuetree.sh — print an issue's tree, root to leaves.
 #
 # Usage: tools/issuetree.sh <issue-number> [max-depth]
+#        tools/issuetree.sh --help | -h    print this clause, and stop
 #
 # Leaves carry a dot, parents carry their child count: the shape of the work at
 # a glance (D-059). A leaf is one PR; a parent is a promise about leaves.
@@ -52,7 +53,12 @@ if [ "${1:-}" = "--selftest" ]; then
   case_ no-argument   2
   case_ not-a-number  2 not-a-number
   case_ bad-depth     2 1246 not-a-depth
-  case_ a-flag        2 --help
+  # #1276 pinned this refusal with --help, which was simply the flag to hand.
+  # The guard is about NON-NUMERIC arguments, not about that string, so the
+  # unknown-flag case now uses a flag that is genuinely unknown — and the door
+  # gets a case of its own. Before this pair there was only one kind of flag.
+  case_ a-flag        2 --nonsense
+  case_ the-door      0 --help
   # The empty string is its own case: `case "$1" in ''|*[!0-9]*)` has two arms
   # for a reason, and a draft that dropped the first would pass every case
   # above while accepting `issuetree.sh ""` as issue number zero.
@@ -61,6 +67,13 @@ if [ "${1:-}" = "--selftest" ]; then
   [ "$fail" -eq 0 ] || exit 1
   exit 0
 fi
+
+# THE DOOR IS READ BEFORE THE ARITY CHECK (#1529). Below this, --help is a
+# missing argument or a non-numeric one, and #1276's refusal is right about
+# every OTHER flag: this is the one that is not unknown.
+case "${1:-}" in
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
+esac
 
 if [ $# -lt 1 ]; then
   echo "FATAL usage: tools/issuetree.sh <issue-number> [max-depth]" >&2

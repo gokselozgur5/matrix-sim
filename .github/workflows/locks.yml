@@ -623,7 +623,7 @@ jobs:
           [ -n "$verdict" ] \
             || { echo "FATAL the issue tree's suite did not reach a passing verdict" >&2; exit 1; }
           ran="${verdict##*cases=}"; ran="${ran%% *}"
-          floor=5    # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=6    # raise it in the PR that adds a case; lowering it is a claim, not a bump
           [ "$ran" -ge "$floor" ] \
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "ISSUETREE SUITE FLOOR OK cases=$ran floor=$floor"
