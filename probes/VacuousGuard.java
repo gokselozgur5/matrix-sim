@@ -150,7 +150,7 @@ public final class VacuousGuard {
             // The probe is NOT excluded from its own population instead. `LeaveContract`
             // states why one directory over: a check that excluded itself would report a
             // number nobody could reproduce by counting the file.
-            if (Probes.uncommented(src).contains("Probes.Outcome." + "NEVER_" + "AROSE")) {
+            if (guardsTheEmptyPath(src)) {
                 byWord.add(probe);
             } else {
                 unguarded.add(probe);
@@ -197,6 +197,63 @@ public final class VacuousGuard {
     }
 
 
+
+
+    /**
+     * Is this source's {@code NEVER_AROSE} reached because the population was EMPTY? (#1609)
+     *
+     * <p>The word guard asked whether the constant is anywhere in the file, and
+     * {@code VacuousGuard}'s crown (#1541) named that as generous from the day it landed:
+     * <em>it asks whether the constant is reachable in the file, not whether it is reachable
+     * on the EMPTY path.</em> Six probes were counted as guarded by a rule that cannot tell
+     * an empty-population guard from any other use of the constant.
+     *
+     * <p>The tighter question is decidable from the same text. The constant sits inside a
+     * {@code Probes.leave(...)} call and the call sits under a branch, so this looks BACK
+     * from the constant for a condition mentioning emptiness — {@code == 0},
+     * {@code isEmpty()}, {@code < 1}. That separates <em>the population was empty</em> from
+     * <em>something else happened</em>.
+     *
+     * <p>The window is {@value #EMPTY_WINDOW} lines, which is a number and therefore a
+     * weakness: it is wide enough for every real guard here — the widest is
+     * {@code BondScenario}, five lines from its {@code fired > 0} arms to the {@code else}
+     * that follows them — and narrow enough that an unrelated condition elsewhere in the
+     * method does not reach. Stated rather than tuned silently: it was four, and four
+     * called {@code BondScenario} unguarded.
+     *
+     * <p><b>What it cannot do</b>: decide whether the branch is REACHABLE, or whether the
+     * condition is the RIGHT one — {@code if (census == 1)} reads as a guard. The direction
+     * of that error is unchanged and generous: it over-counts guards and under-counts
+     * {@code unguarded=}, which is the safe side for a census (#1207) and the wrong side
+     * for a gate.
+     */
+    private static boolean guardsTheEmptyPath(Path src) throws IOException {
+        List<String> lines = List.of(Probes.uncommented(src).split("\n", -1));
+        String constant = "Probes.Outcome." + "NEVER_" + "AROSE";
+        for (int i = 0; i < lines.size(); i++) {
+            if (!lines.get(i).contains(constant)) {
+                continue;
+            }
+            for (int back = Math.max(0, i - EMPTY_WINDOW); back <= i; back++) {
+                String line = lines.get(back);
+                // `> 0` counts because an `else` after it IS the empty branch for a count.
+                // `BondScenario` writes exactly that — two `fired > 0` arms and an else
+                // whose comment says *the run produced no firing* — and a rule reading only
+                // `== 0` called a legitimate guard unguarded. `AllocMeter`'s `ranAt != 1` is
+                // NOT in the list and must not be: its NEVER_AROSE is a refused
+                // configuration, not an empty population, which is the case #1609 predicted
+                // this rule was always going to get wrong.
+                if (line.contains("== 0") || line.contains("isEmpty()")
+                        || line.contains("< 1") || line.contains("> 0")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** How far back a guard's condition may sit from the constant it protects (#1609). */
+    private static final int EMPTY_WINDOW = 6;
 
     private VacuousGuard() {}
 }
