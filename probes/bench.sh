@@ -318,7 +318,7 @@ table() {
   # number beside it: converting twenty-seven probes is twenty-seven judgements about
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=27 judged_none=0'
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=28 judged_none=0'
   # probes/README.md is read for EXISTENCE in two directions — roster_check asks
   # whether every probe has a row (#1177), counters.sh whether a row names the
   # counters its bench row pins (#1356) — and in no direction for ACCURACY. One
