@@ -6,6 +6,7 @@
 #        tools/balance.sh --datecheck          (the day arithmetic, no token needed)
 #        tools/balance.sh --rulercheck         (the ruler, no token needed)
 #        tools/balance.sh --judgecheck         (the deficit advice, no token needed)
+#        tools/balance.sh --help | -h          print this clause, and stop
 #
 # The law: the four contribution kinds GitHub counts — commits, issues, pull
 # requests, reviews — each hold a quarter of the day. The reasoning, not the
@@ -130,6 +131,9 @@ for arg in "$@"; do
     --month)   SPAN=30; SPAN_NAME=month ;;
     --days)    SPAN="__next__"; SPAN_NAME=days ;;
     --for)     REPO="__next__" ;;
+    # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door added
+    # below it is in `--help` the moment it is in the header. This tool has nine.
+    -h|--help)  awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     -*)        echo "FATAL unknown flag: $arg" >&2; exit 2 ;;
     *)
       if [ "$REPO" = "__next__" ]; then REPO="$arg"
