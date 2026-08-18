@@ -108,7 +108,8 @@ public final class DocLint {
                          int twoStatuses, int missingConfirmation,
                          int gaps, int unannotatedGaps, int beatClaims, int beatDrift,
                          int pinsScanned, int pinsPlaceholder, int deadPins,
-                         int staleConfirmations, int confirmationsExcused) {
+                         int staleConfirmations, int confirmationsExcused,
+                         String gapSet) {
 
         boolean docsTrue() {
             return statusDrift == 0 && gateDrift == 0 && twoStatuses == 0
@@ -253,7 +254,7 @@ public final class DocLint {
         // printed there would be an invention.
         Report report = lint(canon, ArcBeats.measure(ticks, seed), resolver(root), true);
         print(report);
-        Probes.leave((report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT") + " gaps=" + report.gaps(),
+        Probes.leave((report.docsTrue() ? "VERDICT DOCS_TRUE" : "VERDICT DOCS_DRIFT") + " gaps=" + report.gapSet(),
                 report.docsTrue());
     }
 
@@ -269,6 +270,7 @@ public final class DocLint {
                 + " missing_confirmation=" + r.missingConfirmation()
                 + " confirmations_excused=" + r.confirmationsExcused()
                 + " confirmation_stale=" + r.staleConfirmations()
+                + " gaps=" + r.gaps()
                 + " unannotated_gaps=" + r.unannotatedGaps()
                 + " beat_claims=" + r.beatClaims()
                 + " beat_drift=" + r.beatDrift()
@@ -448,6 +450,13 @@ public final class DocLint {
         }
 
         int gaps = 0;
+        // The SET, not just the count (#1629). A gap is three numbers that are never
+        // supposed to change again — `docs/DECISIONS.md` says they stay unissued,
+        // because a D-number is a citation key and reusing one makes an old citation
+        // ambiguous. `gaps=3` matched a world where D-055 gained a record and D-062
+        // was claimed and never written, which is #1550 exactly. Sorted by the loop,
+        // which walks lo..hi, so two runs of one tree are byte-identical.
+        List<String> gapIds = new ArrayList<>();
         int unannotated = 0;
         if (!front.isEmpty()) {
             Set<Integer> have = new TreeSet<>();
@@ -462,6 +471,7 @@ public final class DocLint {
                     continue;
                 }
                 gaps++;
+                gapIds.add(String.format("D-%03d", n));
                 String id = String.format("D-%03d", n);
                 if (annotated.contains(n)) {
                     if (print) {
@@ -481,7 +491,8 @@ public final class DocLint {
 
         return new Report(canon.records().size(), index.size(), roadmap.size(), compared,
                 drift, gates[0], gates[1], two, noConfirmation, gaps, unannotated,
-                beats[0], beats[1], pins[0], pins[1], pins[2], staleConfirmation, excusedCount);
+                beats[0], beats[1], pins[0], pins[1], pins[2], staleConfirmation, excusedCount,
+                gapIds.isEmpty() ? "none" : String.join(",", gapIds));
     }
 
     // -------------------------------------------------------------- the pins
