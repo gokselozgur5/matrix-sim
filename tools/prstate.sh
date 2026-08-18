@@ -3,6 +3,7 @@
 #
 # Usage: tools/prstate.sh N | --pr N     judge one pull request
 #        tools/prstate.sh --reverts [REF]  does this branch revert a line REF added?
+#        tools/prstate.sh --revertsweep [STATE]  the same question over every pull request
 #        tools/prstate.sh                judge every open pull request
 #        tools/prstate.sh --for OWNER/NAME   name the repository (default: origin)
 #        tools/prstate.sh --selftest     run the judge's own cases; no token, no network
@@ -55,6 +56,7 @@ set -euo pipefail
 
 MODE=judge
 REVERT_REF=""
+REVERT_STATE=merged
 SWEEP_RUNS=20
 PR=""
 REPO=""
@@ -70,6 +72,7 @@ while [ $# -gt 0 ]; do
     --selftest) MODE=selftest; shift ;;
     --schedules) MODE=schedules; shift ;;
     --reverts) MODE=reverts; REVERT_REF="${2:-}"; case "$REVERT_REF" in ""|-*) REVERT_REF=""; shift ;; *) shift 2 ;; esac ;;
+    --revertsweep) MODE=revertsweep; REVERT_STATE="${2:-merged}"; case "$REVERT_STATE" in ""|-*) REVERT_STATE=merged; shift ;; *) shift 2 ;; esac ;;
     --sweepcost) MODE=sweepcost; SWEEP_RUNS="${2:-20}"; case "$SWEEP_RUNS" in ""|*[!0-9]*) SWEEP_RUNS=20; shift ;; *) shift 2 ;; esac ;;
     # READ TO THE END OF THE USAGE BLOCK, not to a line number. `sed -n '2,7p'`
     # stopped exactly where the clause ended on the day it was written, so a door
@@ -615,24 +618,104 @@ REVERT_BASE=origin/main
 # THE ARITHMETIC IS A PURE FUNCTION OF TWO TEXTS, so it can be watched being wrong
 # with no git and no network. Everything above it asks git; everything below counts.
 
+
+# THE SAME QUESTION OVER EVERY PULL REQUEST (#1614). The reader landed with no
+# measurement of the population it checks: #1118 counted four instances in one
+# night by reading pull requests afterwards, and nobody had counted them since the
+# reader existed. Without the number, wiring it into the lane is a guess and
+# leaving it out is a guess — `unfalsifiable=`'s path needs a starting figure
+# (#1095 -> #1311).
+#
+# IT WORKS ON MERGED PULL REQUESTS TOO, which is what makes the measurement
+# possible at all: GitHub keeps `refs/pull/N/head` after the branch is deleted, so
+# a day's landed work can be re-asked the question it was never asked.
+#
+# THE BASE IS THE ONE THE PULL REQUEST HAD, not today's `main`. Asking a merged
+# branch whether it is missing lines `main` has gained SINCE it merged would report
+# every one of them, which is not the question — the question is whether it was
+# missing lines `main` had at the time.
+
+# THE READER, POINTED AT ANY COMMIT (#1614). `reverts` asks about HEAD; this asks
+# about a ref, which is what lets the sweep re-ask a merged pull request the
+# question nobody asked it at the time. One body, two entry points: `reverts` is
+# `reverts_at HEAD` with a printed verdict.
+reverts_at() {                    # reverts_at <ref> [target-ref] — prints the count
+  # THE MERGED TREE, NOT THE BRANCH'S (#1614). The first reading asked whether the
+  # BRANCH's copy of a file carries every line the target added, and over thirty
+  # merged pull requests that reported fifty-eight reverts of which every one
+  # checked was false: git's three-way merge keeps the target's lines wherever the
+  # branch did not touch them, so a branch that merely SHARES a file with a newer
+  # commit looked like it was reverting it.
+  #
+  # `git merge-tree --write-tree` performs the merge without a working tree and
+  # hands back the resulting tree, so the question becomes the only one that
+  # matters: after merging, is a line the target added MISSING. That is what #1059
+  # actually did — fifteen files staged from a stale base, overwriting them whole —
+  # and a merge cannot rescue an overwrite.
+  local ref="$1" target="${2:-$REVERT_BASE}" base tree f added lost total=0
+  base="$(git merge-base "$target" "$ref" 2>/dev/null || true)"
+  [ -n "$base" ] || { printf '0\n'; return 0; }
+  tree="$(git merge-tree --write-tree "$target" "$ref" 2>/dev/null || true)"
+  # A merge with conflicts writes a tree with markers in it and exits non-zero. That
+  # is a conflict, not a revert: git is refusing to guess and a person will resolve
+  # it, which is the state this check does not judge.
+  [ -n "$tree" ] || { printf '0\n'; return 0; }
+  for f in $(git diff --name-only "$base".."$ref" 2>/dev/null); do
+    added="$(git diff "$base".."$target" -- "$f" 2>/dev/null | grep '^+[^+]' | sed 's/^+//' || true)"
+    [ -n "$added" ] || continue
+    lost="$(reverts_in "$added" "$(git show "$tree:$f" 2>/dev/null || true)")"
+    total=$((total + lost))
+  done
+  printf '%s\n' "$total"
+}
+
+reverts_sweep() {                 # reverts_sweep [state] [limit]
+  local state="${1:-open}" limit="${2:-30}" n head merge target total=0 seen=0 lost ref
+  for n in $(gh pr list --state "$state" --limit "$limit" --json number -q '.[].number' 2>/dev/null); do
+    ref="prstate-rev/$n"
+    git fetch -q origin "pull/$n/head:$ref" --force 2>/dev/null || continue
+    head="$(git rev-parse "$ref" 2>/dev/null || true)"
+    [ -n "$head" ] || continue
+    # THE TARGET IS `main` AS IT WAS WHEN THIS PULL REQUEST WAS ANSWERED, and the
+    # first measurement got that wrong: it compared every merged branch against
+    # TODAY's `main` and reported 3,932 reverted lines over thirty pull requests —
+    # every line every LATER unit added, which no branch could have carried.
+    #
+    # A merged pull request's `main` is its merge commit's first parent. An open one's
+    # is `main` now. Using one target for both is the same mistake this whole mode is
+    # about: two copies of a fact, and the wrong one read (#1082).
+    target="$REVERT_BASE"
+    if [ "$state" = merged ]; then
+      merge="$(gh pr view "$n" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)"
+      [ -n "$merge" ] && git fetch -q origin "$merge" 2>/dev/null
+      [ -n "$merge" ] && target="${merge}^1"
+      git rev-parse "$target" >/dev/null 2>&1 || target="$REVERT_BASE"
+    fi
+    seen=$((seen + 1))
+    lost="$(reverts_at "$head" "$target")"
+    total=$((total + lost))
+    [ "$lost" -eq 0 ] || printf 'REVERTS pr=%s reverted=%s target=%s\n' "$n" "$lost" "${target:0:12}"
+    git branch -D "$ref" >/dev/null 2>&1 || true
+  done
+  printf 'REVERTS SWEEP state=%s asked=%d reverted=%d\n' "$state" "$seen" "$total"
+  [ "$total" -eq 0 ]
+}
+
 reverts() {                       # reverts [base-ref]
-  local base_ref="${1:-$REVERT_BASE}" base f added lost total=0 files=0
+  # ONE BODY, TWO ENTRY POINTS (#1614): this is `reverts_at HEAD` with a verdict
+  # line and a file count, so the branch reading and the sweep reading cannot
+  # disagree about what a revert IS — which is the mistake this whole mode is about.
+  local base_ref="${1:-$REVERT_BASE}" base files total
   base="$(git merge-base "$base_ref" HEAD 2>/dev/null || true)"
   if [ -z "$base" ]; then
     echo "FATAL no merge base with $base_ref" >&2
     return 3
   fi
-  for f in $(git diff --name-only "$base"...HEAD); do
-    files=$((files + 1))
-    added="$(git diff "$base".."$base_ref" -- "$f" | grep '^+[^+]' | sed 's/^+//' || true)"
-    [ -n "$added" ] || continue
-    lost="$(reverts_in "$added" "$(git show "HEAD:$f" 2>/dev/null || true)")"
-    [ "$lost" -gt 0 ] || continue
-    total=$((total + lost))
-    printf 'REVERT %s lines=%s — %s added them after this branch cut\n' "$f" "$lost" "$base_ref"
-  done
+  files="$(git diff --name-only "$base"...HEAD | grep -c . || true)"
+  total="$(reverts_at HEAD "$base_ref")"
+  [ "$total" -eq 0 ] || printf 'REVERT this branch loses %s line(s) %s added after it was cut\n' "$total" "$base_ref"
   printf 'REVERTS VERDICT %s base=%s files=%d reverted=%d\n' \
-    "$([ "$total" -eq 0 ] && printf NONE || printf FOUND)" "${base:0:12}" "$files" "$total"
+    "$([ "$total" -eq 0 ] && printf NONE || printf FOUND)" "${base:0:12}" "${files:-0}" "$total"
   [ "$total" -eq 0 ]
 }
 
@@ -677,6 +760,7 @@ schedules() {
 if [ "$MODE" = schedules ]; then schedules; exit $?; fi
 # Before the repository is resolved: this mode reads git and never the API.
 if [ "$MODE" = reverts ]; then reverts "${REVERT_REF:-$REVERT_BASE}"; exit $?; fi
+if [ "$MODE" = revertsweep ]; then reverts_sweep "${REVERT_STATE:-merged}" 30; exit $?; fi
 
 # ---- the live reading --------------------------------------------------------
 
