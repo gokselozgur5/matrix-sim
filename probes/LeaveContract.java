@@ -181,7 +181,7 @@ public final class LeaveContract {
         List<String> undeclared = new ArrayList<>();
         for (String probe : byHand) {
             Path src = root.resolve("probes/" + probe + ".java");
-            if (!Files.readString(src, StandardCharsets.UTF_8).contains("LEAVE_BY_HAND")) {
+            if (!declaresByHand(src)) {
                 undeclared.add(probe);
                 System.out.println("UNDECLARED_BY_HAND " + probe
                         + " — it leaves by hand and no LEAVE_BY_HAND says why");
@@ -242,6 +242,39 @@ public final class LeaveContract {
      * and leave a probe in `by_hand` rather than reporting a defect that is not there.
      */
 
+
+
+    /**
+     * Does this source DECLARE a by-hand exit? (#1605)
+     *
+     * <p>The marker must OPEN a comment line — {@code // LEAVE_BY_HAND} or
+     * {@code * LEAVE_BY_HAND} — and not merely appear somewhere in the file. #1218 found it
+     * with a whole-file {@code contains}, so a probe satisfied the demand by mentioning the
+     * marker anywhere: in a javadoc about this mechanism, in prose explaining why it does
+     * not need one, in a fixture string. That is the self-matching shape this file's
+     * neighbours have met five times (#1033, #1157, #1222, #1265, #1276) and that #1531
+     * found in THIS file, reading {@code System.exit} inside a comment — introduced again
+     * eleven units later, in the same file, by the unit that added the demand.
+     *
+     * <p>It cannot be found through {@code Probes.uncommented}: the marker is deliberately
+     * in a comment, because a declaration is prose. So the reading is the mirror — comments
+     * only, and the marker must be the first thing on the line after the comment opener.
+     * All three current declarations already write it that way, which is why the bound is a
+     * shape and not a proximity rule with a number nobody can justify.
+     *
+     * <p><b>A declaration is not a justification.</b> {@code // LEAVE_BY_HAND: because}
+     * passes any rule here. What the check buys is that a fourth by-hand exit costs an
+     * author a sentence — the same thing {@code digest-move.sh} buys for the seal: not
+     * correctness, but a deliberate act with a name on it.
+     */
+    private static boolean declaresByHand(Path src) throws IOException {
+        for (String line : Files.readAllLines(src, StandardCharsets.UTF_8)) {
+            if (line.strip().matches("(//|\\*)\\s*LEAVE_BY_HAND\\b.*")) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static boolean spendsBeyondRefusal(String body) {
         return body.replace("System.exit(Probes.Outcome.REFUSED.code())", "")
@@ -515,6 +548,35 @@ public final class LeaveContract {
             System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
                     "verb-list:" + verb, verb,
                     rs.isEmpty() ? "<none>" : rs.get(0).verb(), ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // `declaresByHand` (#1605). The marker must OPEN a comment line; a mention in prose
+        // is not a declaration, which is the mistake #1218 shipped and this file's
+        // neighbours have made five times.
+        String[][] decls = {
+            {"decl-line-comment", "class A {\n  // LEAVE_BY_HAND: because stderr.\n}", "true"},
+            {"decl-javadoc", "class A {\n  /**\n   * LEAVE_BY_HAND: because stderr.\n   */\n}", "true"},
+            // THE MISTAKE #1218 SHIPPED: a mention mid-sentence, in prose ABOUT the
+            // mechanism, satisfying a whole-file `contains`.
+            {"decl-mentioned-in-prose",
+                "class A {\n  // This probe needs no LEAVE_BY_HAND because it uses the helper.\n}", "false"},
+            // And in code rather than in a comment, which a strip-based reading would have
+            // taken and a comment-based one must not.
+            {"decl-in-a-string", "class A { String s = \"LEAVE_BY_HAND\"; }", "false"},
+            {"decl-absent", "class A { void m() { } }", "false"},
+        };
+        for (String[] c : decls) {
+            Path f = tmp.resolve(c[0] + ".java");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            boolean got = declaresByHand(f);
+            boolean ok = String.valueOf(got).equals(c[2]);
+            System.out.printf("LEAVE helper=%-24s want=%-10s got=%-10s %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
             if (ok) {
                 pass++;
             } else {
