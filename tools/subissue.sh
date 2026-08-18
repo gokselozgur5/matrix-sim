@@ -2,6 +2,7 @@
 # tools/subissue.sh — cut a child issue and hang it on its parent, in one motion.
 #
 # Usage: tools/subissue.sh <parent-number> "<title>" <body-file> [--label L] [--milestone M]
+#        tools/subissue.sh --help | -h
 #
 # The tree is the work's real shape (D-059): a node branches until every leaf
 # is one PR. GitHub's native sub-issues carry the hierarchy; this script keeps
@@ -52,6 +53,11 @@ fi
 # two that were spelled out by hand (`parent must be an issue number`, `body
 # file not found`) had it right, so the tool disagreed with itself about what a
 # refusal costs.
+# THE DOOR IS READ BEFORE THE POSITIONAL ARGUMENTS (#1527). Below this the first argument is a parent issue number, and the arity check fires first, so an unread --help is refused with a usage line and exit 2 rather than answered.
+case "${1:-}" in
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
+esac
+
 #
 # Neither of advice.sh's exit-code checks could see it: `codes_undocumented`
 # reads LITERAL exits and bash's is not one, and `codes_unspent` asks whether a

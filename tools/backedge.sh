@@ -6,6 +6,7 @@
 #        tools/backedge.sh --write      add a `Referenced by:` line to a record that
 #                                       has none; NEVER touch one that exists
 #        tools/backedge.sh --selftest   run every case against built fixtures
+#        tools/backedge.sh --help | -h  print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. `docs/adr/README.md` has described this program
 # since D-029:
@@ -69,6 +70,9 @@ case "${1:-}" in
   --census)   MODE=census ;;
   --write)    MODE=write ;;
   --selftest) MODE=selftest ;;
+  # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door
+  # added below it is in `--help` the moment it is in the header.
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
   *) echo "FATAL unknown argument '$1' — see the Usage clause at the top of this file" >&2; exit 2 ;;
 esac
 

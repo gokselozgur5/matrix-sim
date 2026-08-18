@@ -4,6 +4,7 @@
 # Usage: tools/backlog.sh              count the open backlog by evidence, every kind with an evidence field
 #        tools/backlog.sh --list       print one row per unmeasured issue
 #        tools/backlog.sh --selftest   run the classifier's cases; no token, no network
+#        tools/backlog.sh --help | -h  print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. A day's record, from #1246:
 #
@@ -55,6 +56,9 @@ case "${1:-}" in
       [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
       *) echo "FATAL not a date: $SINCE (want YYYY-MM-DD)" >&2; exit 2 ;;
     esac ;;
+  # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door
+  # added below it is in `--help` the moment it is in the header.
+  -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
   *) echo "FATAL unknown argument: $1 (this tool takes --list, --flow DATE, --selftest, or nothing)" >&2; exit 2 ;;
 esac
 

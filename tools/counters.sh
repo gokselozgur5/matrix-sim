@@ -5,6 +5,7 @@
 # Usage: tools/counters.sh              count the pinned counters and the named ones
 #        tools/counters.sh --list       one row per pinned counter, named or not
 #        tools/counters.sh --selftest   run the reader's cases; no probe is executed
+#        tools/counters.sh --help | -h  print this clause, and stop
 #
 # THE FINDING. `roster_check` asks whether a probe HAS a row (#1177). Nothing
 # asked whether the row still DESCRIBES the probe, so an instrument can grow a
@@ -52,6 +53,9 @@ while [ $# -gt 0 ]; do
     --selftest) MODE=selftest ;;
     --bench) shift; [ $# -gt 0 ] || { echo "FATAL --bench wants a file" >&2; exit 2; }; BENCH="$1" ;;
     --catalog) shift; [ $# -gt 0 ] || { echo "FATAL --catalog wants a file" >&2; exit 2; }; CATALOG="$1" ;;
+    # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520): a door
+    # added below it is in `--help` the moment it is in the header.
+    -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     *) echo "FATAL unknown argument: $1 (this tool takes --list, --bench FILE, --catalog FILE, --selftest, or nothing)" >&2; exit 2 ;;
   esac
   shift
