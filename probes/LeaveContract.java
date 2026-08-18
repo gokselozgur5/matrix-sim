@@ -362,6 +362,25 @@ public final class LeaveContract {
             // The modifier line is skipped and the row it decorates is not.
             // A ROW SPLIT BEFORE ITS QUOTE (#1594): the shape nobody has written, which
             // read as a `judge` with no verdict — and `judged()` calls that a `run` row.
+            // THE CASE THAT WOULD HAVE CAUGHT #1594'S OWN MISTAKE (#1596). That unit's
+            // prefix strip was LAZY and stopped at the word `run` inside a `vary` reason —
+            // "two of its markers run the daemon" — producing a row whose class was the
+            // word `the`. It was found by a census line, not by a case: the fixture reason
+            // above is the word `why`, which contains no verb, so both spellings pass it.
+            // Three of the four real `vary` reasons are prose long enough to contain a verb
+            // by accident.
+            {"bench-vary-reason-says-run", "  vary  'two of its markers run the daemon' \\\\\n"
+                    + "  judge Alpha 'VERDICT X a=0'", "judge/Alpha/VERDICT X a=0"},
+            {"bench-vary-reason-says-judge", "  vary  'the row this judge decorates' \\\\\n"
+                    + "  judge Alpha 'VERDICT X a=0'", "judge/Alpha/VERDICT X a=0"},
+            // A TRAILING BACKSLASH ON THE LAST LINE. Joining is unconditional, so the
+            // fragment is held and never flushed — a row disappears silently, which is the
+            // class of defect this whole thread is about (#1588, #1590, #1594). Pinned as
+            // DROPPED rather than repaired: the file is malformed, the reader cannot invent
+            // the missing continuation, and a case that says so is better than a
+            // StringBuilder deciding by accident.
+            {"bench-dangling-backslash", "  judge Alpha 'VERDICT X a=0'\n  judge Beta \\\\",
+                "judge/Alpha/VERDICT X a=0"},
             {"bench-split-before-quote", "  judge Alpha \\\\\n        'VERDICT SPLIT a=0'",
                 "judge/Alpha/VERDICT SPLIT a=0"},
             // A row continued AFTER its quote, which is the harmless half and must stay so.
