@@ -43,6 +43,15 @@ esac
 
 [[ "${1:-}" == "--check" ]] && { CHECK=1; shift; }
 
+# AN UNKNOWN FLAG IS A REFUSAL, AND THIS TOOL SPENT 1 FOR IT (#1546). Below this the
+# first argument is a VERSION, so `--nonsense` was refused as `FATAL version must be
+# vX.Y.Z` — a refusal wearing the wrong code and a message about the wrong thing.
+# `--check` above already spends 2 for an extra argument; this is the same refusal
+# for the flag that opens the invocation.
+case "${1:-}" in
+  --*) echo "FATAL unknown flag: $1 (this tool takes vX.Y.Z \"Title\" notes.md, or --check)" >&2; exit 2 ;;
+esac
+
 if (( CHECK )); then
   [[ $# -eq 0 ]] || { echo "FATAL --check takes no other arguments" >&2; exit 2; }
 else

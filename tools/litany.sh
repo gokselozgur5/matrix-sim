@@ -95,6 +95,17 @@ esac
 [ "${1:-}" = "--floorcheck" ] && { FLOORCHECK=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--floorage" ]   && { FLOORAGE=yes;   FILE=.github/workflows/locks.yml; }
 
+# AN UNKNOWN FLAG IS A REFUSAL, AND THIS TOOL SPENT 1 FOR IT (#1546). Anything that
+# is not one of the four above is read as a PATH, so `--nonsense` became a workflow
+# file that cannot be opened and the tool failed the way a BROKEN LITANY fails —
+# exit 1, this tree's word for *the claim does not hold*. A caller branching on $?
+# could not tell "you typed the flag wrong" from "the file you pointed me at is
+# unparseable". Thirteen tools in this shop spend 2 for a refusal; two did not.
+case "${1:-}" in
+  --selftest|--shellcheck|--floorcheck|--floorage) ;;
+  --*) echo "FATAL unknown flag: $1 — see the Usage clause at the top of this file" >&2; exit 2 ;;
+esac
+
 # ---------------------------------------------------------------- question 1
 
 parse_breaks() {                # parse_breaks <file> — one line per breakage
