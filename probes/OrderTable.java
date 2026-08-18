@@ -111,13 +111,24 @@ public final class OrderTable {
      * failure this probe exists against, one level up. The constant rather than
      * its number, since #1533: this sentence said `exit 2` and the probe has
      * spent 3 since #1219, and nothing in the tree reads prose for a digit.
+     *
+     * <p><b>And it has never fired</b> (#1536). The roster is read off a booted root and
+     * it is 3; no argument moves it, so this refusal is unreachable from a command line
+     * and has never executed. That is stated here rather than left to be discovered:
+     * a guard nobody can trigger is a guard nobody can falsify, and the sentence
+     * describing it was two units wrong before anyone noticed.
      */
     private static final int MAX_NODES = 4;
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
-        long ticks = args.length > 0 ? Long.parseLong(args[0]) : 6_000;
-        long seed = args.length > 1 ? Long.parseLong(args[1]) : 42;
+        // THE DOOR, AND IT WAS NOT THERE (#1536). `Long.parseLong` throws on a
+        // non-numeric argument, so a typo left with 1 — this family's word for
+        // *the contract broke* — and a stack trace instead of a verdict. The
+        // probe judging tick-order independence reported a typo the way it would
+        // report the world losing its determinism.
+        long ticks = number(args, 0, 6_000, "ticks");
+        long seed = number(args, 1, 42, "seed");
 
         // The roster, read off a booted root rather than assumed: the node
         // list is the one thing this probe must not carry as a constant.
@@ -140,6 +151,20 @@ public final class OrderTable {
         int orders = 0;
         int silent = 0;
 
+        // A RUN THAT REACHED NO DIGEST IS NOT A COMPARISON (#1536). The chain is
+        // sampled every Config.DIGEST_EVERY_TICKS, so a budget below one period
+        // produces an EMPTY list and `chain.get(chain.size() - 1)` reached index -1:
+        // `OrderTable 9` died on an ArrayIndexOutOfBoundsException and the JVM left
+        // with 1, which is this family's word for the contract this probe judges
+        // having broken. Nothing broke; there was nothing to compare. The cadence is
+        // READ from Config rather than written as 100, so the refusal cannot drift
+        // from the thing it is about.
+        if (ticks < matrix.core.Config.DIGEST_EVERY_TICKS) {
+            System.out.println("FATAL ORDER_TABLE_NO_DIGEST ticks=" + ticks
+                    + " digest_every=" + matrix.core.Config.DIGEST_EVERY_TICKS
+                    + " (a run below one digest period produces no chain to compare)");
+            System.exit(Probes.Outcome.REFUSED.code());
+        }
         for (int[] order : permutations(n)) {
             List<Digest> chain = run(seed, ticks, order);
             String sha = chain.get(chain.size() - 1).sha256();
@@ -177,6 +202,36 @@ public final class OrderTable {
     }
 
     /** One universe, ticked with its node list permuted before the first tick. */
+
+    /**
+     * One positional number, refused rather than thrown (#1536).
+     *
+     * <p>{@code Long.parseLong} leaves a {@code NumberFormatException} to the JVM, which
+     * exits 1 — the code that means the contract this probe judges did not hold. A typo
+     * is not a determinism failure, and telling them apart is the whole reason this
+     * family has a {@code REFUSED} code at all. The refusal names the field, because
+     * *not a number* over two positional arguments sends the reader to the wrong one.
+     */
+    private static long number(String[] args, int i, long fallback, String field) {
+        if (args.length <= i) {
+            return fallback;
+        }
+        try {
+            long v = Long.parseLong(args[i]);
+            if (v <= 0) {
+                System.out.println("FATAL ORDER_TABLE_BAD_ARGUMENT " + field + "=" + v
+                        + " (a run needs a positive " + field + ")");
+                System.exit(Probes.Outcome.REFUSED.code());
+            }
+            return v;
+        } catch (NumberFormatException e) {
+            System.out.println("FATAL ORDER_TABLE_BAD_ARGUMENT " + field + "='" + args[i]
+                    + "' (not a number)");
+            System.exit(Probes.Outcome.REFUSED.code());
+            return fallback;   // unreachable; javac cannot see System.exit
+        }
+    }
+
     private static List<Digest> run(long seed, long ticks, int[] order)
             throws ReflectiveOperationException {
         Simulation sim = new Simulation(seed, null, null);
