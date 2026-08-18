@@ -64,6 +64,19 @@ duplicate is the thing to repair, not a row to choose between (#1370).
    and does not make the answer certain** — the guarantee this pass gives is about
    bytes, and a field that moves on a clock has no guarantee to give.
 
+
+   **Both branches of the comparison, since #1567.** The third run landed on the plain
+   branch first and stopped there, which left the narrowing's strongest protection off
+   the rows with the strongest prior: a probe wearing `vary` is one KNOWN to have a
+   field that moves on a clock, and that is evidence it is the population most likely
+   to grow a second one — `DocFigures` is the probe #1329 was opened for and it is
+   exempt. The cut-and-compare is applied to the new pair rather than to a merged
+   three-way read: the first run is the reference and each later run is judged against
+   it, so a drift on run three reports the way a drift on run two does. `--cut`'s rule
+   is decided rather than copied — it asks whether the exemption pattern still reaches
+   its subject, a third run that cuts fewer lines is the same finding, and the message
+   says which run cut them.
+
    That hostile second run **is** the charset comparison for this directory, and it is
    worth saying because a sibling check was thought to be missing it. `advice.sh`
    reports `charset_checked=0` and #1207 read that as a guard covering nothing —
