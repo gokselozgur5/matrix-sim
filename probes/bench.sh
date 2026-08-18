@@ -733,8 +733,52 @@ settle() {
       return 0
     fi
     if [ "$cut_a" = "$cut_b" ]; then
-      printf 'EXEMPT %s lines=%s declared=%s reason="%s"\n' \
-        "$cls" "$n_cut" "${VARY_CUT:-none}" "$VARIES"
+      # THE THIRD RUN REACHES THE EXEMPT BRANCH TOO (#1567). #1355 gave it to the
+      # plain branch and stopped, and that left the narrowing's strongest
+      # protection off the rows with the strongest prior: a probe wearing `vary`
+      # is one KNOWN to have a field that moves on a clock, which is evidence it
+      # is the population most likely to grow a second one. `DocFigures` is the
+      # probe #1329 was opened for and it is exempt.
+      #
+      # The cut-and-compare is applied to the new pair, not to a merged three-way
+      # read: `cut_a` is the reference and each later run is judged against it, so
+      # a drift on run three reports the same way a drift on run two does.
+      #
+      # VARY_CUT'S RULE IS DECIDED HERE RATHER THAN COPIED. It asks whether the
+      # exemption pattern still reaches its subject, and it asked that of the
+      # FIRST run's line count. A third run that cuts fewer lines is the same
+      # finding — the pattern stopped reaching — so it is judged the same way and
+      # the message says which run.
+      if [ -n "$TWICE_ONLY" ]; then
+        local again3 rc3 cut_c n_cut3 t3
+        t3=$(date +%s)
+        set +e
+        again3="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
+        rc3=$?
+        set -e
+        COSTS="${COSTS}$(($(date +%s) - t3)) ${cls}
+"
+        if [ "$rc3" -ne 0 ] && [ "$rc3" -ne 1 ]; then
+          DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+          echo "DRIFT $cls third run exited $rc3"
+          return 0
+        fi
+        n_cut3="$(printf '%s\n' "$again3" | grep -cE "$VARY_LINES" || true)"
+        cut_c="$(printf '%s\n' "$again3" | grep -vE "$VARY_LINES" || true)"
+        if [ -n "$VARY_CUT" ] && [ "$n_cut3" -lt "$VARY_CUT" ]; then
+          DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+          echo "DRIFT $cls exemption cut $n_cut3 lines on its third run and declares $VARY_CUT — the pattern stopped reaching its subject"
+          return 0
+        fi
+        if [ "$cut_a" != "$cut_c" ]; then
+          DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
+          echo "DRIFT $cls outside its declared exemption on its third run — the verdict moved, not the noise"
+          diff <(printf '%s\n' "$cut_a") <(printf '%s\n' "$cut_c") | head -4 | sed 's/^/  /'
+          return 0
+        fi
+      fi
+      printf 'EXEMPT %s lines=%s declared=%s runs=%s reason="%s"\n' \
+        "$cls" "$n_cut" "${VARY_CUT:-none}" "$([ -n "$TWICE_ONLY" ] && echo 3 || echo 2)" "$VARIES"
     else
       DRIFTED=$((DRIFTED + 1)); EXEMPT=$((EXEMPT - 1))
       echo "DRIFT $cls outside its declared exemption — the verdict moved, not the noise"
