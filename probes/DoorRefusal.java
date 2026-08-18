@@ -86,10 +86,13 @@ public final class DoorRefusal {
         List<String> notes = new ArrayList<>();
         for (Path file : sources(Path.of(root))) {
             String cls = file.getFileName().toString().replace(".java", "");
-            if (!parsesAFlag(file)) {
-                // THE DENOMINATOR (#1544). `swept=26` beside a verdict word reading
-                // EVERY_DOOR_REFUSES reads as *every probe*, and thirty-two of the
-                // fifty-eight sources have no long-option door for this check to judge.
+            if (population(file).equals("no_door")) {
+                // THE DENOMINATOR (#1544). `swept=` beside a verdict word reading
+                // EVERY_DOOR_REFUSES reads as *every probe*, and over half of the
+                // sources have no long-option door for this check to judge — the figure is on
+                // the census line rather than in this comment, because a comment carrying
+                // a count is a count with no producer (#1082) and it was already wrong
+                // by two the day after #1544 landed.
                 // `OrderTable` was one of them, and a typo in either of its positional
                 // arguments left with 1 — the word for the contract this tree judges
                 // having broken — until #1536. That is the defect this probe exists to
@@ -174,8 +177,16 @@ public final class DoorRefusal {
         // number was eleven and #1311 forbids installing a gate at one — at one it demands a
         // unit from whoever trips it. #1481 took it to zero, so it belongs where it can be
         // judged, which is the state `missing=` was in for two units before #1356's gate.
+        // THE IDENTITY IS ASSERTED, NOT ARGUED (#1548, #1443's shape). `sources=` is
+        // the population and the two counters must exhaust it; a third exit added to
+        // the loop breaks this rather than quietly making `no_door=` mean less.
+        int sources = sources(Path.of(root)).size();
+        if (swept + noDoor != sources) {
+            Probes.leave("VERDICT DOOR_CENSUS_DOES_NOT_ADD_UP swept=" + swept
+                    + " no_door=" + noDoor + " sources=" + sources, false);
+        }
         System.out.println("DOOR_CENSUS swept=" + swept + " refused=" + refused
-                + " no_door=" + noDoor
+                + " no_door=" + noDoor + " sources=" + sources
                 + " wait_s=" + WAIT_SECONDS + " root=" + root);
         notes.forEach(System.out::println);
         offences.forEach(System.out::println);
@@ -235,6 +246,26 @@ public final class DoorRefusal {
      * {@code Main} is for. The strip narrows the population and cannot narrow the check: a
      * door is code, so nothing that stripping comments removes could have been one.
      */
+
+    /**
+     * Which population is this source in? One function, one of two words (#1548).
+     *
+     * <p>The sweep loop's two exits made {@code swept + no_door == |sources()|} hold BY
+     * CONSTRUCTION, which is a property of control flow and not a check. {@code advice.sh}
+     * met this exactly and said so (#1443): <em>a fifth exit added to either head would
+     * have broken the sum with no verdict word, no counter, and a census line that simply
+     * stopped adding up.</em> A third {@code continue} here — an exemption for a slow
+     * probe, a skip for one needing a fixture — would do the same, and the line would go on
+     * printing two plausible numbers.
+     *
+     * <p>Total by construction now, and asserted over the REAL directory rather than over
+     * fixtures, for #1443's reason: fixtures prove the words exist and only a sweep proves
+     * nothing falls between them.
+     */
+    private static String population(Path file) throws IOException {
+        return parsesAFlag(file) ? "swept" : "no_door";
+    }
+
     private static boolean parsesAFlag(Path file) throws IOException {
         // Through the shared strip since #1512 rather than a third copy of four lines. The
         // copy this replaces and `ExitGrammar`'s were written an hour apart for the same
