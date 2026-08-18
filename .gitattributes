@@ -1,0 +1,48 @@
+# .gitattributes — how git is allowed to merge the files that are one line per row.
+#
+# THE FINDING (#1370). `tools/README.md` and `probes/README.md` hold one row per
+# tool and per probe, and a markdown table cell cannot contain a newline, so every
+# row is a single line — the `advice.sh` row is roughly six thousand characters of
+# it. Git diffs by line. Two units editing two DIFFERENT rows therefore collide,
+# and the conflict spans BOTH rows, because the lines are adjacent and git cannot
+# see that the sides changed different things.
+#
+# That happened four times in one afternoon across three branches (#1519, #1523,
+# #1526, #1528), and not one of them was a disagreement about content.
+#
+# WHY `union` AND NOT A WRITTEN RESOLUTION RULE. The default conflict asks a person
+# to resolve it, and the natural motion mid-rebase is to take one whole side. That
+# produces a file which parses, renders, and passes every check in this tree while
+# silently reverting one unit's documentation and leaving that unit's code in
+# place — a row describing a tool that no longer behaves that way, which is #1130's
+# shape arriving through a merge instead of through neglect. Nothing catches it:
+# `advice.sh` reads a row for its flags and its exit codes, and both survive a
+# reverted paragraph.
+#
+# WHAT `union` ACTUALLY DOES HERE, measured rather than assumed. It does NOT
+# produce a clean merge when the two sides edited different rows. Git's conflict
+# region covers both lines, so union concatenates both sides of the region and the
+# result is FOUR rows where there were two — each row present twice, once per side:
+#
+#   $ git merge tmp/a            # two branches, two different rows
+#   rc=0   markers=0   MARKER_A:1  MARKER_B:1
+#   $ bash tools/advice.sh | tail -1
+#   ADVICE VERDICT A_TOOL_WEARS_TWO_ROWS duplicated=2
+#
+# So the trade is not *conflict* for *no conflict*. It is: a merge that STOPS and
+# invites a lossy resolution, traded for a merge that COMPLETES with every version
+# of every affected row still in the file, and a red build naming the rows.
+# Nothing is lost, the repair is mechanical (delete the stale twin of each pair),
+# and the thing standing between a bad merge and a wrong catalog is a check that
+# already exists and already breaks the build — #1340's `rows_duplicated`, which is
+# in `BREAK_COUNTERS` and has its own verdict word.
+#
+# That is #1370's own argument: a failure mode a checker already catches beats one
+# nothing catches.
+#
+# WHAT THIS DOES NOT COVER. `union` is a merge driver, so it acts on merges and
+# rebases and says nothing about a duplicate row typed by hand — that path was
+# already `advice.sh`'s and still is. And the union result is never the text a
+# person would have written; it is a text a person is TOLD about.
+tools/README.md   merge=union
+probes/README.md  merge=union
