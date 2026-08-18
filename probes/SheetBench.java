@@ -62,6 +62,32 @@ public final class SheetBench {
      *
      * @return {@code true} when the measured pair is inside both bounds
      */
+    /**
+     * The legs line, as a function of the two measurements (#1556).
+     *
+     * <p>#959 added it so a reader could see WHICH conjunct failed. Nothing had ever seen
+     * it say FAIL: at real figures both legs pass, so the failing text on each leg was
+     * printed by no run and no case in this repository. That is the same argument #1092
+     * made about the bounds themselves one method up — <em>a guard whose breach branch is
+     * unreachable at real figures is a guard nobody has watched work</em> — applied to the
+     * REPORTING, which is what a person reads at the moment being told the wrong leg costs
+     * the most.
+     *
+     * <p>{@code advice.sh} has the same finding on record: its verdict chain printed
+     * {@code A_CATALOG_ROW_PROMISES_WHAT_THE_TOOL_LACKS catalog_wrong=0} for two counters
+     * that had no branch, and the case that found it had never been executed by anything
+     * but a real defect (#1358).
+     */
+    private static String avalancheLegs(double meanBitflip, double worstCorr) {
+        boolean bitflipOk = Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE;
+        boolean corrOk = worstCorr <= CORR_BOUND;
+        return String.format(Locale.ROOT,
+                        "AVALANCHE legs bitflip=%.4f/%s %s corr=%.4f/%s %s VERDICT %s",
+                meanBitflip, bound(BITFLIP_TOLERANCE), bitflipOk ? "PASS" : "FAIL",
+                worstCorr, bound(CORR_BOUND), corrOk ? "PASS" : "FAIL",
+                bitflipOk && corrOk ? "PASS" : "FAIL");
+    }
+
     private static boolean avalancheHolds(double meanBitflip, double worstCorr) {
         return Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE && worstCorr <= CORR_BOUND;
     }
@@ -107,6 +133,39 @@ public final class SheetBench {
                     "AVALANCHE case bitflip=%.4f corr=%.4f want=%s got=%s %s",
                     c[0], c[1], want, got, want == got ? "OK" : "BROKEN"));
             if (want == got) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // THE LEGS LINE, AND WHICH LEG IT NAMES (#1556). The bounds above are now watched
+        // refusing; the REPORTING was not. At real figures both legs pass, so the FAIL text
+        // on each leg had been printed by no run and no case in this repository — the same
+        // argument #1092 made about the bounds, applied to what a person actually reads at
+        // the moment being told the wrong leg costs the most.
+        //
+        // The two leg words are asserted SEPARATELY from the verdict, because a line that
+        // gets the verdict right and the legs swapped would satisfy any check that only
+        // asked whether the run passed — and swapping two `?:` arms in one format call is
+        // exactly the edit nobody re-reads.
+        double[][] legCases = {
+            {half, 0.0, 1, 1},
+            {half + BITFLIP_TOLERANCE * 1.01, 0.0, 0, 1},
+            {half, CORR_BOUND * 1.01, 1, 0},
+            {half + BITFLIP_TOLERANCE * 1.01, CORR_BOUND * 1.01, 0, 0},
+        };
+        for (double[] c : legCases) {
+            String[] f = avalancheLegs(c[0], c[1]).split(" ");
+            String wantBitflip = c[2] == 1 ? "PASS" : "FAIL";
+            String wantCorr = c[3] == 1 ? "PASS" : "FAIL";
+            String wantVerdict = c[2] == 1 && c[3] == 1 ? "PASS" : "FAIL";
+            boolean ok = f[3].equals(wantBitflip) && f[5].equals(wantCorr) && f[7].equals(wantVerdict);
+            System.out.println(String.format(Locale.ROOT,
+                    "AVALANCHE legcase bitflip=%.4f corr=%.4f want=%s/%s/%s got=%s/%s/%s %s",
+                    c[0], c[1], wantBitflip, wantCorr, wantVerdict, f[3], f[5], f[7],
+                    ok ? "OK" : "BROKEN"));
+            if (ok) {
                 pass++;
             } else {
                 fail++;
@@ -364,11 +423,7 @@ public final class SheetBench {
         // moved the last word and not one number. The legs go on their own
         // appended line rather than into that one, because bench.sh reads
         // this mode's exit code and a mid-line insertion is a break (D-020).
-        System.out.println(String.format(Locale.ROOT,
-                        "AVALANCHE legs bitflip=%.4f/%s %s corr=%.4f/%s %s VERDICT %s",
-                meanBitflip, bound(BITFLIP_TOLERANCE), avalancheOk ? "PASS" : "FAIL",
-                worstCorr, bound(CORR_BOUND), corrOk ? "PASS" : "FAIL",
-                avalancheOk && corrOk ? "PASS" : "FAIL"));
+        System.out.println(avalancheLegs(meanBitflip, worstCorr));
         return avalancheOk && corrOk ? 0 : 1;
     }
 
