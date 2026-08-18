@@ -2,6 +2,9 @@
 
 One row per decision; the full MADR record (Y-statement, context, drivers, options with pros and cons, outcome, confirmation) lives under [docs/adr/](adr/) — next decision starts from [adr/TEMPLATE.md](adr/TEMPLATE.md). One rule stands: a 🟡 decision is **never merged into code before being discussed together** — discussion happens in the linked thread. Records are immutable: changed minds supersede, they do not rewrite. 🟢 accepted · 🟡 proposed · ❌ rejected · 🔵 parked idea.
 
+<!-- figure: ls docs/adr/D-*.md | wc -l == 59 -->
+<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 59 -->
+
 | ID | Decision | Status | Gate | Thread |
 |---|---|---|---|---|
 | [D-000](adr/D-000-process-constitution.md) | Process constitution: docs-first main, draft PRs, joint decision gates | 🟢 | — | — |

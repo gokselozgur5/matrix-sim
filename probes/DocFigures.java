@@ -72,6 +72,15 @@ public final class DocFigures {
      */
     private static final String[] DEFAULT_DOCS = {
             "README.md", "probes/README.md", "tools/README.md",
+            // #1625: two more, and the reason they were missing is that a probe
+            // reading only the documents that already have markers cannot notice a
+            // document that has none. `docs/DECISIONS.md` carries the sharpest
+            // countable pair in the tree — a table of decisions beside the records
+            // on disk — and had never been checked. `ROADMAP.md` and
+            // `docs/ARCHITECTURE.md` stay out on purpose: #1342 drew the boundary,
+            // and a marker is for a number whose PRODUCER is a command, not for
+            // every integer somebody wrote down.
+            "docs/DECISIONS.md", "PRINCIPLES.md",
     };
 
     public static void main(String[] args) throws Exception {
