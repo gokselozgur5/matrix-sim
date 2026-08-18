@@ -4,6 +4,7 @@
 # Usage: tools/crowns.sh              count the classes against their crowns
 #        tools/crowns.sh --list       print one row per uncrowned class
 #        tools/crowns.sh --selftest   run the matcher's cases; no token, no network
+#        tools/crowns.sh --help | -h  print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. `CLAUDE.md` states the rule without qualification:
 #
@@ -44,6 +45,9 @@ case "${1:-}" in
   '')          MODE=count ;;
   --list)      MODE=list ;;
   --selftest)  MODE=selftest ;;
+  # READ TO THE END OF THE CLAUSE, not to a line number (#1382, #1520) — a door
+  # added below the clause is in `--help` the moment it is in the header.
+  -h|--help)   awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
   *) echo "FATAL unknown argument '$1' — see the Usage clause at the top of this file" >&2; exit 2 ;;
 esac
 
