@@ -106,9 +106,11 @@ public final class OrderTable {
      * Above this the sweep stops being a sweep: orders grow as n!, and each
      * order is a whole run. Five nodes is 120 runs — about two minutes at
      * this budget on the box that wrote this line; six nodes is 720.
-     * The probe refuses rather than sampling, and the refusal is loud (exit 2,
-     * red row) — a silent subset is the exact failure this probe exists
-     * against, one level up.
+     * The probe refuses rather than sampling, and the refusal is loud
+     * ({@code Probes.Outcome.REFUSED}, red row) — a silent subset is the exact
+     * failure this probe exists against, one level up. The constant rather than
+     * its number, since #1533: this sentence said `exit 2` and the probe has
+     * spent 3 since #1219, and nothing in the tree reads prose for a digit.
      */
     private static final int MAX_NODES = 4;
 
