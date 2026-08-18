@@ -2,6 +2,7 @@
 # tools/prstate.sh — a pull request has a third state, and `gh pr checks` cannot say it (#1004)
 #
 # Usage: tools/prstate.sh N | --pr N     judge one pull request
+#        tools/prstate.sh --reverts [REF]  does this branch revert a line REF added?
 #        tools/prstate.sh                judge every open pull request
 #        tools/prstate.sh --for OWNER/NAME   name the repository (default: origin)
 #        tools/prstate.sh --selftest     run the judge's own cases; no token, no network
@@ -53,6 +54,7 @@
 set -euo pipefail
 
 MODE=judge
+REVERT_REF=""
 SWEEP_RUNS=20
 PR=""
 REPO=""
@@ -67,6 +69,7 @@ while [ $# -gt 0 ]; do
     --for) REPO="${2:-}"; [ -n "$REPO" ] || { echo "FATAL --for wants OWNER/NAME" >&2; exit 2; }; shift 2 ;;
     --selftest) MODE=selftest; shift ;;
     --schedules) MODE=schedules; shift ;;
+    --reverts) MODE=reverts; REVERT_REF="${2:-}"; case "$REVERT_REF" in ""|-*) REVERT_REF=""; shift ;; *) shift 2 ;; esac ;;
     --sweepcost) MODE=sweepcost; SWEEP_RUNS="${2:-20}"; case "$SWEEP_RUNS" in ""|*[!0-9]*) SWEEP_RUNS=20; shift ;; *) shift 2 ;; esac ;;
     # READ TO THE END OF THE USAGE BLOCK, not to a line number. `sed -n '2,7p'`
     # stopped exactly where the clause ended on the day it was written, so a door
@@ -289,6 +292,26 @@ sweep_stats() {                 # sweep_stats <budget> <secs, one per line>
     }'
 }
 
+reverts_in() {                    # reverts_in <lines main added> <the branch's file>
+  # `comm`, NOT `grep`. Two spellings failed before this one, both silently or
+  # loudly on the same input: a per-line `grep -qxF` over the whole file, and a
+  # `grep -Fxvf` with the file as a patterns list. Both print `grep: out of memory`
+  # on `probes/README.md`, where a catalog row is nine thousand characters on ONE
+  # line (#1370) — a regex engine given that as a fixed pattern gives up.
+  #
+  # `comm` is set arithmetic over sorted lines and has no pattern to compile, so the
+  # length of a line is not its problem. Sorting loses the order, which this question
+  # does not use: it asks whether a line is PRESENT, not where.
+  local added="$1" content="$2" a b lost
+  a="$(mktemp "${TMPDIR:-/tmp}/prstate-add.XXXXXX")"
+  b="$(mktemp "${TMPDIR:-/tmp}/prstate-now.XXXXXX")"
+  printf '%s\n' "$added" | grep -v '^[[:space:]]*$' | sort -u > "$a"
+  printf '%s\n' "$content" | sort -u > "$b"
+  lost="$(comm -23 "$a" "$b" | grep -c . || true)"
+  rm -f "$a" "$b"
+  printf '%s\n' "${lost:-0}"
+}
+
 selftest() {
   local pass=0 fail=0 seen=""
   check() { # check <name> <pr-state> <mergeable> <rows> <want> [base] [patterns]
@@ -430,6 +453,34 @@ selftest() {
   # an answer nobody could read is not an answer.
   cost_case cost-nothing-read '' 'SWEEP COST UNREADABLE runs=0'
 
+
+  # THE REVERT ARITHMETIC (#1118), over two texts. Everything above `reverts_in`
+  # asks git; everything below counts, and only the counting half is testable —
+  # the same split `sweep_cost` makes and for the same reason.
+  revert_case() {                 # revert_case <name> <want> <added> <content>
+    local got
+    got="$(reverts_in "$3" "$4")"
+    if [ "$2" = "$got" ]; then
+      pass=$((pass + 1)); printf 'CASE %-26s OK    want=%s got=%s\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'CASE %-26s FAIL  want=%s got=%s\n' "$1" "$2" "$got"
+    fi
+  }
+  revert_case revert:all-present 0 "$(printf 'a\nb')" "$(printf 'x\na\nb\ny')"
+  # The live shape: main added two lines and the branch's file has neither.
+  revert_case revert:two-lost    2 "$(printf 'a\nb')" "$(printf 'x\ny')"
+  revert_case revert:one-lost    1 "$(printf 'a\nb')" "$(printf 'a\ny')"
+  # Blank lines are not evidence of anything and must not count as reverted.
+  revert_case revert:blanks-skip 0 "$(printf 'a\n\n   \n')" "$(printf 'a')"
+  # ORDER IS NOT THE QUESTION. `comm` sorts, which loses order — the check asks
+  # whether a line is PRESENT, and a branch that moved a line has not reverted it.
+  revert_case revert:reordered   0 "$(printf 'a\nb')" "$(printf 'b\na')"
+  # A DUPLICATE is one line, because `sort -u` is the right reading here: main
+  # adding the same text twice is not two facts to lose.
+  revert_case revert:duplicate   1 "$(printf 'a\na')" "$(printf 'x')"
+  # Nothing added is nothing lost, which is the common case: most files a branch
+  # touches were not touched by main.
+  revert_case revert:nothing-added 0 "" "$(printf 'a\nb')"
   # A suite that reaches one verdict is not a suite. The five states are the whole claim of
   # this tool, so the cases must be shown to separate them before their verdict counts.
   local missing=""
@@ -530,6 +581,61 @@ sweep_cost() {                  # sweep_cost [runs]
   [ "$over" = 0 ]
 }
 
+
+# DOES THIS BRANCH REVERT A LINE MAIN ADDED AFTER ITS BASE? (#1118, for #1063)
+#
+# #1118's table is four instances of one shape in one night, and it says exactly
+# where the existing locks reach:
+#
+#   PR #1059   fifteen files reverted, 482 deletions   nobody — every lock green
+#   PR #1086   `movers=18` beside a `three rows` note  a person, resolving by hand
+#   #1028      a renamed symbol reverted               a person, on a compile error
+#   PR #1117   `movers=18` in a bench row              CI, on the exact-line judge
+#
+# The one a machine caught was caught because a pin and a reality were compared
+# MECHANICALLY. Everywhere the comparison is absent — a reverted file, a renamed
+# symbol in an unrelated method, a document's prose — nothing looks. That is
+# #1082's thesis wearing different clothes, and a stale base is simply the fastest
+# way to make two copies of a fact drift.
+#
+# WHY NOT A STALENESS ALARM. #1118 says the cheapest useful version is not "this
+# branch is old" but "this branch's version of a file it TOUCHES is missing a line
+# main added after the merge base". A commit-count heuristic cries wolf on an
+# honest old branch that touches nothing contested; this cannot, because a branch
+# that does not touch the file is not asked about it — the merge will bring main's
+# version and there is nothing to revert.
+#
+# WHAT IT CANNOT SEE. A line main added and this branch legitimately DELETED. That
+# is indistinguishable from a revert without knowing intent, and the direction is
+# the noisy one: a deliberate deletion is reported. Reported, never judged, for
+# exactly that reason (#1207) — the line names the file and the count, and a
+# person decides.
+REVERT_BASE=origin/main
+
+# THE ARITHMETIC IS A PURE FUNCTION OF TWO TEXTS, so it can be watched being wrong
+# with no git and no network. Everything above it asks git; everything below counts.
+
+reverts() {                       # reverts [base-ref]
+  local base_ref="${1:-$REVERT_BASE}" base f added lost total=0 files=0
+  base="$(git merge-base "$base_ref" HEAD 2>/dev/null || true)"
+  if [ -z "$base" ]; then
+    echo "FATAL no merge base with $base_ref" >&2
+    return 3
+  fi
+  for f in $(git diff --name-only "$base"...HEAD); do
+    files=$((files + 1))
+    added="$(git diff "$base".."$base_ref" -- "$f" | grep '^+[^+]' | sed 's/^+//' || true)"
+    [ -n "$added" ] || continue
+    lost="$(reverts_in "$added" "$(git show "HEAD:$f" 2>/dev/null || true)")"
+    [ "$lost" -gt 0 ] || continue
+    total=$((total + lost))
+    printf 'REVERT %s lines=%s — %s added them after this branch cut\n' "$f" "$lost" "$base_ref"
+  done
+  printf 'REVERTS VERDICT %s base=%s files=%d reverted=%d\n' \
+    "$([ "$total" -eq 0 ] && printf NONE || printf FOUND)" "${base:0:12}" "$files" "$total"
+  [ "$total" -eq 0 ]
+}
+
 schedules() {
   local f cron period last age verdict why worst=0 n=0
   for f in .github/workflows/*.yml .github/workflows/*.yaml; do
@@ -569,6 +675,8 @@ schedules() {
 }
 
 if [ "$MODE" = schedules ]; then schedules; exit $?; fi
+# Before the repository is resolved: this mode reads git and never the API.
+if [ "$MODE" = reverts ]; then reverts "${REVERT_REF:-$REVERT_BASE}"; exit $?; fi
 
 # ---- the live reading --------------------------------------------------------
 
