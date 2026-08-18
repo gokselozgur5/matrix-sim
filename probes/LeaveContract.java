@@ -76,6 +76,20 @@ public final class LeaveContract {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        // AN ARGUMENT DOOR OWES A REFUSAL (DoorRefusal, #1531). Before --selfcheck this
+        // probe had no flags: every argument was a repo root, so an unknown flag was
+        // read as a directory that does not exist and the check judged its contract
+        // anyway. The door arrives with the refusal, in the same unit, because the
+        // sweep is what would otherwise find it — and did, on the first run.
+        if (args.length > 0 && args[0].startsWith("--") && !args[0].equals("--selfcheck")) {
+            System.err.println("FATAL unknown flag: " + args[0]
+                    + " (this probe takes [repo-root] or --selfcheck)");
+            System.exit(Probes.Outcome.REFUSED.code());
+        }
+        if (args.length > 0 && args[0].equals("--selfcheck")) {
+            selfcheck(Files.createTempDirectory("leavecontract"));
+            return;
+        }
         Path root = Path.of(args.length > 0 ? args[0] : ".");
 
         Path bench = root.resolve("probes/bench.sh");
@@ -111,7 +125,18 @@ public final class LeaveContract {
                 missing.add(probe);
                 continue;
             }
-            String body = Files.readString(src, StandardCharsets.UTF_8);
+            // READ THROUGH THE COMMENT STRIP (#1531). This read the raw file, and a
+            // javadoc sentence containing the words `System.exit` was enough to make a
+            // probe with no verdict code at all look like one that spends its own:
+            // CensusBeatDrift printed DRIFT_FLAGGED and left with 0 while being counted
+            // as a style preference. The same blindness sits on the `Probes.leave` test
+            // one line below — a probe that only MENTIONS the helper in a comment would
+            // be skipped entirely, which is the quieter half of the same mistake.
+            //
+            // #1512 landed the strip for exactly this class of matcher, and #1516 said
+            // the next one written without it should be found by a red build. This is
+            // that matcher; it predates the strip.
+            String body = Probes.uncommented(src);
             if (body.contains("Probes.leave")) {
                 continue;
             }
@@ -194,5 +219,54 @@ public final class LeaveContract {
                 .contains("System.exit");
     }
 
+
+    /**
+     * The reader's own cases, over fixtures written to a temp directory (#1531).
+     *
+     * <p>This check spent its whole life reading probe sources with no way to be watched
+     * misreading one, which is the state {@code advice.sh} prints UNFALSIFIABLE about in
+     * the other family. The three cases that matter are all about what a COMMENT can do
+     * to a textual matcher, and the middle one is a live defect until the strip lands:
+     * a javadoc sentence containing the words {@code System.exit} made a probe with no
+     * verdict code look like one that spends its own.
+     */
+    private static void selfcheck(Path tmp) throws IOException {
+        int pass = 0;
+        int fail = 0;
+
+        String refusal = "System.exit(Probes.Outcome.REFUSED.code());";
+        String broke = "System.exit(Probes.Outcome.BROKE.code());";
+
+        // name, source, want-spends-verdict-code, want-uses-helper
+        String[][] cases = {
+            {"refusal-only", "class A { void m() { " + refusal + " } }", "false", "false"},
+            {"refusal-and-comment", "class A {\n  /** " + "System" + ".exit has already left. */\n"
+                    + "  void m() { " + refusal + " }\n}", "false", "false"},
+            {"a-real-code", "class A { void m() { " + broke + " } }", "true", "false"},
+            {"helper-in-code", "class A { void m() { Probes.leave(\"V\", true); } }", "false", "true"},
+            {"helper-in-comment", "class A {\n  // Not Probes.leave: this one is a note.\n"
+                    + "  void m() { " + broke + " }\n}", "true", "false"},
+        };
+
+        for (String[] c : cases) {
+            Path f = tmp.resolve(c[0] + ".java");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            String body = Probes.uncommented(f);
+            boolean spends = spendsBeyondRefusal(body);
+            boolean helper = body.contains("Probes.leave");
+            boolean ok = spends == Boolean.parseBoolean(c[2]) && helper == Boolean.parseBoolean(c[3]);
+            System.out.printf("LEAVE case=%-20s want=%s/%s got=%s/%s %s%n",
+                    c[0], c[2], c[3], spends, helper, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        Probes.leave("LEAVE SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
+                + " cases=" + (pass + fail) + " failed=" + fail,
+                fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+    }
     private LeaveContract() {}
 }
