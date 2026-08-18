@@ -46,6 +46,35 @@ public final class SheetBench {
     private static final double CORR_BOUND = 0.15;
 
     /**
+     * The two legs of the avalanche verdict, derived once (#1563).
+     *
+     * <p>The comparison against {@code BITFLIP_TOLERANCE} lived in three places — the
+     * measurement, the predicate the suite drives (#1092), and the line that names which
+     * leg failed (#1556). Two of the three arrived on one day, each for a good reason,
+     * which is the shape this tree has met twice before: three copies of one comment strip
+     * written an hour apart for the same bug (#1512), and a probe list kept beside the
+     * bench table that went stale because it was the second copy (#1192).
+     *
+     * <p><b>The obvious fix is wrong.</b> Passing two booleans into the formatter would
+     * make #1556's four cases assert FORMATTING and never the judgement — a caller handing
+     * over the wrong pair would satisfy every one of them. So the value is derived from the
+     * measurements exactly once, here, and everything downstream reads it: the suite drives
+     * {@link #of} and asserts a judgement, the formatter takes the record and the numbers it
+     * prints, and {@code avalanche()} spends one derivation on two lines and an exit code.
+     */
+    private record AvalancheVerdict(boolean bitflipOk, boolean corrOk) {
+
+        static AvalancheVerdict of(double meanBitflip, double worstCorr) {
+            return new AvalancheVerdict(Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE,
+                    worstCorr <= CORR_BOUND);
+        }
+
+        boolean held() {
+            return bitflipOk && corrOk;
+        }
+    }
+
+    /**
      * The two bounds, applied to numbers rather than to a run (#1092).
      *
      * <p>{@code BITFLIP_TOLERANCE} has one reader — the line above — and nothing in the
@@ -79,17 +108,16 @@ public final class SheetBench {
      * but a real defect (#1358).
      */
     private static String avalancheLegs(double meanBitflip, double worstCorr) {
-        boolean bitflipOk = Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE;
-        boolean corrOk = worstCorr <= CORR_BOUND;
+        AvalancheVerdict v = AvalancheVerdict.of(meanBitflip, worstCorr);
         return String.format(Locale.ROOT,
                         "AVALANCHE legs bitflip=%.4f/%s %s corr=%.4f/%s %s VERDICT %s",
-                meanBitflip, bound(BITFLIP_TOLERANCE), bitflipOk ? "PASS" : "FAIL",
-                worstCorr, bound(CORR_BOUND), corrOk ? "PASS" : "FAIL",
-                bitflipOk && corrOk ? "PASS" : "FAIL");
+                meanBitflip, bound(BITFLIP_TOLERANCE), v.bitflipOk() ? "PASS" : "FAIL",
+                worstCorr, bound(CORR_BOUND), v.corrOk() ? "PASS" : "FAIL",
+                v.held() ? "PASS" : "FAIL");
     }
 
     private static boolean avalancheHolds(double meanBitflip, double worstCorr) {
-        return Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE && worstCorr <= CORR_BOUND;
+        return AvalancheVerdict.of(meanBitflip, worstCorr).held();
     }
 
     /**
@@ -409,12 +437,12 @@ public final class SheetBench {
         // The two legs are still reported separately, and the CONJUNCTION is the shared
         // predicate the suite drives (#1092) — so a bound that has been watched refusing
         // a synthetic figure is the same bound applied here.
-        boolean avalancheOk = Math.abs(meanBitflip - 0.5) <= BITFLIP_TOLERANCE;
-        boolean corrOk = worstCorr <= CORR_BOUND;
+        // ONE DERIVATION, TWO LINES AND AN EXIT CODE (#1563).
+        AvalancheVerdict verdict = AvalancheVerdict.of(meanBitflip, worstCorr);
         System.out.println(String.format(Locale.ROOT, "AVALANCHE names=%d axes=%d mean_bitflip=%.4f"
                         + " max_axis_corr=%.4f pair=%s corr_bound=%.2f VERDICT %s",
                 pool.size(), axes, meanBitflip, worstCorr, worstPair, CORR_BOUND,
-                avalancheOk && corrOk ? "PASS" : "FAIL"));
+                verdict.held() ? "PASS" : "FAIL"));
         // The line above verdicts on two conjuncts and prints one of their
         // bounds, which makes the mixer's own measurement unreadable: nothing
         // in it answers |0.5001 - 0.5| <= what, and the trailing bound=0.15
@@ -424,7 +452,7 @@ public final class SheetBench {
         // appended line rather than into that one, because bench.sh reads
         // this mode's exit code and a mid-line insertion is a break (D-020).
         System.out.println(avalancheLegs(meanBitflip, worstCorr));
-        return avalancheOk && corrOk ? 0 : 1;
+        return verdict.held() ? 0 : 1;
     }
 
     /**
