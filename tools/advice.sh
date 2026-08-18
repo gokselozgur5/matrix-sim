@@ -596,7 +596,7 @@ flag_audit() {                                   # flag_audit <tools-dir> <catal
   body="$(grep -vE '^[[:space:]]*#' <<< "$(by_scope "$tool" door)" || true)"
   helper="$(grep -vE '^[[:space:]]*#' <<< "$(by_scope "$tool" helper)" || true)"
   arms="$(printf '%s\n' "$body" \
-          | grep -oE '^[[:space:]]*--[a-z0-9-]+(\|--[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' || true)"
+          | grep -oE '^[[:space:]]*-{1,2}[a-z0-9-]+(\|-{1,2}[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' || true)"
   compares="$(printf '%s\n' "$body" \
           | grep -oE '=[[:space:]]*"?--[a-z0-9-]+' | grep -oE -- '--[a-z0-9-]+' || true)"
   accepted="$(printf '%s\n%s\n' "$arms" "$compares" | grep -E '^--' | sort -u || true)"
@@ -614,7 +614,8 @@ flag_audit() {                                   # flag_audit <tools-dir> <catal
     flags_in_helpers=$((flags_in_helpers + 1))
     echo "HELPER_FLAG $tool parses '$flag' inside a function body — not a door, not judged"
   done <<< "$(printf '%s\n' "$helper" \
-              | grep -oE '^[[:space:]]*--[a-z0-9-]+(\|--[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' \
+              | grep -oE '^[[:space:]]*-{1,2}[a-z0-9-]+(\|-{1,2}[a-z0-9-]+)*\)' | tr -d ' )' | tr '|' '\n' \
+              | grep -E '^--' \
               | sort -u || true)"
   if [ -z "$accepted" ]; then
     # Reported rather than skipped in silence: a sweep that read no flags at
@@ -752,6 +753,18 @@ selftest() {
   # An alternation arm: both flags are parsed, one is advertised.
   case_ alternation-half-hidden 1 '  --pr|--sha) X=1 ;;' "$ROW_WITH"
 
+  # A SHORT ALIAS OPENING THE ARM (#1518). The reader was anchored on `--`, so
+  # `-h|--help)` was not an arm at all and the long flag inside it was invisible —
+  # silently in the safe direction (three real doors uncounted) and loudly in the
+  # wrong one: a tool that implements the door AND documents it was reported as a
+  # phantom, which is the two-checks-disagreeing shape #1263's comment warns about.
+  # Assembled from `$dash` for the same reason the comparison cases are: written
+  # out, the arm is a literal in this file and `advice.sh` reports itself.
+  local helparm; helparm="  -h|${dash}help) X=1 ;;"
+  local ROW_HELP='| `fixture.sh` | does a thing. Usage: `tools/fixture.sh '"${dash}help"'`. |'
+  case_         short-alias-door       0 "$helparm" "$ROW_HELP"
+  case_         short-alias-hidden     1 "$helparm" "$ROW_WITHOUT"
+
   # A flag named only in a COMMENT is not parsed, and must not be counted as
   # either kind — the self-matching shape this file has been bitten by four
   # times, in the one direction that would produce a false accusation.
@@ -785,6 +798,17 @@ selftest() {
 
   phantom_case usage-flag-parsed    0 "  $pr) PR=1 ;;" "$ROW_WITH"
   phantom_case usage-flag-refused   1 '  --other) X=1 ;;' "$ROW_WITH"
+  # The mirror of short-alias-door, and the case that actually cost a unit: a
+  # correct tool with a correct row, reported as advertising a flag it refuses.
+  # The door carries a LONG flag beside the short-aliased one on purpose — with
+  # only the aliased arm the tool reads as having no flags at all, and the
+  # early `tools_no_flags` continue skips the phantom loop entirely, so the
+  # defect hides behind a different report. Every real tool in the shop has
+  # other doors, which is why it fired there and not in a one-arm fixture.
+  local pairarm; pairarm="  ${dash}pr) P=1 ;;
+  -h|${dash}help) X=1 ;;"
+  local ROW_PAIR='| `fixture.sh` | does a thing. Usage: `tools/fixture.sh '"${dash}pr N | ${dash}help"'`. |'
+  phantom_case short-alias-not-phantom 0 "$pairarm" "$ROW_PAIR"
   # The bound is the point: a flag named AFTER the Usage clause — in the exit
   # grammar, or in a bold aside about another program — is not a promise about
   # this tool, and an unbounded read reported those as phantoms. release.sh's
