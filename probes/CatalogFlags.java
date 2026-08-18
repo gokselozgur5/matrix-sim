@@ -165,7 +165,7 @@ public final class CatalogFlags {
         // in bench-table order, so moving a row in `bench.sh` reorders them and a diff
         // of two sweeps reports a reordering as a change. Sorted and joined on ONE
         // line is what makes two sweeps of one tree byte-identical.
-        System.out.println("CATALOG_FLAGS_MEMBERS undocumented=" + join(undocumented));
+        System.out.println("CATALOG_FLAGS_MEMBERS undocumented=" + Probes.joined(undocumented));
         // The populations ride their own line, unpinned (#1221). Every one of them moves
         // when a probe is added, and a census inside an exact-line row is a number people
         // learn to edit until the lane is quiet.
@@ -194,21 +194,6 @@ public final class CatalogFlags {
      * #1370 gave `.gitattributes` a merge driver for, and the property that makes this a
      * substring search rather than a parse.
      */
-    /**
-     * A population as a sorted, comma-joined string, or {@code none} (#1572).
-     *
-     * <p>Sorted so two sweeps of one tree produce byte-identical text: the order the
-     * bench table lists rows in is not information, and an unsorted list would make a
-     * diff of two runs report a reordering as a change.
-     */
-    private static String join(List<String> names) {
-        if (names.isEmpty()) {
-            return "none";
-        }
-        List<String> sorted = new ArrayList<>(names);
-        java.util.Collections.sort(sorted);
-        return String.join(",", sorted);
-    }
 
     private static String rowFor(String catalog, String probe) {
         for (String line : catalog.split("\n")) {

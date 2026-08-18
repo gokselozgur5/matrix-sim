@@ -199,8 +199,8 @@ public final class LeaveContract {
         // a change that produces no signal. So the set rides its own line, sorted and
         // joined, UNPINNED — a member list in an exact-line grep is a list every unit
         // edits, which is what #1192 spent a unit deleting and #884's lesson about the seal.
-        System.out.println("LEAVE_MEMBERS by_hand=" + join(byHand)
-                + " no_code=" + join(noCode));
+        System.out.println("LEAVE_MEMBERS by_hand=" + Probes.joined(byHand)
+                + " no_code=" + Probes.joined(noCode));
         System.out.println("LEAVE_CENSUS judged=" + judged.size()
                 + " reporting=" + reporting.size()
                 + " no_source=" + missing.size());
@@ -228,23 +228,6 @@ public final class LeaveContract {
      * and leave a probe in `by_hand` rather than reporting a defect that is not there.
      */
 
-    /**
-     * A population as a sorted, comma-joined string, or {@code none} (#1550).
-     *
-     * <p>Sorted so two sweeps of one tree produce byte-identical text — the order the
-     * bench table happens to list rows in is not information, and an unsorted list would
-     * make a diff of two runs report a reordering as a change. {@code none} rather than an
-     * empty field, because a trailing {@code =} followed by nothing reads as a truncated
-     * line rather than as an empty set.
-     */
-    private static String join(List<String> names) {
-        if (names.isEmpty()) {
-            return "none";
-        }
-        List<String> sorted = new ArrayList<>(names);
-        java.util.Collections.sort(sorted);
-        return String.join(",", sorted);
-    }
 
     private static boolean spendsBeyondRefusal(String body) {
         return body.replace("System.exit(Probes.Outcome.REFUSED.code())", "")
