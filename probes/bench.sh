@@ -12,6 +12,9 @@
 #                                       the form the lane passes; a probe nobody
 #                                       edited cannot have started drifting for a
 #                                       reason this pull request is answerable for
+#                                       Runs a selected probe THREE times, not two
+#                                       (#1355): one comparison is not enough for a
+#                                       field whose drift is probabilistic
 #        probes/bench.sh --without-probes
 #                                       build src/ and selftest with probes/
 #                                       deleted, in a throwaway copy of HEAD
@@ -774,8 +777,55 @@ settle() {
     return 0
   fi
   if [ "$again" = "$first" ]; then
+    # A THIRD RUN WHEN THE PASS IS NARROWED (#1355). #1302 put a wall-clock
+    # `secs=` on DocFigures, the lane ran `--twice-changed DocFigures`, and it
+    # PASSED — then the weekly full pass found `secs=5` against `secs=4` six days
+    # later. The narrowing selected the right probe and the comparison was right;
+    # one comparison is simply not enough for a field whose drift is
+    # PROBABILISTIC. Wall clock at one-second resolution is bimodal: two runs
+    # 400 ms apart print the same integer most of the time.
+    #
+    # A third run is what #1355 ranks first and calls cheap, and the cost is
+    # bounded by the narrowing itself — the set is the probes one pull request
+    # touched, usually one or two, never the whole bench. `--twice` over
+    # everything is untouched, because there the extra run is fifty of them and
+    # the weekly pass is where the whole-tree question belongs.
+    #
+    # It turns a coin flip into a better one and does NOT make the answer
+    # certain. That is stated here rather than left to be inferred from a green
+    # row: the deterministic guarantee this pass gives is about bytes, and a
+    # field that moves on a clock has no guarantee to give.
+    if [ -n "$TWICE_ONLY" ]; then
+      local third rc3 t3
+      t3=$(date +%s)
+      set +e
+      third="$(LC_ALL=C java -cp out:probes/out "$cls" "$@" 2>&1)"
+      rc3=$?
+      set -e
+      COSTS="${COSTS}$(($(date +%s) - t3)) ${cls}
+"
+      if [ "${KNOWN_ROW:-no}" = yes ] && [ "$rc3" -eq 0 ]; then
+        FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
+        echo "FAIL $cls third run exited 0 — a declared break healed on the third run"
+        return 0
+      fi
+      if [ "${KNOWN_ROW:-no}" != yes ] && [ "$rc3" -ne 0 ]; then
+        FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
+        echo "FAIL $cls third run exited $rc3"
+        return 0
+      fi
+      if [ "$third" != "$first" ]; then
+        DRIFTED=$((DRIFTED + 1))
+        moved "$cls" "$first" "$third"
+        return 0
+      fi
+    fi
+    # `runs=` on the row, because a reader cannot otherwise tell a narrowed STABLE
+    # (three runs) from a whole-sweep STABLE (two) — and the difference is exactly
+    # how much the word is worth. Nothing greps this line; the lane reads the
+    # determinism verdict, which is untouched.
     STABLE=$((STABLE + 1))
-    echo "STABLE $cls"
+    echo "STABLE $cls runs=$([ -n "$TWICE_ONLY" ] && echo 3 || echo 2)"
     return 0
   fi
   DRIFTED=$((DRIFTED + 1))

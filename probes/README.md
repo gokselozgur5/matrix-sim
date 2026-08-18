@@ -50,6 +50,20 @@ duplicate is the thing to repair, not a row to choose between (#1370).
    second run is taken under `LC_ALL=C`, because the locale clause was the one this
    pass could not see while both runs stood in the same shell (#836).
 
+   **A NARROWED pass runs three times, not two** (#1355). #1302 put a wall-clock
+   `secs=` on `DocFigures`, the lane ran `--twice-changed DocFigures`, and it PASSED —
+   then the weekly full pass found `secs=5` against `secs=4` six days later. The
+   narrowing selected the right probe and the comparison was right; one comparison is
+   simply not enough for a field whose drift is PROBABILISTIC, and wall clock at
+   one-second resolution is bimodal — two runs 400 ms apart print the same integer
+   most of the time. The third run is bounded by the narrowing itself, which is the
+   probes one pull request touched; `--twice` over the whole bench stays at two,
+   because there the extra run is fifty of them and the whole-tree question belongs to
+   the weekly pass. `STABLE <cls> runs=` says which it was, because a reader cannot
+   otherwise tell how much the word is worth. **It turns a coin flip into a better one
+   and does not make the answer certain** — the guarantee this pass gives is about
+   bytes, and a field that moves on a clock has no guarantee to give.
+
    That hostile second run **is** the charset comparison for this directory, and it is
    worth saying because a sibling check was thought to be missing it. `advice.sh`
    reports `charset_checked=0` and #1207 read that as a guard covering nothing —
