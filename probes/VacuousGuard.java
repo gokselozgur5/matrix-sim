@@ -77,8 +77,11 @@ public final class VacuousGuard {
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
+        if (args.length > 0 && args[0].equals("--selfcheck")) {
+            System.exit(selfcheck(Files.createTempDirectory("vacuousguard")));
+        }
         if (args.length > 0 && args[0].startsWith("--")) {
-            System.err.println("FATAL unknown flag: " + args[0] + " (this probe takes [repo-root])");
+            System.err.println("FATAL unknown flag: " + args[0] + " (this probe takes [repo-root] or --selfcheck)");
             System.exit(Probes.Outcome.REFUSED.code());
         }
         Path root = Path.of(args.length > 0 ? args[0] : ".");
@@ -254,6 +257,72 @@ public final class VacuousGuard {
 
     /** How far back a guard's condition may sit from the constant it protects (#1609). */
     private static final int EMPTY_WINDOW = 6;
+
+
+    /**
+     * The empty-path reader's own cases (#1611).
+     *
+     * <p>{@link #guardsTheEmptyPath} shipped with a FITTED number and no cases: the window
+     * was set to four, run, found {@code BondScenario} reported unguarded, measured its gap
+     * at five, and set to six. The javadoc says so, which does not make it principled —
+     * and without cases, changing it is a guess against a live sweep.
+     *
+     * <p>With them the width is a thing somebody can move and see the effect of, which is
+     * what {@code window-just-outside} is for: it sits one line beyond the window and must
+     * read as unguarded, so widening the number breaks a case rather than quietly changing
+     * a census.
+     */
+    private static int selfcheck(Path tmp) throws IOException {
+        int pass = 0;
+        int fail = 0;
+        String never = "Probes.Outcome." + "NEVER_" + "AROSE";
+
+        String[][] cases = {
+            // SameTick's shape: the simplest guard there is.
+            {"guard-equals-zero", "if (census == 0) {\n  Probes.leave(\"V\", " + never + ");\n}", "true"},
+            // BondScenario's: two `> 0` arms and an else whose comment says the run produced
+            // nothing. Five lines from condition to constant, which is what set the window.
+            {"guard-else-after-positive",
+                "} else if (tally.fired > 0 && tally.spent > 0) {\n  Probes.leave(\"H\", true);\n"
+                        + "} else {\n  // nothing arose\n  int n = 0;\n  Probes.leave(\"V\", " + never + ");\n}", "true"},
+            // Accepted and written by nobody today.
+            {"guard-is-empty", "if (rows.isEmpty()) {\n  Probes.leave(\"V\", " + never + ");\n}", "true"},
+            // AllocMeter's: a refused configuration, not an empty population.
+            {"guard-refused-config", "if (ranAt != 1) {\n  Probes.leave(\"V\", " + never + ");\n}", "false"},
+            {"guard-nothing-near", "Probes.leave(\"V\", " + never + ");", "false"},
+            // THE FALSE POSITIVE THE LOOSE `> 0` INVITES, written down as a case rather
+            // than as a sentence in a review: an unrelated condition inside the window.
+            // Had AllocMeter's guard been `ranAt > 0`, this rule would call it guarded and
+            // the finding #1609 exists for would have vanished.
+            {"guard-unrelated-positive",
+                "if (retries > 0) {\n  log();\n}\nif (ranAt != 1) {\n  Probes.leave(\"V\", " + never + ");\n}", "true"},
+            // AND THE WINDOW ITSELF. Seven lines from condition to constant — one beyond
+            // the six — so this must read as unguarded. Widening the number breaks THIS
+            // case rather than quietly moving a census.
+            {"window-just-outside",
+                "if (census == 0) {\n  a();\n  b();\n  c();\n  d();\n  e();\n  f();\n"
+                        + "  Probes.leave(\"V\", " + never + ");\n}", "false"},
+        };
+
+        for (String[] c : cases) {
+            Path f = tmp.resolve(c[0] + ".java");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            boolean got = guardsTheEmptyPath(f);
+            boolean ok = String.valueOf(got).equals(c[2]);
+            System.out.printf("VACUOUS case=%-26s want=%-7s got=%-7s %s%n",
+                    c[0], c[2], got, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        Probes.leave("VACUOUS SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
+                + " cases=" + (pass + fail) + " failed=" + fail + " window=" + EMPTY_WINDOW,
+                fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
+        return fail;
+    }
 
     private VacuousGuard() {}
 }
