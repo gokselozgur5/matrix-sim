@@ -1062,6 +1062,38 @@ public final class DocLint {
                 lint(sample(c -> c.bodies.get(0).remove("### Confirmation")), arc, RESOLVING, false));
         broken += expect("unannotated-gap", "unannotated_gaps",
                 lint(sample(c -> c.index.remove(c.index.size() - 1)), arc, RESOLVING, false));
+        // THE GAP SET'S OWN CASES (#1631). Every case above asks `moved()` which
+        // COUNTER a break moved. The set is not a counter — it is the field #1629
+        // added precisely because a count cannot see a swap — so it needs its own
+        // assertion, and `expectGaps` is that: the exact string the verdict carries.
+        //
+        // `gap-set-baseline` is the fixture as it stands, one annotated hole at
+        // D-003. `gap-set-swap` is the case #1629 could only demonstrate by hand,
+        // editing three files in the live tree to hold four counters still: D-002's
+        // record becomes D-003's, the index row and the annotation follow, and the
+        // COUNT does not move — `gaps=1` before and after, `DOCS_TRUE` before and
+        // after, and the set says D-002 where it said D-003. Under the pre-#1629
+        // verdict that run was byte-identical to a clean one.
+        //
+        // `gap-set-none` exercises the empty spelling, which is unreachable in this
+        // repository and always will be: there is no world with zero gaps in a tree
+        // that has three, so the branch that prints `none` rather than a bare `=`
+        // had never run once (#1550 is why it exists, #1207 is why that matters).
+        broken += expectGaps("gap-set-baseline", "D-003", lint(sample(c -> { }), arc, RESOLVING, false));
+        broken += expectGaps("gap-set-swap", "D-002", lint(sample(c -> {
+            c.ids.set(1, "D-003");
+            c.files.set(1, "D-003-b.md");
+            c.index.set(2, "| [D-003](adr/D-003-b.md) | Two | 🟢 | v6.0 | #2 |");
+            c.index.set(4, "D-002 was never issued: the number was claimed and the record never written.");
+            c.roadmap.set(2, "| Districts | D-003 | 🟢 accepted 2026-08-12 | #223 |");
+        }), arc, RESOLVING, false));
+        broken += expectGaps("gap-set-none", "none", lint(sample(c -> {
+            c.ids.set(2, "D-003");
+            c.files.set(2, "D-003-d.md");
+            c.index.set(3, "| [D-003](adr/D-003-d.md) | Four | 🟡 | v7.0 | #4 |");
+            c.index.set(4, "Every number from D-001 to D-003 has a record.");
+            c.roadmap.set(5, "| Truce | D-003 | 🟡 | #224 |");
+        }), arc, RESOLVING, false));
         broken += expect("stale-beat", "beat_drift",
                 lint(sample(c -> c.readme.set(0, pinLine("100", "999", "300"))), arc, RESOLVING, false));
         broken += expect("dropped-beat", "beat_drift",
@@ -1153,6 +1185,21 @@ public final class DocLint {
      */
     private static int casesRun = 0;
 
+    /**
+     * The gap set's assertion (#1631), which cannot go through {@code moved()}:
+     * that reads which COUNTER a break moved, and the set is not a counter. It is
+     * the field a swap moves while every count stands still.
+     */
+    private static int expectGaps(String name, String want, Report got) {
+        casesRun++;
+        boolean ok = got.gapSet().equals(want);
+        System.out.println("SELFCHECK case=" + name + " expect=gaps:" + want
+                + " got=gaps:" + got.gapSet() + " count=" + got.gaps()
+                + " verdict=" + (got.docsTrue() ? "DOCS_TRUE" : "DOCS_DRIFT")
+                + (ok ? " ok" : " BROKEN"));
+        return ok ? 0 : 1;
+    }
+
     private static int expect(String name, String want, Report got) {
         casesRun++;
         String moved = moved(got);
@@ -1200,6 +1247,12 @@ public final class DocLint {
         final List<String> readme = new ArrayList<>();
         final List<String> architecture = new ArrayList<>();
         final List<List<String>> bodies = new ArrayList<>();
+        // The record IDS are mutable since #1631, so a case can SWAP one gap for
+        // another. Every other case moves a counter; the gap set is the one field a
+        // swap moves while every count stands still, and that is unreachable from a
+        // fixture whose record list is a literal.
+        final List<String> ids = new ArrayList<>(List.of("D-001", "D-002", "D-004"));
+        final List<String> files = new ArrayList<>(List.of("D-001-a.md", "D-002-b.md", "D-004-d.md"));
     }
 
     private static String pinLine(String... ticks) {
@@ -1246,9 +1299,9 @@ public final class DocLint {
         mutate.accept(d);
 
         List<Rec> records = List.of(
-                new Rec("D-001", "D-001-a.md", d.bodies.get(0)),
-                new Rec("D-002", "D-002-b.md", d.bodies.get(1)),
-                new Rec("D-004", "D-004-d.md", d.bodies.get(2)));
+                new Rec(d.ids.get(0), d.files.get(0), d.bodies.get(0)),
+                new Rec(d.ids.get(1), d.files.get(1), d.bodies.get(1)),
+                new Rec(d.ids.get(2), d.files.get(2), d.bodies.get(2)));
         return new Canon(d.index, d.roadmap, d.readme, d.architecture, records);
     }
 
