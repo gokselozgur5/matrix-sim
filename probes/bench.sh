@@ -319,6 +319,14 @@ table() {
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
   judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=27'
+  # probes/README.md is read for EXISTENCE in two directions — roster_check asks
+  # whether every probe has a row (#1177), counters.sh whether a row names the
+  # counters its bench row pins (#1356) — and in no direction for ACCURACY. One
+  # directory over, advice.sh asks that six ways. Twenty flags are parsed by a probe
+  # and named by no row; the verdict pins the READ and carries the count beside it,
+  # because twenty row edits is twenty judgements about what each row should say
+  # (#1207, #1095 -> #1311).
+  judge CatalogFlags 'VERDICT CATALOG_FLAGS_COUNTED undocumented=20 checked_none=0'
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
