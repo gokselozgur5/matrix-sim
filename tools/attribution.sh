@@ -8,6 +8,7 @@
 #        tools/attribution.sh --fix-cmd      print the repair for this branch, and nothing else
 #        tools/attribution.sh --selftest     the keeper's own cases, against fixtures built
 #                                            out of THIS history (run by CI on every PR)
+#        tools/attribution.sh --help | -h    print this clause, and stop
 #
 # A REPAIR THAT CHANGES WHEN THE WORK HAPPENED IS NOT A REPAIR (#1012). This tool
 # printed `--reset-author` for two hundred commits worth of advice, and that flag
@@ -57,6 +58,10 @@ for arg in "$@"; do
     --for) REPO="__next__" ;;
     --fix-cmd) MODE=fixcmd ;;
     --selftest) MODE=selftest ;;
+    # Above the refusal, which matches `--help` and would win (#1410). The block
+    # reader, not a line range: this clause carries a warning about the flag that
+    # rewrites history, and a truncated warning is worse than none (#1382, #1520).
+    -h|--help) awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"; exit 0 ;;
     -*)    echo "FATAL unknown flag: $arg" >&2; exit 2 ;;
     *)
       if   [ "$PR"   = "__next__" ]; then PR="$arg"
