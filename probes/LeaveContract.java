@@ -279,6 +279,55 @@ public final class LeaveContract {
             }
         }
 
+
+        // THE STRIP'S OWN CASES (#1580). `Probes.uncommented` makes four checkers correct
+        // — this one, `DoorRefusal`, `CatalogFlags`, `SheetFence` — and had none. Its
+        // evidence was four callers whose suites exercise it INCIDENTALLY: the
+        // `refusal-and-comment` case above asserts this probe's classification, not the
+        // strip, and a strip that removed one line too many would fail it for a reason it
+        // does not name.
+        //
+        // THE PROPERTY THAT MATTERS IS THE LINE COUNT, and it was asserted nowhere. #1512's
+        // whole subject was that a regex deleting `(?s)/\*.*?\*/` deletes the newlines
+        // inside a block comment too, joining the line before to the line after — and
+        // `LatticeFence` reads field declarations ONE LINE AT A TIME, so the joined result
+        // is a member declaration nobody wrote. The line-preserving reading is the body for
+        // that reason, and a future tidy returning a collapsed string would have satisfied
+        // every case that existed.
+        String[][] strips = {
+            {"strip-line-comment", "int a; // gone\nint b;", "int a; \nint b;"},
+            {"strip-block-one-line", "int /* gone */ a;", "int  a;"},
+            // The count is the assertion: three lines in, three lines out, whatever the
+            // comment did to their contents.
+            {"strip-block-spans-lines", "int a;\n/* gone\n   also gone */ int b;", "int a;\n\n int b;"},
+            {"strip-block-opens-and-runs", "int a; /* gone\ngone */ int b;", "int a; \n int b;"},
+            // A HEURISTIC, NOT A LEXER, and this is where that is written down. A `//`
+            // inside a string literal is truncated, because the strip reads characters and
+            // not tokens. No probe writes one today; the case exists so the next reader
+            // meets the limitation as a fact rather than discovering it, and so a lexer —
+            // if one is ever wanted — arrives with a case that changes rather than a
+            // surprise.
+            {"strip-slashes-in-a-string", "String s = \"a//b\";", "String s = \"a"},
+        };
+        for (String[] c : strips) {
+            Path f = tmp.resolve(c[0] + ".txt");
+            Files.writeString(f, c[1], StandardCharsets.UTF_8);
+            String got = Probes.uncommented(f);
+            int wantLines = c[2].split("\n", -1).length;
+            int gotLines = got.split("\n", -1).length;
+            boolean ok = got.equals(c[2]) && gotLines == wantLines;
+            System.out.printf("LEAVE strip=%-26s lines=%d/%d %s%n",
+                    c[0], gotLines, wantLines, ok ? "OK" : "BROKEN");
+            if (!ok) {
+                System.out.printf("     want=[%s]%n     got =[%s]%n",
+                        c[2].replace("\n", "\\n"), got.replace("\n", "\\n"));
+            }
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
         Probes.leave("LEAVE SELFCHECK VERDICT " + (fail == 0 ? "READER_HOLDS" : "READER_BROKEN")
                 + " cases=" + (pass + fail) + " failed=" + fail,
                 fail == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
