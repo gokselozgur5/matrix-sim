@@ -276,6 +276,9 @@ found=0
 checked=0
 missing=0
 unfalsifiable=0
+refusals_ok=0
+refusals_wrong=0
+refusals_hung=0
 doors_ok=0
 doorless=0
 doors_wrong=0
@@ -462,11 +465,26 @@ done
 # every tool the row names rather than only the one it is about. A counter that has
 # been both red on purpose and wrong once is not a counter whose zero means nobody
 # is looking.
-BREAK_COUNTERS='doorless doors_wrong rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
+BREAK_COUNTERS='refusals_wrong refusals_hung doorless doors_wrong rows_duplicated missing codes_undocumented codes_unnamed unrun unfalsifiable codes_unspent flags_undocumented codes_redefined uncatalogued flags_phantom charset_drift catalog_wrong'
 
 verdict_word() {                # reads BREAKS and $BREAK_COUNTERS; prints one ADVICE VERDICT line
   if [ "$BREAKS" -eq 0 ]; then
     echo "ADVICE VERDICT EVERY_FLAG_ADVISED_EXISTS"
+  elif [ "$refusals_wrong" -gt 0 ]; then
+    # A fifteenth word (#1552). Not a flag word and not a row word: the tool
+    # refused, correctly, and spent the wrong code doing it. Every text-against-
+    # text check in this file was satisfied while `litany.sh` and `release.sh`
+    # left 1 for an unknown flag — their rows documented `Exit … 1 …` truthfully,
+    # for the OTHER thing 1 means in those tools. Sending the reader to a row
+    # word would send them to a document that is correct.
+    echo "ADVICE VERDICT A_REFUSAL_SPENDS_THE_WRONG_CODE wrong=$refusals_wrong"
+  elif [ "$refusals_hung" -gt 0 ]; then
+    # A sixteenth (#1552), and a different failure entirely: the tool did not
+    # refuse at all — it READ the flag as nothing and did its job. That is the
+    # hazard #1410's door audit hit on `backlog.sh`, and it is why every
+    # invocation here is watched. "It refused with the wrong code" sends a
+    # reader to an exit line; this sends them to the parser.
+    echo "ADVICE VERDICT A_TOOL_THAT_DOES_NOT_REFUSE hung=$refusals_hung"
   elif [ "$doorless" -gt 0 ]; then
     # A thirteenth word (#1410). Its own, and not a flag word: `--help` is the one
     # flag whose absence neither existing direction can see. `flags_undocumented`
@@ -622,6 +640,85 @@ unnamed_codes() {          # unnamed_codes <script-file> <row> -> the codes it s
 # A door printing the wrong thing is the quieter failure and the longer-lived one:
 # `checkage.sh` spent its whole life printing one line too many (#1520) and nobody
 # saw it, because nobody diffs `--help` against the header.
+
+# IS A REFUSAL A 2? (#1552)
+#
+# `tools/README.md`'s exit grammar makes 2 the refusal for every shell tool and 1
+# *the claim does not hold*. Three checks in this file already read that grammar —
+# `codes_unnamed`, `codes_unspent`, `codes_redefined` — and all three read the ROW
+# against the SOURCE. None reads what the tool DOES when refused, which is why
+# #1546 needed a person: `litany.sh` and `release.sh` spent 1 for an unknown flag
+# while both rows documented `Exit … 1 …` truthfully, for the other thing 1 means
+# in those tools. Every text-against-text check was satisfied.
+#
+# `probes/DoorRefusal` has asked exactly this of `probes/` since #1481. This is its
+# counterpart, and it arrives now for the reason #1410's door audit arrived: until
+# every tool had a door there was no reason to believe running them was safe.
+#
+# THE HAZARD IS THE SAME ONE, AND SHARPER. A tool that does not refuse an unknown
+# flag does not print an error — it RUNS. #1410's first draft hung on `backlog.sh`
+# paging the issues API a thousand rows at a time, and there is no textual pre-test
+# for "has a refusal" the way there is for "has a `--help)` arm". So every
+# invocation is watched, and a tool that outlives the watchdog is a FINDING rather
+# than a skipped row: not refusing is precisely the defect.
+#
+# NO `timeout(1)`. It is GNU coreutils and not on a stock macOS, and this script
+# runs on the operator's box and on `ubuntu-latest` — #901's dialect lesson, which
+# `balance.sh` pays for in two `date` spellings. The watchdog is a background sleep
+# and a kill, which is POSIX shell.
+REFUSAL_WAIT=10
+# ASSEMBLED, NOT WRITTEN, AND THIS FILE HAS NOW BEEN BITTEN FIVE TIMES. The flag
+# extractor reads `=[[:space:]]*"?--[a-z0-9-]+` as a comparison, so spelling this
+# constant out loud makes `advice.sh` report ITSELF for parsing a flag its row hides
+# — which it did, on the first run of this audit. The suite assembles `--pr` from
+# `$dash` for the same reason (#1033, #1157, #1222, #1265, #1276), and a checker
+# finding its own test data is this file's oldest recurring joke.
+REFUSAL_DASH=--
+NOBODY_PARSES_THIS="${REFUSAL_DASH}zzz-no-tool-knows-this"
+
+refuse_rc() {                   # refuse_rc <tool> — prints the exit code, or `hung`
+  local tool="$1" pid watcher rc
+  # JOB CONTROL, SO THE WATCHDOG CAN KILL A FAMILY. Without `set -m` the child runs
+  # in this shell's process group and `kill $pid` reaches only the `bash` wrapper —
+  # a grandchild survives, and `advice.sh` then waits for it at exit. The suite's
+  # own hang fixture demonstrated that: a one-second watchdog and a thirty-second
+  # suite. With job control the background job leads its own group and `kill -- -PID`
+  # takes the family, which is what a tool shelling out to `gh` would be.
+  set -m
+  bash "$tool" "$NOBODY_PARSES_THIS" >/dev/null 2>&1 </dev/null &
+  pid=$!
+  set +m
+  ( sleep "$REFUSAL_WAIT"; kill -9 -- -"$pid" 2>/dev/null ) >/dev/null 2>&1 &
+  watcher=$!
+  wait "$pid"; rc=$?
+  kill "$watcher" 2>/dev/null || true
+  # -9 leaves 137 through bash's 128+signal convention. A tool that really exits
+  # 137 on a bad flag is indistinguishable here and has bigger problems.
+  if [ "$rc" = 137 ]; then
+    printf 'hung\n'
+  else
+    printf '%s\n' "$rc"
+  fi
+}
+
+refusal_audit() {               # refusal_audit <tools-dir>
+  local dir="$1" tool rc
+  refusals_ok=0
+  refusals_wrong=0
+  refusals_hung=0
+  for tool in "$dir"/*.sh; do
+    [ -f "$tool" ] || continue
+    rc="$(refuse_rc "$tool")"
+    case "$rc" in
+      2)    refusals_ok=$((refusals_ok + 1)) ;;
+      hung) refusals_hung=$((refusals_hung + 1)); BREAKS=$((BREAKS + 1))
+            echo "NO_REFUSAL $tool ran for ${REFUSAL_WAIT}s on an unknown flag instead of refusing it" ;;
+      *)    refusals_wrong=$((refusals_wrong + 1)); BREAKS=$((BREAKS + 1))
+            echo "REFUSED_WRONG $tool left $rc for an unknown flag; this tree's refusal is 2" ;;
+    esac
+  done
+}
+
 help_audit() {                                   # help_audit <tools-dir> [extra-tools...]
   local dir="$1"; shift
   local tool out want
@@ -973,6 +1070,33 @@ case \"\${1:-}\" in -h|--help) awk 'NR==1 {next} !/^#/ {exit} {print}' \"\$0\"; 
 # the arm would be -h|--help) here if this tool had one
 sleep 60"
 
+  # THE REFUSAL AUDIT'S OWN CASES (#1552). Three tools in a scratch shop, one per
+  # outcome. The hang case is the one that earns the watchdog, and it is bounded
+  # so the suite does not pay ten seconds for it.
+  refusal_case() {              # refusal_case <name> <want-ok/wrong/hung> <tool-body>
+    local name="$1" want="$2" body="$3" got saved="$REFUSAL_WAIT"
+    rm -rf "$tmp/shop"; mkdir -p "$tmp/shop"
+    printf '%s\n' "$body" > "$tmp/shop/fixture.sh"
+    BREAKS=0
+    REFUSAL_WAIT=1
+    refusal_audit "$tmp/shop" >/dev/null 2>&1
+    REFUSAL_WAIT="$saved"
+    got="$refusals_ok/$refusals_wrong/$refusals_hung"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'ADVICE case=%-26s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'ADVICE case=%-26s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+
+  refusal_case refusal-is-two    1/0/0 'echo "FATAL unknown flag: $1" >&2; exit 2'
+  # #1546's live shape: the tool DOES refuse and spends the code that means the
+  # claim it judges did not hold, so a caller cannot tell a typo from a finding.
+  refusal_case refusal-is-one    0/1/0 'echo "FATAL unknown flag: $1" >&2; exit 1'
+  # And the hazard: no refusal at all, so the flag is read as nothing and the tool
+  # does its job. This is what `backlog.sh` did to #1410's first door audit.
+  refusal_case refusal-never     0/0/1 'sleep 30'
+
   # The exit-code join (#1238). The live rows falsify it too — it found two real
   # ones the day it was written — but the tree will stop supplying examples the
   # moment they are fixed, and a check with no case left is a check nobody can
@@ -1044,6 +1168,8 @@ sleep 60"
     fi
   }
   verdict_case -                  EVERY_FLAG_ADVISED_EXISTS
+  verdict_case refusals_wrong     A_REFUSAL_SPENDS_THE_WRONG_CODE
+  verdict_case refusals_hung      A_TOOL_THAT_DOES_NOT_REFUSE
   verdict_case doorless           A_TOOL_THAT_WILL_NOT_SAY_WHAT_IT_DOES
   verdict_case doors_wrong        A_DOOR_THAT_DOES_NOT_PRINT_THE_CLAUSE
   verdict_case missing            ADVISES_A_FLAG_NOBODY_IMPLEMENTS
@@ -1288,6 +1414,7 @@ flag_audit tools tools/README.md
 # is named rather than swept — `probes/` holds fifty-seven Java files and one shell
 # program, and a glob there would ask a probe for a door it has no reason to have.
 help_audit tools probes/bench.sh
+refusal_audit tools
 
 # A catalog row PROMISES flags, and nothing checked that the tool has them (#1192). The
 # readers added today catch a MISSING row; a WRONG row is prose about a program written by
@@ -1683,7 +1810,8 @@ done
 echo "ADVICE tools=$(ls tools/*.sh | wc -l | tr -d ' ') uncatalogued=$uncatalogued rows_duplicated=$rows_duplicated catalog_wrong=$catalog_wrong charset_checked=$charset_checked charset_nothing=$charset_nothing suites=$suites no_suite=$no_suite skipped_self=$skipped_self skipped_no_promise=$skipped_no_promise unrun=$unrun codes_undocumented=$codes_undocumented codes_indirect=$codes_indirect codes_redefined=$codes_redefined codes_unspent=$codes_unspent codes_checked=$codes_checked codes_exempt=$codes_exempt codes_no_promise=$codes_no_promise codes_no_literal=$codes_no_literal codes_no_row=$codes_no_row codes_unnamed=$codes_unnamed lines=$found flags_checked=$checked" \
      "unimplemented=$missing unfalsifiable=$unfalsifiable" \
      "flags_parsed=$flags_parsed flags_undocumented=$flags_undocumented flags_phantom=$flags_phantom tools_no_flags=$tools_no_flags flags_in_helpers=$flags_in_helpers" \
-     "doors_ok=$doors_ok doorless=$doorless doors_wrong=$doors_wrong"
+     "doors_ok=$doors_ok doorless=$doorless doors_wrong=$doors_wrong" \
+     "refusals_ok=$refusals_ok refusals_wrong=$refusals_wrong refusals_hung=$refusals_hung"
 # The census rule (#1221): `codes_returns` is a description of the tree, not a
 # claim whose change is a finding — a tool gaining a helper function that
 # returns a boolean moves it, and nothing is wrong. It sits here so the number
