@@ -309,7 +309,13 @@ table() {
   # code at all — read as a probe that spends its own. Two of these five cases go
   # red against the pre-#1531 raw read; three hold either way and say what the
   # matcher is FOR, which is the pair a fixture suite needs to be worth running.
-  judge LeaveContract 'LEAVE SELFCHECK VERDICT READER_HOLDS cases=41 failed=0' --selfcheck
+  judge LeaveContract 'LEAVE SELFCHECK VERDICT READER_HOLDS cases=10 failed=0' --selfcheck
+  # THE HELPERS GOT THEIR OWN HOME (#1615, #1617). These thirty-one cases lived in
+  # LeaveContract's selfcheck for five units, because `Probes` has no main and no row
+  # and that suite had a temp directory. Their verdict word was about EXIT CODES and
+  # their floor guarded the sum of six subjects, so forty could leave one subject and
+  # forty arrive in another with nothing moving. The two floors move independently now.
+  judge HelperSuite 'HELPER SELFCHECK VERDICT HELPERS_HOLD cases=31 failed=0' --selfcheck
   # A verdict with no denominator cannot tell the contract holding over everything
   # from the contract holding over nothing (#1373, re-measured by #1540). Two guards
   # are already in use here — a `_none=` field on the pinned line, and a NEVER_AROSE
@@ -318,7 +324,7 @@ table() {
   # number beside it: converting twenty-seven probes is twenty-seven judgements about
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=28 judged_none=0'
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=29 judged_none=0'
   # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
   # set to four, run, BondScenario reported unguarded, its gap measured at five, set
   # to six — and no way to argue with the number. The width is falsifiable in BOTH
