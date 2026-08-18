@@ -160,7 +160,32 @@ public final class LeaveContract {
             System.out.println("NO_EXIT_CODE " + probe
                     + " judged=yes leave=no exit=no (a failing verdict leaves with 0)");
         }
+        // A DECLARED REASON, READ (#1218). `Probes.leave`'s javadoc has said since
+        // #1093 that the contract has one place to be read and one place to change,
+        // and that sentence was false in twelve files. #1204 demonstrated the cost:
+        // the three-valued exit became an enum and the change reached only the probes
+        // already using the helper.
+        //
+        // The ones left are not convertible and each has its own reason — a FATAL on
+        // stderr with no verdict to print, a verdict already printed by a reporting
+        // helper, a probe whose word and code are deliberately separable. So the
+        // demand is not conversion, it is a DECLARATION the checker can read:
+        // `LEAVE_BY_HAND` in the source, beside the exit it explains. `by_hand=` was
+        // a number with no explanation attached, and a count that only ever goes down
+        // by accident is not a lock.
+        //
+        // The marker is looked for in the COMMENTS, which is the one place in this
+        // file that reads them on purpose — `spendsBeyondRefusal` reads through the
+        // strip precisely because a comment is not code (#1531), and a declaration is
+        // the opposite case: it is prose, and prose is where it belongs.
+        List<String> undeclared = new ArrayList<>();
         for (String probe : byHand) {
+            Path src = root.resolve("probes/" + probe + ".java");
+            if (!Files.readString(src, StandardCharsets.UTF_8).contains("LEAVE_BY_HAND")) {
+                undeclared.add(probe);
+                System.out.println("UNDECLARED_BY_HAND " + probe
+                        + " — it leaves by hand and no LEAVE_BY_HAND says why");
+            }
             System.out.println("EXITS_BY_HAND " + probe + " judged=yes leave=no exit=yes");
         }
         for (String probe : missing) {
@@ -193,10 +218,11 @@ public final class LeaveContract {
                 + " reporting=" + reporting.size()
                 + " no_source=" + missing.size());
 
-        boolean held = noCode.isEmpty() && missing.isEmpty();
+        boolean held = noCode.isEmpty() && missing.isEmpty() && undeclared.isEmpty();
         Probes.leave("VERDICT " + (held ? "EVERY_JUDGED_PROBE_HAS_A_CODE" : "A_JUDGED_PROBE_HAS_NO_CODE")
                 + " no_code=" + noCode.size()
-                + " by_hand=" + byHand.size(), held);
+                + " by_hand=" + byHand.size()
+                + " undeclared=" + undeclared.size(), held);
     }
 
     /**

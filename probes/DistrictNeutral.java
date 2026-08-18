@@ -231,8 +231,9 @@ public final class DistrictNeutral {
         // the loudest line the probe prints. The FAULT rows above are printed
         // either way, so nothing a stream leg found is swallowed by a rename.
         if (drifted > 0) {
-            System.out.println("VERDICT CATALOG_DRIFTED drifted=" + drifted);
-            System.exit(Probes.Outcome.BROKE.code());
+            // One home for the failing exit (#1218): drift takes the verdict line AND
+            // the exit code, and the helper is where that pairing lives.
+            Probes.leave("VERDICT CATALOG_DRIFTED drifted=" + drifted, Probes.Outcome.BROKE);
         }
         System.out.println(faults.isEmpty()
                 ? "VERDICT DISTRICTS_DRAW_NOTHING"

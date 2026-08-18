@@ -301,7 +301,7 @@ table() {
   # longer reads a refusal as a verdict code. The comment carries the history because a
   # number that halved for two different reasons is a number a reader will otherwise
   # reconstruct wrongly.
-  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=5'
+  judge LeaveContract 'VERDICT EVERY_JUDGED_PROBE_HAS_A_CODE no_code=0 by_hand=3 undeclared=0'
   # THE READER'S OWN CASES (#1531). This check spent its whole life reading probe
   # sources with no way to be watched misreading one, and the misreading it was
   # capable of is the one that matters: it read comments. A javadoc sentence with

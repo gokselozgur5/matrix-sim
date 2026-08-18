@@ -133,8 +133,14 @@ public final class DistrictCensus {
             System.out.println("VERDICT CITY_CENSUSED");
             return;
         }
-        System.out.println("VERDICT CITY_MISCOUNTED faults=" + faults.size());
-        System.exit(Probes.Outcome.BROKE.code());
+        // ONE HOME FOR THE FAILING EXIT (#1218). `Probes.leave`'s javadoc has said
+        // since #1093 that it exists so the contract has one place to be read and one
+        // place to change — and this leg printed and exited by hand, which made that
+        // sentence false in twelve files. Nothing here was LYING: the code agrees with
+        // the verdict, which is why LeaveContract counts these rather than failing on
+        // them. What it cost is #1204: the three-valued exit became an enum and the
+        // change reached only the probes already using the helper.
+        Probes.leave("VERDICT CITY_MISCOUNTED faults=" + faults.size(), Probes.Outcome.BROKE);
     }
 
     /**
@@ -187,8 +193,7 @@ public final class DistrictCensus {
             System.out.println("VERDICT CATALOG_REFUSES_OVERFLOW");
             return;
         }
-        System.out.println("VERDICT CATALOG_UNBOUNDED faults=" + faults.size());
-        System.exit(Probes.Outcome.BROKE.code());
+        Probes.leave("VERDICT CATALOG_UNBOUNDED faults=" + faults.size(), Probes.Outcome.BROKE);
     }
 
     /** N zones with distinct names and no map behind them — the catalog reads the name and nothing else. */

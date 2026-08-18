@@ -62,6 +62,8 @@ public final class KnownFixture {
                 System.exit(Probes.Outcome.REFUSED.code());
             }
         }
+        // LEAVE_BY_HAND (#1218): the reason below, in the word the checker reads.
+        // Not Probes.leave: this probe's verdict word does not change with its
         // Not Probes.leave: this probe's verdict word does not change with its
         // exit code, and `leave` pairs the two. Here they are deliberately
         // separable, because the falsification is exactly "same line, other

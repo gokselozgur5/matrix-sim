@@ -140,6 +140,8 @@ public final class CensusBlocks {
         }
         pool.shutdown();
         if (!pool.awaitTermination(24, TimeUnit.HOURS)) {
+            // LEAVE_BY_HAND: this is a FATAL on stderr, not a verdict — `Probes.leave`
+            // takes a line the bench greps and there is none to give (#1218).
             System.err.println("FATAL sweep did not finish");
             System.exit(Probes.Outcome.BROKE.code());
         }
