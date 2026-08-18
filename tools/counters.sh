@@ -134,7 +134,7 @@ report() {                        # report <bench> <catalog>
   [ -r "$bench" ] || { echo "FATAL cannot read $bench" >&2; return 3; }
   [ -r "$catalog" ] || { echo "FATAL cannot read $catalog" >&2; return 3; }
 
-  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0
+  local rows=0 pinned=0 named=0 missing=0 exempt=0 norow=0 nocounter=0
   local cls toks tok row
   while read -r cls toks; do
     rows=$((rows + 1))
@@ -145,6 +145,24 @@ report() {                        # report <bench> <catalog>
       # twice. Counted here so the identity closes.
       norow=$((norow + 1))
       continue
+    fi
+    # A ROW WITH NO COUNTER AT ALL (#1372). It counts ROWS and not probes, beside
+    # `rows=` and for the same reason: a probe with two judged rows is two pinned
+    # lines and either can be the one nothing can move. `VERDICT X_HELD` and nothing after it
+    # cannot be told apart from a row that always prints that line: there is no
+    # number in it to move, so the only way to watch the probe fail is to break the
+    # world it judges and look. #1372 asked for this subclass to be MEASURED, and it
+    # is the decidable half of that issue — the other half, *has this probe ever been
+    # seen red*, has three sources and none of them is a lane check.
+    #
+    # REPORTED, never judged, and the reason is in the issue: many of these judge a
+    # SIMULATION, and their falsifier is the world itself — `BondScenario` reads a
+    # 40,000-tick run and would report differently on a broken one with no counter to
+    # show for it. A gate here would demand a number from a probe that has nothing to
+    # count, which is how a rule gets exempted the first time it is inconvenient.
+    if [ -z "$toks" ]; then
+      nocounter=$((nocounter + 1))
+      [ "$MODE" = list ] && printf 'NO_COUNTER %-20s the verdict on this row carries no field that can move\n' "$cls"
     fi
     for tok in $toks; do
       pinned=$((pinned + 1))
@@ -165,7 +183,7 @@ report() {                        # report <bench> <catalog>
   # closes by construction and every path through the token loop increments
   # exactly one term, which the suite's closed-set case asserts rather than argues
   # (the #1443 lesson, one directory over).
-  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow bench=$bench catalog=$catalog"
+  echo "COUNTERS_CENSUS rows=$rows pinned=$pinned named=$named exempt=$exempt no_row=$norow no_counter=$nocounter bench=$bench catalog=$catalog"
 
   # `pinned_none=` rides the VERDICT, because a reading that found no bench row
   # must not print the line a fully-named catalog prints (#1207). Nothing read is
@@ -282,6 +300,42 @@ selftest() {
   read_case read:guard-exempt 'COUNTED pinned=2 named=1 missing=0 exempt=1 pinned_none=0' \
       "  judge Alpha 'VERDICT X a=0 swept_none=0'" \
       '| `Alpha` | does a thing. It carries `a=`. |'
+
+  # THE NO-COUNTER SUBCLASS (#1372), driven over the CENSUS line rather than the
+  # verdict, because that is where it rides — the verdict pins the contract and the
+  # census carries populations (#1221).
+  census_case() {                 # census_case <name> <want-no_counter> <bench-body> <catalog-body>
+    local name="$1" want="$2" got
+    printf '%s\n' "$3" > "$tmp/b.sh"
+    printf '%s\n' "$4" > "$tmp/c.md"
+    got="$(MODE=count report "$tmp/b.sh" "$tmp/c.md" 2>/dev/null | grep '^COUNTERS_CENSUS' \
+           | sed 's/.*no_counter=\([0-9]*\).*/\1/')"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  # A verdict with a field is not in the subclass, however few fields it has.
+  census_case census:has-a-counter 0 \
+      "  judge Alpha 'VERDICT X a=0'" \
+      '| `Alpha` | does a thing. It carries `a=`. |'
+  # THE SUBCLASS: a word and nothing after it. Nothing in the line can move, so the
+  # row cannot be told apart from a row that always prints it.
+  census_case census:bare-verdict 1 \
+      "  judge Alpha 'VERDICT X_HELD'" \
+      '| `Alpha` | does a thing. |'
+  # It counts ROWS, not probes: a probe with two judged rows and one bare verdict is
+  # one finding, not zero and not two.
+  census_case census:two-rows-one-bare 1 \
+      "  judge Alpha 'VERDICT X_HELD'
+  judge Alpha 'VERDICT Y b=1'" \
+      '| `Alpha` | does a thing. It carries `b=`. |'
+  # A row whose class has no catalog entry is roster_check's finding and is skipped
+  # BEFORE this count, so it cannot inflate the subclass (#1170).
+  census_case census:no-row-is-not-bare 0 \
+      "  judge Ghost 'VERDICT X_HELD'" \
+      '| `Alpha` | does a thing. |'
   # `no_row` is the term `roster_check` cannot cover, and it rides the census — so the
   # VERDICT stays clean while a judged class has no row at all. The fixture carries one
   # class with a row and one without, because the verdict is what this case reads and a
