@@ -103,14 +103,27 @@ bench_rows() {                    # bench_rows <bench file> — "<Class> <tok> <
   awk '{ while (/\\$/) { sub(/\\$/,""); if ((getline nxt) > 0) $0 = $0 " " nxt; else break } print }' "$1" \
   | grep -E "^[[:space:]]*(judge|known|vary)[[:space:]]" \
   | while IFS= read -r row; do
-      # `vary '<why>' judge <Class> '<line>'` — the why is a quoted string in
-      # front of the verb, so it is removed before the verb is read. Without this
-      # the class reads as `judge` and the why's own words read as counters.
-      case "$row" in
-        *vary*) row="$(sed -E "s/^[[:space:]]*vary[[:space:]]+'[^']*'[[:space:]]*//" <<< "$row")" ;;
-      esac
+      # READ FROM THE LAST VERB, NOT THE FIRST TOKEN (#1588). A `vary` block is
+      # three lines held together by backslashes and joins into one, so the joined
+      # row is
+      #
+      #   vary '<why>' --lines '<pattern>' --cut 3 judge AllocMeter 'VERDICT …' 42
+      #
+      # The old reading stripped `vary '<why>' ` and then required the row to START
+      # with a verb. It starts with `--lines`, so the class read came back empty and
+      # the row was dropped — silently, by the `continue` below. Three of the bench's
+      # seventy judged rows were in that shape (UnparkStorm, DocFigures, AllocMeter)
+      # and the counters they pin were in no total this tool printed.
+      #
+      # Anchoring on the LAST verb makes the modifier's own quoted arguments
+      # irrelevant: whatever a `vary` grows in front of the verb, the row still reads
+      # from the verb. `.*` is greedy, which is what selects the last one.
+      #
+      # It survived because nothing else read this table in shell. `CatalogFlags`
+      # reads it in Java, disagreed, and that is how the loss was found (#1586).
+      row="$(sed -E 's/^.*[[:space:]](judge|known|run)[[:space:]]+/\1 /' <<< "$row")"
       local cls line
-      cls="$(sed -nE "s/^[[:space:]]*(judge|known|run)[[:space:]]+([A-Za-z][A-Za-z0-9]*).*/\2/p" <<< "$row")"
+      cls="$(sed -nE "s/^(judge|known|run)[[:space:]]+([A-Za-z][A-Za-z0-9]*).*/\2/p" <<< "$row")"
       [ -n "$cls" ] || continue
       line="$(sed -nE "s/^[^']*'([^']*)'.*/\1/p" <<< "$row")"
       # A row with no quoted line pins nothing — `run` rows are that shape, and a
@@ -272,6 +285,35 @@ selftest() {
     fi
   }
 
+
+  # THE VARY-BLOCK ROW (#1588), which this walk lost for as long as it existed. A
+  # `vary` block joins into one line whose FIRST token is the modifier, so a reading
+  # anchored on the start found no verb and dropped the row through the `continue`.
+  # Three of the bench's seventy judged rows were in that shape and the counters they
+  # pin were in no total this tool printed.
+  rows_case() {                   # rows_case <name> <want-rows> <bench-body>
+    local name="$1" want="$2" got
+    printf '%s\n' "$3" > "$tmp/b.sh"
+    got="$(bench_rows "$tmp/b.sh" | grep -c . || true)"
+    if [ "$want" = "$got" ]; then
+      pass=$((pass + 1)); printf 'COUNTERS case=%-24s want=%s got=%s OK\n' "$name" "$want" "$got"
+    else
+      fail=$((fail + 1)); printf 'COUNTERS case=%-24s want=%s got=%s BROKEN\n' "$name" "$want" "$got"
+    fi
+  }
+  rows_case rows:plain 1 "  judge Alpha 'VERDICT X a=0'"
+  # The live shape: a modifier with its own quoted argument in front of the verb.
+  rows_case rows:vary-block 1 "  vary  'why' \\
+        --lines '^NOISE ' --cut 1 \\
+        judge Alpha 'VERDICT X a=0'"
+  # And the one that was actually lost: a plain row FOLLOWING a vary block. Two rows,
+  # and the old reading returned one.
+  rows_case rows:vary-then-plain 2 "  vary  'why' \\
+        --lines '^NOISE ' --cut 1 \\
+        judge Alpha 'VERDICT X a=0'
+  judge Alpha 'SELFCHECK VERDICT Y b=1'"
+  # A `run` row pins nothing and is not a row here — the `[ -n "$line" ]` guard.
+  rows_case rows:run-pins-nothing 0 "  run   Alpha   6000"
   read_case read:all-named 'COUNTED pinned=2 named=2 missing=0 exempt=0 pinned_none=0' \
       "  judge Alpha 'VERDICT X a=0 b=1'" \
       '| `Alpha` | does a thing. It carries `a=` and `b=`. |'
