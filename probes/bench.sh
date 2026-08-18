@@ -345,6 +345,12 @@ table() {
   # whose exit code is its verdict (`System.exit(avalanche())`, 1 when the
   # bound is missed), and `run` fails a row on a nonzero exit.
   judge SheetBench   'DISCIPLINE VERDICT PASS'   --discipline
+  # BITFLIP_TOLERANCE had one reader and nothing that would notice a wrong value
+  # (#1092). Set it to 0.5 and the mixer must be perfect; set it to 0.4 and
+  # everything passes forever — and in neither case does a line explain why. The
+  # bounds cannot be derived, so the cheaper half of that issue is taken: synthetic
+  # figures each bound MUST refuse, so both have been watched saying no.
+  judge SheetBench   'AVALANCHE SELFCHECK VERDICT BOUNDS_REFUSE cases=8 failed=0 bitflip_tolerance=0.01 corr_bound=0.15' --avalanche-selfcheck
   judge SheetBench   'VERDICT CAST_BOOT_AGREES bench=6 world=6' --boot-version
   run   SheetBench   --avalanche
   judge DocLint      'VERDICT DOCS_TRUE'         "$TICKS"
