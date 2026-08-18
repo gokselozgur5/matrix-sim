@@ -161,6 +161,13 @@ public final class VacuousGuard {
         // twice in one afternoon: a census inside an exact-line row goes red for
         // reasons that have nothing to do with the check, and then it is a number
         // people edit until the lane is quiet (#1221, #884).
+        // THE MEMBERS, NOT ONLY THE COUNT (#1550). `unguarded=` is pinned, so a probe
+        // gaining a guard while another arrives needing one is a green row over a
+        // different population. `LeaveContract`'s `by_hand=5` did exactly that across
+        // #1531 — one probe out, one in, the number unmoved. The set rides its own line,
+        // sorted and joined, UNPINNED: a member list in an exact-line grep is a list every
+        // unit edits (#1192, #884).
+        System.out.println("VACUOUS_MEMBERS unguarded=" + join(unguarded));
         System.out.println("VACUOUS_CENSUS judged=" + rows.size()
                 + " by_field=" + byField.size()
                 + " by_word=" + byWord.size()
@@ -172,6 +179,23 @@ public final class VacuousGuard {
         boolean held = missing.isEmpty();
         Probes.leave("VERDICT " + (held ? "VACUOUS_GUARD_COUNTED" : "VACUOUS_GUARD_UNREAD")
                 + " unguarded=" + unguarded.size(), held);
+    }
+
+
+    /**
+     * A population as a sorted, comma-joined string, or {@code none} (#1550).
+     *
+     * <p>Sorted so two sweeps of one tree produce byte-identical text: the order the bench
+     * table lists rows in is not information, and an unsorted list would make a diff of two
+     * runs report a reordering as a change.
+     */
+    private static String join(List<String> names) {
+        if (names.isEmpty()) {
+            return "none";
+        }
+        List<String> sorted = new ArrayList<>(names);
+        java.util.Collections.sort(sorted);
+        return String.join(",", sorted);
     }
 
     private VacuousGuard() {}

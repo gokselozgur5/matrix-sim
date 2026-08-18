@@ -188,6 +188,19 @@ public final class LeaveContract {
         // lesson about the seal. What the row must pin is the CONTRACT —
         // `no_code=0`, and `by_hand=` because a probe leaving the helper is a
         // decision — and the counts belong beside it, greppable and unpinned.
+        // THE MEMBERS, NOT ONLY THE COUNT (#1550). `by_hand=5` was 5 before #1531 and 5
+        // after, and the population was not the same five: `CensusBeatDrift` left it — it
+        // had no verdict exit code at all, the red case — and `KnownFixture` entered it,
+        // having been skipped entirely while the raw read matched `Probes.leave` inside a
+        // comment. One probe out, one in, and the pinned row matched throughout.
+        //
+        // The row is right to match: it pins the CONTRACT and not the census. But every
+        // argument for pinning a number is that a change in it is a finding, and a SWAP is
+        // a change that produces no signal. So the set rides its own line, sorted and
+        // joined, UNPINNED — a member list in an exact-line grep is a list every unit
+        // edits, which is what #1192 spent a unit deleting and #884's lesson about the seal.
+        System.out.println("LEAVE_MEMBERS by_hand=" + join(byHand)
+                + " no_code=" + join(noCode));
         System.out.println("LEAVE_CENSUS judged=" + judged.size()
                 + " reporting=" + reporting.size()
                 + " no_source=" + missing.size());
@@ -214,6 +227,25 @@ public final class LeaveContract {
      * direction of the mistake is the safe one: it would count a refusal as a verdict code
      * and leave a probe in `by_hand` rather than reporting a defect that is not there.
      */
+
+    /**
+     * A population as a sorted, comma-joined string, or {@code none} (#1550).
+     *
+     * <p>Sorted so two sweeps of one tree produce byte-identical text — the order the
+     * bench table happens to list rows in is not information, and an unsorted list would
+     * make a diff of two runs report a reordering as a change. {@code none} rather than an
+     * empty field, because a trailing {@code =} followed by nothing reads as a truncated
+     * line rather than as an empty set.
+     */
+    private static String join(List<String> names) {
+        if (names.isEmpty()) {
+            return "none";
+        }
+        List<String> sorted = new ArrayList<>(names);
+        java.util.Collections.sort(sorted);
+        return String.join(",", sorted);
+    }
+
     private static boolean spendsBeyondRefusal(String body) {
         return body.replace("System.exit(Probes.Outcome.REFUSED.code())", "")
                 .contains("System.exit");
