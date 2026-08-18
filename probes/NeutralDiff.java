@@ -200,6 +200,9 @@ public final class NeutralDiff {
 
         Verdict v = compare(seal, run);
         report(v);
+            // LEAVE_BY_HAND: `report(v)` has already printed the verdict and the rows
+            // under it, so the exit is a second statement about a line already out
+            // (#1218). `Probes.leave` prints AND leaves; here only the leaving is left.
         if (!v.pass()) {
             System.exit(Probes.Outcome.BROKE.code());
         }
