@@ -74,12 +74,6 @@ import java.util.regex.Pattern;
  */
 public final class VacuousGuard {
 
-    /** A row's verb, class and pinned verdict: `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000`. */
-    private static final Pattern ROW =
-            Pattern.compile("^\\s+(judge|known)\\s+(\\w+)\\s+'([^']*)'");
-
-    /** The bench's own exemption grammar, read rather than re-listed. */
-    private static final Pattern VARY = Pattern.compile("^\\s+vary\\b");
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
@@ -106,21 +100,18 @@ public final class VacuousGuard {
         // the table: `NeutralDiff`'s selfcheck row is above its real one, so the
         // first draft of this loop called a guarded probe unguarded. A probe is
         // guarded if ANY of its rows carries the field.
+        // ONE READER (#1590), and this probe is where the divergence was found: it read
+        // the table in Java, disagreed with `counters.sh` about how many rows there are,
+        // and the shell one turned out to be missing three (#1588).
         java.util.Map<String, Boolean> fielded = new java.util.LinkedHashMap<>();
-        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
-            if (VARY.matcher(line).find()) {
+        for (Probes.BenchRow row : Probes.benchRows(bench)) {
+            if (!row.judged()) {
                 continue;
             }
-            Matcher m = ROW.matcher(line);
-            if (!m.find()) {
-                continue;
-            }
-            String probe = m.group(2);
-            // The first guard, and the one #1373 counted: a field on the pinned
-            // line whose value is the size of what was read. `_none=0` is the
-            // spelling this tree settled on — the row cannot pass if the set was
-            // empty, because the field would read 1.
-            boolean has = m.group(3).matches(".*\\b\\w+_none=\\d+.*");
+            String probe = row.probe();
+            // The first guard, and the one #1373 counted: a field on the pinned line
+            // whose value is the size of what was read.
+            boolean has = row.verdict().matches(".*\\b\\w+_none=\\d+.*");
             fielded.merge(probe, has, (a, b) -> a || b);
         }
 

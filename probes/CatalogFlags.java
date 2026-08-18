@@ -58,23 +58,9 @@ import java.util.regex.Pattern;
  */
 public final class CatalogFlags {
 
-    /** A row's verb and class: `  judge LedgerMirror 'LEDGER_ANOMALIES=0' 6000`. */
-    private static final Pattern ROW =
-            Pattern.compile("^\\s+(judge|known|run)\\s+(\\w+)\\b");
 
     /**
-     * A JUDGED row with its pinned verdict: `  judge SameTick 'VERDICT SAME_TICK_ABSORB' 6000`.
-     *
-     * <p>Separate from {@link #ROW} because that one answers <em>which probes are on the
-     * bench</em> and this one answers <em>what does this ROW pin</em> — and the second is
-     * per row, not per probe: a probe with two judged rows is two pinned lines and either
-     * can be the one nothing can move (#1372).
-     */
-    private static final Pattern JUDGED =
-            Pattern.compile("^\\s+(judge|known)\\s+(\\w+)\\s+'([^']*)'");
 
-    /** The bench's own exemption grammar, read rather than re-listed. */
-    private static final Pattern VARY = Pattern.compile("^\\s+vary\\b");
 
     /**
      * A long option in a COMPARING position, in the four spellings this directory writes.
@@ -113,14 +99,11 @@ public final class CatalogFlags {
         String rows = Files.readString(catalog, StandardCharsets.UTF_8);
 
         Set<String> probes = new LinkedHashSet<>();
-        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
-            if (VARY.matcher(line).find()) {
-                continue;
-            }
-            Matcher m = ROW.matcher(line);
-            if (m.find()) {
-                probes.add(m.group(2));
-            }
+        // ONE READER (#1590). Both walks below take the same list, so the population
+        // and the per-row question can no longer disagree about what a row is.
+        List<Probes.BenchRow> table = Probes.benchRows(bench);
+        for (Probes.BenchRow row : table) {
+            probes.add(row.probe());
         }
 
         // THE TWO NO-COUNTER POPULATIONS, MOVED HERE FROM `counters.sh` (#1586).
@@ -144,21 +127,17 @@ public final class CatalogFlags {
         // readings (#1579) — `SameTick` prints five and pins a word.
         int rowNoCounter = 0;
         int printsNoCounter = 0;
-        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
-            if (VARY.matcher(line).find()) {
+        for (Probes.BenchRow row : table) {
+            if (!row.judged()) {
                 continue;
             }
-            Matcher m = JUDGED.matcher(line);
-            if (!m.find()) {
-                continue;
-            }
-            String probe = m.group(2);
+            String probe = row.probe();
             // A class with no catalog row is `roster_check`'s finding and is skipped
             // BEFORE this count, so it cannot inflate the subclass (#1170).
             if (rowFor(rows, probe) == null) {
                 continue;
             }
-            if (COUNTER.matcher(m.group(3)).find()) {
+            if (COUNTER.matcher(row.verdict()).find()) {
                 continue;
             }
             rowNoCounter++;
@@ -232,7 +211,14 @@ public final class CatalogFlags {
         // The populations ride their own line, unpinned (#1221). Every one of them moves
         // when a probe is added, and a census inside an exact-line row is a number people
         // learn to edit until the lane is quiet.
+        // `bench_rows=` is the CROSS-LANGUAGE number (#1590). `counters.sh` prints its own
+        // `rows=` from a shell walk of the same table, and until #1588 the two disagreed by
+        // three with nothing comparing them — which is how the loss survived. The lane
+        // compares these two integers now, so the next divergence is a red build rather
+        // than an accident somebody notices while writing a second reader.
+        long judgedRows = table.stream().filter(Probes.BenchRow::judged).count();
         System.out.println("CATALOG_FLAGS_CENSUS probes=" + probes.size()
+                + " bench_rows=" + judgedRows
                 + " checked=" + checked
                 + " no_flags=" + noFlags
                 + " no_row=" + noRow

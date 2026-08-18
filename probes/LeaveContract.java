@@ -67,12 +67,7 @@ import java.util.regex.Pattern;
  */
 public final class LeaveContract {
 
-    /** A row's verb and class: `  judge LedgerMirror 'LEDGER_ANOMALIES=0' 6000`. */
-    private static final Pattern ROW =
-            Pattern.compile("^\\s+(judge|known|run)\\s+(\\w+)\\b");
 
-    /** The bench's own exemption grammar, read rather than re-listed. */
-    private static final Pattern VARY = Pattern.compile("^\\s+vary\\b");
 
     public static void main(String[] args) throws Exception {
         matrix.Streams.utf8();
@@ -99,18 +94,11 @@ public final class LeaveContract {
 
         Set<String> judged = new LinkedHashSet<>();
         Set<String> reporting = new LinkedHashSet<>();
-        for (String line : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
-            // A `vary` prefix declares a determinism exemption and is followed
-            // by the real verb on the same or the next line; the verb is what
-            // this reads, so the modifier is simply skipped.
-            if (VARY.matcher(line).find()) {
-                continue;
-            }
-            Matcher m = ROW.matcher(line);
-            if (!m.find()) {
-                continue;
-            }
-            (m.group(1).equals("run") ? reporting : judged).add(m.group(2));
+        // ONE READER (#1590). Three probes and a shell tool each parsed this table;
+        // the shell one lost three rows for the file's whole life (#1588) and the three
+        // Java copies agreed by descent rather than independently.
+        for (Probes.BenchRow row : Probes.benchRows(bench)) {
+            (row.verb().equals("run") ? reporting : judged).add(row.probe());
         }
 
         List<String> noCode = new ArrayList<>();
