@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=31   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=35   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/litany.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/litany-selftest.log"
           verdict="$(grep -E '^LITANY SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
             "${RUNNER_TEMP:-/tmp}/litany-selftest.log" || true)"
@@ -84,3 +84,18 @@ jobs:
           grep -q '^LITANY FLOOR VERDICT PASS gates=[1-9][0-9]* unfloored=0 misattributed=0 unreadable=[0-9]*$' \
             "${RUNNER_TEMP:-/tmp}/floorcheck.log" \
             || { echo "FATAL a suite gate asserts that SOME cases ran and nothing about how many" >&2; exit 1; }
+
+      # A floor UNDER its suite's case count is exactly as green as a floor at it,
+      # so the gap only ever shows up as headroom — and headroom is invisible.
+      # `advice.sh` ran 61 cases against `floor=58` on the day #1410 landed (#1538).
+      # This is the only litany step that RUNS anything: a case count is not in the
+      # YAML and not in the tool, and every suite it walks is token-free and
+      # network-free by the property `advice.sh` audits as `unfalsifiable=`.
+      - name: tools — every floor is still its suite's number (#1538)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/litany.sh --floorage | tee "${RUNNER_TEMP:-/tmp}/floorage.log"
+          grep -q '^LITANY FLOORAGE VERDICT PASS gates=[1-9][0-9]* current=[0-9]* behind=0 ahead=0 unreadable=[0-9]*$' \
+            "${RUNNER_TEMP:-/tmp}/floorage.log" \
+            || { echo "FATAL a suite gate's floor is not its suite's case count" >&2; exit 1; }

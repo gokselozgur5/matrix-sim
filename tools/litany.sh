@@ -5,6 +5,7 @@
 #        tools/litany.sh --selftest    run every question against built fixtures
 #        tools/litany.sh --shellcheck  parse every run: block as the shell that runs it
 #        tools/litany.sh --floorcheck  does every suite gate carry a floor?
+#        tools/litany.sh --floorage    is each floor still the suite's number?
 #        tools/litany.sh --help | -h   print this clause, and stop
 #
 # THE FINDING THIS EXISTS FOR. In one night `locks.yml` gained floors, lost
@@ -78,6 +79,7 @@ FILE="${1:-.github/workflows/locks.yml}"
 SELFTEST=no
 SHELLCHECK=no
 FLOORCHECK=no
+FLOORAGE=no
 
 # One directory per invocation, holding one file per producer command. See
 # `run_producing` for why it is a directory and not an array.
@@ -91,6 +93,7 @@ esac
 [ "${1:-}" = "--selftest" ] && { SELFTEST=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--shellcheck" ] && { SHELLCHECK=yes; FILE=.github/workflows/locks.yml; }
 [ "${1:-}" = "--floorcheck" ] && { FLOORCHECK=yes; FILE=.github/workflows/locks.yml; }
+[ "${1:-}" = "--floorage" ]   && { FLOORAGE=yes;   FILE=.github/workflows/locks.yml; }
 
 # ---------------------------------------------------------------- question 1
 
@@ -532,6 +535,47 @@ selftest() {
           verdict="$(grep -E '"'"'^DREAM SELFTEST VERDICT PASS cases=[0-9]+ failed=0$'"'"' /tmp/x.log)"
           echo "DREAM SUITE FLOOR OK cases=$ran floor=$floor"'
 
+  # THE FLOOR'S CURRENCY (#1538). `--floorcheck` asks whether a gate HAS a floor;
+  # these ask whether the extractor can FIND the pair to compare. That is the half
+  # that went wrong on the first run: five gates write `floor=` above the
+  # invocation and seven below it, and a rule reading in order found seven of
+  # twelve while printing a confident verdict.
+  gates_case() {                # gates_case <name> <want-pairs> <step>
+    local wf="$tmp/fa" got
+    rm -rf "$wf"; mkdir -p "$wf"
+    { printf 'name: fixture\non: push\njobs:\n  j:\n    steps:\n'
+      printf '%s\n' "$3"; } > "$wf/fixture.yml"
+    got="$(floorage_gates "$wf/fixture.yml" | tr '\n' ';')"
+    if [ "$2" = "$got" ]; then
+      pass=$((pass + 1)); printf 'LITANY case=%-22s want=%-24s got=%-24s OK\n' "$1" "$2" "$got"
+    else
+      fail=$((fail + 1)); printf 'LITANY case=%-22s want=%-24s got=%-24s BROKEN\n' "$1" "$2" "$got"
+    fi
+  }
+  gates_case floor-below-the-tool 'tools/crowns.sh 4;' '      - name: a suite
+        run: |
+          bash tools/crowns.sh --selftest | tee /tmp/x.log
+          floor=4'
+  # The five that a first-draft extractor missed, and the reason this case exists.
+  gates_case floor-above-the-tool 'tools/crowns.sh 4;' '      - name: a suite
+        run: |
+          floor=4
+          bash tools/crowns.sh --selftest | tee /tmp/x.log'
+  # A step is a boundary: a floor in one step must not pair with a tool in the next.
+  gates_case floor-does-not-cross 'tools/crowns.sh 4;' '      - name: a suite
+        run: |
+          floor=4
+          bash tools/crowns.sh --selftest | tee /tmp/x.log
+      - name: a gate with no suite
+        run: |
+          floor=9'
+  # A gate whose suite is not a shell tool is not this rule'"'"'s to judge, and it
+  # must produce NO pair rather than a wrong one.
+  gates_case floor-without-a-tool '' '      - name: the teleprinter
+        run: |
+          floor=10
+          java -cp out matrix.DreamReader --selftest | tee /tmp/x.log'
+
   # Question 5 answers on a different axis — a directory of workflows rather
   # than one file's meaning — so its cases build their own tree instead of
   # mutating `locks.yml`. Four shapes: the clean block, and the three ways the
@@ -875,6 +919,92 @@ floor_owner_breaks() {          # floor_owner_breaks <file> — one row per disa
   ' "$1"
 }
 
+
+# IS EACH FLOOR STILL THE SUITE'S NUMBER? (#1538)
+#
+# `--floorcheck` asks whether every gate HAS a floor. It cannot ask whether the
+# floor is CURRENT, and the difference is not academic: `advice.sh` ran 61 cases
+# against `floor=58` on the day #1410 landed, so three cases could have vanished
+# with the lane green. A floor is a `-ge` test, so a floor UNDER the count is
+# exactly as green as a floor AT it — the gap only ever shows up as headroom, and
+# headroom is invisible.
+#
+# The rule that keeps them together is a COMMENT — `raise it in the PR that adds
+# a case` — repeated byte-identically on every gate, and a rule enforced by a
+# comment is enforced by whoever read it last.
+#
+# WHY THIS RUNS THE SUITES AND `--floorcheck` DOES NOT. There is no way to know a
+# suite's case count without running it; the number is not in the YAML and not in
+# the tool. Every suite this walks declares itself token-free and network-free —
+# that is the property `advice.sh` audits as `unfalsifiable=` — so the cost is
+# seconds and the risk is none. It is a separate mode for exactly that reason:
+# `--floorcheck` is a text read over one file and stays that way.
+#
+# BEHIND IS JUDGED, AHEAD IS REFUSED, UNREADABLE IS REPORTED.
+#   behind=      floor < cases. The defect: cases can go missing silently.
+#   ahead=       floor > cases. A gate that cannot pass — a floor raised for cases
+#                that were never added, or a suite that shrank without the floor
+#                coming down. Louder than behind, because the lane is already red.
+#   unreadable=  a gate whose tool or floor this rule cannot parse. Counted and
+#                named, never a break: a gap in the rule is not a defect in the
+#                step, and turning it red teaches the next author to shape a step
+#                around the checker (#1207).
+floorage_gates() {              # floorage_gates <file> — `tool floor` per suite gate
+  # BUFFERED PER STEP, not read in order. Five of the twelve gates write `floor=`
+  # ABOVE the invocation and seven below it, so a rule that wants the tool first
+  # silently found seven — which is the shape this whole unit is about: a checker
+  # quietly reading less than it claims to.
+  awk '
+    function flush() {
+      if (tool != "" && floor != "") { print tool " " floor }
+      tool = ""; floor = ""
+    }
+    /^      - name:/ { flush(); next }
+    /bash (tools|probes)\/[a-z-]+\.sh --selftest/ {
+      if (tool == "") { match($0, /(tools|probes)\/[a-z-]+\.sh/)
+                        tool = substr($0, RSTART, RLENGTH) }
+    }
+    /^ *floor=[0-9]+/ {
+      if (floor == "") { match($0, /floor=[0-9]+/); floor = substr($0, RSTART + 6, RLENGTH - 6) }
+    }
+    END { flush() }
+  ' "$1"
+}
+
+floorage() {                    # floorage [workflow-file]
+  local f="${1:-.github/workflows/locks.yml}" gates=0 current=0 behind=0 ahead=0 unreadable=0
+  local tool floor cases line
+  while read -r tool floor; do
+    [ -n "$tool" ] || continue
+    gates=$((gates + 1))
+    if [ ! -r "$tool" ]; then
+      unreadable=$((unreadable + 1))
+      echo "FLOORAGE unreadable tool=$tool reason=no-such-file"
+      continue
+    fi
+    line="$(bash "$tool" --selftest 2>/dev/null | grep -oE 'SELFTEST VERDICT [A-Z]+ cases=[0-9]+' | tail -1)"
+    cases="${line##*cases=}"
+    if [ -z "$cases" ]; then
+      unreadable=$((unreadable + 1))
+      echo "FLOORAGE unreadable tool=$tool reason=no-case-count-on-its-verdict-line"
+      continue
+    fi
+    if [ "$floor" -lt "$cases" ]; then
+      behind=$((behind + 1))
+      echo "FLOORAGE behind tool=$tool floor=$floor cases=$cases gap=$((cases - floor))"
+    elif [ "$floor" -gt "$cases" ]; then
+      ahead=$((ahead + 1))
+      echo "FLOORAGE ahead tool=$tool floor=$floor cases=$cases (this gate cannot pass)"
+    else
+      current=$((current + 1))
+    fi
+  done <<< "$(floorage_gates "$f")"
+  printf 'LITANY FLOORAGE VERDICT %s gates=%d current=%d behind=%d ahead=%d unreadable=%d\n' \
+    "$([ "$behind" = 0 ] && [ "$ahead" = 0 ] && printf PASS || printf FAIL)" \
+    "$gates" "$current" "$behind" "$ahead" "$unreadable"
+  [ "$behind" = 0 ] && [ "$ahead" = 0 ]
+}
+
 floorcheck_workflows() {
   local dir="${1:-.github/workflows}" f gates=0 unfloored=0 misattributed=0 unreadable=0 row
   for f in "$dir"/*.yml "$dir"/*.yaml; do
@@ -908,6 +1038,11 @@ floorcheck_workflows() {
     "$gates" "$unfloored" "$misattributed" "$unreadable"
   [ "$unfloored" = 0 ] && [ "$misattributed" = 0 ]
 }
+
+if [ "$FLOORAGE" = yes ]; then
+  floorage
+  exit $?
+fi
 
 if [ "$FLOORCHECK" = yes ]; then
   floorcheck_workflows
