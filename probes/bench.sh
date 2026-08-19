@@ -224,7 +224,7 @@ table() {
   # the judged line is the pin: the band is now open, and the number of births
   # it admits over seeds 1..20 at 600 windows is the thing a tuning moves.
   judge FateAtlas    'VERDICT BAND_OPEN admitted=5'
-  judge HullRoster   'VERDICT ROSTER_TOTAL'      3000
+  judge HullRoster   'VERDICT ROSTER_TOTAL anomalies=0 swept_none=0'      3000
   # The sentence beside the name. HullRoster pins what a hull is CALLED and
   # nothing pinned what the line announcing it CLAIMS, which is how one defect
   # reached main three times (#806, #948, #1056). Same shape as its neighbour:
