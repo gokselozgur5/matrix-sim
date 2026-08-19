@@ -70,4 +70,6 @@ ROADMAP.md opens with "The Finish Line" quoting the end command; no v4.0 item ca
 
 Owner's framing: "we must decide what and how much at the start, to be able to reach the end." Related: [D-027](D-027-performance-budgets.md) (budgets), [D-032](D-032-pirate-broadcast.md)/[D-033](D-033-self-substantiation.md) (epilogue residents), [D-037](D-037-theory-practice-split.md) (who verifies the road to this end).
 
-Referenced by: [D-037](D-037-theory-practice-split.md), [D-038](D-038-season-two.md).
+**Human-subject disposition (D-065, 2026-08-19):** This record remains accepted and complete for its declared Season One film specimen. [D-065](D-065-inhabited-finish-line.md) supersedes only its use as the whole Living Matrix product finish line: the film becomes a required historical regression witness, while one ordinary resident's replayable causal day becomes the bounded Human Foundation completion proof. The old victory is preserved; the larger claim must earn new evidence.
+
+Referenced by: [D-037](D-037-theory-practice-split.md), [D-038](D-038-season-two.md), [D-065](D-065-inhabited-finish-line.md).

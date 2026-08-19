@@ -6,6 +6,8 @@
 
 > **THE LINE WAS CROSSED — 2026-08-11.** The command above plays the film; every v1–v3 crown is closed by a merged PR; `--selftest --ticks 6000` and `--bench` are green (`SELFTEST OK ... chain_length=60`, `BENCH VERDICT PASS`); the docs in this repo describe the system that exists. Season One is complete per D-036. Everything below the seasons heading is what D-036 promised it would be: joy, scheduled like debt.
 
+> **THE FILM REMAINS CROSSED; THE PRODUCT MOVED — D-065, 2026-08-19.** D-036 remains the completed Season One film specimen and required historical regression. Living Matrix foundation completion now requires one ordinary non-hero resident's replayable delivered/occluded day: situated percept → persistent interpretation → reachable goal/intent → validated committed action or explicit non-choice cause → costly biography/relationship/institutional consequence → changed later perception. Both branches, their exact first divergence, observer isolation and the separate film profile must be proven; breadth and counts do not close this line.
+
 ---
 
 Phases are numbered like the films. Each phase has three sections: **goal**, **decision gate** (decisions to close together before merge — see [docs/DECISIONS.md](docs/DECISIONS.md)) and **definition of done** (verified by a single command against the observability plane — D-020; there is no screen to look at, and that's the point — D-019).
@@ -147,13 +149,15 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Human-subject causal contract | D-062 | 🟢 accepted | #1662 |
 | Quality admits; value leads; activity breaks ties | D-063 | 🟢 accepted | #1668 |
 | Reciprocal debt: resistance belongs to mind; breach belongs to actor | D-064 | 🟢 accepted | #1670 |
-| Film specimen retained; inhabited causality becomes the finish line | D-065 | 🟡 proposed | #1671 |
+| Film specimen retained; inhabited causality becomes the finish line | D-065 | 🟢 accepted | #1671 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
 
 **Process-decision DoD:** the Architect's quality-first, numbers-underneath verdict is recorded in #1668; D-063, the DECISIONS index and this gate mirror it in one acceptance commit. D-054's numeric floor is superseded; D-060 becomes an advisory tie-breaker among comparably valuable, independently justified ready units after human/world and dependency value; D-039/D-059 and rebase remain on coherence, falsifiability and history grounds. No contribution total admits work, outranks value or satisfies this gate.
 
 **Debt-decision DoD:** the Architect's two-ledger verdict is recorded in #1670; D-064, the DECISIONS index, this gate and D-022's reciprocal disposition agree. Epistemic resistance belongs to the persistent Human and changes only through received evidence plus mind revision. Contract debt belongs to the accountable actor or institution toward named subjects and clauses and changes only through named breach/repair entries. Film residue and the anomaly ledger retain their historical meanings. Runtime realization waits for D-065/D-066 and the exact child decomposition.
+
+**Finish-line DoD:** the Architect's retain-and-succeed verdict is recorded in #1671; D-065, the DECISIONS index, this gate, the opening finish-line scope and reciprocal D-036/D-054 dispositions agree. The film remains a required historical specimen. The current bounded target is one replayable ordinary day with one delivery split, a real trade-off, persistent reciprocal and institutional consequences, later-perception closure, exact first-divergence proof and observer isolation. The six-season history remains evidence and substrate; its old linear story order is retired in favor of Human Foundation dependencies.
 
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
