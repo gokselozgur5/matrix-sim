@@ -17,6 +17,8 @@ import matrix.core.Snapshot;
 import matrix.core.World;
 import matrix.core.WorldEvent;
 import matrix.causal.CausalPhase;
+import matrix.causal.CausalRecord;
+import matrix.causal.TruthSnapshot;
 import matrix.entities.Agent;
 import matrix.entities.AgentSmith;
 import matrix.entities.Avatar;
@@ -36,6 +38,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -92,6 +95,14 @@ public final class Simulation {
      */
     private int causalPhaseCursor = 0;
     private boolean causalTickCompleted = false;
+    /**
+     * Phase-one truth for the tick currently walking the causal spine. Null
+     * means the phase has not produced a value; an eligible-but-empty result
+     * is represented by {@link TruthSnapshot#empty}, never by null.
+     */
+    private TruthSnapshot tickTruth;
+    /** The exact immutable phase-one object accepted by phase two. */
+    private TruthSnapshot deliveryTruth;
     private final PrintStream out;
     private final ChronosLog chronos;
     /**
@@ -644,16 +655,79 @@ public final class Simulation {
     private void beginCausalTick() {
         causalPhaseCursor = 0;
         causalTickCompleted = false;
+        tickTruth = null;
+        deliveryTruth = null;
     }
 
-    /** Phase 1 hook: future work freezes eligible tick-start truth here. */
+    /** Phase 1: freeze eligible truth before either world advances. */
     private void snapshotTruth() {
         enterCausalPhase(CausalPhase.SNAPSHOT_TRUTH);
+        tickTruth = freezeTruth(Math.addExact(world.tick(), 1));
     }
 
-    /** Phase 2 hook: future work audits deliveries and issues visible receipts here. */
+    /**
+     * Phase 2 currently accepts only the frozen phase-one input. #1691 will
+     * turn entries into audited attempts; it must extend this method without
+     * consulting either live world.
+     */
     private void deliverPercepts() {
         enterCausalPhase(CausalPhase.DELIVER_PERCEPTS);
+        if (tickTruth == null) {
+            throw new IllegalStateException("delivery has no tick-start truth snapshot");
+        }
+        deliveryTruth = tickTruth;
+    }
+
+    /**
+     * Build the complete V1 fact group for each streamable resident.
+     *
+     * <p>Eligibility is one exact conjunction at this boundary: the Human's
+     * current link is open, brain and avatar are alive, and that avatar is
+     * still present in the Matrix registry. The real-side registry is only a
+     * candidate source: residents are sorted by their stable Human principal
+     * before dense sequence numbers are assigned, so list iteration order
+     * cannot become percept order. No ledger, RNG, birth key, pod, residue,
+     * other entity, or observer setting enters the snapshot.
+     */
+    private TruthSnapshot freezeTruth(long tick) {
+        List<Human> residents = new ArrayList<>();
+        for (Human human : realWorld.humans()) {
+            NeuralLink link = human.link();
+            if (link == null || link.closed() || !human.alive()
+                    || !link.avatar.alive || !world.isPresent(link.avatar)) {
+                continue;
+            }
+            residents.add(human);
+        }
+        residents.sort(Comparator.comparingInt(human -> human.id));
+
+        List<CausalRecord.TruthEntry> entries = new ArrayList<>(residents.size()
+                * TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1
+                        .predicates().size());
+        int sequence = 0;
+        for (Human human : residents) {
+            CausalRecord.Principal subject = new CausalRecord.Principal(
+                    CausalRecord.PrincipalKind.HUMAN, "human-" + human.id);
+            NeuralLink link = human.link();
+            entries.add(truthEntry(tick, sequence++, subject,
+                    TruthSnapshot.Predicate.BRAIN_ALIVE,
+                    Boolean.toString(human.alive())));
+            entries.add(truthEntry(tick, sequence++, subject,
+                    TruthSnapshot.Predicate.AVATAR_PILL,
+                    link.avatar.pill == Pill.BLUE ? "blue" : "red"));
+            entries.add(truthEntry(tick, sequence++, subject,
+                    TruthSnapshot.Predicate.AVATAR_POSITION_CM,
+                    link.avatar.xCm() + "," + link.avatar.yCm()));
+        }
+        return new TruthSnapshot(tick,
+                TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1, entries);
+    }
+
+    private static CausalRecord.TruthEntry truthEntry(long tick, int sequence,
+            CausalRecord.Principal subject, TruthSnapshot.Predicate predicate,
+            String value) {
+        return new CausalRecord.TruthEntry(tick, sequence, subject,
+                predicate.fact(value), predicate.provenance());
     }
 
     /** Phase 3 hook: future real-side reducers consume only visible receipts here. */
@@ -717,6 +791,10 @@ public final class Simulation {
         if (causalPhaseCursor != CausalPhase.canonicalOrder().size()) {
             throw new IllegalStateException("causal tick incomplete: phases="
                     + causalPhaseCursor);
+        }
+        if (tickTruth == null || deliveryTruth != tickTruth) {
+            throw new IllegalStateException(
+                    "causal tick did not deliver its exact frozen truth snapshot");
         }
         causalTickCompleted = true;
     }
