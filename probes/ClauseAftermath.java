@@ -206,10 +206,24 @@ public final class ClauseAftermath {
             // reaches no miracle stand in for one that does.
             Probes.leave("VERDICT NO_FIRING", Probes.Outcome.NEVER_AROSE);
         } else {
+            // `unaccounted=` RIDES THE VERDICT SINCE #1655. It is the field the word
+            // is chosen by and it sat on a census line; the outcome tally beside it —
+            // `recaptured=`, `rekilled=`, `resaved=`, `uncaught=` — stays there,
+            // because those are what the world DID with the saved and they move with
+            // the seal (#1221). `median_delay=` stays for a different reason: it is a
+            // STATISTIC, which is a category #1584's five clauses do not have.
+            //
+            // NO SECOND GUARD, and that is measured rather than assumed. #1655 worried
+            // that the `firings.isEmpty()` refusal above guards the FIRINGS while the
+            // accounting is over the SAVED, so a run that fired and saved nobody would
+            // be empty in the way that matters and pass. It cannot: `saved=` IS
+            // `firings.size()` (line 195), so the two populations are one and the
+            // existing refusal covers both. The worry was right in shape and wrong
+            // about this probe — the same way #1636's was about `SameTick`.
             Probes.leave("VERDICT "
-                    + (unaccounted == 0 ? "AFTERMATH_ACCOUNTED" : "AFTERMATH_UNACCOUNTED"),
-                    unaccounted == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
-        }
+                    + (unaccounted == 0 ? "AFTERMATH_ACCOUNTED" : "AFTERMATH_UNACCOUNTED")
+                    + " unaccounted=" + unaccounted,
+                    unaccounted == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);        }
     }
 
     /**
