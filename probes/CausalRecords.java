@@ -531,6 +531,11 @@ public final class CausalRecords {
             if (!nested.isRecord()) {
                 continue;
             }
+            long staticState = Arrays.stream(nested.getDeclaredFields())
+                    .filter(field -> Modifier.isStatic(field.getModifiers()))
+                    .count();
+            check("forbidden", nested.getSimpleName() + "-no-static-hidden-state",
+                    staticState == 0);
             for (RecordComponent component : nested.getRecordComponents()) {
                 Class<?> raw = component.getType();
                 String generic = component.getGenericType().getTypeName();
