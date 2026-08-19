@@ -140,13 +140,16 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ## Human Foundation — the subject before the character
 
-*Accepted constitutional turn; tracker #1661. A Human is a causal subject: the world must pass through their situated experience, accumulated interpretation, intention, and persistent consequence. Further human and character runtime units wait for the contract's successor compatibility and decomposition gates; the contract remains deliberately smaller than a psychology model or rewrite.*
+*Accepted constitutional turn; tracker #1661. A Human is a causal subject: the world must pass through their situated experience, accumulated interpretation, intention, and persistent consequence. Further human and character runtime units wait for the contract's successor compatibility and decomposition gates; the contract remains deliberately smaller than a psychology model or rewrite. A separate process gate asks whether delivery serves that outcome or a contribution graph.*
 
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
 | Human-subject causal contract | D-062 | 🟢 accepted | #1662 |
+| Outcome-first delivery; activity is diagnostic | D-063 | 🟡 proposed | #1668 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
+
+**Process-decision DoD:** the Architect's verdict is recorded in #1668, then D-063, the DECISIONS index, and this gate mirror it in one docs-only acceptance commit. If accepted, D-054/D-060 are superseded only where they make activity an objective; D-039/D-059 and rebase remain on coherence, falsifiability and history grounds. No contribution total satisfies this gate.
 
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
