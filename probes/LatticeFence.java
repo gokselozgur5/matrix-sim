@@ -93,6 +93,13 @@ public final class LatticeFence {
     private static final Pattern MUTABLE_CROSSING = Pattern.compile(
             "\\b(?:Human|Brain|Pod|PodFarm|NeuralLink|Avatar|MatrixEntity|World|RealWorld|Object)\\b");
 
+    /** A Java declaration prefix whose visibility may follow annotations/modifiers. */
+    private static final Pattern VISIBLE_DECLARATION_START = Pattern.compile(
+            "^(?:(?:@[A-Za-z_$][\\w.$]*(?:\\([^;]*\\))?"
+                    + "|abstract|default|static|final|sealed|non-sealed|strictfp"
+                    + "|synchronized|native|transient|volatile)\\s+)*"
+                    + "(?:public|protected)\\b.*");
+
     /** D-013's existing jack, normalized without whitespace. */
     private static final List<String> LEGACY_LINK_DECLARATIONS = List.of(
             "publicfinalclassNeuralLink{",
@@ -268,9 +275,11 @@ public final class LatticeFence {
 
     /**
      * A field declaration's type-and-name, or null. Deliberately narrow: a
-     * member line ending in {@code ;} that is not a call, a return or a local
-     * inside a block. Locals are missed and that is correct — a local does not
-     * hold anything past the method.
+     * declaration-shaped line ending in {@code ;} that is not a call, return,
+     * import or package line. It does not track lexical block depth, so a
+     * {@code final} local may be conservatively counted as a field; that errs
+     * red rather than allowing a real field through. A deeper distinction
+     * needs the parser D-009 refuses.
      */
     private static String fieldDeclaration(String line) {
         String trimmed = line.strip();
@@ -293,7 +302,10 @@ public final class LatticeFence {
         for (String line : code) {
             String trimmed = line.strip();
             if (declaration == null) {
-                if (!trimmed.matches("^(public|protected)\\b.*")) {
+                // Java permits annotations and modifiers before visibility.
+                // The explicit prefix grammar catches that order without
+                // mistaking method-body text such as "public Human" for an API.
+                if (!VISIBLE_DECLARATION_START.matcher(trimmed).matches()) {
                     continue;
                 }
                 declaration = new StringBuilder(trimmed);
@@ -392,6 +404,27 @@ public final class LatticeFence {
                             "package matrix.realworld;\n"
                                     + "public final class NeuralLink { public Human leak() { return null; } }\n"),
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "link-modifier-smuggle",
+                    changed(clean, "matrix/realworld/NeuralLink.java",
+                            "package matrix.realworld;\n"
+                                    + "public final class NeuralLink {\n"
+                                    + "  @Deprecated static public Human leak() { return null; }\n"
+                                    + "}\n"),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "link-string-is-not-api",
+                    changed(clean, "matrix/realworld/NeuralLink.java",
+                            "package matrix.realworld;\n"
+                                    + "public final class NeuralLink {\n"
+                                    + "  public final Human human;\n"
+                                    + "  public final Avatar avatar;\n"
+                                    + "  public final LinkKind kind;\n"
+                                    + "  public NeuralLink(Human human, Avatar avatar, LinkKind kind) {\n"
+                                    + "    this.human = human; this.avatar = avatar; this.kind = kind;\n"
+                                    + "  }\n"
+                                    + "  public void explain() {\n"
+                                    + "    String text = \"public Human is not a declaration\";\n"
+                                    + "  }\n"
+                                    + "}\n"), Reading::held));
             cases.add(readCase(scratch, "simulation-mutable-export",
                     changed(clean, "matrix/Simulation.java",
                             "package matrix;\n"
