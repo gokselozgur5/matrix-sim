@@ -150,7 +150,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Quality admits; value leads; activity breaks ties | D-063 | 🟢 accepted | #1668 |
 | Reciprocal debt: resistance belongs to mind; breach belongs to actor | D-064 | 🟢 accepted | #1670 |
 | Film specimen retained; inhabited causality becomes the finish line | D-065 | 🟢 accepted | #1671 |
-| Human causal boundary: receipts to committed effects, no mind upload | D-066 | 🟡 proposed | #1672 |
+| Human causal boundary: receipts to committed effects, no mind upload | D-066 | 🟢 accepted | #1672 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
 
@@ -159,6 +159,8 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 **Debt-decision DoD:** the Architect's two-ledger verdict is recorded in #1670; D-064, the DECISIONS index, this gate and D-022's reciprocal disposition agree. Epistemic resistance belongs to the persistent Human and changes only through received evidence plus mind revision. Contract debt belongs to the accountable actor or institution toward named subjects and clauses and changes only through named breach/repair entries. Film residue and the anomaly ledger retain their historical meanings. Runtime realization waits for D-065/D-066 and the exact child decomposition.
 
 **Finish-line DoD:** the Architect's retain-and-succeed verdict is recorded in #1671; D-065, the DECISIONS index, this gate, the opening finish-line scope and reciprocal D-036/D-054 dispositions agree. The film remains a required historical specimen. The current bounded target is one replayable ordinary day with one delivery split, a real trade-off, persistent reciprocal and institutional consequences, later-perception closure, exact first-divergence proof and observer isolation. The six-season history remains evidence and substrate; its old linear story order is retired in favor of Human Foundation dependencies.
+
+**Causal-boundary DoD:** the Architect's clause-by-clause verdict is recorded in #1672; D-066, the DECISIONS index, this gate, D-041's reciprocal disposition and the living architecture agree. Four families and deterministic physical/ownership laws remain; sheets become priors rather than fate; Human state reaches the world only through receipt → mind → intent → root validation/commit → classified effect. Every Human-affecting effect has an exhaustive origin and separate participation roles, and every future-causal field enters digest/snapshot/replay. The 152 product leaves are classified 47 reusable / 26 adapter / 44 evidence / 32 parked / 3 duplicate before realization is decomposed.
 
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
