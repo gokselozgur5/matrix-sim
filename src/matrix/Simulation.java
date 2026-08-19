@@ -686,7 +686,12 @@ public final class Simulation {
         enterCausalPhase(CausalPhase.DIGEST);
     }
 
-    /** Phase 9 hook: observation follows the seal and remains causally inert. */
+    /**
+     * Phase 9 Human-causal hook: future resident-visible observation follows
+     * the seal and remains causally inert. Legacy D-020 diagnostic event and
+     * metric lines keep their historical byte order; they are instruments,
+     * not percept receipts delivered to a mind.
+     */
     private void observeCausalState() {
         enterCausalPhase(CausalPhase.OBSERVE);
     }

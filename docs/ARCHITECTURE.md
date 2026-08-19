@@ -172,7 +172,10 @@ phases. The root refuses the first missing, repeated, or reordered hand-over
 and exposes only an immutable last-completed phase receipt. These hooks are
 empty in this seam, so the film, random stream, digest and output bytes remain
 unchanged; later leaves put behavior behind one named hook at a time rather
-than creating another scheduler beside the root.
+than creating another scheduler beside the root. Legacy D-020 log and metric
+instruments are not phase-nine Human percepts and retain their existing byte
+order; this seam orders future resident-visible causal observation, not every
+diagnostic line the daemon emits while a tick is running.
 
 ## Sequence — jack-in and the death rule
 
