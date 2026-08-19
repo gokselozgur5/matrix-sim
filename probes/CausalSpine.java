@@ -73,9 +73,12 @@ public final class CausalSpine {
         for (String broken : BREAKS) {
             System.out.println("CAUSAL_SPINE_BREAK " + broken);
         }
-        boolean held = FAILURES.values().stream().mapToInt(Integer::intValue).sum() == 0;
+        int cases = CASES.values().stream().mapToInt(Integer::intValue).sum();
+        boolean held = cases > 0
+                && FAILURES.values().stream().mapToInt(Integer::intValue).sum() == 0;
         Probes.leave("VERDICT CAUSAL_SPINE_" + (held ? "HELD" : "BROKEN")
-                + " cases=" + CASES.values().stream().mapToInt(Integer::intValue).sum()
+                + " cases=" + cases
+                + " cases_none=" + (cases == 0 ? 1 : 0)
                 + " order_fail=" + failures("order")
                 + " guard_fail=" + failures("guard")
                 + " root_fail=" + failures("root"), held);
