@@ -2,8 +2,8 @@
 
 One row per decision; the full MADR record (Y-statement, context, drivers, options with pros and cons, outcome, confirmation) lives under [docs/adr/](adr/) — next decision starts from [adr/TEMPLATE.md](adr/TEMPLATE.md). One rule stands: a 🟡 decision is **never merged into code before being discussed together** — discussion happens in the linked thread. Records are immutable: changed minds supersede, they do not rewrite. 🟢 accepted · 🟡 proposed · ❌ rejected · 🔵 parked idea.
 
-<!-- figure: ls docs/adr/D-*.md | wc -l == 61 -->
-<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 61 -->
+<!-- figure: ls docs/adr/D-*.md | wc -l == 62 -->
+<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 62 -->
 
 | ID | Decision | Status | Gate | Thread |
 |---|---|---|---|---|
@@ -68,6 +68,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-061](adr/D-061-merge-strategy.md) | The merge strategy is a term of the balance law: rebase, and the meter reads the button | 🟢 | all | #911 |
 | [D-062](adr/D-062-human-subject-contract.md) | The human is the subject: causal agency before character mechanics | 🟢 | Human Foundation | #1662 |
 | [D-063](adr/D-063-outcome-first-delivery.md) | Outcomes first: the graph witnesses delivery, never directs it | 🟢 | Human Foundation | #1668 |
+| [D-064](adr/D-064-reciprocal-debt.md) | Reciprocal debt: resistance belongs to the mind; breach belongs to the actor | 🟡 | Human Foundation | #1670 |
 
 D-063 keeps its yellow proposal title above as the stable historical identifier. Its accepted-title alias and current law are **“Quality admits; value leads; activity breaks ties”**: the graph never admits or outranks work, but may choose between comparably valuable ready units after value and dependencies leave a genuine tie.
 
