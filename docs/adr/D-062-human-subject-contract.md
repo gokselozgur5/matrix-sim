@@ -1,6 +1,6 @@
 ---
 title: "D-062 — The human is the subject: causal agency before character mechanics"
-status: proposed
+status: accepted
 date: 2026-08-19
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #1662
@@ -36,9 +36,9 @@ The decision is therefore prior to fields and classes: what causal contract make
 
 ## Decision Outcome
 
-Proposed option: "Human Contract first", because a stat can influence an outcome without making anyone the subject of that outcome, while a causal contract tells every later mechanic what it must preserve. Final call belongs to the owner in thread #1662.
+Chosen option: "Human Contract first", because a stat can influence an outcome without making anyone the subject of that outcome, while a causal contract tells every later mechanic what it must preserve. The Architect accepted this option in thread #1662 on 2026-08-19.
 
-The proposed contract is:
+The accepted contract is:
 
 ```text
 world truth
@@ -75,7 +75,7 @@ HUMAN_SUBJECT VERDICT PASS truth=DELIVERED perception=CHANGED meaning=UPDATED be
 HUMAN_CAUSALITY_FENCE VERDICT PASS choice_entries_total=N choice_entries_checked=N human_effect_sites_total=M human_effect_sites_checked=M unclassified=0 direct_truth_bypasses=0 unreadable=0
 ```
 
-For this proposed documentation gate, `DocLint` must report `VERDICT DOCS_TRUE` for record/index/ROADMAP status agreement and `DocFigures` must report `VERDICT FIGURES_AGREE` for the record/index counts. Three anchored searches separately require `consulted: thread #1662` in this record, the exact D-062/#1662 row in `docs/DECISIONS.md`, and the exact D-062/#1662 gate row in `ROADMAP.md`; `git diff --name-only origin/main...HEAD` must name exactly those three documentation files and no runtime path.
+For this accepted documentation gate, `DocLint` must report `VERDICT DOCS_TRUE` for record/index/ROADMAP status agreement and `DocFigures` must report `VERDICT FIGURES_AGREE` for the record/index counts. Three anchored searches separately require `consulted: thread #1662` in this record, the exact D-062/#1662 row in `docs/DECISIONS.md`, and the exact D-062/#1662 gate row in `ROADMAP.md`; `git diff --name-only origin/main...HEAD` must name exactly those three documentation files and no runtime path.
 
 ## Pros and Cons of the Options
 
@@ -101,4 +101,4 @@ For this proposed documentation gate, `DocLint` must report `VERDICT DOCS_TRUE` 
 
 ## More Information
 
-Extends: [D-011](D-011-human-class.md), [D-013](D-013-neurallink-bridge.md), and [D-021](D-021-perception-feed.md). Preserves: [D-010](D-010-determinism.md) and [D-019](D-019-backend-only.md). If accepted, puts D-041's implementation priority into explicit tension without deciding its fate here; #1664 owns whether that priority is retained, amended, or superseded. D-022 debt semantics are deliberately deferred to #1663; D-036/D-041 compatibility to #1664; D-054/D-060/D-061 process supersession to #1665. Thread: #1662. Parent: #1661.
+Extends: [D-011](D-011-human-class.md), [D-013](D-013-neurallink-bridge.md), and [D-021](D-021-perception-feed.md). Preserves: [D-010](D-010-determinism.md) and [D-019](D-019-backend-only.md). Acceptance puts D-041's implementation priority into explicit tension without deciding its fate here; #1664 owns whether that priority is retained, amended, or superseded. D-022 debt semantics are deliberately deferred to #1663; D-036/D-041 compatibility to #1664; D-054/D-060/D-061 process supersession to #1665. Thread: #1662. Parent: #1661.
