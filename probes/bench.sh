@@ -338,13 +338,13 @@ table() {
   # and named by no row; the verdict pins the READ and carries the count beside it,
   # because twenty row edits is twenty judgements about what each row should say
   # (#1207, #1095 -> #1311).
-  judge CatalogFlags 'VERDICT CATALOG_FLAGS_COUNTED undocumented=20 checked_none=0'
+  judge CatalogFlags 'VERDICT CATALOG_FLAGS_COUNTED undocumented=20 no_counter_phantom=0 checked_none=0'
   # The reading's own cases (#1576). This probe reads fifty-five sources with a rule
   # that has a KNOWN false positive — a greedy read collects the flags DocLint hands
   # to git — and that correction was asserted in a javadoc and demonstrated nowhere.
   # Writing the cases found a defect in the OTHER half: the row join was a plain
   # contains, so a row saying --prefix read as naming --pr.
-  judge CatalogFlags 'CATALOG SELFCHECK VERDICT READER_HOLDS cases=21 failed=0' --selfcheck
+  judge CatalogFlags 'CATALOG SELFCHECK VERDICT READER_HOLDS cases=27 failed=0' --selfcheck
   # The third verb, kept proven. `known` had zero rows and zero tests (#1231) —
   # and it is the verb the tree reaches for when a defect is real and the fix is
   # not ready, which is the worst moment to discover it stopped working. This
@@ -410,6 +410,15 @@ table() {
         --lines '^FIGURE_CENSUS ' --cut 1 \
         judge DocFigures   'VERDICT FIGURES_AGREE checked=10 stale=0 refused=0 checked_none=0'
   judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
+  # NO_COUNTER SameTick: its emptiness is guarded by an exit code rather than by a field.
+  # `census == 0` leaves NEVER_AROSE (#1138) and `judge` fails a nonzero exit, so a run
+  # that asked its question zero times is red — and `census` is a high-water mark assigned
+  # only inside the growth branch, so `census > 0` implies `growth_ticks > 0`. Of the five
+  # fields it prints, `late_ticks=` restates the word, `first_late=-1` is a sentinel that
+  # restates it again, and `census=`, `growth_ticks=` and `max_stranded=` are the world's
+  # own numbers, which #1221 keeps off pinned lines: `census=118 growth_ticks=9` in #1584's
+  # quote against `census=6 growth_ticks=1` at these arguments, same tree. There is no
+  # suite here to count — it reads one world — so the word IS the contract (#1584, #1636).
   judge SameTick     'VERDICT SAME_TICK_ABSORB' "$TICKS"
   # The Room 303 clause's own row, and the one place its REFUSAL is reachable.
   # Its budget is written here rather than taken from $TICKS for the reason
