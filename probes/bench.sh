@@ -189,7 +189,7 @@ table() {
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD scenarios=8 anomalies=0'  "$TICKS" 7
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD scenarios=4 anomalies=0' "$TICKS" 7
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'     "$TICKS" 7
-  judge BondBook     'VERDICT BOOK_TURNS_OVER'    "$TICKS" 7
+  judge BondBook     'VERDICT BOOK_TURNS_OVER forgot_none=0 fill_none=0 stale_mint=0'    "$TICKS" 7
   judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
   # Three probes that declared themselves ONE-OFF and were not (#1175). #1163's exemption
   # let a probe excuse itself with four words in a javadoc, and all six sentences were
@@ -324,7 +324,7 @@ table() {
   # number beside it: converting twenty-seven probes is twenty-seven judgements about
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=27 judged_none=0'
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=26 judged_none=0'
   # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
   # set to four, run, BondScenario reported unguarded, its gap measured at five, set
   # to six — and no way to argue with the number. The width is falsifiable in BOTH
@@ -409,7 +409,7 @@ table() {
   vary  'prints its own wall-clock: two of its markers run the daemon (4,500 and 20,000 ticks) and the second run of a pair is warmer, so secs= lands anywhere in 4-6 while checked= and docs= hold (#1302, #1328)' \
         --lines '^FIGURE_CENSUS ' --cut 1 \
         judge DocFigures   'VERDICT FIGURES_AGREE checked=10 stale=0 refused=0 checked_none=0'
-  judge BondBook     'VERDICT BOOK_TURNS_OVER'  "$TICKS"
+  judge BondBook     'VERDICT BOOK_TURNS_OVER forgot_none=0 fill_none=0 stale_mint=0'  "$TICKS"
   # NO_COUNTER SameTick: its emptiness is guarded by an exit code rather than by a field.
   # `census == 0` leaves NEVER_AROSE (#1138) and `judge` fails a nonzero exit, so a run
   # that asked its question zero times is red — and `census` is a high-water mark assigned
