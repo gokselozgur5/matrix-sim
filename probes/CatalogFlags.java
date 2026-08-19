@@ -125,8 +125,44 @@ public final class CatalogFlags {
         // twenty-seven: every one of those rows belongs to a probe that prints counters
         // and pins none of them, which is the measurement that separates the two
         // readings (#1579) — `SameTick` prints five and pins a word.
+        // WHICH OF THE NO-COUNTER ROWS IS UNFIXABLE, since #1636. `row_no_counter=`
+        // counted two different things under one name: a row that SHOULD pin one of
+        // the fields its probe already prints, and a row whose verdict word is its
+        // whole contract because the probe has no field to offer. #1584's rule sorts
+        // them — the field the word is about, the suite's own count, and not the
+        // world's population — but the sorting is a judgement per row, so the number
+        // could never reach zero and therefore could never be gated (#1372 refused it
+        // for a different reason, and this is the second).
+        //
+        // A row declares with a comment line beside it:
+        //
+        //     # NO_COUNTER <Class>: <the reason it has nothing to pin>
+        //
+        // and the census splits. `row_no_counter=` is unchanged and still the whole
+        // subclass; `no_counter_declared=` is how many of it said so, and the
+        // difference is the backlog that can reach zero.
+        //
+        // THE DECLARATION IS READ FROM THE RAW FILE, not through the strip, and that
+        // is deliberate rather than an oversight: it lives in a comment on purpose,
+        // which is the mirror of `LeaveContract`'s `LEAVE_BY_HAND` reading (#1218,
+        // #1605) and of `spendsBeyondRefusal` (#1531). A declaration is prose, and
+        // prose is where it belongs.
+        //
+        // A DECLARATION IS NOT A JUSTIFICATION — `# NO_COUNTER X: because` passes this.
+        // What it buys is the same thing `vary` buys for the determinism pass and
+        // `digest-move.sh` buys for the seal: not correctness, but a deliberate act
+        // with a name on it, and a remainder somebody can finish.
+        Set<String> declared = new LinkedHashSet<>();
+        for (String raw : Files.readAllLines(bench, StandardCharsets.UTF_8)) {
+            Matcher d = NO_COUNTER_DECL.matcher(raw);
+            if (d.find()) {
+                declared.add(d.group(1));
+            }
+        }
         int rowNoCounter = 0;
         int printsNoCounter = 0;
+        int noCounterDeclared = 0;
+        Set<String> claimed = new LinkedHashSet<>();
         for (Probes.BenchRow row : table) {
             if (!row.judged()) {
                 continue;
@@ -141,6 +177,13 @@ public final class CatalogFlags {
                 continue;
             }
             rowNoCounter++;
+            if (declared.contains(probe)) {
+                noCounterDeclared++;
+                claimed.add(probe);
+                System.out.println("NO_COUNTER_DECLARED " + probe
+                        + " — the row says so, and the remainder is the backlog");
+                continue;
+            }
             System.out.println("NO_COUNTER " + probe
                     + " — the verdict on this row carries no field that can move");
             Path psrc = root.resolve("probes/" + probe + ".java");
@@ -150,6 +193,14 @@ public final class CatalogFlags {
                         + " — and its source prints no name=value anywhere");
             }
         }
+
+        // A DECLARATION AIMED AT NOTHING IS THE BREAK, and it is the direction this
+        // mechanism fails in on its own: a row repaired later leaves its declaration
+        // behind, and a stale exemption is an exemption nobody re-reads. It is the
+        // `flags_phantom` direction one class up, decidable here for the reason it is
+        // not decidable there — the declaration NAMES its class, so the join is exact.
+        List<String> phantom = new ArrayList<>(declared);
+        phantom.removeAll(claimed);
 
         int checked = 0;
         int noRow = 0;
@@ -248,7 +299,17 @@ public final class CatalogFlags {
                 + " no_row=" + noRow
                 + " no_source=" + noSource
                 + " row_no_counter=" + rowNoCounter
-                + " prints_no_counter=" + printsNoCounter);
+                + " prints_no_counter=" + printsNoCounter
+                + " no_counter_declared=" + noCounterDeclared);
+
+        // Printed after the census and before the verdict, one row per phantom, so a
+        // stale declaration is named rather than only counted (#1572's reason: a set
+        // whose membership changed under a stable count is a green row over a
+        // different population).
+        for (String stale : phantom) {
+            System.out.println("NO_COUNTER_PHANTOM " + stale
+                    + " — declared to have no counter, and no judged row of that name lacks one");
+        }
 
         // `checked_none=` IS the guard, and this probe would otherwise have been the
         // twenty-eighth row VacuousGuard reports as unable to tell a full population
@@ -258,9 +319,17 @@ public final class CatalogFlags {
         // reason five siblings carry a `_none=` field.
         // `unread_verbs` IS the break, unlike the two no-counter populations beside it:
         // a row nothing reads is not a style preference, it is a row nothing reads.
-        boolean held = noSource == 0 && noRow == 0 && checked > 0 && strangers.isEmpty();
+        // A PHANTOM IS JUDGED and the two no-counter populations beside it are not,
+        // which is the same split #1600 made for `unread_verbs=`: a backlog is a
+        // style question, a declaration pointing at nothing is a reader walking past
+        // something it could not see. It is also the only half of this mechanism that
+        // a gate can install AT ZERO (#1311) — the declared set starts empty, so the
+        // phantom count starts at zero and stays there or names its own break.
+        boolean held = noSource == 0 && noRow == 0 && checked > 0 && strangers.isEmpty()
+                && phantom.isEmpty();
         Probes.leave("VERDICT " + (held ? "CATALOG_FLAGS_COUNTED" : "CATALOG_FLAGS_UNREAD")
                 + " undocumented=" + undocumented.size()
+                + " no_counter_phantom=" + phantom.size()
                 + " checked_none=" + (checked == 0 ? 1 : 0), held);
     }
 
@@ -321,6 +390,16 @@ public final class CatalogFlags {
      */
     private static final Pattern COUNTER = Pattern.compile("[a-z_]+=");
 
+    /**
+     * A row's declaration that it has no counter to pin (#1636). Anchored at the start
+     * of a comment line, for #1605's reason: #1218 found its marker with a whole-file
+     * `contains`, so a probe satisfied the demand by naming the marker in a javadoc
+     * ABOUT the mechanism — the self-matching shape this tree has now met six times.
+     * The class name is captured so a declaration cannot be aimed at a row it does not
+     * name, and the colon forces a reason to follow.
+     */
+    private static final Pattern NO_COUNTER_DECL =
+            Pattern.compile("^\\s*#\\s*NO_COUNTER\\s+([A-Za-z][A-Za-z0-9_]*)\\s*:\\s*\\S");
     /**
      * Does this source print a {@code name=value} anywhere? (#1586)
      *
@@ -454,6 +533,40 @@ public final class CatalogFlags {
             }
         }
 
+
+        // THE DECLARATION PATTERN (#1636). Six cases, and each is a way the exemption
+        // could grow on its own — which is what `counters.sh`'s guard list refuses to
+        // let happen with a pattern (#1369), and this IS a pattern, so its edges are
+        // the whole correctness. The reason clause and the anchor are not decoration:
+        // without the first, `# NO_COUNTER X:` exempts a row and says nothing, which is
+        // how a required field becomes `n/a` (#1246); without the second, this file's
+        // own javadoc ABOUT the marker declares every class it names, which is the
+        // self-matching shape #1605 found in `LeaveContract` eleven units after the
+        // unit that introduced it.
+        String[][] declCases = {
+            {"decl-plain", "  # NO_COUNTER SameTick: the word is the contract.", "SameTick"},
+            {"decl-no-reason", "  # NO_COUNTER SameTick:", ""},
+            {"decl-no-colon", "  # NO_COUNTER SameTick the word is the contract.", ""},
+            {"decl-not-a-comment", "  judge NO_COUNTER SameTick: nope", ""},
+            // Mid-line is the direction that matters: a sentence in prose that happens
+            // to quote the marker must not exempt the class it is talking about.
+            {"decl-mid-line", "  # see how NO_COUNTER SameTick: is written", ""},
+            {"decl-tight", "#NO_COUNTER SameTick:x", "SameTick"},
+        };
+        for (String[] c : declCases) {
+            Matcher m = NO_COUNTER_DECL.matcher(c[1]);
+            String got = m.find() ? m.group(1) : "";
+            boolean ok = got.equals(c[2]);
+            System.out.printf("CATALOG case=%-24s want=%-14s got=%-14s %s%n",
+                    c[0],
+                    c[2].isEmpty() ? "<none>" : c[2], got.isEmpty() ? "<none>" : got,
+                    ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
 
         // `printsACounter` over sources, through the strip. The shell version got two of
         // its four `sed` rules wrong and a case caught each (#1583); these are the same
