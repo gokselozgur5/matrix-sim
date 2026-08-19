@@ -336,7 +336,12 @@ table() {
   # directions now: seven breaks window-just-outside, four breaks
   # guard-else-after-positive, and the row carries the number it ran with. Five policy
   # cases retain below/equal/above and both unread paths, including the red +1 case.
-  judge VacuousGuard 'VACUOUS SELFCHECK VERDICT READER_HOLDS cases=12 failed=0 window=6' --selfcheck
+  # Twenty-three more build real Git topologies, shallow clones and gitless census trees:
+  # they pin depth-1 main and depth-2 topic refusals as well as exact/local/diverged
+  # main, fresh/stale/missing-origin topics, local and GitHub-style merges, detached
+  # main/topic topology, both partial archive pairs,
+  # same-tree/alias baselines, and live-checkout/GIT_DIR-spoof refusals.
+  judge VacuousGuard 'VACUOUS SELFCHECK VERDICT READER_HOLDS cases=35 failed=0 window=6' --selfcheck
   # probes/README.md is read for EXISTENCE in two directions — roster_check asks
   # whether every probe has a row (#1177), counters.sh whether a row names the
   # counters its bench row pins (#1356) — and in no direction for ACCURACY. One
