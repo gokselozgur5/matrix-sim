@@ -116,10 +116,23 @@ public final class FleetLines {
         film(1, false);
         film(1, true);
         film(2, true);
-        System.out.println("SWEEP ordinals=" + ordinals + " lines=" + lines
-                + " anomalies=" + anomalies);
-        Probes.leave(anomalies == 0 ? "VERDICT FLEET_LINES_TRUE" : "VERDICT FLEET_LINES_LIE", anomalies == 0);
-    }
+        System.out.println("SWEEP ordinals=" + ordinals + " lines=" + lines);
+        // `anomalies=` AND `swept_none=` RIDE THE VERDICT SINCE #1643. The row greped
+        // one word, and `FLEET_LINES_TRUE` is chosen by `anomalies == 0` — the number
+        // that branch reads sat on a census line and was pinned nowhere (#1584's first
+        // clause). `lines=` and `ordinals=` stay off it: the first is what the sweep
+        // FOUND and moves with the seal (#1221), the second is the argument handed
+        // back, which is not a measurement at all.
+        //
+        // `swept_none=` is the guard, and the gap it closes is the widest in the tree:
+        // this probe reads twelve thousand lines, `anomalies=` is a count over them,
+        // and `lines=0` gave `anomalies=0` and this word at exit 0 — *everything is
+        // fine* and *I opened nothing* printing the same sentence (#970, #1207).
+        boolean clean = anomalies == 0;
+        Probes.leave((clean ? "VERDICT FLEET_LINES_TRUE" : "VERDICT FLEET_LINES_LIE")
+                + " anomalies=" + anomalies
+                + " swept_none=" + (lines == 0 ? 1 : 0),
+                clean && lines > 0);    }
 
     /** One arm of the film, composed the way the city composes it. */
     private static void film(int laydown, boolean replacing) {
