@@ -184,41 +184,34 @@ public final class LatticeFence {
 
             // CLAUSE 1 — the bridge is one-way. Matrix entities may not reach out.
             if (file.startsWith(entitiesDir)) {
-                for (String line : code) {
-                    if (REAL_WORLD_REFERENCE.matcher(line).find()) {
-                        entitiesReach++;
-                        offences.add("LATTICE entities " + file + " reaches the real world");
-                    }
+                int findings = occurrences(REAL_WORLD_REFERENCE, source);
+                entitiesReach += findings;
+                for (int i = 0; i < findings; i++) {
+                    offences.add("LATTICE entities " + file + " reaches the real world");
                 }
             }
 
             // CLAUSE 2 — the Matrix kernel cannot receive a real-side type either.
             if (file.startsWith(coreDir)) {
-                for (String line : code) {
-                    if (REAL_WORLD_REFERENCE.matcher(line).find()) {
-                        coreReach++;
-                        offences.add("LATTICE core " + file + " reaches the real world");
-                    }
+                int findings = occurrences(REAL_WORLD_REFERENCE, source);
+                coreReach += findings;
+                for (int i = 0; i < findings; i++) {
+                    offences.add("LATTICE core " + file + " reaches the real world");
                 }
             }
 
             // CLAUSE 7 — nothing depends on the composition root's entry point.
             if (!file.getFileName().toString().equals("Main.java")) {
-                for (String line : code) {
-                    if (MAIN_REFERENCE.matcher(line).find()) {
-                        mainDepended++;
-                        offences.add("LATTICE main " + file + " depends on Main");
-                    }
+                int findings = occurrences(MAIN_REFERENCE, source);
+                mainDepended += findings;
+                for (int i = 0; i < findings; i++) {
+                    offences.add("LATTICE main " + file + " depends on Main");
                 }
             }
 
             // CLAUSE 3 — World holds no real-world object, read off declared types.
             if (file.endsWith(Path.of("core", "World.java"))) {
-                for (String line : code) {
-                    String field = fieldDeclaration(line);
-                    if (field == null) {
-                        continue;
-                    }
+                for (String field : fieldDeclarations(code)) {
                     worldFields++;
                     for (String type : REAL_WORLD_TYPES) {
                         if (field.matches(".*\\b" + type + "\\b.*")) {
@@ -232,11 +225,10 @@ public final class LatticeFence {
 
             // CLAUSE 4 — IDs and records are neutral grammar, not a back stair.
             if (relative.startsWith("matrix/causal/")) {
-                for (String line : code) {
-                    if (OUTSIDE_CAUSAL_REFERENCE.matcher(line).find()) {
-                        causalReach++;
-                        offences.add("LATTICE causal " + file + " reaches runtime code");
-                    }
+                int findings = occurrences(OUTSIDE_CAUSAL_REFERENCE, source);
+                causalReach += findings;
+                for (int i = 0; i < findings; i++) {
+                    offences.add("LATTICE causal " + file + " reaches runtime code");
                 }
             }
 
@@ -277,26 +269,99 @@ public final class LatticeFence {
                 mindParticipants, bridgeDeclarations, offences);
     }
 
+    private static int occurrences(Pattern pattern, String source) {
+        int count = 0;
+        var matcher = pattern.matcher(source);
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
     /**
-     * A field declaration's type-and-name, or null. Deliberately narrow: a
-     * declaration-shaped line ending in {@code ;} that is not a call, return,
-     * import or package line. It does not track lexical block depth, so a
-     * {@code final} local may be conservatively counted as a field; that errs
-     * red rather than allowing a real field through. A deeper distinction
-     * needs the parser D-009 refuses.
+     * Class-body declarations ending in a semicolon, normalized across source
+     * lines. This is still a source reader rather than a Java parser, but it
+     * tracks the outer class body so a package-private field, a split type, or
+     * an initializer call cannot hide a direct real-side declaration. Method,
+     * initializer and nested-class bodies are skipped; quoted braces do not
+     * move the depth.
      */
-    private static String fieldDeclaration(String line) {
-        String trimmed = line.strip();
-        if (!trimmed.endsWith(";") || trimmed.startsWith("return") || trimmed.startsWith("import")
-                || trimmed.startsWith("package") || trimmed.contains("(")) {
-            return null;
+    private static List<String> fieldDeclarations(List<String> code) {
+        String source = String.join("\n", code);
+        List<String> declarations = new ArrayList<>();
+        StringBuilder member = new StringBuilder();
+        int depth = 0;
+        boolean quoted = false;
+        boolean character = false;
+        boolean escaped = false;
+        boolean fieldInitializer = false;
+
+        for (int i = 0; i < source.length(); i++) {
+            char ch = source.charAt(i);
+            if (quoted || character) {
+                if (escaped) {
+                    escaped = false;
+                } else if (ch == '\\') {
+                    escaped = true;
+                } else if ((quoted && ch == '"') || (character && ch == '\'')) {
+                    quoted = false;
+                    character = false;
+                }
+                continue;
+            }
+            if (ch == '"') {
+                quoted = true;
+                continue;
+            }
+            if (ch == '\'') {
+                character = true;
+                continue;
+            }
+            if (ch == '{') {
+                if (depth == 0) {
+                    depth = 1;
+                    member.setLength(0);
+                    continue;
+                }
+                if (depth == 1) {
+                    String prefix = member.toString();
+                    int equals = prefix.indexOf('=');
+                    int paren = prefix.indexOf('(');
+                    fieldInitializer = equals >= 0 && (paren < 0 || equals < paren);
+                    if (!fieldInitializer) {
+                        member.setLength(0);
+                    }
+                }
+                depth++;
+                continue;
+            }
+            if (ch == '}') {
+                if (depth > 0) {
+                    depth--;
+                }
+                if (depth == 1 && !fieldInitializer) {
+                    member.setLength(0);
+                } else if (depth == 1) {
+                    member.append(' ');
+                    fieldInitializer = false;
+                } else if (depth == 0) {
+                    member.setLength(0);
+                }
+                continue;
+            }
+            if (depth != 1) {
+                continue;
+            }
+            member.append(ch);
+            if (ch == ';') {
+                String declaration = member.toString().strip().replaceAll("\\s+", " ");
+                if (!declaration.isEmpty()) {
+                    declarations.add(declaration);
+                }
+                member.setLength(0);
+            }
         }
-        if (!trimmed.startsWith("private") && !trimmed.startsWith("public")
-                && !trimmed.startsWith("protected") && !trimmed.startsWith("final")
-                && !trimmed.startsWith("static")) {
-            return null;
-        }
-        return trimmed;
+        return declarations;
     }
 
     /** Public/protected member headers, joined across their formatting lines. */
@@ -346,6 +411,14 @@ public final class LatticeFence {
                                     + "import matrix . realworld . Human;\n"
                                     + "public final class Avatar { Human mind; }\n"),
                     reading -> oneFinding(reading, reading.entitiesReach())));
+            cases.add(readCase(scratch, "entities-split-realworld",
+                    changed(clean, "matrix/entities/Avatar.java",
+                            "package matrix.entities;\n"
+                                    + "import matrix\n"
+                                    + "    . realworld\n"
+                                    + "    . Human;\n"
+                                    + "public final class Avatar { Human mind; }\n"),
+                    reading -> oneFinding(reading, reading.entitiesReach())));
             cases.add(readCase(scratch, "core-realworld",
                     changed(clean, "matrix/core/Kernel.java",
                             "package matrix.core;\n"
@@ -356,6 +429,14 @@ public final class LatticeFence {
                             "package matrix.core;\n"
                                     + "public final class World {\n"
                                     + "  private final java.util.List<Human> minds = null;\n"
+                                    + "}\n"),
+                    reading -> oneFinding(reading, reading.worldHolds())));
+            cases.add(readCase(scratch, "world-split-field",
+                    changed(clean, "matrix/core/World.java",
+                            "package matrix.core;\n"
+                                    + "public final class World {\n"
+                                    + "  Human\n"
+                                    + "      mind = load();\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.worldHolds())));
             cases.add(readCase(scratch, "main-dependency",
@@ -369,6 +450,13 @@ public final class LatticeFence {
                     changed(clean, "matrix/causal/Leak.java",
                             "package matrix.causal;\n"
                                     + "final class Leak { matrix . realworld . Human mind; }\n"),
+                    reading -> oneFinding(reading, reading.causalReach())));
+            cases.add(readCase(scratch, "causal-split-reach",
+                    changed(clean, "matrix/causal/Leak.java",
+                            "package matrix.causal;\n"
+                                    + "final class Leak { matrix\n"
+                                    + "    . realworld\n"
+                                    + "    . Human mind; }\n"),
                     reading -> oneFinding(reading, reading.causalReach())));
             cases.add(readCase(scratch, "reducer-queries-world",
                     changed(clean, "matrix/realworld/MindReducer.java",
