@@ -266,13 +266,14 @@ table() {
   # still driven only through a 6,000-tick arc — the one function here that parses, and one
   # whose comment says its correctness worked BY LUCK. Costs no universe: six string cases.
   judge SpecDrift    'SPEC SELFTEST VERDICT PASS cases=7 failed=0' --selftest
-  # The three sentences docs/ARCHITECTURE.md calls "verified by grep", with the grep
-  # (#1417). Nothing read any of them: `entities` importing nothing from `realworld`,
-  # `World` holding no real-world object, nothing depending on `Main`. All three were
-  # true, which is the reason — SheetFence's shape, a law that is true by luck reading
-  # exactly like a law that is enforced. The widest instance of it in the tree: the
-  # entities/realworld split IS this repository's thesis. Reads src/, builds no universe.
-  judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 world_holds=0 main_depended=0 swept_none=0'
+  # The original three dependency sentences plus D-066's causal fire-door (#1689).
+  # Entity/core reverse reaches, a real-side field on World, a causal grammar that
+  # reaches runtime, an omniscient receipt reducer, a new mutable root/jack surface,
+  # or a Main dependency are seven separately named findings. Reads src/ only.
+  judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 core_reach=0 world_holds=0 causal_reach=0 reducer_world=0 bridge_mutable=0 main_depended=0 swept_none=0'
+  # Fourteen private source trees retain every reader branch, including the D-013
+  # jack allowlist, a multiline transport, a same-line smuggle, and comment stripping.
+  judge LatticeFence 'LATTICE SELFCHECK VERDICT READER_HOLDS cases=14 cases_none=0 failed=0' --selfcheck
   # The row #1153 wrote in its PR body and never committed (#1162). Its `perl` substitution
   # was anchored on `judge SpeciesReach`, which was on a different branch at the time; the
   # pattern matched nothing, perl exited 0, and the tree gained an instrument that ran on
