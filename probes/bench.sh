@@ -356,7 +356,7 @@ table() {
   # every sweep and the pass-is-a-failure inversion is exercised rather than
   # believed. Its issue is itself, which is stated in the probe rather than hidden.
   known KnownFixture 'VERDICT KNOWN_FIXTURE_BROKEN by_design=yes issue=1231' '#1231'
-  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS"
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=0 door=0 stream=0 lifecycle=0' "$TICKS"
   # The second seed found a defect (#1155) and this row was a `known` break for four hours.
   # Both halves turned out to be the PROBE describing truthfully-measured things wrongly:
   # `malformed` counted frames that correctly report a world with no agent in it (#1170),
@@ -364,7 +364,7 @@ table() {
   # line "lost — the dream is no longer theirs" sits inside every gap that missed the bound.
   # Both are now their own numbers, `no_agent=` and `dark_gap=`, and the clause holds at
   # seeds 42, 7, 4, 9 and 13. The row is a judge again, which is what a known break is for.
-  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD' "$TICKS" 7
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=0 door=0 stream=0 lifecycle=0' "$TICKS" 7
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
