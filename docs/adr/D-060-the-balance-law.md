@@ -151,4 +151,4 @@ The middle row is the target fault standing alone: a day that planned, built, sh
 
 Related: [D-039](D-039-unit-pr-granularity.md) (the trio this extends), [D-054](D-054-the-year.md) (the year this shapes), [D-030](D-030-agent-operating-model.md) (the crews whose reviews fill the fourth leg), [D-027](D-027-performance-budgets.md) (the falsifiability principle borrowed here). Thread: #781. Principle: Dev14.
 
-Referenced by: [D-061](D-061-merge-strategy.md).
+Referenced by: [D-061](D-061-merge-strategy.md), [D-063](D-063-outcome-first-delivery.md) (subordinates balance to an advisory tie-breaker among comparably valuable, independently justified ready units after human/world and dependency value; no deficit may originate, outrank or split an artifact).

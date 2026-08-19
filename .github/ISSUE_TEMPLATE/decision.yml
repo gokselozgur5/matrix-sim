@@ -46,10 +46,14 @@ body:
         argued from a measured day and nothing in this template asked for it. A decision is
         more expensive to get wrong than a build unit: it becomes a record that is immutable
         under D-029, so an unmeasured premise costs a second ADR rather than an edit.
+        Under D-063 an activity reading may break a tie among comparably valuable,
+        independently justified ready work after human/world and dependency value;
+        it cannot be the premise that admits a decision, creates its issue or outranks value.
         "Not measured, and why" is a valid answer — some concerns are about what a shape
         will do, not what it has done.
       placeholder: |
         tools/balance.sh --repo 2026-08-12
         BALANCE commits=603 issues=0 prs=0 reviews=0 verdict=THIN — the day that opened D-060
+        AUTHORITY advisory=1 eligible_only=1 value_precedes=1 comparable_only=1 tie_breaker=1 creates_artifacts=0 splits_units=0 weakens_locks=0
     validations:
       required: true

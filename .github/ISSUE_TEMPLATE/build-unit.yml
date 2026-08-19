@@ -5,10 +5,33 @@ body:
   - type: markdown
     attributes:
       value: |
-        One unit = one small PR + `Closes #N` + atomic commits carrying finding, fix, and evidence.
+        One unit = one small PR + `Closes #N` + atomic commit messages carrying finding, fix, and evidence.
         Gates before units: if this unit executes a 🟡/🔵 decision, the verdict must land in the gate thread first.
+        D-063 admits work by quality, then lets value lead and activity break only honest ties.
+        A contribution count cannot originate this issue, outrank a more valuable unit, or shape its boundary.
         Does this unit change the world's bytes? If so it is a **declared digest move** — pick that
         lock tier, and the PR argues the move rather than reporting it (#884).
+  - type: textarea
+    id: independent-reason
+    attributes:
+      label: Why this exists without a count
+      description: >-
+        Finish the sentence without naming commits, issues, PRs, reviews, streaks or a target:
+        “This exists because it changes, proves or refutes ___.” A count may break a tie only
+        after human/world and dependency value cannot distinguish real ready units.
+      placeholder: "This exists because it proves that every human-attributed world effect traces to one validated choice entry."
+    validations:
+      required: true
+  - type: textarea
+    id: natural-boundary
+    attributes:
+      label: Natural boundary
+      description: >-
+        Why is this the smallest whole review surface? Name the tempting split or join and why
+        it would either sever one claim from its proof or combine independently revertible work.
+      placeholder: "The fence and its retained falsifier are one claim; the later mind-state implementation is independently reversible and stays out."
+    validations:
+      required: true
   - type: textarea
     id: statement
     attributes:

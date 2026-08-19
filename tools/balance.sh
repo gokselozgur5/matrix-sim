@@ -8,13 +8,14 @@
 #        tools/balance.sh --judgecheck         (the deficit advice, no token needed)
 #        tools/balance.sh --help | -h          print this clause, and stop
 #
-# The law: the four contribution kinds GitHub counts — commits, issues, pull
-# requests, reviews — each hold a quarter of the day. The reasoning, not the
-# arithmetic, is the point: a day of only PRs is a day nobody planned, a day of
-# only issues is a day nobody shipped, a day without reviews is a day nothing
-# was doubted, and a day without commits is a day nothing was built. This meter
-# reads the same contribution API the profile graph reads, so it cannot flatter
-# us.
+# AUTHORITY AFTER D-063. This is an advisory reader, not an admission gate.
+# Commits, issues, pull requests and reviews still describe whether a delivery
+# pipeline plans, builds, ships and doubts. Human/world value and dependency
+# value decide first. A THIN leg or PLAN may only break a remaining tie among
+# comparably valuable, independently justified ready units; it may not originate
+# an artifact, outrank value, split a coherent unit, waive evidence, or declare a
+# day failed. The meter reads the same contribution API the profile graph reads
+# so its observation stays honest; D-063 decides the subordinate use of it.
 #
 # WHAT IT COUNTS, STATED PLAINLY. `contributionsCollection` is an *account*
 # statistic: it spans every repository the account touched that day. So the
@@ -89,13 +90,12 @@
 # Both moves are carried by D-060's errata of 2026-08-13; the tool executes a
 # ruler the record declares, it does not choose one.
 #
-# WHICH BUTTON SHAPED IT. The merge strategy is a term of this law, not a
-# preference about history (D-061). A merge commit is a second authored commit
-# per unit, so under it the commit leg runs at about twice the PR leg and the
-# four quarters stop being a target that is missed and become one that cannot be
-# hit. Every run therefore reads the repository's own merge settings and prints
-# them on the SCOPE line: a verdict can be read wrong for a hundred reasons, but
-# never again without the button that shaped it being on the same screen.
+# WHICH BUTTON SHAPED THE HISTORY. D-063 removes contribution arithmetic as
+# D-061's authority and retains rebase for independently meaningful atomic
+# commits in a linear audit trail. Every run still reads the repository's merge
+# settings and prints them on the SCOPE line because a settings-page drift is a
+# real process fact. It is reported beside the reading, never used to admit,
+# rank or change the advisory verdict.
 #
 # WHAT THE ADVICE IS AN ANSWER TO. The DEFICIT line's four numbers each solve
 # ONE leg with the other three standing still, so under the artifact ruler they
@@ -346,6 +346,21 @@ together() {                    # together <c> <i> <p> <r> -> the four taken at 
 
 pct() { printf '%d' $(( ($1 * 1000 + $2 / 2) / $2 )); }   # per mille, rounded
 
+# The meter can read the graph; it cannot know whether an artifact is independently
+# justified. Put that missing jurisdiction on every ordinary reading and execute the
+# exact same line in --judgecheck, so PLAN cannot silently recover its old authority.
+authority_line() {
+  printf 'AUTHORITY advisory=1 eligible_only=1 value_precedes=1 comparable_only=1 tie_breaker=1 creates_artifacts=0 splits_units=0 weakens_locks=0  (D-063: quality admits; value leads; this reading only breaks ties among comparably valuable ready work)\n'
+}
+
+# BALANCE and AUTHORITY are one output primitive. Both ordinary shapes use this
+# function, and --judgecheck executes both shapes, so the authority cannot vanish
+# from EMPTY or non-empty output while an isolated string test stays green.
+balance_with_authority() {
+  printf '%s\n' "$1"
+  authority_line
+}
+
 # A day expressed as 1000 per mille of itself — the day-shape ruler's unit.
 # Flooring four shares leaves 0..3 per mille unallocated; the remainder goes to
 # the day's LARGEST leg, which is the leg this ruler exists to stop from
@@ -462,6 +477,82 @@ fi
 # No token, no network, no repository, so CI runs it and so does a pinned tree.
 if (( JUDGECHECK )); then
   FAILED=0 CASES=0
+  AUTHORITY_WANT='AUTHORITY advisory=1 eligible_only=1 value_precedes=1 comparable_only=1 tie_breaker=1 creates_artifacts=0 splits_units=0 weakens_locks=0  (D-063: quality admits; value leads; this reading only breaks ties among comparably valuable ready work)'
+
+  # Exercise the script's real token-bearing paths without a token or network.
+  # A fake transport answers only the three reads production makes; the child
+  # process still parses flags, establishes its subject, measures the day,
+  # chooses EMPTY or non-empty, reads merge settings, and renders the ordinary
+  # output in its real order. Deleting either production call below therefore
+  # deletes AUTHORITY from this transcript and makes this check fail. An
+  # isolated helper-string test could not catch that regression (#1668).
+  JUDGE_FIXTURE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/balance-judge.XXXXXX")"
+  trap 'rm -rf "$JUDGE_FIXTURE_DIR"' EXIT
+  cat >"$JUDGE_FIXTURE_DIR/gh" <<'GH_FIXTURE'
+#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  *repositoryOwner*)
+    printf 'gokselozgur5\tgokselozgur5\tUser\n'
+    ;;
+  *contributionsCollection*)
+    case "${BALANCE_JUDGE_SHAPE:-}" in
+      ordinary) printf '30\t8\t25\t1\t30\t8\t25\t1\t1\n' ;;
+      empty)    printf '0\t0\t0\t0\t0\t0\t0\t0\t1\n' ;;
+      *)        false ;;
+    esac
+    ;;
+  *repos/gokselozgur5/matrix-sim*)
+    printf 'false\tfalse\ttrue\n'
+    ;;
+  *)
+    false
+    ;;
+esac
+GH_FIXTURE
+  chmod +x "$JUDGE_FIXTURE_DIR/gh"
+
+  for SHAPE in ordinary empty; do
+    CASES=$((CASES + 1))
+    CHILD_RC=0
+    OUTPUT="$(PATH="$JUDGE_FIXTURE_DIR:$PATH" BALANCE_JUDGE_SHAPE="$SHAPE" \
+      bash "$0" --repo --for gokselozgur5/matrix-sim --events 2026-08-19)" \
+      || CHILD_RC=$?
+    BALANCE_COUNT="$(grep -c '^BALANCE ' <<<"$OUTPUT" || true)"
+    AUTHORITY_COUNT="$(grep -c '^AUTHORITY ' <<<"$OUTPUT" || true)"
+    DEFICIT_COUNT="$(grep -c '^DEFICIT ' <<<"$OUTPUT" || true)"
+    PLAN_COUNT="$(grep -c '^PLAN ' <<<"$OUTPUT" || true)"
+    BALANCE_AT="$(awk '/^BALANCE / { print NR; exit }' <<<"$OUTPUT")"
+    AUTHORITY_AT="$(awk '/^AUTHORITY / { print NR; exit }' <<<"$OUTPUT")"
+    DEFICIT_AT="$(awk '/^DEFICIT / { print NR; exit }' <<<"$OUTPUT")"
+    PLAN_AT="$(awk '/^PLAN / { print NR; exit }' <<<"$OUTPUT")"
+    AUTHORITY_GOT="$(grep '^AUTHORITY ' <<<"$OUTPUT" || true)"
+
+    SHAPE_OK=0
+    if [ "$SHAPE" = ordinary ]; then
+      grep -q '^BALANCE .*verdict=LAGGING:review ' <<<"$OUTPUT" \
+        && [ "$DEFICIT_COUNT" -eq 1 ] && [ "$PLAN_COUNT" -eq 1 ] \
+        && [ -n "$DEFICIT_AT" ] && [ -n "$PLAN_AT" ] \
+        && [ "$AUTHORITY_AT" -lt "$DEFICIT_AT" ] && [ "$AUTHORITY_AT" -lt "$PLAN_AT" ] \
+        && SHAPE_OK=1
+    else
+      grep -q '^BALANCE .*verdict=EMPTY ' <<<"$OUTPUT" \
+        && [ "$DEFICIT_COUNT" -eq 0 ] && [ "$PLAN_COUNT" -eq 0 ] \
+        && SHAPE_OK=1
+    fi
+
+    if [ "$CHILD_RC" -eq 0 ] \
+      && [ "$BALANCE_COUNT" -eq 1 ] && [ "$AUTHORITY_COUNT" -eq 1 ] \
+      && [ "$AUTHORITY_GOT" = "$AUTHORITY_WANT" ] \
+      && [ -n "$BALANCE_AT" ] && [ -n "$AUTHORITY_AT" ] \
+      && [ "$AUTHORITY_AT" -eq $((BALANCE_AT + 1)) ] \
+      && [ "$SHAPE_OK" -eq 1 ]; then
+      printf 'JUDGECHECK authority integrated %-5s output                           OK\n' "$SHAPE"
+    else
+      printf 'JUDGECHECK authority integrated %-5s output                           FAIL\n' "$SHAPE"
+      FAILED=$((FAILED + 1))
+    fi
+  done
   while IFS='|' read -r name mode vec want_alone want_after want_plan; do
     case "${name// /}" in ''|'#'*) continue ;; esac
     CASES=$((CASES + 1))
@@ -525,6 +616,16 @@ a day that is thin nowhere|grow|5,5,5,4|0,0,0,0|OK|0,0,0,0
 a 7-day window, one leg thin by 146|fixed|729,2500,2200,1571|146,0,0,0|OK|146,0,0,0
 a 7-day window, two legs thin|fixed|500,4000,1900,600|375,0,0,275|OK|375,0,0,275
 CASES
+  # The two real-output integration cases are part of the suite population, not
+  # uncounted decoration above its nine advice vectors. This local floor makes
+  # deleting that whole block a red suite even if the remaining rows still pass;
+  # D-063's accepted change explicitly leaves workflow files untouched.
+  if (( CASES == 11 )); then
+    printf 'JUDGECHECK suite floor expected=11 actual=%d                         OK\n' "$CASES"
+  else
+    printf 'JUDGECHECK suite floor expected=11 actual=%d                         FAIL\n' "$CASES"
+    FAILED=$((FAILED + 1))
+  fi
   if (( FAILED == 0 )); then
     printf 'JUDGECHECK VERDICT PASS cases=%d floor=%d‰\n' "$CASES" $((1000 / FLOOR_DIV))
     exit 0
@@ -733,12 +834,12 @@ else
   WHEN_WORD="in this window"
 fi
 
-# WHICH BUTTON SHAPED THIS READING (D-061, #911). The merge strategy is an input
-# to the commit leg and it is the only input that lives outside the repository,
-# in a settings page nobody reading a verdict can see. Under merge commits a unit
-# of `k` atomic commits lands `k+1`, so the commit leg sits at roughly twice the
-# PR leg by construction; under rebase it lands `k`, and `k = 1` is the 1:1 the
-# law wants. So the settings are read here and printed there.
+# WHICH BUTTON SHAPED THIS READING (D-061, #911). Before D-063 this read tried
+# to justify rebase through commit/PR contribution arithmetic. That argument is
+# historical and diagnostic only now: D-063 retains rebase because independently
+# meaningful atomic commits need a linear audit trail. The settings still live
+# outside the repository in a page nobody reading this tree can see, so they are
+# read and printed as drift evidence; they do not alter, admit or rank the work.
 #
 # Read once, from the repository being judged rather than from the tree, because
 # `--for` can name a repository this checkout is not: the button that shaped the
@@ -784,23 +885,23 @@ scope_line() {
   if [ "$MAXLIST" -ge 100 ]; then
     printf 'SCOPE WARN a per-repository breakdown came back full (%d of max 100): the repo reading may be truncated\n' "$MAXLIST"
   fi
-  # Naming the open buttons is not the same as saying what they cost. D-061
-  # refuses two of the three and for different reasons, so the warning carries
-  # the reason rather than a rule number — a reader who has to open an ADR to
-  # find out why a line is yellow is a reader who will not.
+  # Naming the open buttons is not the same as saying why the history hardline
+  # refuses them. D-063 re-grounds D-061 in atomic, linear auditability rather
+  # than contribution arithmetic, so this warning is merge-policy drift and
+  # explicitly has no authority over the balance verdict.
   if [ "$MERGE_ALLOWED" = unreadable ]; then
     printf 'SCOPE WARN the merge settings of %s could not be read, so this verdict does not say which button shaped it\n' "$REPO"
   else
     local why=""
     if [ "$M_MERGE" = true ]; then
-      why="merge commits author a second commit per unit, which holds the commit leg near twice the PR leg"
+      why="merge commits add synthetic history outside the unit's independently meaningful commits"
     fi
     if [ "$M_SQUASH" = true ]; then
       if [ -n "$why" ]; then why="${why}; "; fi
       why="${why}squash merges land one commit per unit but fuse a k>1 unit's atomic commits into one, so D-039's artifact survives only while k=1"
     fi
     if [ -n "$why" ]; then
-      printf 'SCOPE WARN D-061 makes rebase the term of this law and %s still offers %s: %s\n' \
+      printf 'SCOPE WARN merge-policy drift: D-061 requires rebase for atomic, linear, auditable history and %s still offers %s: %s; this does not change the advisory balance verdict\n' \
         "$REPO" "$MERGE_ALLOWED" "$why"
     fi
   fi
@@ -827,7 +928,7 @@ if [ "$RULER" = day-shape ] && (( SPAN > 1 )) && [ "$SCOPE" = repo ]; then
 fi
 
 if (( TOTAL == 0 )); then
-  printf 'BALANCE %s commits=0 issues=0 prs=0 reviews=0 verdict=EMPTY scope=%s ruler=%s\n' "$WHEN" "$SCOPE" "$RULER"
+  balance_with_authority "BALANCE ${WHEN} commits=0 issues=0 prs=0 reviews=0 verdict=EMPTY scope=${SCOPE} ruler=${RULER}"
   scope_line
   exit 0
 fi
@@ -898,10 +999,11 @@ J_TOTAL=$((J_C + J_I + J_P + J_R))
 
 read -r VERDICT LAG GAP N_C N_I N_P N_R <<<"$(judge "$J_C" "$J_I" "$J_P" "$J_R" "$MODE")"
 
-printf 'BALANCE %s commits=%d(%s‰) issues=%d(%s‰) prs=%d(%s‰) reviews=%d(%s‰) total=%d verdict=%s scope=%s ruler=%s\n' \
+printf -v BALANCE_LINE 'BALANCE %s commits=%d(%s‰) issues=%d(%s‰) prs=%d(%s‰) reviews=%d(%s‰) total=%d verdict=%s scope=%s ruler=%s' \
   "$WHEN" "$COMMITS" "$(pct "$J_C" "$J_TOTAL")" "$ISSUES" "$(pct "$J_I" "$J_TOTAL")" \
   "$PRS" "$(pct "$J_P" "$J_TOTAL")" "$REVIEWS" "$(pct "$J_R" "$J_TOTAL")" \
   "$TOTAL" "$VERDICT" "$SCOPE" "$RULER"
+balance_with_authority "$BALANCE_LINE"
 if [ "$RULER" = day-shape ] && (( SPAN > 1 )); then
   printf 'RULER day-shape floor=%d‰ days_with_work=%d of %d  (each working day contributes its own shape, weighted equally; the ‰ above are those shapes re-added, not the counts divided)\n' \
     $((1000 / FLOOR_DIV)) "$WORKDAYS" "$SPAN"
@@ -973,10 +1075,10 @@ if (( GAP > 0 )); then
       "$N_C" "$N_I" "$N_P" "$N_R" "$LAG" "$GAP"
     read -r T_C T_I T_P T_R <<<"$(together "$J_C" "$J_I" "$J_P" "$J_R")"
     if [[ "$T_C" =~ ^[0-9]+$ && "$T_I" =~ ^[0-9]+$ && "$T_P" =~ ^[0-9]+$ && "$T_R" =~ ^[0-9]+$ ]]; then
-      printf 'PLAN unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (this one IS a sum: all four solved against the day they create together, which is the smallest set that reaches verdict=OK — a leg printed 0 above can appear here, because work on a lagging leg can push a leg that was above the floor under it)\n' \
+      printf 'PLAN unit=artifacts commits=%d issues=%d prs=%d reviews=%d  (ADVISORY tie-break among comparably valuable, independently justified ready artifacts only, after human/world and dependency value; this sum reaches verdict=OK but authorizes or outranks no work — a leg printed 0 above can appear here, because work on a lagging leg can push a leg that was above the floor under it)\n' \
         "$T_C" "$T_I" "$T_P" "$T_R"
     else
-      printf 'PLAN WARN the set that composes did not settle in 64 rounds, so it is not printed: the DEFICIT numbers above are alternatives and this run has no plan to offer\n'
+      printf 'PLAN WARN the advisory set did not settle in 64 rounds, so it is not printed: the DEFICIT numbers above are alternatives and this run has no tie-break to offer after human/world and dependency value\n'
     fi
   fi
 fi

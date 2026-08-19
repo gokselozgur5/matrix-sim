@@ -125,7 +125,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 ## The Year (D-054, accepted 2026-08-12) — six seasons, five programs
 
-*The Architect's horizon, 2026-08-11: a full year at 200+ daily contributions — "1 yılda saatlerce çalışıp dolduracak kadar büyük düşün." The year is filled by shape, not pace:*
+*The Architect's original horizon, 2026-08-11, named a full year at 200+ daily contributions — "1 yılda saatlerce çalışıp dolduracak kadar büyük düşün." D-063 removes that number as a floor or admission rule: the year is still filled by shape, human/world and dependency value choose the work, and high throughput breaks ties only among comparably valuable ready units:*
 
 | Season | Window | Theme |
 |---|---|---|
@@ -136,7 +136,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | **S7** The Analyst | Apr–Jun | the D-036 pocket: fear/desire A/B, the sheeple loop, modal worlds |
 | **S8** The Sixty Years | Jun–Aug 2027 | the decades resolved; the anniversary; the Parity Ledger closes |
 
-*Continuous programs, all year: the Chronicle (authored canon most days) · the Census (atlas science) · the Bench (instruments) · the Archaeology (MxO, Animatrix, comics, the games) · the Spec (data survives; closed math dies). Pacing law: gates open progressively; v1 then deepen; every season ends with its skeptic, its release, its brief.*
+*Continuous programs, all year: the Chronicle (authored canon most days) · the Census (atlas science) · the Bench (instruments) · the Archaeology (MxO, Animatrix, comics, the games) · the Spec (data survives; closed math dies). Gates open progressively; v1 then deepen; every season ends with its skeptic, its release, its brief. Activity can break a tie inside this eligible queue after value and dependencies agree; it never populates or outranks the queue by itself.*
 
 ## Human Foundation — the subject before the character
 
@@ -145,11 +145,11 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Gate | Decision | Status | Thread |
 |---|---|---|---|
 | Human-subject causal contract | D-062 | 🟢 accepted | #1662 |
-| Outcome-first delivery; activity is diagnostic | D-063 | 🟡 proposed | #1668 |
+| Quality admits; value leads; activity breaks ties | D-063 | 🟢 accepted | #1668 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
 
-**Process-decision DoD:** the Architect's verdict is recorded in #1668, then D-063, the DECISIONS index, and this gate mirror it in one docs-only acceptance commit. If accepted, D-054/D-060 are superseded only where they make activity an objective; D-039/D-059 and rebase remain on coherence, falsifiability and history grounds. No contribution total satisfies this gate.
+**Process-decision DoD:** the Architect's quality-first, numbers-underneath verdict is recorded in #1668; D-063, the DECISIONS index and this gate mirror it in one acceptance commit. D-054's numeric floor is superseded; D-060 becomes an advisory tie-breaker among comparably valuable, independently justified ready units after human/world and dependency value; D-039/D-059 and rebase remain on coherence, falsifiability and history grounds. No contribution total admits work, outranks value or satisfies this gate.
 
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
