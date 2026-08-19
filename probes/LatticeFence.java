@@ -71,10 +71,6 @@ public final class LatticeFence {
 
     private static final String DEFAULT_ROOT = "src";
 
-    /** The real-world side, by name. A field of any of these types is clause 2's finding. */
-    private static final List<String> REAL_WORLD_TYPES =
-            List.of("Brain", "Pod", "PodFarm", "NeuralLink", "Human", "RealWorld");
-
     /** Any reverse reference, imported or fully qualified. */
     private static final Pattern REAL_WORLD_REFERENCE =
             Pattern.compile("\\bmatrix\\s*\\.\\s*realworld\\s*\\.");
@@ -99,6 +95,20 @@ public final class LatticeFence {
                     + "|abstract|default|static|final|sealed|non-sealed|strictfp"
                     + "|synchronized|native|transient|volatile)\\s+)*"
                     + "(?:public|protected)\\b.*");
+
+    /** Runtime declarations are read after comments are stripped. */
+    private static final String TYPE_DECLARATION_PREFIX =
+            "^[\\t ]*(?:(?:@[A-Za-z_$][\\w.$]*(?:\\([^\\r\\n;]*\\))?"
+                    + "|public|protected|private|abstract|static|final|sealed|non-sealed"
+                    + "|strictfp)\\s+)*";
+    private static final Pattern MUTABLE_TYPE_DECLARATION = Pattern.compile(
+            TYPE_DECLARATION_PREFIX
+                    + "(?:class|interface|record)\\s+([A-Za-z_$][\\w$]*)\\b",
+            Pattern.MULTILINE);
+    private static final Pattern REAL_WORLD_TYPE_DECLARATION = Pattern.compile(
+            TYPE_DECLARATION_PREFIX
+                    + "(?:class|interface|record|enum)\\s+([A-Za-z_$][\\w$]*)\\b",
+            Pattern.MULTILINE);
 
     /** D-013's existing jack, normalized without whitespace. */
     private static final List<String> LEGACY_LINK_DECLARATIONS = List.of(
@@ -167,6 +177,7 @@ public final class LatticeFence {
     private static Reading inspect(Path root) throws IOException {
         List<Path> files = javaFiles(root);
         Pattern mutableCrossing = mutableCrossing(root, files);
+        List<String> realWorldTypes = realWorldTypes(root, files);
         int swept = 0;
         int entitiesReach = 0;
         int coreReach = 0;
@@ -219,7 +230,7 @@ public final class LatticeFence {
             if (file.endsWith(Path.of("core", "World.java"))) {
                 for (String field : fieldDeclarations(code)) {
                     worldFields++;
-                    for (String type : REAL_WORLD_TYPES) {
+                    for (String type : realWorldTypes) {
                         if (field.matches(".*\\b" + type + "\\b.*")) {
                             worldHolds++;
                             offences.add("LATTICE world field of type " + type + ": " + field.trim());
@@ -304,13 +315,13 @@ public final class LatticeFence {
             if (relative.startsWith("matrix/causal/")) {
                 continue;
             }
-            String filename = file.getFileName().toString();
-            String name = filename.substring(0, filename.length() - ".java".length());
             String source = String.join("\n", Probes.uncommentedLines(file));
-            Pattern declaration = Pattern.compile(
-                    "\\b(?:class|interface|record)\\s+" + Pattern.quote(name) + "\\b");
-            if (declaration.matcher(source).find() && !names.contains(name)) {
-                names.add(name);
+            var declarations = MUTABLE_TYPE_DECLARATION.matcher(source);
+            while (declarations.find()) {
+                String name = declarations.group(1);
+                if (!names.contains(name)) {
+                    names.add(name);
+                }
             }
         }
         names.sort(String::compareTo);
@@ -319,6 +330,27 @@ public final class LatticeFence {
             quoted.add(Pattern.quote(name));
         }
         return Pattern.compile("\\b(?:" + String.join("|", quoted) + ")\\b");
+    }
+
+    /** Every declared real-side type is forbidden as a direct World field. */
+    private static List<String> realWorldTypes(Path root, List<Path> files) throws IOException {
+        List<String> names = new ArrayList<>();
+        for (Path file : files) {
+            String relative = root.relativize(file).toString().replace('\\', '/');
+            if (!relative.startsWith("matrix/realworld/")) {
+                continue;
+            }
+            String source = String.join("\n", Probes.uncommentedLines(file));
+            var declarations = REAL_WORLD_TYPE_DECLARATION.matcher(source);
+            while (declarations.find()) {
+                String name = declarations.group(1);
+                if (!names.contains(name)) {
+                    names.add(name);
+                }
+            }
+        }
+        names.sort(String::compareTo);
+        return names;
     }
 
     /**
@@ -573,16 +605,35 @@ public final class LatticeFence {
                                     + "  public Human exposeMind() { return null; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.bridgeMutable())));
-            Map<String, String> futureMind = changed(clean, "matrix/realworld/MindState.java",
-                    "package matrix.realworld;\npublic record MindState(String belief) { }\n");
+            Map<String, String> futureMind = changed(clean, "matrix/realworld/Human.java",
+                    "package matrix.realworld;\n"
+                            + "public final class Human {\n"
+                            + "  public record MindState(String belief) { }\n"
+                            + "}\n");
             futureMind = changed(futureMind, "matrix/Simulation.java",
                     "package matrix;\n"
-                            + "import matrix.realworld.MindState;\n"
+                            + "import matrix.realworld.Human.MindState;\n"
                             + "public final class Simulation {\n"
                             + "  public MindState exposeMind() { return null; }\n"
                             + "}\n");
             cases.add(readCase(scratch, "future-mind-export", futureMind,
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "type-words-ignored",
+                    changed(clean, "matrix/Noise.java",
+                            "package matrix;\n"
+                                    + "final class Noise {\n"
+                                    + "  String text = \"record LinkKind\";\n"
+                                    + "}\n"), Reading::held));
+            Map<String, String> futureWorld = changed(clean,
+                    "matrix/realworld/MindState.java",
+                    "package matrix.realworld;\npublic record MindState(String belief) { }\n");
+            futureWorld = changed(futureWorld, "matrix/core/World.java",
+                    "package matrix.core;\n"
+                            + "import matrix.realworld.MindState;\n"
+                            + "public final class World { private MindState mind; }\n");
+            cases.add(readCase(scratch, "world-future-mind", futureWorld,
+                    reading -> reading.coreReach() == 1 && reading.worldHolds() == 1
+                            && reading.findings() == 2));
             Map<String, String> comments = changed(clean, "matrix/entities/Avatar.java",
                     "package matrix.entities;\n"
                             + "// import matrix.realworld.Human;\n"
