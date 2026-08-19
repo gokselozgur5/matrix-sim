@@ -86,6 +86,7 @@ read_none          neither side was read
 sources_none       no source file was found
 rows_none          the table had no rows
 judged_none        the bench table held no judged row
+audited_none       the link book held no link
 '
 
 

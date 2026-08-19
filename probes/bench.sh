@@ -169,7 +169,7 @@ table() {
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'   "$TICKS"
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'  "$TICKS"
   judge CapSentinel  'CAP_BREACHES=0 samples_none=0'          "$TICKS"
-  judge LinkAudit    'VERDICT CLEAN'           "$TICKS"
+  judge LinkAudit    'VERDICT CLEAN ghosts=0 audited_none=0'  "$TICKS"
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'
   judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD scenarios=8 anomalies=0' "$TICKS"
@@ -184,7 +184,7 @@ table() {
   # Measured: six rows, 6.4 s. The lane's budget is 300 s (#1115).
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'      "$TICKS" 7
   judge CapSentinel  'CAP_BREACHES=0 samples_none=0'             "$TICKS" 7
-  judge LinkAudit    'VERDICT CLEAN'              "$TICKS" 7
+  judge LinkAudit    'VERDICT CLEAN ghosts=0 audited_none=0' "$TICKS" 7
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'      "$TICKS" 7
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD scenarios=8 anomalies=0'  "$TICKS" 7
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS" 7
@@ -324,7 +324,7 @@ table() {
   # number beside it: converting twenty-seven probes is twenty-seven judgements about
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=29 judged_none=0'
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=28 judged_none=0'
   # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
   # set to four, run, BondScenario reported unguarded, its gap measured at five, set
   # to six — and no way to argue with the number. The width is falsifiable in BOTH
