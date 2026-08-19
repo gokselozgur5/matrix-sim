@@ -91,74 +91,12 @@ public final class VacuousGuard {
             Probes.leave("VERDICT VACUOUS_GUARD_NO_BENCH " + bench, false);
         }
 
-        Set<String> rows = new LinkedHashSet<>();
-        List<String> byField = new ArrayList<>();
-        List<String> byWord = new ArrayList<>();
-        List<String> unguarded = new ArrayList<>();
-        List<String> missing = new ArrayList<>();
-
-        // ONE ENTRY PER PROBE, AND EVERY ROW READ. A probe with two judged rows —
-        // `SheetDump` has, and `LeaveContract` has since #1531 — is one subject,
-        // and a first-row-wins rule reads whichever mode happens to sit higher in
-        // the table: `NeutralDiff`'s selfcheck row is above its real one, so the
-        // first draft of this loop called a guarded probe unguarded. A probe is
-        // guarded if ANY of its rows carries the field.
-        // ONE READER (#1590), and this probe is where the divergence was found: it read
-        // the table in Java, disagreed with `counters.sh` about how many rows there are,
-        // and the shell one turned out to be missing three (#1588).
-        java.util.Map<String, Boolean> fielded = new java.util.LinkedHashMap<>();
-        for (Probes.BenchRow row : Probes.benchRows(bench)) {
-            if (!row.judged()) {
-                continue;
-            }
-            String probe = row.probe();
-            // The first guard, and the one #1373 counted: a field on the pinned line
-            // whose value is the size of what was read.
-            boolean has = row.verdict().matches(".*\\b\\w+_none=\\d+.*");
-            fielded.merge(probe, has, (a, b) -> a || b);
-        }
-
-        for (java.util.Map.Entry<String, Boolean> e : fielded.entrySet()) {
-            String probe = e.getKey();
-            rows.add(probe);
-            if (e.getValue()) {
-                byField.add(probe);
-                continue;
-            }
-            Path src = root.resolve("probes/" + probe + ".java");
-            if (!Files.isReadable(src)) {
-                // `roster_check`'s question, not this one — but a check that
-                // walked past it would report a clean count over a probe it
-                // never opened.
-                missing.add(probe);
-                continue;
-            }
-            // The second guard, which #1373 did not count: an empty population
-            // that leaves with NEVER_AROSE prints a different word, so the
-            // pinned row goes red with no number on the line at all.
-            // ASSEMBLED, BECAUSE A SEARCH FOR X CANNOT BE WRITTEN AS X (#1607). The search
-            // was `contains("Outcome.NEVER_AROSE")` — which is the string on this very line,
-            // so this probe counted ITSELF as guarded, by the string it uses to count
-            // guards. A checker exempting itself is the sixth instance of one shape here:
-            // `advice.sh` five times (#1033, #1157, #1222, #1265, #1276), `LeaveContract`
-            // reading `System.exit` inside a comment (#1531), and `LEAVE_BY_HAND` satisfied
-            // by prose about `LEAVE_BY_HAND` (#1605).
-            //
-            // Qualifying the name does NOT fix it — the qualified literal is still the
-            // literal. Neither does the strip: the string is CODE. Only assembling it does,
-            // which is the idiom `advice.sh` reaches for when it builds `--pr` from `$dash`
-            // for exactly this reason. It hides what is searched for, which is the price,
-            // and the alternative is a checker that cannot see itself.
-            //
-            // The probe is NOT excluded from its own population instead. `LeaveContract`
-            // states why one directory over: a check that excluded itself would report a
-            // number nobody could reproduce by counting the file.
-            if (guardsTheEmptyPath(src)) {
-                byWord.add(probe);
-            } else {
-                unguarded.add(probe);
-            }
-        }
+        Census current = census(root);
+        Set<String> rows = current.rows();
+        List<String> byField = current.byField();
+        List<String> byWord = current.byWord();
+        List<String> unguarded = current.unguarded();
+        List<String> missing = current.missing();
         for (String probe : unguarded) {
             System.out.println("VACUOUS " + probe
                     + " judged=yes none_field=no never_arose=no"
@@ -231,7 +169,87 @@ public final class VacuousGuard {
     }
 
 
+    /** One run of the reader, kept whole so current and baseline use one implementation. */
+    private record Census(Set<String> rows, List<String> byField, List<String> byWord,
+                          List<String> unguarded, List<String> missing) {}
 
+    /**
+     * Read the judged population in one tree.
+     *
+     * <p>This is deliberately the only copy of the classifier: comparing a current
+     * reader with an older reader would make a code change look like population growth.
+     */
+    private static Census census(Path root) throws IOException {
+        Set<String> rows = new LinkedHashSet<>();
+        List<String> byField = new ArrayList<>();
+        List<String> byWord = new ArrayList<>();
+        List<String> unguarded = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+
+        // ONE ENTRY PER PROBE, AND EVERY ROW READ. A probe with two judged rows —
+        // `SheetDump` has, and `LeaveContract` has since #1531 — is one subject,
+        // and a first-row-wins rule reads whichever mode happens to sit higher in
+        // the table: `NeutralDiff`'s selfcheck row is above its real one, so the
+        // first draft of this loop called a guarded probe unguarded. A probe is
+        // guarded if ANY of its rows carries the field.
+        // ONE READER (#1590), and this probe is where the divergence was found: it read
+        // the table in Java, disagreed with `counters.sh` about how many rows there are,
+        // and the shell one turned out to be missing three (#1588).
+        java.util.Map<String, Boolean> fielded = new java.util.LinkedHashMap<>();
+        for (Probes.BenchRow row : Probes.benchRows(root.resolve("probes/bench.sh"))) {
+            if (!row.judged()) {
+                continue;
+            }
+            String probe = row.probe();
+            // The first guard, and the one #1373 counted: a field on the pinned line
+            // whose value is the size of what was read.
+            boolean has = row.verdict().matches(".*\\b\\w+_none=\\d+.*");
+            fielded.merge(probe, has, (a, b) -> a || b);
+        }
+
+        for (java.util.Map.Entry<String, Boolean> e : fielded.entrySet()) {
+            String probe = e.getKey();
+            rows.add(probe);
+            if (e.getValue()) {
+                byField.add(probe);
+                continue;
+            }
+            Path src = root.resolve("probes/" + probe + ".java");
+            if (!Files.isReadable(src)) {
+                // `roster_check`'s question, not this one — but a check that
+                // walked past it would report a clean count over a probe it
+                // never opened.
+                missing.add(probe);
+                continue;
+            }
+            // The second guard, which #1373 did not count: an empty population
+            // that leaves with NEVER_AROSE prints a different word, so the
+            // pinned row goes red with no number on the line at all.
+            // ASSEMBLED, BECAUSE A SEARCH FOR X CANNOT BE WRITTEN AS X (#1607). The search
+            // was `contains("Outcome.NEVER_AROSE")` — which is the string on this very line,
+            // so this probe counted ITSELF as guarded, by the string it uses to count
+            // guards. A checker exempting itself is the sixth instance of one shape here:
+            // `advice.sh` five times (#1033, #1157, #1222, #1265, #1276), `LeaveContract`
+            // reading `System.exit` inside a comment (#1531), and `LEAVE_BY_HAND` satisfied
+            // by prose about `LEAVE_BY_HAND` (#1605).
+            //
+            // Qualifying the name does NOT fix it — the qualified literal is still the
+            // literal. Neither does the strip: the string is CODE. Only assembling it does,
+            // which is the idiom `advice.sh` reaches for when it builds `--pr` from `$dash`
+            // for exactly this reason. It hides what is searched for, which is the price,
+            // and the alternative is a checker that cannot see itself.
+            //
+            // The probe is NOT excluded from its own population instead. `LeaveContract`
+            // states why one directory over: a check that excluded itself would report a
+            // number nobody could reproduce by counting the file.
+            if (guardsTheEmptyPath(src)) {
+                byWord.add(probe);
+            } else {
+                unguarded.add(probe);
+            }
+        }
+        return new Census(rows, byField, byWord, unguarded, missing);
+    }
 
     /**
      * Is this source's {@code NEVER_AROSE} reached because the population was EMPTY? (#1609)
