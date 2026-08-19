@@ -16,6 +16,7 @@ import matrix.core.Severity;
 import matrix.core.Snapshot;
 import matrix.core.World;
 import matrix.core.WorldEvent;
+import matrix.causal.CausalPhase;
 import matrix.entities.Agent;
 import matrix.entities.AgentSmith;
 import matrix.entities.Avatar;
@@ -83,6 +84,14 @@ public final class Simulation {
     private final MetricsCollector metrics;
     private final DigestCalculator digests = new DigestCalculator();
     private final List<Digest> chain = new ArrayList<>();
+    /**
+     * Transient cursor for the root-owned Human causal walk. It is reset at
+     * tick start and never hashed or read by either world. A cursor avoids a
+     * nine-element allocation on every tick while still refusing the first
+     * missing, repeated, or reordered hand-over.
+     */
+    private int causalPhaseCursor = 0;
+    private boolean causalTickCompleted = false;
     private final PrintStream out;
     private final ChronosLog chronos;
     /**
@@ -483,6 +492,8 @@ public final class Simulation {
     }
 
     public void tickOnce() {
+        beginCausalTick();
+        snapshotTruth();
         for (SystemNode node : nodes) {
             node.tick(world.tick() + 1);
         }
@@ -542,6 +553,12 @@ public final class Simulation {
                     + ", grown for a debt of " + world.ledger().balance()
                     + " (the ledger does not forgive; it balances)");
         }
+        deliverPercepts();
+        reduceMinds();
+        proposeIntents();
+        validateAndCommit();
+        applyEffects();
+        settleConsequences();
         if (t % Config.METRIC_EVERY_TICKS == 0) {
             emit(metrics.sample(t, realWorld.selfsubCount()).format());
         }
@@ -577,6 +594,7 @@ public final class Simulation {
             // MetricsCollector.traceSuffix.
             emit(zion.zionLine(t) + metrics.traceSuffix(zion.pirateBoard()));
         }
+        digestCausalState();
         if (t % Config.DIGEST_EVERY_TICKS == 0) {
             world.digestInto(digests);
             // The D-033 addendum's framed segment rides AFTER the entity walk:
@@ -591,6 +609,7 @@ public final class Simulation {
             chain.add(d);
             emit(d.format());
         }
+        observeCausalState();
         if (followName != null && t % Config.FOLLOW_EVERY_TICKS == 0) {
             // One rule, bound to a MIND and not to a string (#375): the name is a
             // search key exactly once, and from the first match the stream belongs
@@ -618,6 +637,92 @@ public final class Simulation {
                 followed = null;
             }
         }
+        finishCausalTick();
+    }
+
+    /** Start one root-owned phase walk before either world advances. */
+    private void beginCausalTick() {
+        causalPhaseCursor = 0;
+        causalTickCompleted = false;
+    }
+
+    /** Phase 1 hook: future work freezes eligible tick-start truth here. */
+    private void snapshotTruth() {
+        enterCausalPhase(CausalPhase.SNAPSHOT_TRUTH);
+    }
+
+    /** Phase 2 hook: future work audits deliveries and issues visible receipts here. */
+    private void deliverPercepts() {
+        enterCausalPhase(CausalPhase.DELIVER_PERCEPTS);
+    }
+
+    /** Phase 3 hook: future real-side reducers consume only visible receipts here. */
+    private void reduceMinds() {
+        enterCausalPhase(CausalPhase.REDUCE_MINDS);
+    }
+
+    /** Phase 4 hook: future minds publish immutable proposals here. */
+    private void proposeIntents() {
+        enterCausalPhase(CausalPhase.PROPOSE_INTENTS);
+    }
+
+    /** Phase 5 hook: the root will reject or canonically commit proposals here. */
+    private void validateAndCommit() {
+        enterCausalPhase(CausalPhase.VALIDATE_AND_COMMIT);
+    }
+
+    /** Phase 6 hook: canonical state will consume classified causes here. */
+    private void applyEffects() {
+        enterCausalPhase(CausalPhase.APPLY_EFFECTS);
+    }
+
+    /** Phase 7 hook: future-causal biography and social state settles here. */
+    private void settleConsequences() {
+        enterCausalPhase(CausalPhase.SETTLE_CONSEQUENCES);
+    }
+
+    /** Phase 8 hook: it precedes the existing periodic seal on every tick. */
+    private void digestCausalState() {
+        enterCausalPhase(CausalPhase.DIGEST);
+    }
+
+    /** Phase 9 hook: observation follows the seal and remains causally inert. */
+    private void observeCausalState() {
+        enterCausalPhase(CausalPhase.OBSERVE);
+    }
+
+    /**
+     * Advance the one closed order. Reordering or duplicating a hook fails at
+     * the first wrong hand-over rather than allowing a malformed tick to
+     * reach the next digest.
+     */
+    private void enterCausalPhase(CausalPhase phase) {
+        List<CausalPhase> order = CausalPhase.canonicalOrder();
+        if (causalPhaseCursor >= order.size() || phase != order.get(causalPhaseCursor)) {
+            CausalPhase expected = causalPhaseCursor < order.size()
+                    ? order.get(causalPhaseCursor) : null;
+            throw new IllegalStateException("causal phase out of order: expected "
+                    + expected + " but entered " + phase);
+        }
+        causalPhaseCursor++;
+    }
+
+    /** Seal the phase receipt only after the observer hook has returned. */
+    private void finishCausalTick() {
+        if (causalPhaseCursor != CausalPhase.canonicalOrder().size()) {
+            throw new IllegalStateException("causal tick incomplete: phases="
+                    + causalPhaseCursor);
+        }
+        causalTickCompleted = true;
+    }
+
+    /**
+     * Immutable observation of the last fully completed phase walk. Before
+     * the first tick it is empty; a partial or failed tick never masquerades
+     * as a completed one.
+     */
+    public List<CausalPhase> lastCausalPhases() {
+        return causalTickCompleted ? CausalPhase.canonicalOrder() : List.of();
     }
 
     /**
