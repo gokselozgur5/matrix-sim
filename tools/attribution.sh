@@ -19,12 +19,12 @@
 # not, and it degrades the very graph the tool serves. `--author=` sets the identity
 # and leaves GIT_AUTHOR_DATE alone.
 #
-# WHAT THIS EXISTS FOR. `totalCommitContributions` — the number D-060's commit leg is
-# read from, and the number the profile graph draws — credits a commit only when the
-# commit's AUTHOR EMAIL is verified on the account being read. An address that belongs
-# to a different account, or to no account, produces a commit that is on `main`, is
-# visible to every reader, has the owner's name on it, and does not exist as far as the
-# meter is concerned.
+# WHAT THIS EXISTS FOR AFTER D-063. Attribution is provenance before arithmetic:
+# personal and work histories must resolve to the identity that actually owns the
+# repository. `totalCommitContributions` — the number D-060's advisory commit leg
+# reads and the profile graph draws — uses the same author-email resolution, so the
+# tool also keeps that observation honest. An address belonging to another account,
+# or to no account, produces a visible commit credited to the wrong history.
 #
 # That is not a hypothetical. Before #910, every non-merge commit in this repository —
 # 258 of them, every unit commit ever shipped — carried an address resolving to the

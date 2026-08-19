@@ -6,6 +6,14 @@ Closes #
 
 <!-- Mechanism, not file list. Which decision(s) it executes. -->
 
+**Independent reason:** <!-- “This exists because it changes, proves or refutes ___.” No contribution count. -->
+
+**Natural boundary:** <!-- Why this is the smallest whole review surface; name the tempting split/join refused. -->
+
+**Value order:** <!-- Human/world value first, dependency value second. Mention activity only if it broke a tie among comparably valuable ready units. -->
+
+- [ ] A contribution count neither admitted this work, outranked a more valuable unit, nor shaped its issue/commit/PR boundary (D-063).
+
 ## Locks (D-039 light tier)
 
 - [ ] compile: `javac -encoding UTF-8 --release 17 -d out $(find src -name '*.java')`

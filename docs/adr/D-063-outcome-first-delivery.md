@@ -1,11 +1,15 @@
 ---
 title: "D-063 — Outcomes first: the graph witnesses delivery, never directs it"
-status: proposed
+status: accepted
 date: 2026-08-19
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #1668
 informed: phase tracker #1665
 ---
+
+*Pre-verdict proposal below, preserved verbatim. The Architect's accepted amendment is additive and follows the original record.*
+
+*Accepted-title alias (current law): **D-063 — Quality admits; value leads; activity breaks ties.** The frontmatter and proposal heading retain the yellow record's historical title. Its absolute “never directs it” was not accepted: activity may direct only an honest tie when, after admission, neither human/world value nor dependency value distinguishes the comparably valuable ready units.*
 
 # D-063 — Outcomes first: the graph witnesses delivery, never directs it
 
@@ -114,3 +118,65 @@ Ongoing compliance is falsified by any issue, commit split, pull request, review
 ## More Information
 
 If accepted, supersedes the numeric objective and pacing clauses of [D-054](D-054-the-year.md) and the normative balance law in [D-060](D-060-the-balance-law.md); retains and re-grounds [D-061](D-061-merge-strategy.md), [D-039](D-039-unit-pr-granularity.md), and [D-059](D-059-issue-tree.md). Preserves [D-037](D-037-theory-practice-split.md)'s division of labor and independent skeptic lock. Related: [D-062](D-062-human-subject-contract.md), whose subject-first outcome this process must serve. Thread: #1668. Parent: #1665. Constitutional root: #1661.
+
+## Accepted Amendment — Quality admits; value leads; activity breaks ties
+
+The Architect did not accept the diagnostics-only leaning above. In thread #1668 on 2026-08-19 he accepted an amendment: **quality is the first priority and numbers remain underneath it.** This section records that verdict without deleting or rewriting the proposal it answered.
+
+### Accepted outcome
+
+Chosen option: **quality-gated lexicographic delivery**. Independently justified human capability and world behavior admit work; human/world value and dependency value lead; throughput and activity health break ties only among comparably valuable ready work. A metric may change which otherwise comparable legitimate unit goes next, but it cannot make a hollow or lower-value unit legitimate.
+
+An artifact enters the eligible queue only when all three statements are true:
+
+1. **Independent reason.** Without naming a contribution count, its author can finish: “This exists because it changes, proves or refutes ___.”
+2. **Natural boundary.** The issue names one coherent deliverable; commits separate independently revertible claims rather than arithmetic slices; the pull request is the smallest whole review surface.
+3. **Quality contract.** Its decision gate, causal evidence, replay/digest obligation, delivery locks and applicable skeptical review are named and must pass.
+
+No score compensates for a failed admission gate. Issue creation does not prove demand, and a count target does not turn one coherent unit into several.
+
+Work that passed admission is ordered lexicographically:
+
+| Rank | Object | Question | Authority |
+|---|---|---|---|
+| 1 | Human/world value | Which resident capability or world behavior matters most now? | Selects the outcome lane |
+| 2 | Dependency and backlog value | Which real unit unlocks the most downstream work or retires the most truthful debt? | Orders units inside that lane |
+| 3 | Throughput and activity health | Among comparably valuable ready units, which choice sustains a healthy issue/commit/PR/review pipeline? | Breaks ties among legitimate peers |
+| 4 | Execution cost | Which choice is safest to parallelize and cheapest to verify without weakening proof? | Shapes the next delivery wave |
+
+Activity may prefer review of an existing reviewable head only when ranks 1 and 2 do not distinguish it from its alternatives, or expose that no healthy kind of ready work exists. It may not outrank human/world or dependency value, originate an issue, split a coherent commit, manufacture a pull request or review, relax a lock, or declare a day failed for missing a number.
+
+### Accepted dispositions
+
+* **D-054 is superseded in part.** The 200+ daily and ~73,000 yearly figures cease to be floors, closure conditions or permission to manufacture work. They may remain visible stretch readings pursued only by consuming the eligible queue. The one-year horizon, six seasons and continuous programs remain planning architecture while connected to accepted outcomes.
+* **D-060 is amended and subordinated.** Four-quarter balance and lagging-leg deficits are not quotas. `tools/balance.sh` is an advisory tie-breaker among comparably valuable, independently justified ready work only after ranks 1 and 2. No verdict creates, outranks, splits or excuses an artifact. `tools/attribution.sh` remains a provenance keeper regardless of whether a profile counts the commit.
+* **D-061 is retained and re-grounded.** Rebase remains the hardline because it preserves separately meaningful atomic commits in a linear, auditable history and avoids strategy-dependent fusion or synthetic merge commits. Contribution arithmetic is no longer its justification.
+* **D-039 is retained and re-grounded.** One coherent leaf issue maps to one small pull request; atomic commit messages continue to carry finding, fix and evidence because that makes change understandable, falsifiable and reversible. Activity can break a tie in favor of a ready singleton but cannot split its natural boundary.
+* **D-059 is retained and re-grounded.** Native trees, exact child partitions and conjunctive parent closure remain because they expose the real shape and ownership of work. Backlog reduction is a secondary value; depth for activity alone is refused.
+* The proposal's self-review and independent-skeptic contract is accepted unchanged. A same-author pass remains self-review; the independent skeptic did not author or edit the reviewed head.
+
+### Accepted consequences
+
+* Good, because the shortest path to success passes through a person living differently or a world behaving more truthfully.
+* Good, because a large legitimate backlog can be consumed deliberately without pretending throughput is irrelevant.
+* Good, because uneven contribution days cease to be process failures while activity retains a bounded tie-breaking role.
+* Bad, because no daily score can certify progress and value ordering requires explicit judgment.
+* Bad, because relabelling count-driven work as meaningful remains possible and must be challenged in review.
+
+### Accepted confirmation
+
+The acceptance commit flips status, index and ROADMAP together; carries the verdict from #1668; updates the living process canon, build-unit form, pull-request form, decision form and tool descriptions; and adds reciprocal dispositions on D-054, D-060, D-061, D-039 and D-059. It changes no runtime source, workflow or canonical digest.
+
+Every ordinary `balance.sh` reading, including EMPTY, must print this contract immediately after its BALANCE line:
+
+```text
+AUTHORITY advisory=1 eligible_only=1 value_precedes=1 comparable_only=1 tie_breaker=1 creates_artifacts=0 splits_units=0 weakens_locks=0
+```
+
+The offline judge executes the authority in both ordinary output shapes rather than checking an isolated helper string. Merge-policy warnings explain atomic, linear auditability and explicitly do not alter the advisory balance verdict. The documented exit contract treats OK, LAGGING and EMPTY alike as completed advisory readings.
+
+Ongoing compliance is falsified by any artifact admitted by a contribution count, any unit weakened for throughput, or a lower-value unit leapfrogging a higher-value one because its artifact type improves the graph. Review asks for the independent reason and ranks 1–2 first. “The graph needed a new artifact” is a refusal; “both units are real and comparably valuable, and this one repairs the thinner delivery leg” is admissible.
+
+### Accepted information
+
+The accepted amendment supersedes the floor, pacing and closure clauses of D-054; amends and subordinates D-060; retains and re-grounds D-061, D-039 and D-059; preserves D-037's independent-skeptic lock; and serves D-062's subject-first outcome. Verdict: thread #1668. Parent: #1665. Constitutional root: #1661.

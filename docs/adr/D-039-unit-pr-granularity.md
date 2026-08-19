@@ -70,4 +70,4 @@ Season-two merges show one-unit-one-PR with closing keywords; per-PR lock eviden
 
 Amends the delivery clauses of [D-030](D-030-agent-operating-model.md)/[D-037](D-037-theory-practice-split.md) (locks now two-tier). Companion to [D-038](D-038-season-two.md). The 29 inaugural build-units were cut from the crew dossiers on the same day.
 
-Referenced by: [D-040](D-040-ci-and-junit.md).
+Referenced by: [D-040](D-040-ci-and-junit.md), [D-063](D-063-outcome-first-delivery.md) (retains coherent singleton PRs and proportional locks while refusing count-shaped splits).

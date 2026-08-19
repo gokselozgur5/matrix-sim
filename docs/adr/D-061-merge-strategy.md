@@ -123,3 +123,5 @@ Exact on both rows and for opposite reasons: on the first the leg saw every merg
 ## More Information
 
 Related: [D-060](D-060-the-balance-law.md) (the law this adds a term to, and whose #910 errata forward-references this ruling), [D-039](D-039-unit-pr-granularity.md) (the atomic commit message that refuses squash), [D-030](D-030-agent-operating-model.md) (the crews whose one-review-per-unit makes `reviews = U`). Thread: #911. Tool: `tools/balance.sh`, `SCOPE … merge=`.
+
+Referenced by: [D-063](D-063-outcome-first-delivery.md) (retains rebase for linear, independently meaningful atomic history rather than contribution arithmetic).
