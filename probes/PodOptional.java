@@ -98,9 +98,19 @@ public final class PodOptional {
         rigCut("Niobe", null, "no rack unit behind them");
         rigCut("Ghost", new Pod("R99/U04"), "pod R99/U04 untouched");
 
-        System.out.println("PODOPTIONAL scenarios=" + scenarios + " anomalies=" + anomalies);
+        // `scenarios=` AND `anomalies=` RIDE THE VERDICT SINCE #1584, and the census
+        // line that carried them is gone rather than duplicated. The row greped one
+        // word: delete every scenario call above and the probe printed
+        // `PODOPTIONAL scenarios=0 anomalies=0` and `POD_OPTIONAL_HELD`, and the lane
+        // was green — a suite whose emptiness is indistinguishable from its success
+        // (#1207, #1373, #1634). `scenarios=` is an EXACT count and not a floor,
+        // because each of the eight is a named shape and an exchange is a real change
+        // of subject (#1615). It is the first application of the rule
+        // `probes/README.md` states for the twenty-seven rows #1584 counted.
         Probes.leave(anomalies == 0
-                ? "VERDICT POD_OPTIONAL_HELD" : "VERDICT POD_OPTIONAL_BROKEN", anomalies == 0);
+                ? "VERDICT POD_OPTIONAL_HELD scenarios=" + scenarios + " anomalies=" + anomalies
+                : "VERDICT POD_OPTIONAL_BROKEN scenarios=" + scenarios + " anomalies=" + anomalies,
+                anomalies == 0);
     }
 
     /**
