@@ -418,7 +418,10 @@ perception clause holds at seed 42 and at no other seed tried). *"The film's
 beats are 1299, 1525, …"*, *"movers = 19"*, *"the subject is Nadia Petrov"* are
 measurements of the canonical arc, and asserting them at another seed would be
 asserting a different measurement, not a stronger one. Seed 7 is the tree's
-second canonical universe; nine property rows carry it, measured at 6.4 s.
+second canonical universe; every property row in the executable block carries
+it, and the sweep reports the block's cost. `ClauseAftermath` belongs there
+because `unaccounted=0` claims every firing has a named fate; seed 7's
+`rekilled=7` branch is CI-pinned rather than catalog-only.
 
 **Which printed field belongs in the pinned line (#1584).** `row_no_counter=27`
 is #1372's measurement and `prints_no_counter=0` is its companion: none of the

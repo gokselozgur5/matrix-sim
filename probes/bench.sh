@@ -181,7 +181,8 @@ table() {
   # second canonical universe and every probe here already takes one. ARC rows are NOT
   # doubled: a beat tick, a mover count, a named subject belong to the canonical film, and
   # asserting them at another seed would be asserting a different measurement.
-  # Measured: six rows, 6.4 s. The lane's budget is 300 s (#1115).
+  # The rows below are the executable roster; the sweep reports their cost against
+  # the lane's 300 s budget (#1115).
   judge OneTrace     'VERDICT CONTRACT_HELD births_none=0'      "$TICKS" 7
   judge CapSentinel  'CAP_BREACHES=0 samples_none=0'             "$TICKS" 7
   judge LinkAudit    'VERDICT CLEAN ghosts=0 audited_none=0' "$TICKS" 7
@@ -191,6 +192,9 @@ table() {
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'     "$TICKS" 7
   judge BondBook     'VERDICT BOOK_TURNS_OVER forgot_none=0 fill_none=0 stale_mint=0'    "$TICKS" 7
   judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
+  # ClauseAftermath claims every firing has a named fate, and seed 7 reaches the
+  # rekilled branch that seed 42 does not. It is a property, not an arc census.
+  judge ClauseAftermath 'VERDICT AFTERMATH_ACCOUNTED unaccounted=0' 40000 7
   # Three probes that declared themselves ONE-OFF and were not (#1175). #1163's exemption
   # let a probe excuse itself with four words in a javadoc, and all six sentences were
   # written in one sitting by the person who wanted the check to pass. Measured instead:
