@@ -294,6 +294,11 @@ table() {
   judge DoorRefusal  'VERDICT EVERY_DOOR_REFUSES swallowed=0 crashed=0 swept_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
+  # D-066's first runtime seam (#1686). Six nested records share one parser but
+  # remain different Java types; the probe drives boundary values, malformed
+  # text, every cross-domain pair, and every pair in a generated prefix corpus.
+  # No seed, tick, world, or working-tree read.
+  judge CausalIds    'VERDICT CAUSAL_IDS_HELD domains=6 domains_missing=0 construct_fail=0 parse_fail=0 order_fail=0 equality_fail=0 prefix_fail=0 cases_none=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).
