@@ -246,13 +246,21 @@ public final class CausalSpine {
     }
 
     private static void rejectsMutation(String name, List<CausalPhase> phases) {
-        boolean refused = false;
+        boolean addRefused = false;
         try {
             phases.add(CausalPhase.OBSERVE);
         } catch (UnsupportedOperationException expected) {
-            refused = true;
+            addRefused = true;
         }
-        check("order", name, refused);
+        check("order", name + "-add", addRefused);
+
+        boolean setRefused = false;
+        try {
+            phases.set(0, CausalPhase.OBSERVE);
+        } catch (UnsupportedOperationException expected) {
+            setRefused = true;
+        }
+        check("order", name + "-set", setRefused);
     }
 
     private static boolean ordered(int... positions) {

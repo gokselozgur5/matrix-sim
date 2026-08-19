@@ -307,7 +307,7 @@ table() {
   # phases once; reflection drives the private refusal gate against reorder,
   # duplicate, early-observer, and incomplete shapes; a source fixture proves
   # that a second production scheduler is found. The hooks themselves are empty.
-  judge CausalSpine 'VERDICT CAUSAL_SPINE_HELD cases=19 order_fail=0 guard_fail=0 root_fail=0'
+  judge CausalSpine 'VERDICT CAUSAL_SPINE_HELD cases=21 order_fail=0 guard_fail=0 root_fail=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).
