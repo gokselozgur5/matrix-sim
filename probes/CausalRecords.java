@@ -131,7 +131,7 @@ public final class CausalRecords {
         visibleAuditSplit(fixture);
         immutability(fixture);
         constructorRefusals(fixture);
-        componentFence();
+        componentFence(fixture);
 
         BREAKS.forEach(System.out::println);
         int cases = CASES.values().stream().mapToInt(Integer::intValue).sum();
@@ -526,7 +526,7 @@ public final class CausalRecords {
                         CausalRecord.Exposure.SETTLEMENT_INPUT));
     }
 
-    private static void componentFence() {
+    private static void componentFence(Fixture fixture) {
         for (Class<?> nested : CausalRecord.class.getDeclaredClasses()) {
             if (!nested.isRecord()) {
                 continue;
@@ -565,6 +565,26 @@ public final class CausalRecords {
         check("forbidden", "effect-origin-exhaustive",
                 Set.of(CausalRecord.EffectOrigin.class.getPermittedSubclasses()).equals(Set.of(
                         CausalRecord.ChoiceOrigin.class, CausalRecord.NonChoiceOrigin.class)));
+
+        Map<Class<?>, CausalRecord> examples = new LinkedHashMap<>();
+        for (CausalRecord record : fixture.records()) {
+            examples.put(record.getClass(), record);
+        }
+        for (CausalRecord outer : fixture.records()) {
+            for (RecordComponent component : outer.getClass().getRecordComponents()) {
+                if (!CausalRecord.class.isAssignableFrom(component.getType())) {
+                    continue;
+                }
+                CausalRecord inner = examples.get(component.getType());
+                check("visibility", outer.kind() + "-" + component.getName()
+                                + "-known-inner-route",
+                        inner != null);
+                check("visibility", outer.kind() + "-" + component.getName()
+                                + "-no-transitive-escalation",
+                        inner != null && inner.contract().consumers()
+                                .containsAll(outer.contract().consumers()));
+            }
+        }
     }
 
     private static CausalRecord.DeliveryAttempt deliveryShape(
