@@ -299,6 +299,10 @@ table() {
   # text, every cross-domain pair, and every pair in a generated prefix corpus.
   # No seed, tick, world, or working-tree read.
   judge CausalIds    'VERDICT CAUSAL_IDS_HELD domains=6 domains_missing=0 construct_fail=0 parse_fail=0 order_fail=0 equality_fail=0 prefix_fail=0 cases_none=0'
+  # D-066's carrier grammar (#1687). The independent route table, constructor
+  # attacks, publication mutations, hidden-audit twin, sealed rosters, and
+  # reflection fence all run without a world, seed, tick loop, or tree read.
+  judge CausalRecords 'VERDICT CAUSAL_RECORDS_HELD kinds=9 kinds_missing=0 route_fail=0 owner_fail=0 visibility_fail=0 immutable_fail=0 constructor_fail=0 forbidden_ref=0 cases_none=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).
