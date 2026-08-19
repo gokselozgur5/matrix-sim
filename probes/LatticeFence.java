@@ -85,44 +85,52 @@ public final class LatticeFence {
 
     /** A mind-side causal participant is derived from its input/output vocabulary. */
     private static final Pattern MIND_REDUCER_VOCABULARY = Pattern.compile(
-            "\\b(?:CausalRecord\\s*\\.\\s*)?(?:PerceptReceipt|IntentProposal)\\b");
+            "\\b(?:CausalRecord(?:\\s*\\.\\s*(?:PerceptReceipt|IntentProposal))?"
+                    + "|PerceptReceipt|IntentProposal)\\b");
     private static final Pattern WORLD_REFERENCE =
             Pattern.compile("\\b(?:matrix\\.core\\.)?World\\b");
 
+    private static final String JAVA_IDENTIFIER =
+            "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
+
     /** A Java declaration prefix whose visibility may follow annotations/modifiers. */
     private static final Pattern VISIBLE_DECLARATION_START = Pattern.compile(
-            "^(?:(?:@[A-Za-z_$][\\w.$]*(?:\\([^;]*\\))?"
+            "^(?:(?:@" + JAVA_IDENTIFIER + "(?:\\." + JAVA_IDENTIFIER + ")*"
+                    + "(?:\\([^;]*\\))?"
                     + "|abstract|default|static|final|sealed|non-sealed|strictfp"
                     + "|synchronized|native|transient|volatile)\\s+)*"
                     + "(?:public|protected)\\b.*");
 
     /** Runtime declarations are read after comments are stripped. */
     private static final String TYPE_DECLARATION_PREFIX =
-            "^[\\t ]*(?:(?:@[A-Za-z_$][\\w.$]*(?:\\([^\\r\\n;]*\\))?"
+            "^[\\t ]*(?:(?:@" + JAVA_IDENTIFIER + "(?:\\." + JAVA_IDENTIFIER + ")*"
+                    + "(?:\\([^\\r\\n;]*\\))?"
                     + "|public|protected|private|abstract|static|final|sealed|non-sealed"
                     + "|strictfp)\\s+)*";
     private static final Pattern MUTABLE_TYPE_DECLARATION = Pattern.compile(
             TYPE_DECLARATION_PREFIX
-                    + "(?:class|interface|record)\\s+([A-Za-z_$][\\w$]*)\\b",
+                    + "(?:class|interface|record|enum)\\s+(" + JAVA_IDENTIFIER + ")",
             Pattern.MULTILINE);
     private static final Pattern REAL_WORLD_TYPE_DECLARATION = Pattern.compile(
             TYPE_DECLARATION_PREFIX
-                    + "(?:class|interface|record|enum)\\s+([A-Za-z_$][\\w$]*)\\b",
+                    + "(?:class|interface|record|enum)\\s+(" + JAVA_IDENTIFIER + ")",
             Pattern.MULTILINE);
 
     /** D-013's existing jack, normalized without whitespace. */
-    private static final List<String> LEGACY_LINK_DECLARATIONS = List.of(
+    private static final List<String> AUDITED_LINK_DECLARATIONS = List.of(
             "publicfinalclassNeuralLink{",
             "publicfinalHumanhuman;",
             "publicfinalAvataravatar;",
+            "publicfinalLinkKindkind;",
             "publicNeuralLink(Humanhuman,Avataravatar,LinkKindkind){");
 
     /** Existing root declarations that name a runtime class without exporting one. */
-    private static final List<String> LEGACY_ROOT_DECLARATIONS = List.of(
+    private static final List<String> AUDITED_ROOT_DECLARATIONS = List.of(
             "publicfinalclassSimulation{",
             "publicSimulation(longseed,OutputStreamsink,StringfollowName){",
             "publicSimulation(longseed,OutputStreamsink,StringfollowName,OutputStreamchronosSink){",
             "publicList<ChronosLog.Birth>births(){",
+            "publicList<CausalPhase>lastCausalPhases(){",
             "publicList<Digest>run(longticks){",
             "publicSnapshotsnapshotNow(){");
 
@@ -231,7 +239,7 @@ public final class LatticeFence {
                 for (String field : fieldDeclarations(code)) {
                     worldFields++;
                     for (String type : realWorldTypes) {
-                        if (field.matches(".*\\b" + type + "\\b.*")) {
+                        if (mentionsType(field, type)) {
                             worldHolds++;
                             offences.add("LATTICE world field of type " + type + ": " + field.trim());
                             break;
@@ -271,10 +279,10 @@ public final class LatticeFence {
                     if (!mutableCrossing.matcher(declaration).find()) {
                         continue;
                     }
-                    if (link && legacyLinkDeclaration(declaration)) {
+                    if (link && auditedLinkDeclaration(declaration)) {
                         continue;
                     }
-                    if (simulation && legacyRootDeclaration(declaration)) {
+                    if (simulation && auditedRootDeclaration(declaration)) {
                         continue;
                     }
                     bridgeMutable++;
@@ -298,10 +306,17 @@ public final class LatticeFence {
         return count;
     }
 
+    private static boolean mentionsType(String declaration, String type) {
+        return Pattern.compile("(?<!\\p{javaJavaIdentifierPart})"
+                + Pattern.quote(type) + "(?!\\p{javaJavaIdentifierPart})")
+                .matcher(declaration).find();
+    }
+
     /**
-     * Every non-causal runtime class, interface or record is conservatively
-     * mutable at this boundary; neutral causal records and enums are values.
-     * Deriving the
+     * Every runtime class, interface, record or enum is conservatively mutable at
+     * this boundary. A causal record may cross only after its exact root/jack
+     * declaration is audited and allowlisted; package location alone grants
+     * no trust. Deriving the
      * names from the inspected root means a newly introduced mind/runtime type
      * enters the fence in the same commit rather than waiting for a hand-kept
      * blacklist update. Object remains explicit because it can erase any such
@@ -311,10 +326,6 @@ public final class LatticeFence {
         List<String> names = new ArrayList<>();
         names.add("Object");
         for (Path file : files) {
-            String relative = root.relativize(file).toString().replace('\\', '/');
-            if (relative.startsWith("matrix/causal/")) {
-                continue;
-            }
             String source = String.join("\n", Probes.uncommentedLines(file));
             var declarations = MUTABLE_TYPE_DECLARATION.matcher(source);
             while (declarations.find()) {
@@ -329,7 +340,8 @@ public final class LatticeFence {
         for (String name : names) {
             quoted.add(Pattern.quote(name));
         }
-        return Pattern.compile("\\b(?:" + String.join("|", quoted) + ")\\b");
+        return Pattern.compile("(?<!\\p{javaJavaIdentifierPart})(?:"
+                + String.join("|", quoted) + ")(?!\\p{javaJavaIdentifierPart})");
     }
 
     /** Every declared real-side type is forbidden as a direct World field. */
@@ -465,15 +477,15 @@ public final class LatticeFence {
     }
 
     /** True only for the four public declarations that constitute D-013's jack. */
-    private static boolean legacyLinkDeclaration(String declaration) {
+    private static boolean auditedLinkDeclaration(String declaration) {
         String compact = declaration.replaceAll("\\s+", "");
-        return LEGACY_LINK_DECLARATIONS.contains(compact);
+        return AUDITED_LINK_DECLARATIONS.contains(compact);
     }
 
-    /** True only for the root declarations that name, but do not leak, a class. */
-    private static boolean legacyRootDeclaration(String declaration) {
+    /** True only for the existing root declarations whose returned values were audited. */
+    private static boolean auditedRootDeclaration(String declaration) {
         String compact = declaration.replaceAll("\\s+", "");
-        return LEGACY_ROOT_DECLARATIONS.contains(compact);
+        return AUDITED_ROOT_DECLARATIONS.contains(compact);
     }
 
     /** Retain the source reader against one clean tree and every named mutant. */
@@ -548,6 +560,15 @@ public final class LatticeFence {
                                     + "  PerceptReceipt reduce(World world) { return null; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.reducerWorld())));
+            cases.add(readCase(scratch, "generic-reducer-world",
+                    changed(clean, "matrix/realworld/GenericReducer.java",
+                            "package matrix.realworld;\n"
+                                    + "import matrix.causal.CausalRecord;\n"
+                                    + "import matrix.core.World;\n"
+                                    + "final class GenericReducer {\n"
+                                    + "  CausalRecord reduce(World world) { return null; }\n"
+                                    + "}\n"),
+                    reading -> oneFinding(reading, reading.reducerWorld())));
             cases.add(readCase(scratch, "reducer-receipts-only",
                     changed(clean, "matrix/realworld/MindReducer.java",
                             "package matrix.realworld;\n"
@@ -618,6 +639,18 @@ public final class LatticeFence {
                             + "}\n");
             cases.add(readCase(scratch, "future-mind-export", futureMind,
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            Map<String, String> futureCausal = changed(clean,
+                    "matrix/causal/MutableMind.java",
+                    "package matrix.causal;\n"
+                            + "public enum MutableMind { INSTANCE; int belief; }\n");
+            futureCausal = changed(futureCausal, "matrix/Simulation.java",
+                    "package matrix;\n"
+                            + "import matrix.causal.MutableMind;\n"
+                            + "public final class Simulation {\n"
+                            + "  public MutableMind exposeMind() { return null; }\n"
+                            + "}\n");
+            cases.add(readCase(scratch, "future-causal-enum", futureCausal,
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
             cases.add(readCase(scratch, "type-words-ignored",
                     changed(clean, "matrix/Noise.java",
                             "package matrix;\n"
@@ -625,12 +658,12 @@ public final class LatticeFence {
                                     + "  String text = \"record LinkKind\";\n"
                                     + "}\n"), Reading::held));
             Map<String, String> futureWorld = changed(clean,
-                    "matrix/realworld/MindState.java",
-                    "package matrix.realworld;\npublic record MindState(String belief) { }\n");
+                    "matrix/realworld/Mind$State.java",
+                    "package matrix.realworld;\npublic record Mind$State(String belief) { }\n");
             futureWorld = changed(futureWorld, "matrix/core/World.java",
                     "package matrix.core;\n"
-                            + "import matrix.realworld.MindState;\n"
-                            + "public final class World { private MindState mind; }\n");
+                            + "import matrix.realworld.Mind$State;\n"
+                            + "public final class World { private Mind$State mind; }\n");
             cases.add(readCase(scratch, "world-future-mind", futureWorld,
                     reading -> reading.coreReach() == 1 && reading.worldHolds() == 1
                             && reading.findings() == 2));
