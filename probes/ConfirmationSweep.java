@@ -130,13 +130,16 @@ public final class ConfirmationSweep {
         //
         // Each leg is named on the verdict because `CONFIRMATIONS_BROKEN` was one word
         // for four distinct clause failures (#1647's shape, four legs). They do not
-        // subsume one another: a run can break the door and hold the stream.
-        boolean[] legs = {restore.print(), door.print(), stream.print(), lifecycle.print()};
-        boolean restoreHeld = legs[0];
-        boolean doorHeld = legs[1];
-        boolean streamHeld = legs[2];
-        boolean lifecycleHeld = legs[3];
-        int clauses = legs.length;
+        // subsume one another: a run can break the door and hold the stream. A leg that
+        // never reached its scenario is UNMET, not a failed boolean (#1660 review).
+        ClauseState restoreState = restore.print();
+        ClauseState doorState = door.print();
+        ClauseState streamState = stream.print();
+        ClauseState lifecycleState = lifecycle.print();
+        List<ClauseState> legs = List.of(
+                restoreState, doorState, streamState, lifecycleState);
+        int clauses = (int) legs.stream().filter(ClauseState::ran).count();
+        ClauseState outcome = outcome(legs);
         System.out.println("CONFIRMATIONS seed=" + seed + " ticks=" + ticks
                 + " follow=\"" + FOLLOW + "\"");
         // A clause that was tested and failed outranks a clause that was never
@@ -144,17 +147,13 @@ public final class ConfirmationSweep {
         // report the quieter one. (The D-025 falsifier is exactly such a run —
         // moving the grace window moves the whole arc, so two rows lose their
         // scenario in the same pass that breaks the third.)
-        boolean held = restoreHeld && doorHeld && streamHeld && lifecycleHeld;
-        boolean broken = (restore.fired && !restoreHeld) || (door.fired && !doorHeld)
-                || (stream.frames > 0 && !streamHeld)
-                || (lifecycle.collections > 0 && !lifecycleHeld);
-        Probes.leave("VERDICT " + (held ? "CONFIRMATIONS_HELD"
-                : broken ? "CONFIRMATIONS_BROKEN" : "CONFIRMATIONS_UNMET")
+        Probes.leave("VERDICT CONFIRMATIONS_" + outcome
                 + " clauses=" + clauses
-                + " restore=" + (restoreHeld ? 0 : 1)
-                + " door=" + (doorHeld ? 0 : 1)
-                + " stream=" + (streamHeld ? 0 : 1)
-                + " lifecycle=" + (lifecycleHeld ? 0 : 1), held);    }
+                + " restore=" + restoreState
+                + " door=" + doorState
+                + " stream=" + streamState
+                + " lifecycle=" + lifecycleState, outcome.asProbeOutcome());
+    }
 
     // -----------------------------------------------------------------
     // D-001
@@ -241,12 +240,13 @@ public final class ConfirmationSweep {
             held = count > 0 && present + viaDoor == count && logged == count;
         }
 
-        boolean print() {
+        ClauseState print() {
+            ClauseState state = ClauseState.of(fired, held);
             System.out.println("RESTORE wrapped=" + count + " present=" + present
                     + " walked_out=" + viaDoor + " log=" + logged);
             System.out.println("CONFIRM clause=D-001 restored=" + (present + viaDoor) + "/" + count
-                    + " log=" + logged + " " + status(fired, held));
-            return held;
+                    + " log=" + logged + " " + status(state));
+            return state;
         }
     }
 
@@ -351,11 +351,12 @@ public final class ConfirmationSweep {
             return tookAvatars;
         }
 
-        boolean print() {
+        ClauseState print() {
+            ClauseState state = ClauseState.of(fired, held);
             System.out.println("CONFIRM clause=D-011 optouts=" + walked + " deletions=" + deletions
                     + " null_links=" + nullLinks + " tally=" + tally + " registry=" + registry
-                    + " alive=" + living + " " + status(fired, held));
-            return held;
+                    + " alive=" + living + " " + status(state));
+            return state;
         }
     }
 
@@ -471,13 +472,14 @@ public final class ConfirmationSweep {
             }
         }
 
-        boolean print() {
+        ClauseState print() {
             long gap = Math.max(maxGap, ticks - last);
             boolean held = frames > 0 && malformed == 0 && gap <= Config.FOLLOW_EVERY_TICKS;
+            ClauseState state = ClauseState.of(frames > 0, held);
             System.out.println("CONFIRM clause=D-021 frames=" + frames + " max_gap=" + gap
                     + " signals=" + signals + " malformed=" + malformed + " no_agent=" + noAgent + " dark_gap=" + darkGap
-                    + " subject=\"" + subject + "\" " + status(frames > 0, held));
-            return held;
+                    + " subject=\"" + subject + "\" " + status(state));
+            return state;
         }
     }
 
@@ -653,7 +655,7 @@ public final class ConfirmationSweep {
                     + " cited=" + cites + " repeat=" + repeats + " missing=" + missing);
         }
 
-        boolean print() {
+        ClauseState print() {
             // Citations due against citations made, and both against the live
             // ledger. The two directions are demanded separately rather than as
             // one difference: a repeat that printed a number would inflate
@@ -663,13 +665,14 @@ public final class ConfirmationSweep {
                     && registryEnd == ledger.size() && citesOk == cites;
             boolean held = collections > 0 && pending.isEmpty() && graceWrong == 0
                     && cites > 0 && citations;
+            ClauseState state = ClauseState.of(collections > 0, held);
             System.out.println("CONFIRM clause=D-025 collections=" + collections
                     + " order=notice,grace,outcome gc=" + gc + " orphan=" + orphans
                     + " refusal=" + refusals + " voided=" + voided
                     + " unmatched=" + pending.size() + " grace_wrong=" + graceWrong
                     + " cites=" + citesOk + "/" + cites + " missing=" + missing
-                    + " " + status(collections > 0, held));
-            return held;
+                    + " " + status(state));
+            return state;
         }
     }
 
@@ -744,9 +747,44 @@ public final class ConfirmationSweep {
         return to < 0 ? "-" : text.substring(from, to);
     }
 
-    /** A row that never met its scenario is unmet, not held — and never quietly ok. */
-    private static String status(boolean reached, boolean held) {
-        return !reached ? "unmet" : held ? "ok" : "BROKEN";
+    /** One clause has three states; collapsing UNMET into false is a false failure. */
+    private enum ClauseState {
+        HELD,
+        BROKEN,
+        UNMET;
+
+        static ClauseState of(boolean reached, boolean held) {
+            return !reached ? UNMET : held ? HELD : BROKEN;
+        }
+
+        boolean ran() {
+            return this != UNMET;
+        }
+
+        Probes.Outcome asProbeOutcome() {
+            return switch (this) {
+                case HELD -> Probes.Outcome.HELD;
+                case BROKEN -> Probes.Outcome.BROKE;
+                case UNMET -> Probes.Outcome.NEVER_AROSE;
+            };
+        }
+    }
+
+    /** BROKEN outranks UNMET; otherwise every declared leg must have held. */
+    private static ClauseState outcome(List<ClauseState> legs) {
+        if (legs.contains(ClauseState.BROKEN)) {
+            return ClauseState.BROKEN;
+        }
+        return legs.contains(ClauseState.UNMET) ? ClauseState.UNMET : ClauseState.HELD;
+    }
+
+    /** Keep the established per-clause words while the verdict carries the explicit state. */
+    private static String status(ClauseState state) {
+        return switch (state) {
+            case HELD -> "ok";
+            case BROKEN -> "BROKEN";
+            case UNMET -> "unmet";
+        };
     }
 
     private ConfirmationSweep() {}

@@ -99,7 +99,7 @@ done
 # ---------------------------------------------------------------------------
 # The contract table. One row per probe:
 #
-#   judge <Class> '<the exact line the run must print>' [args...]
+#   judge <Class> '<the exact line the run must print>' [--expect-exit 2] [args...]
 #   run   <Class> [args...]
 #
 # prefixed, on either of them, by:
@@ -356,7 +356,7 @@ table() {
   # every sweep and the pass-is-a-failure inversion is exercised rather than
   # believed. Its issue is itself, which is stated in the probe rather than hidden.
   known KnownFixture 'VERDICT KNOWN_FIXTURE_BROKEN by_design=yes issue=1231' '#1231'
-  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=0 door=0 stream=0 lifecycle=0' "$TICKS"
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=HELD door=HELD stream=HELD lifecycle=HELD' "$TICKS"
   # The second seed found a defect (#1155) and this row was a `known` break for four hours.
   # Both halves turned out to be the PROBE describing truthfully-measured things wrongly:
   # `malformed` counted frames that correctly report a world with no agent in it (#1170),
@@ -364,7 +364,12 @@ table() {
   # line "lost — the dream is no longer theirs" sits inside every gap that missed the bound.
   # Both are now their own numbers, `no_agent=` and `dark_gap=`, and the clause holds at
   # seeds 42, 7, 4, 9 and 13. The row is a judge again, which is what a known break is for.
-  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=0 door=0 stream=0 lifecycle=0' "$TICKS" 7
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_HELD clauses=4 restore=HELD door=HELD stream=HELD lifecycle=HELD' "$TICKS" 7
+  # The partial run is the state-collapse falsifier from #1660's review: one clause ran
+  # and held while three never reached their scenarios. `--expect-exit 2` belongs to the
+  # bench, not the probe; the exact line and the NEVER_AROSE code are both required.
+  judge ConfirmationSweep 'VERDICT CONFIRMATIONS_UNMET clauses=1 restore=UNMET door=UNMET stream=HELD lifecycle=UNMET' \
+        --expect-exit 2 100 42
   judge HuntBound    'VERDICT HUNT_BOUND_HELD movers=19 breaks=0'  "$TICKS"
   # SheetBench holds two rows because it is two instruments behind one class,
   # and the table is keyed by (class, args) rather than by class. --discipline
@@ -507,6 +512,9 @@ VARY_CUT=''
 # Set by `known` around its call to `settle`, which otherwise reads a declared
 # break's nonzero second run as an instrument that drifted (#1231).
 KNOWN_ROW=no
+# A judge row normally expects 0. The one explicit NEVER_AROSE witness sets this around
+# `settle`, so its second and third executions must repeat both the bytes and exit 2.
+EXPECTED_ROW_RC=0
 
 # One row's run, printed. The three verbs differ only in what they demand of
 # the output afterwards, so the invocation itself is written once: the class,
@@ -592,14 +600,43 @@ known() {                       # known <Class> '<verdict>' '<#issue>' [args...]
 
 judge() {
   local cls="$1" want="$2"; shift 2
+  local expected_exit=0
+  if [ "${1:-}" = "--expect-exit" ]; then
+    [ "${2:-}" = 2 ] \
+      || { echo "FATAL judge --expect-exit currently accepts only 2 (NEVER_AROSE)" >&2; exit 2; }
+    expected_exit=2
+    shift 2
+  fi
   PROBES=$((PROBES + 1)); JUDGED=$((JUDGED + 1))
   if [ "$LIST" = yes ]; then
-    contract "$cls" "$want" "$@"
+    contract "$cls" "$want$([ "$expected_exit" -eq 2 ] && echo ' (expected exit 2)')" "$@"
     return 0
   fi
   local started; started=$(date +%s)
   printf 'PROBE %s args="%s" judged="%s"\n' "$cls" "$*" "$want"
   execute "$cls" "$@"
+  # An expected NEVER_AROSE is itself the behavior under test: exact line, exact code.
+  # This is distinct from an ordinary row accidentally reaching no scenario, which stays
+  # UNEXERCISED below and does not pretend its expected passing line was observed.
+  if [ "$expected_exit" -eq 2 ]; then
+    if [ "$ROW_RC" -ne 2 ]; then
+      FAIL=$((FAIL + 1))
+      skipped "$cls"
+      echo "FAIL $cls exited $ROW_RC — expected NEVER_AROSE (2)"
+      return 0
+    fi
+    if printf '%s\n' "$ROW_OUT" | grep -qxF "$want"; then
+      PASS=$((PASS + 1))
+      echo "PASS $cls expected=NEVER_AROSE secs=$(($(date +%s) - started))"
+    else
+      FAIL=$((FAIL + 1))
+      echo "FAIL $cls missing expected NEVER_AROSE verdict: $want"
+    fi
+    EXPECTED_ROW_RC=2
+    settle "$cls" "$ROW_OUT" "$@"
+    EXPECTED_ROW_RC=0
+    return 0
+  fi
   # Exit 2 is the third answer (#1138): the scenario never arose. Not a pass — a row that
   # reaches no miracle must not stand in for one that does — and not a failure, because
   # nothing broke. The row is UNEXERCISED and counted, which is #970's INSTRUMENTS_UNPROVEN
@@ -852,7 +889,7 @@ settle() {
       echo "FAIL $cls second run exited 0 — a declared break healed between two runs"
       return 0
     fi
-  elif [ "$rc" -ne 0 ]; then
+  elif [ "$rc" -ne "${EXPECTED_ROW_RC:-0}" ]; then
     # Ran, then did not: a failure of the bench AND a difference between the
     # two runs. Both counters move, because both statements are true.
     FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
@@ -892,7 +929,7 @@ settle() {
         echo "FAIL $cls third run exited 0 — a declared break healed on the third run"
         return 0
       fi
-      if [ "${KNOWN_ROW:-no}" != yes ] && [ "$rc3" -ne 0 ]; then
+      if [ "${KNOWN_ROW:-no}" != yes ] && [ "$rc3" -ne "${EXPECTED_ROW_RC:-0}" ]; then
         FAIL=$((FAIL + 1)); DRIFTED=$((DRIFTED + 1))
         echo "FAIL $cls third run exited $rc3"
         return 0
