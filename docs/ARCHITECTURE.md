@@ -150,6 +150,19 @@ objects, randomness, and wall time have no representation in it; allocation
 policy remains root-owned and the percept-specific noninterference lock lands
 separately under #1693.
 
+The second seam is `matrix.causal.CausalRecord` (#1687): nine distinct
+phase carriers, not one omniscient event envelope. Each kind fixes its state
+owner, legal producer, legal consumers, and exposed projection in a closed
+contract table. Frozen truth, delivery attempts, receipt audits, and intent
+validation stay root-side; the only mind input is `PerceptReceipt`; an intent
+is only root input; and only `CommittedAction` is a canonical command. Hidden
+truth and actual source live in `DeliveryAttempt`, while `ReceiptAudit` pairs
+that audit with the separately immutable visible receipt. Effects carry an
+exclusive choice/non-choice origin and affected-Human participation separately;
+settlement names its owner and subjects. All collection components are copied,
+all references are neutral IDs/value tokens, and no carrier can hold either
+world or a mind object. This is grammar only: #1688 still owns phase execution.
+
 ## Sequence — jack-in and the death rule
 
 ```mermaid
