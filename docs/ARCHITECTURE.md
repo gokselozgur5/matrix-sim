@@ -140,7 +140,7 @@ Dependency direction is law, and `probes/LatticeFence.java` is the grep (#1417).
 
 ## Accepted Human causal seam — D-066 (realization in progress)
 
-D-066 opens causality without opening the package fire-door. The accepted target is `frozen truth → audited delivery → immutable percept receipts → persistent real-side mind transition → immutable intent → root validation/commit → classified effect → biography/relationship/institution/obligation settlement → digest/observation`. This section describes accepted architecture, not current runtime completeness: `Brain` is still an alive bit and `PerceptionFrame` is still an observer formatter until realization units land.
+D-066 opens causality without opening the package fire-door. The accepted target is `frozen truth → audited delivery → immutable percept receipts → persistent real-side mind transition → immutable intent → root validation/commit → classified effect → biography/relationship/institution/obligation settlement → digest/observation`. This section describes accepted architecture, not current runtime completeness: phase-one self truth now freezes, but `Brain` is still an alive bit, no delivery attempt or receipt is issued, and `PerceptionFrame` remains an observer formatter.
 
 Only `Simulation` may coordinate both sides. Matrix packages receive no `Brain` or mind reference; a mind receives no omniscient `World` query. Audit-side actual source and truth provenance stay separate from the mind-visible receipt projection: with prior mind state and that ordered projection fixed, hidden-only changes cannot alter receipt identity/order, mind state or intent. Explicit percept identities and immutable receipts/intents/actions/effects cross the root. `World` applies only committed actions or typed non-choice causes, and every Human-affecting effect carries causal origin separately from each affected Human's actor/consenter/without-choice role. All causal state and pending order that can change a future result belongs in digest, snapshot and replay. Observer presence remains causally inert.
 
@@ -171,13 +171,30 @@ nine hand-overs without owning a world, callback, cursor, or record;
 world advances, then delivery, mind reduction, proposal, validation/commit,
 effect and settlement hooks, then digest and observation as two separate
 phases. The root refuses the first missing, repeated, or reordered hand-over
-and exposes only an immutable last-completed phase receipt. These hooks are
-empty in this seam, so the film, random stream, digest and output bytes remain
-unchanged; later leaves put behavior behind one named hook at a time rather
+and exposes only an immutable last-completed phase receipt. #1688 landed these
+hooks empty; later leaves put behavior behind one named hook at a time rather
 than creating another scheduler beside the root. Legacy D-020 log and metric
 instruments are not phase-nine Human percepts and retain their existing byte
 order; this seam orders future resident-visible causal observation, not every
 diagnostic line the daemon emits while a tick is running.
+
+The fourth seam is tick-start truth (#1690). `TruthSnapshot` is a root-only
+immutable aggregate, separate from the full replay/digest `Snapshot` and from
+mind-visible receipts. Its V1 eligibility rule includes only a resident whose
+current link is open, whose brain and avatar are alive, and whose avatar is
+still present in `World`. For each such stable Human ordinal, phase one freezes
+one real-side fact (`brain.alive`) and two world-side facts (`avatar.pill`,
+`avatar.position_cm`). Subjects are sorted by immutable growth ordinal and each
+complete fact group receives a dense sequence; the aggregate refuses unknown
+predicates, malformed values, wrong provenance, omissions, duplicates and
+alternate ordering. Empty is an explicit value. Phase two currently accepts
+the exact phase-one object and nothing else: delivery policy, fidelity,
+outcome, audit, visible projection and percept allocation remain #1691–#1693.
+Consequently a same-tick move, pill change or brain death after phase one
+cannot rewrite what that delivery phase could read, while the same change
+before phase one changes or removes the corresponding truth. Ledger, RNG,
+birth key, residue, pod, other-entity state and observer configuration are not
+V1 facts and cannot enter through this rule.
 
 ## Sequence — jack-in and the death rule
 
