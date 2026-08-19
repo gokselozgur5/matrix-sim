@@ -173,7 +173,7 @@ table() {
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'
   judge BoardScope   'VERDICT BOARD_SCOPE_HONEST lost_present=0 stale_none=0'
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD scenarios=8 anomalies=0' "$TICKS"
-  judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS"
+  judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD scenarios=4 anomalies=0' "$TICKS"
 
   # The second universe (#1094). A PROPERTY row claims something true of every world —
   # a contract held, a breach count of zero — and one seed cannot support that claim: three
@@ -187,7 +187,7 @@ table() {
   judge LinkAudit    'VERDICT CLEAN'              "$TICKS" 7
   judge PirateSever  'VERDICT CONTRACT_HELD checks_none=0'      "$TICKS" 7
   judge PodOptional  'VERDICT POD_OPTIONAL_HELD scenarios=8 anomalies=0'  "$TICKS" 7
-  judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD' "$TICKS" 7
+  judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD scenarios=4 anomalies=0' "$TICKS" 7
   judge ArcBeats     'VERDICT BEATS_IN_ORDER beats_none=0'     "$TICKS" 7
   judge BondBook     'VERDICT BOOK_TURNS_OVER'    "$TICKS" 7
   judge SameTick     'VERDICT SAME_TICK_ABSORB'   "$TICKS" 7
