@@ -66,7 +66,13 @@ jobs:
       matrix:
         jdk: ['17', '25']
     steps:
+      # WHY fetch-depth 0: VacuousGuard compares this tree's bench census with the
+      # unit's base. A scheduled main checkout needs HEAD's parent; a manual topic
+      # checkout needs its merge-base with origin/main. Depth 1 has neither, and no
+      # finite depth can bound how far a manually selected branch has diverged (#1649).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: put JDK ${{ matrix.jdk }} on PATH
         uses: actions/setup-java@v4
