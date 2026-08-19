@@ -437,7 +437,7 @@ table() {
   # has a fate, not that the fates are kind: seed 42 reads `recaptured=16
   # rekilled=0 resaved=2 uncaught=0 median_delay=1`, and the verdict would read
   # the same if all eighteen had been rekilled.
-  judge ClauseAftermath 'VERDICT AFTERMATH_ACCOUNTED' 40000 42
+  judge ClauseAftermath 'VERDICT AFTERMATH_ACCOUNTED unaccounted=0' 40000 42
   # The one row that reads a committed file. Its budget is written here instead of
   # taken from $TICKS because probes/beatdrift.baseline is a measurement AT a
   # budget: a sweep at 2,000 ticks reaches two of the eight beats and reads -1 for
