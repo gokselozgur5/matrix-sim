@@ -147,6 +147,7 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 | Human-subject causal contract | D-062 | 🟢 accepted | #1662 |
 | Quality admits; value leads; activity breaks ties | D-063 | 🟢 accepted | #1668 |
 | Reciprocal debt: resistance belongs to mind; breach belongs to actor | D-064 | 🟢 accepted | #1670 |
+| Film specimen retained; inhabited causality becomes the finish line | D-065 | 🟡 proposed | #1671 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
 
