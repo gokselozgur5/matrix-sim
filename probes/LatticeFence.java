@@ -93,10 +93,6 @@ public final class LatticeFence {
     private static final Pattern WORLD_REFERENCE =
             Pattern.compile("\\b(?:matrix\\.core\\.)?World\\b");
 
-    /** Mutable domain objects that cannot become a new public crossing. */
-    private static final Pattern MUTABLE_CROSSING = Pattern.compile(
-            "\\b(?:Human|Brain|Pod|PodFarm|NeuralLink|Avatar|MatrixEntity|World|RealWorld|Object)\\b");
-
     /** A Java declaration prefix whose visibility may follow annotations/modifiers. */
     private static final Pattern VISIBLE_DECLARATION_START = Pattern.compile(
             "^(?:(?:@[A-Za-z_$][\\w.$]*(?:\\([^;]*\\))?"
@@ -110,6 +106,15 @@ public final class LatticeFence {
             "publicfinalHumanhuman;",
             "publicfinalAvataravatar;",
             "publicNeuralLink(Humanhuman,Avataravatar,LinkKindkind){");
+
+    /** Existing root declarations that name a runtime class without exporting one. */
+    private static final List<String> LEGACY_ROOT_DECLARATIONS = List.of(
+            "publicfinalclassSimulation{",
+            "publicSimulation(longseed,OutputStreamsink,StringfollowName){",
+            "publicSimulation(longseed,OutputStreamsink,StringfollowName,OutputStreamchronosSink){",
+            "publicList<ChronosLog.Birth>births(){",
+            "publicList<Digest>run(longticks){",
+            "publicSnapshotsnapshotNow(){");
 
     public static void main(String[] args) throws IOException {
         // Clause 7 of the probe contract, and lock 8 is its keeper: a probe's
@@ -161,6 +166,7 @@ public final class LatticeFence {
     /** Read every fire-door clause from one source root. */
     private static Reading inspect(Path root) throws IOException {
         List<Path> files = javaFiles(root);
+        Pattern mutableCrossing = mutableCrossing(root, files);
         int swept = 0;
         int entitiesReach = 0;
         int coreReach = 0;
@@ -251,10 +257,13 @@ public final class LatticeFence {
             if (link || simulation) {
                 for (String declaration : visibleDeclarations(code)) {
                     bridgeDeclarations++;
-                    if (!MUTABLE_CROSSING.matcher(declaration).find()) {
+                    if (!mutableCrossing.matcher(declaration).find()) {
                         continue;
                     }
                     if (link && legacyLinkDeclaration(declaration)) {
+                        continue;
+                    }
+                    if (simulation && legacyRootDeclaration(declaration)) {
                         continue;
                     }
                     bridgeMutable++;
@@ -276,6 +285,40 @@ public final class LatticeFence {
             count++;
         }
         return count;
+    }
+
+    /**
+     * Every non-causal runtime class, interface or record is conservatively
+     * mutable at this boundary; neutral causal records and enums are values.
+     * Deriving the
+     * names from the inspected root means a newly introduced mind/runtime type
+     * enters the fence in the same commit rather than waiting for a hand-kept
+     * blacklist update. Object remains explicit because it can erase any such
+     * type without naming a repository class.
+     */
+    private static Pattern mutableCrossing(Path root, List<Path> files) throws IOException {
+        List<String> names = new ArrayList<>();
+        names.add("Object");
+        for (Path file : files) {
+            String relative = root.relativize(file).toString().replace('\\', '/');
+            if (relative.startsWith("matrix/causal/")) {
+                continue;
+            }
+            String filename = file.getFileName().toString();
+            String name = filename.substring(0, filename.length() - ".java".length());
+            String source = String.join("\n", Probes.uncommentedLines(file));
+            Pattern declaration = Pattern.compile(
+                    "\\b(?:class|interface|record)\\s+" + Pattern.quote(name) + "\\b");
+            if (declaration.matcher(source).find() && !names.contains(name)) {
+                names.add(name);
+            }
+        }
+        names.sort(String::compareTo);
+        List<String> quoted = new ArrayList<>();
+        for (String name : names) {
+            quoted.add(Pattern.quote(name));
+        }
+        return Pattern.compile("\\b(?:" + String.join("|", quoted) + ")\\b");
     }
 
     /**
@@ -393,6 +436,12 @@ public final class LatticeFence {
     private static boolean legacyLinkDeclaration(String declaration) {
         String compact = declaration.replaceAll("\\s+", "");
         return LEGACY_LINK_DECLARATIONS.contains(compact);
+    }
+
+    /** True only for the root declarations that name, but do not leak, a class. */
+    private static boolean legacyRootDeclaration(String declaration) {
+        String compact = declaration.replaceAll("\\s+", "");
+        return LEGACY_ROOT_DECLARATIONS.contains(compact);
     }
 
     /** Retain the source reader against one clean tree and every named mutant. */
@@ -524,6 +573,16 @@ public final class LatticeFence {
                                     + "  public Human exposeMind() { return null; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            Map<String, String> futureMind = changed(clean, "matrix/realworld/MindState.java",
+                    "package matrix.realworld;\npublic record MindState(String belief) { }\n");
+            futureMind = changed(futureMind, "matrix/Simulation.java",
+                    "package matrix;\n"
+                            + "import matrix.realworld.MindState;\n"
+                            + "public final class Simulation {\n"
+                            + "  public MindState exposeMind() { return null; }\n"
+                            + "}\n");
+            cases.add(readCase(scratch, "future-mind-export", futureMind,
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
             Map<String, String> comments = changed(clean, "matrix/entities/Avatar.java",
                     "package matrix.entities;\n"
                             + "// import matrix.realworld.Human;\n"
@@ -590,9 +649,13 @@ public final class LatticeFence {
                         + "  }\n"
                         + "  public boolean closed() { return false; }\n"
                         + "}\n");
+        sources.put("matrix/realworld/Human.java",
+                "package matrix.realworld;\npublic final class Human { }\n");
         sources.put("matrix/Simulation.java",
                 "package matrix;\n"
-                        + "public final class Simulation { public long tick() { return 0; } }\n");
+                        + "public final class Simulation {\n"
+                        + "  public long tick() { return 0; }\n"
+                        + "}\n");
         return sources;
     }
 
