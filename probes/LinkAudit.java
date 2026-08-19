@@ -74,7 +74,23 @@ public final class LinkAudit {
                 + " closed_clean=" + zion[2]
                 + " closed_dead=" + zion[3]
                 + " ghosts=" + zion[4]);
-        Probes.leave(all[4] == 0 ? "VERDICT CLEAN" : "VERDICT GHOSTS_FOUND", all[4] == 0);
+        // `ghosts=` AND `audited_none=` RIDE THE VERDICT SINCE #1638. The row greped
+        // one word, and `CLEAN` is chosen by `all[4] == 0` — the number the word is
+        // about was printed on a neighbouring line and pinned nowhere, which is
+        // #1584's first clause exactly. The four populations beside it stay off the
+        // pinned line: `open_streaming=190` moves with every lawful digest move, and
+        // #1221 is the argument.
+        //
+        // `audited_none=` is the guard, and it is reachable here in a way #1636 found
+        // it was not in `SameTick`: `ghosts=` is a count over `book`, an empty book
+        // gives `ghosts=0`, and there is no NEVER_AROSE branch under it — so a clean
+        // audit of nothing would have left at exit 0 printing the line a clean audit
+        // prints (#970, #1207).
+        boolean clean = all[4] == 0;
+        Probes.leave((clean ? "VERDICT CLEAN" : "VERDICT GHOSTS_FOUND")
+                + " ghosts=" + all[4]
+                + " audited_none=" + (book.isEmpty() ? 1 : 0),
+                clean && !book.isEmpty());
     }
 
     /** 0 open_streaming · 1 worn_by_smith · 2 closed_clean · 3 closed_dead · 4 ghost. */
