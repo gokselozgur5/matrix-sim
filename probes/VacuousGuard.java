@@ -180,10 +180,10 @@ public final class VacuousGuard {
         // unit edits (#1192, #884).
         System.out.println("VACUOUS_MEMBERS unguarded=" + Probes.joined(unguarded));
         System.out.println("VACUOUS_CENSUS judged=" + rows.size()
+                + " unguarded=" + unguarded.size()
                 + " by_field=" + byField.size()
                 + " by_word=" + byWord.size()
                 + " no_source=" + missing.size());
-
         // `no_source` IS judged — a judged row naming a class with no file means
         // this read was over a population it could not see, which is the one
         // condition under which the count means nothing.
@@ -193,10 +193,41 @@ public final class VacuousGuard {
         // not the same statement as "the read opened a table". `judged_none=` is that
         // statement — the guard five siblings carry, and the one #970's
         // INSTRUMENTS_UNPROVEN is about.
+        // THE VERDICT CARRIES A CEILING, NOT THE COUNT, SINCE #1649. `unguarded=` was
+        // pinned exact and it is a BACKLOG under active repair: five consecutive units
+        // walked it 29 -> 24, and three of them collided at the rebase — two branches
+        // guarding a row each, both pinning the same number, the second red on a line
+        // with nothing to do with its subject. That is #1453's stacked-baseline failure
+        // arriving through a different door, and it charged a unit for doing the work
+        // this probe exists to encourage.
+        //
+        // #1615's argument for an exact pin over a floor is about a SUITE, where an
+        // exchange is a change of subject. This is not a suite; it is a queue, and
+        // #1372's rule is that a gate installs at ZERO and not while the population is
+        // being worked down.
+        //
+        // So the asymmetry is the whole design: SHRINKING IS FREE and GROWING COSTS A
+        // UNIT. `over_ceiling=` is 1 when the backlog grew past a number somebody wrote
+        // down, which is a real regression — a new judged row that cannot tell a full
+        // population from an empty one — and 0 for every repair.
+        //
+        // The swap #1615 cares about is not lost, it MOVED: `VACUOUS_MEMBERS` has
+        // carried the sorted set since #1550, so a probe gaining a guard while another
+        // arrives needing one is visible in the sweep's own diff. It is unpinned there
+        // deliberately — a member list in an exact-line grep is a list every unit edits
+        // (#1192, #884) — which is the same argument as this one, made about the same
+        // number, one direction earlier.
+        //
+        // The ceiling is DELIBERATELY SLACK and lowering it is a claim, not a bump: the
+        // point is to catch growth, not to ratchet. Whoever lowers it says so.
+        int ceiling = CEILING;
+        boolean overCeiling = unguarded.size() > ceiling;
         boolean held = missing.isEmpty() && !rows.isEmpty();
-        Probes.leave("VERDICT " + (held ? "VACUOUS_GUARD_COUNTED" : "VACUOUS_GUARD_UNREAD")
-                + " unguarded=" + unguarded.size()
-                + " judged_none=" + (rows.isEmpty() ? 1 : 0), held);
+        Probes.leave("VERDICT " + (held && !overCeiling ? "VACUOUS_GUARD_COUNTED" : "VACUOUS_GUARD_UNREAD")
+                + " over_ceiling=" + (overCeiling ? 1 : 0)
+                + " ceiling=" + ceiling
+                + " judged_none=" + (rows.isEmpty() ? 1 : 0),
+                held && !overCeiling);
     }
 
 
@@ -255,6 +286,22 @@ public final class VacuousGuard {
         return false;
     }
 
+    /**
+     * The most unguarded judged rows this tree will tolerate before the sweep goes red
+     * (#1649).
+     *
+     * <p>A CEILING and not a count. The population is a backlog under active repair —
+     * five units walked it 29 to 24 in one afternoon — so an exact pin charged every
+     * one of them an unrelated edit, and charged two of them a red lane for arithmetic
+     * about a number a sibling branch had already moved. Shrinking is free; growing
+     * costs a unit, which is the asymmetry a queue wants and a suite does not.
+     *
+     * <p>Set to the measured population at the time it was written, so it installs at
+     * ZERO tolerance for growth (#1311: a gate installs at zero, never at one). Raising
+     * it admits a new blind row and is a claim; lowering it is a ratchet nobody asked
+     * for and is also a claim. Both belong in a pull request that says which.
+     */
+    private static final int CEILING = 25;
     /** How far back a guard's condition may sit from the constant it protects (#1609). */
     private static final int EMPTY_WINDOW = 6;
 
