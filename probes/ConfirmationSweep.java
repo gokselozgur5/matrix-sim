@@ -119,11 +119,25 @@ public final class ConfirmationSweep {
         }
         lifecycle.report();
 
-        boolean restoreHeld = restore.print();
-        boolean doorHeld = door.print();
-        boolean streamHeld = stream.print();
-        boolean lifecycleHeld = lifecycle.print();
-        System.out.println("CONFIRMATIONS clauses=4 seed=" + seed + " ticks=" + ticks
+        // THE CLAUSES ARE COUNTED SINCE #1659, and each rides the verdict.
+        //
+        // `clauses=4` WAS A STRING LITERAL. Not a count of anything: delete a clause
+        // from this probe and the line still said four. That is #1633's shape with the
+        // failure moved a step earlier — there the count was real and the row did not
+        // pin it, here the count was not real, so pinning it would have pinned a
+        // constant. It is also the only field on that line that LOOKS like the suite
+        // count #1584's second clause says a row like this should pin.
+        //
+        // Each leg is named on the verdict because `CONFIRMATIONS_BROKEN` was one word
+        // for four distinct clause failures (#1647's shape, four legs). They do not
+        // subsume one another: a run can break the door and hold the stream.
+        boolean[] legs = {restore.print(), door.print(), stream.print(), lifecycle.print()};
+        boolean restoreHeld = legs[0];
+        boolean doorHeld = legs[1];
+        boolean streamHeld = legs[2];
+        boolean lifecycleHeld = legs[3];
+        int clauses = legs.length;
+        System.out.println("CONFIRMATIONS seed=" + seed + " ticks=" + ticks
                 + " follow=\"" + FOLLOW + "\"");
         // A clause that was tested and failed outranks a clause that was never
         // reached: BROKEN is the louder fact, and a run that is both must not
@@ -135,8 +149,12 @@ public final class ConfirmationSweep {
                 || (stream.frames > 0 && !streamHeld)
                 || (lifecycle.collections > 0 && !lifecycleHeld);
         Probes.leave("VERDICT " + (held ? "CONFIRMATIONS_HELD"
-                : broken ? "CONFIRMATIONS_BROKEN" : "CONFIRMATIONS_UNMET"), held);
-    }
+                : broken ? "CONFIRMATIONS_BROKEN" : "CONFIRMATIONS_UNMET")
+                + " clauses=" + clauses
+                + " restore=" + (restoreHeld ? 0 : 1)
+                + " door=" + (doorHeld ? 0 : 1)
+                + " stream=" + (streamHeld ? 0 : 1)
+                + " lifecycle=" + (lifecycleHeld ? 0 : 1), held);    }
 
     // -----------------------------------------------------------------
     // D-001
