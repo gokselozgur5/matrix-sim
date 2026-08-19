@@ -68,4 +68,6 @@ A named character's stat measurably decides a scene the flat world could not pro
 
 Related: [D-037](D-037-theory-practice-split.md), [D-031](D-031-system-of-systems.md), [D-036](D-036-finish-line.md) (the finish line stands — Season Three is joy atop it), [D-010](D-010-determinism.md). Thread: #211.
 
-Referenced by: [D-042](D-042-stat-system.md), [D-043](D-043-named-cast.md), [D-048](D-048-districts-with-identity.md), [D-054](D-054-the-year.md).
+**Human-subject disposition (D-066, 2026-08-19):** [D-066](D-066-human-causal-boundary.md) keeps the four ontological families and sealed deterministic/ownership laws; amends identity-derived sheets into priors/capabilities/temperament; amends “on top” so presentation stays outside causality while lived state may enter only through a validated committed-action boundary; supersedes causal insulation; retires the old Season Three sequence as current dependency order; and parks cameos/story until the ordinary-day witness. Existing evidence remains historical and reusable, but name + sheet alone can no longer stand in for belief, biography or choice.
+
+Referenced by: [D-042](D-042-stat-system.md), [D-043](D-043-named-cast.md), [D-048](D-048-districts-with-identity.md), [D-054](D-054-the-year.md), [D-066](D-066-human-causal-boundary.md).
