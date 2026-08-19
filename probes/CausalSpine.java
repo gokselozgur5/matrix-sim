@@ -15,12 +15,13 @@ import java.util.stream.Stream;
 /**
  * Probe: D-066 has one executable phase order and {@code Simulation} owns it.
  *
- * <p>The production hooks are intentionally empty in #1688. The contract this
- * probe retains is therefore structural rather than theatrical: every normal
- * tick must traverse the complete nine-phase order once, the root must reject
- * an out-of-order or repeated hand-over before it reaches a digest, the
- * completed receipt must be immutable, and no second production class may
- * advance the phase vocabulary.
+ * <p>The production hooks landed intentionally empty in #1688; behavior now
+ * enters them one leaf at a time. This probe's contract remains structural:
+ * every normal tick must traverse the complete nine-phase order once, the root
+ * must reject an out-of-order or repeated hand-over before it reaches a digest,
+ * the completed receipt must be immutable, and no second production class may
+ * advance the phase vocabulary. Each behavior leaf owns its own semantic
+ * probe; {@code TruthSnapshots} is phase one's first such keeper.
  *
  * <p>Three tempting false greens are attacked directly through the private
  * root door. Calling delivery before snapshot, calling snapshot twice, and
