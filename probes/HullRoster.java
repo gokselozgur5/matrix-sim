@@ -130,10 +130,27 @@ public final class HullRoster {
                 + " generations=1.." + topGeneration);
         System.out.println("SWEEP ordinals=" + ordinals + " distinct=" + seen.size()
                 + " collisions=" + collisions + " shape_faults=" + shapeFaults);
-        System.out.println("HULLROSTER roster=" + roster.length + " ordinals=" + ordinals
-                + " anomalies=" + anomalies);
-        Probes.leave(anomalies == 0 ? "VERDICT ROSTER_TOTAL" : "VERDICT ROSTER_BROKEN", anomalies == 0);
-    }
+        System.out.println("HULLROSTER roster=" + roster.length + " ordinals=" + ordinals);
+        // `anomalies=` AND `swept_none=` RIDE THE VERDICT SINCE #1645, and nothing
+        // else does. The row greped one word over NINE printed fields.
+        //
+        // #1645 asked whether `collisions=` and `shape_faults=` belong beside
+        // `anomalies=`, since both are findings rather than populations and both pass
+        // the rule's first clause on their face. THE ANSWER IS NO, and it is decidable
+        // by reading four lines rather than by taste: every `collisions++` and every
+        // `shapeFaults++` is followed by `anomalies++`, so `anomalies=0` already says
+        // `collisions=0 shape_faults=0` and two more. Pinning them is the RESTATEMENT
+        // the rule's fourth clause forbids — a second copy of one claim is not a
+        // second lock — and the pinned line stays one field wide because the
+        // subsumption is real, not because narrower is tidier.
+        //
+        // `swept_none=` is the guard: `anomalies=` counts over a sweep of `ordinals`
+        // hulls and nothing under it refused an empty one (#970, #1207).
+        boolean clean = anomalies == 0;
+        Probes.leave((clean ? "VERDICT ROSTER_TOTAL" : "VERDICT ROSTER_BROKEN")
+                + " anomalies=" + anomalies
+                + " swept_none=" + (seen.isEmpty() ? 1 : 0),
+                clean && !seen.isEmpty());    }
 
     /** One pinned ordinal: the name the rule must produce, as a literal. */
     private static void pin(String kind, int ordinal, String want) {
