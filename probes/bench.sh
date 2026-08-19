@@ -218,7 +218,7 @@ table() {
         --lines '^(QUIET|STORM|TICKCOST) ' --cut 4 \
         judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
   judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
-  judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE' "$TICKS"
+  judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE short=0 missing=-' "$TICKS"
   # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
   # tuning as a contract so that widening the band goes red, and the count in
   # the judged line is the pin: the band is now open, and the number of births

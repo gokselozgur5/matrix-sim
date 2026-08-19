@@ -184,11 +184,27 @@ public final class BirthInputs {
             // line a passing run prints.
             Probes.leave("VERDICT BIRTH_INPUTS_NONE", Probes.Outcome.NEVER_AROSE);
         }
-        Probes.leave(shortRecords == 0
-                ? "VERDICT BIRTH_INPUTS_COMPLETE"
-                : "VERDICT BIRTH_INPUTS_SHORT missing=" + firstMissing,
-                shortRecords == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
-    }
+        // `short=` RIDES BOTH BRANCHES SINCE #1650, and `missing=` keeps its place on
+        // the failing one. The row greped a word while `shortRecords == 0` — the branch
+        // that CHOOSES the word — sat on a census line beside two populations that
+        // move with the seal (#1221). Clause one of #1584's rule, and clause one only:
+        // the vacuity is already covered above by the `births == 0` NEVER_AROSE exit,
+        // which is #1636's shape and the correct one.
+        //
+        // THE VERDICT LINE KEEPS ONE SHAPE ACROSS ITS OWN BRANCHES, which this row did
+        // not: the failing word carried `missing=` and the passing word carried nothing,
+        // so a field APPEARED when the probe broke. That is a change of grammar on top
+        // of a change of verdict, and #604's law 5 makes field order the contract for
+        // exactly this reason — a reader diffing two sweeps should see numbers move,
+        // not columns arrive. The five rows repaired before this one all happen to
+        // append their fields OUTSIDE the ternary and are symmetric by accident;
+        // this one is the first that had to be made so on purpose.
+        Probes.leave((shortRecords == 0
+                        ? "VERDICT BIRTH_INPUTS_COMPLETE"
+                        : "VERDICT BIRTH_INPUTS_SHORT")
+                + " short=" + shortRecords
+                + " missing=" + (shortRecords == 0 ? "-" : firstMissing),
+                shortRecords == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);    }
 
     /**
      * A universe, recorded into memory and handed back as its own JSONL lines.
