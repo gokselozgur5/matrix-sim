@@ -204,9 +204,36 @@ public final class LineLint {
                 + " reordered=" + reordered
                 + " retyped=" + retyped
                 + " domain=" + domain
-                + " cadence_breaks=" + cadenceBreaks);
-        Probes.leave(held ? "VERDICT GRAMMAR_HELD"
-                : "VERDICT GRAMMAR_BROKEN family=" + brokenFamily + " field=" + brokenField, held);
+                + " cadence_breaks=" + cadenceBreaks);        // THE FIVE FINDINGS RIDE THE VERDICT SINCE #1653, and `family=`/`field=` keep
+        // their columns in both directions.
+        //
+        // `GRAMMAR_BROKEN` was one word for five distinct failures — an unknown
+        // family, an unparsed line, a reordered field set, a retyped field, a domain
+        // violation — which is #1647's shape with five legs instead of three. None of
+        // the five is a population: each is a finding count, zero in any world where
+        // the grammar holds, so each is pinnable where `lines=` and `families=` are
+        // not (#1221). They do not subsume one another, which is the check #1645 made
+        // in the other direction and found the opposite answer to.
+        //
+        // THE SHAPE RULE (#1651): the failing arm carried `family=` and `field=` and
+        // the passing arm carried nothing, so two columns ARRIVED when the probe went
+        // red. This row is the first anybody examined after that rule was published,
+        // and it broke it — the population evidence #1652 asked for, one row later.
+        // The sentinel is `-` on a passing run, as `FleetLines` and `HullRoster`
+        // already print for an empty list.
+        //
+        // `linted_none=` is the vacuity guard: every one of the five is a count over
+        // lines read, and zero lines gives five zeroes and this word (#970, #1207).
+        Probes.leave((held ? "VERDICT GRAMMAR_HELD" : "VERDICT GRAMMAR_BROKEN")
+                + " unknown=" + unknown
+                + " unparsed=" + unparsed
+                + " reordered=" + reordered
+                + " retyped=" + retyped
+                + " domain=" + domain
+                + " linted_none=" + (instrument == 0 ? 1 : 0)
+                + " family=" + (held ? "-" : brokenFamily)
+                + " field=" + (held ? "-" : brokenField),
+                held && instrument > 0);
     }
 
     /**

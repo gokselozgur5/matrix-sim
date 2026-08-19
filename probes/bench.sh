@@ -217,7 +217,7 @@ table() {
   vary  'prints its own timing noise: the QUIET line carries nanosecond percentiles of the tick it measures, which move with the JIT while the bound they are judged against does not' \
         --lines '^(QUIET|STORM|TICKCOST) ' --cut 4 \
         judge UnparkStorm  'VERDICT UNPARK_STORM_BOUNDED worst=811 bound=1000'
-  judge LineLint     'VERDICT GRAMMAR_HELD'    "$TICKS"
+  judge LineLint     'VERDICT GRAMMAR_HELD unknown=0 unparsed=0 reordered=0 retyped=0 domain=0 linted_none=0 family=- field=-'    "$TICKS"
   judge BirthInputs  'VERDICT BIRTH_INPUTS_COMPLETE short=0 missing=-' "$TICKS"
   # Re-aimed by #764, not deleted. The row exists to pin the current KID_*
   # tuning as a contract so that widening the band goes red, and the count in
@@ -324,7 +324,7 @@ table() {
   # number beside it: converting twenty-seven probes is twenty-seven judgements about
   # what each denominator IS, and a gate demanding them in the unit that lands the
   # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=26 judged_none=0'
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED unguarded=24 judged_none=0'
   # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
   # set to four, run, BondScenario reported unguarded, its gap measured at five, set
   # to six — and no way to argue with the number. The width is falsifiable in BOTH
