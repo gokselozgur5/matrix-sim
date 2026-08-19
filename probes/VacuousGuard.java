@@ -46,24 +46,23 @@ import java.util.regex.Pattern;
  * reason: a list kept beside the table is a second copy of the bench's contract,
  * and the second copy is the one that goes stale (#1192).
  *
- * <h2>A census, not a gate</h2>
+ * <h2>A ratchet against the branch base, not an exact pin</h2>
  *
- * {@code unguarded=} rides the verdict as a NUMBER and the verdict word is about
- * the READ — {@code VACUOUS_GUARD_COUNTED} — not about that number being zero.
- * Converting fourteen probes is fourteen judgements about what each one's
- * denominator IS, and a gate that demands them in the unit which lands the
- * reader is a gate that gets exempted in the unit after it. This is
- * {@code unfalsifiable=}'s path: reported by #1095, judged by #1311, once the
- * population it names had actually been worked down.
+ * {@code unguarded=} rides the census line. The verdict compares that population
+ * with the same reader run over the branch base: an equal or smaller backlog is
+ * green, and any growth is red. A repair therefore needs no unrelated number
+ * edit, while the next blind row cannot spend slack left by earlier repairs
+ * (#1649). If the base cannot be read, the comparison refuses to call itself a
+ * pass.
  *
  * <h2>What it cannot see</h2>
  *
  * The {@code NEVER_AROSE} test is textual and therefore generous: it asks
  * whether the constant is reachable in the file, not whether it is reachable on
  * the EMPTY path. A probe spending {@code NEVER_AROSE} for an unrelated reason
- * reads as guarded. That error's direction is the safe one for a census — it
- * UNDERSTATES the problem and can never invent one — and it is the wrong one for
- * a gate, which is the thing to fix before {@code unguarded=} becomes a break.
+ * reads as guarded. That error UNDERSTATES the problem and can never invent one.
+ * The ratchet therefore guards zero growth in the population this reader can
+ * measure; it does not turn a textual approximation into semantic proof.
  *
  * <p>Comments are stripped before the constant is looked for (#1531), because a
  * {@code NEVER_AROSE} discussed in a javadoc is not a guard — the exact mistake
@@ -131,47 +130,55 @@ public final class VacuousGuard {
         // not the same statement as "the read opened a table". `judged_none=` is that
         // statement — the guard five siblings carry, and the one #970's
         // INSTRUMENTS_UNPROVEN is about.
-        // THE VERDICT CARRIES A CEILING, NOT THE COUNT, SINCE #1649. `unguarded=` was
-        // pinned exact and it is a BACKLOG under active repair: five consecutive units
-        // walked it 29 -> 24, and three of them collided at the rebase — two branches
-        // guarding a row each, both pinning the same number, the second red on a line
-        // with nothing to do with its subject. That is #1453's stacked-baseline failure
-        // arriving through a different door, and it charged a unit for doing the work
-        // this probe exists to encourage.
+        // THE VERDICT COMPARES TWO READS SINCE #1649. The old exact pin charged every
+        // repair an unrelated edit; the first replacement fixed it to 25 and therefore
+        // let a +1 regression pass after the live population fell to 24. A historical
+        // cap accumulates slack. The only baseline that can make EVERY growth cost a
+        // unit is the tree the unit is changing.
         //
-        // #1615's argument for an exact pin over a floor is about a SUITE, where an
-        // exchange is a change of subject. This is not a suite; it is a queue, and
-        // #1372's rule is that a gate installs at ZERO and not while the population is
-        // being worked down.
-        //
-        // So the asymmetry is the whole design: SHRINKING IS FREE and GROWING COSTS A
-        // UNIT. `over_ceiling=` is 1 when the backlog grew past a number somebody wrote
-        // down, which is a real regression — a new judged row that cannot tell a full
-        // population from an empty one — and 0 for every repair.
-        //
-        // The swap #1615 cares about is not lost, it MOVED: `VACUOUS_MEMBERS` has
-        // carried the sorted set since #1550, so a probe gaining a guard while another
-        // arrives needing one is visible in the sweep's own diff. It is unpinned there
-        // deliberately — a member list in an exact-line grep is a list every unit edits
-        // (#1192, #884) — which is the same argument as this one, made about the same
-        // number, one direction earlier.
-        //
-        // The ceiling is DELIBERATELY SLACK and lowering it is a claim, not a bump: the
-        // point is to catch growth, not to ratchet. Whoever lowers it says so.
-        int ceiling = CEILING;
-        boolean overCeiling = unguarded.size() > ceiling;
-        boolean held = missing.isEmpty() && !rows.isEmpty();
-        Probes.leave("VERDICT " + (held && !overCeiling ? "VACUOUS_GUARD_COUNTED" : "VACUOUS_GUARD_UNREAD")
-                + " over_ceiling=" + (overCeiling ? 1 : 0)
-                + " ceiling=" + ceiling
-                + " judged_none=" + (rows.isEmpty() ? 1 : 0),
-                held && !overCeiling);
+        // In a pull-request merge checkout that is HEAD's first parent. On a local work
+        // branch it is the merge-base with origin/main; on main it is HEAD's parent.
+        // No network is used. If history is absent, UNCOMPARED is red rather than a
+        // fixed number silently standing in for a comparison.
+        Baseline baseline;
+        try {
+            baseline = baseline(root);
+        } catch (IOException | InterruptedException e) {
+            baseline = new Baseline("unread", null);
+        }
+
+        int baselineCount = baseline.census() == null ? -1 : baseline.census().unguarded().size();
+        int delta = baselineCount < 0 ? 0 : unguarded.size() - baselineCount;
+        System.out.println("VACUOUS_BASELINE ref=" + baseline.ref()
+                + " unguarded=" + (baselineCount < 0 ? "unread" : baselineCount)
+                + " delta=" + (baselineCount < 0 ? "unread" : delta));
+
+        Policy policy = policy(unguarded.size(), baselineCount,
+                missing.isEmpty() && !rows.isEmpty(),
+                baseline.census() != null
+                        && baseline.census().missing().isEmpty()
+                        && !baseline.census().rows().isEmpty());
+        Probes.leave(policy.line(), policy.outcome());
     }
 
 
     /** One run of the reader, kept whole so current and baseline use one implementation. */
     private record Census(Set<String> rows, List<String> byField, List<String> byWord,
                           List<String> unguarded, List<String> missing) {}
+
+    /** The Git tree a unit is measured against and the census read from it. */
+    private record Baseline(String ref, Census census) {}
+
+    /** The stable verdict surface: counts stay on census lines, policy stays pinned. */
+    private record Policy(String word, int growth, int judgedNone, int baselineNone,
+                          Probes.Outcome outcome) {
+        String line() {
+            return "VERDICT " + word
+                    + " growth=" + growth
+                    + " judged_none=" + judgedNone
+                    + " baseline_none=" + baselineNone;
+        }
+    }
 
     /**
      * Read the judged population in one tree.
@@ -251,6 +258,118 @@ public final class VacuousGuard {
         return new Census(rows, byField, byWord, unguarded, missing);
     }
 
+    /** Read the same census from the tree this unit changes. No fetch or network. */
+    private static Baseline baseline(Path root) throws IOException, InterruptedException {
+        Path repo = root.toAbsolutePath().normalize();
+        String ref = baselineRef(repo);
+        Path tree = Files.createTempDirectory("vacuousguard-baseline");
+        try {
+            Path bench = tree.resolve("probes/bench.sh");
+            if (!writeGitFile(repo, ref, "probes/bench.sh", bench)) {
+                throw new IOException("baseline has no probes/bench.sh");
+            }
+            Set<String> probes = new LinkedHashSet<>();
+            for (Probes.BenchRow row : Probes.benchRows(bench)) {
+                if (row.judged()) {
+                    probes.add(row.probe());
+                }
+            }
+            for (String probe : probes) {
+                String relative = "probes/" + probe + ".java";
+                writeGitFile(repo, ref, relative, tree.resolve(relative));
+            }
+            return new Baseline(ref, census(tree));
+        } finally {
+            deleteTree(tree);
+        }
+    }
+
+    /**
+     * Pick the comparison tree from local history.
+     *
+     * <p>A pull-request checkout is a merge commit, so its first parent is the base.
+     * A local topic branch uses the already-present {@code origin/main} merge-base.
+     * Main and detached single-parent checkouts use the parent. The printed ref makes
+     * the choice observable; no remote is contacted.
+     */
+    private static String baselineRef(Path root) throws IOException, InterruptedException {
+        String ancestry = git(root, "rev-list", "--parents", "-n", "1", "HEAD");
+        String[] commits = ancestry.split("\\s+");
+        if (commits.length < 2) {
+            throw new IOException("HEAD has no readable parent");
+        }
+        if (commits.length > 2) {
+            return commits[1];
+        }
+
+        String branch = git(root, "branch", "--show-current");
+        if (!"main".equals(branch)) {
+            String mergeBase = git(root, "merge-base", "HEAD", "refs/remotes/origin/main");
+            if (!mergeBase.isEmpty() && !mergeBase.equals(commits[0])) {
+                return mergeBase;
+            }
+        }
+        return commits[1];
+    }
+
+    /** One local Git query; a missing optional ref is the empty answer. */
+    private static String git(Path root, String... args) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>();
+        command.add("git");
+        command.addAll(List.of(args));
+        Process process = new ProcessBuilder(command)
+                .directory(root.toFile())
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start();
+        byte[] stdout = process.getInputStream().readAllBytes();
+        if (process.waitFor() != 0) {
+            return "";
+        }
+        return new String(stdout, StandardCharsets.UTF_8).trim();
+    }
+
+    /** Materialize one baseline file without checking out or mutating that tree. */
+    private static boolean writeGitFile(Path root, String ref, String relative, Path target)
+            throws IOException, InterruptedException {
+        Process process = new ProcessBuilder("git", "show", ref + ":" + relative)
+                .directory(root.toFile())
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start();
+        byte[] content = process.getInputStream().readAllBytes();
+        if (process.waitFor() != 0) {
+            return false;
+        }
+        Files.createDirectories(target.getParent());
+        Files.write(target, content);
+        return true;
+    }
+
+    /** Temp trees contain only files this method wrote. Cleanup failure cannot alter a verdict. */
+    private static void deleteTree(Path root) {
+        try (var paths = Files.walk(root)) {
+            for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        } catch (IOException ignored) {
+            // The comparison already happened; an OS temp file is not a policy result.
+        }
+    }
+
+    /** Pure policy kernel, retained in selfcheck below. */
+    private static Policy policy(int current, int baseline,
+                                 boolean currentReadable, boolean baselineReadable) {
+        if (!currentReadable) {
+            return new Policy("VACUOUS_GUARD_UNREAD", 0, 1, 0, Probes.Outcome.BROKE);
+        }
+        if (!baselineReadable) {
+            return new Policy("VACUOUS_GUARD_UNCOMPARED", 0, 0, 1, Probes.Outcome.BROKE);
+        }
+        if (current > baseline) {
+            return new Policy("VACUOUS_GUARD_GREW", 1, 0, 0, Probes.Outcome.BROKE);
+        }
+        return new Policy("VACUOUS_GUARD_COUNTED", 0, 0, 0, Probes.Outcome.HELD);
+    }
+
     /**
      * Is this source's {@code NEVER_AROSE} reached because the population was EMPTY? (#1609)
      *
@@ -304,22 +423,6 @@ public final class VacuousGuard {
         return false;
     }
 
-    /**
-     * The most unguarded judged rows this tree will tolerate before the sweep goes red
-     * (#1649).
-     *
-     * <p>A CEILING and not a count. The population is a backlog under active repair —
-     * five units walked it 29 to 24 in one afternoon — so an exact pin charged every
-     * one of them an unrelated edit, and charged two of them a red lane for arithmetic
-     * about a number a sibling branch had already moved. Shrinking is free; growing
-     * costs a unit, which is the asymmetry a queue wants and a suite does not.
-     *
-     * <p>Set to the measured population at the time it was written, so it installs at
-     * ZERO tolerance for growth (#1311: a gate installs at zero, never at one). Raising
-     * it admits a new blind row and is a claim; lowering it is a ratchet nobody asked
-     * for and is also a claim. Both belong in a pull request that says which.
-     */
-    private static final int CEILING = 25;
     /** How far back a guard's condition may sit from the constant it protects (#1609). */
     private static final int EMPTY_WINDOW = 6;
 
@@ -376,6 +479,32 @@ public final class VacuousGuard {
             boolean ok = String.valueOf(got).equals(c[2]);
             System.out.printf("VACUOUS case=%-26s want=%-7s got=%-7s %s%n",
                     c[0], c[2], got, ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // THE RATCHET'S OWN NEGATIVE PROOF (#1649). The live tree is normally equal
+        // to or below its base, so without these cases replacing the growth predicate
+        // with `false` leaves every ordinary lock green. Below and equal must leave 0;
+        // the first row above the base must name GROWTH and leave 1. The two unread
+        // paths are separate words because neither is a population regression.
+        String[][] policyCases = {
+            {"policy-below", "23", "24", "true", "true", "VACUOUS_GUARD_COUNTED", "0"},
+            {"policy-equal", "24", "24", "true", "true", "VACUOUS_GUARD_COUNTED", "0"},
+            {"policy-above", "25", "24", "true", "true", "VACUOUS_GUARD_GREW", "1"},
+            {"policy-current-unread", "24", "24", "false", "true", "VACUOUS_GUARD_UNREAD", "1"},
+            {"policy-base-unread", "24", "-1", "true", "false", "VACUOUS_GUARD_UNCOMPARED", "1"},
+        };
+        for (String[] c : policyCases) {
+            Policy got = policy(Integer.parseInt(c[1]), Integer.parseInt(c[2]),
+                    Boolean.parseBoolean(c[3]), Boolean.parseBoolean(c[4]));
+            boolean ok = got.word().equals(c[5])
+                    && got.outcome().code() == Integer.parseInt(c[6]);
+            System.out.printf("VACUOUS_POLICY case=%-22s want=%-26s/%s got=%-26s/%d %s%n",
+                    c[0], c[5], c[6], got.word(), got.outcome().code(), ok ? "OK" : "BROKEN");
             if (ok) {
                 pass++;
             } else {

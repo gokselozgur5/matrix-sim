@@ -324,16 +324,19 @@ table() {
   # from the contract holding over nothing (#1373, re-measured by #1540). Two guards
   # are already in use here — a `_none=` field on the pinned line, and a NEVER_AROSE
   # that makes an empty population print a different word — and nothing counted how
-  # many rows have neither. The verdict pins the READ and carries `unguarded=` as a
-  # number beside it: converting twenty-seven probes is twenty-seven judgements about
-  # what each denominator IS, and a gate demanding them in the unit that lands the
-  # reader is a gate that gets exempted in the unit after it (#1207, #1095 -> #1311).
-  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED over_ceiling=0 ceiling=25 judged_none=0'  # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
+  # many rows have neither. `VACUOUS_CENSUS` carries that changing population unpinned;
+  # the verdict compares the same read with the branch base. Equal or smaller is green,
+  # the first blind row above the base is red, and an unread base refuses comparison.
+  # That keeps repairs free of unrelated exact-number edits without accumulating the
+  # slack a fixed historical ceiling did (#1649, #1221, #884).
+  judge VacuousGuard 'VERDICT VACUOUS_GUARD_COUNTED growth=0 judged_none=0 baseline_none=0'
+  # The empty-path reader's own cases (#1611). It shipped with a FITTED window —
   # set to four, run, BondScenario reported unguarded, its gap measured at five, set
   # to six — and no way to argue with the number. The width is falsifiable in BOTH
   # directions now: seven breaks window-just-outside, four breaks
-  # guard-else-after-positive, and the row carries the number it ran with.
-  judge VacuousGuard 'VACUOUS SELFCHECK VERDICT READER_HOLDS cases=7 failed=0 window=6' --selfcheck
+  # guard-else-after-positive, and the row carries the number it ran with. Five policy
+  # cases retain below/equal/above and both unread paths, including the red +1 case.
+  judge VacuousGuard 'VACUOUS SELFCHECK VERDICT READER_HOLDS cases=12 failed=0 window=6' --selfcheck
   # probes/README.md is read for EXISTENCE in two directions — roster_check asks
   # whether every probe has a row (#1177), counters.sh whether a row names the
   # counters its bench row pins (#1356) — and in no direction for ACCURACY. One
