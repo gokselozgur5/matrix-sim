@@ -271,9 +271,9 @@ table() {
   # reaches runtime, an omniscient receipt reducer, a new mutable root/jack surface,
   # or a Main dependency are seven separately named findings. Reads src/ only.
   judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 core_reach=0 world_holds=0 causal_reach=0 reducer_world=0 bridge_mutable=0 main_depended=0 swept_none=0'
-  # Sixteen private source trees retain every reader branch, including the D-013
+  # Nineteen private source trees retain every reader branch, including the D-013
   # jack allowlist, a multiline transport, a same-line smuggle, and comment stripping.
-  judge LatticeFence 'LATTICE SELFCHECK VERDICT READER_HOLDS cases=16 cases_none=0 failed=0' --selfcheck
+  judge LatticeFence 'LATTICE SELFCHECK VERDICT READER_HOLDS cases=19 cases_none=0 failed=0' --selfcheck
   # The row #1153 wrote in its PR body and never committed (#1162). Its `perl` substitution
   # was anchored on `judge SpeciesReach`, which was on a different branch at the time; the
   # pattern matched nothing, perl exited 0, and the tree gained an instrument that ran on
