@@ -167,10 +167,28 @@ public final class BondBook {
             }
         }
 
-        // The done-when, as a word. A book that filled and never moved
-        // again is the symptom; a book that let an edge go AND minted
-        // afterwards is the mechanism working.
+        // THE VERDICT NAMES WHICH LEG FAILED SINCE #1647. `BOOK_FOSSILIZED` was one
+        // word for three distinct failures and a red lane printing it told a reader
+        // nothing about which one — the moment a row is most needed is the moment it
+        // said least. Three fields, one per leg of the conjunction:
+        //
+        //   forgot_none=  the book let no edge go at all
+        //   fill_none=    it never reached its bound
+        //   stale_mint=   it filled and never minted again — the fossil itself
+        //
+        // EACH IS SEAL-NEUTRAL BY CONSTRUCTION, which is the whole reason this repair
+        // is possible under #1584's rule: `forgotten=` is a world population and moves
+        // with the seal (#1221), but *whether it is zero* does not, in any world where
+        // the mechanism works. A guard is not a population. That is the rule's fifth
+        // clause doing work its author (me, #1584) wrote for a different purpose.
+        //
+        // The three are NOT a restatement of each other — the conjunction is what
+        // #1645 checked and this is its mirror: no leg implies another, so each is a
+        // lock and the set of them is the word.
         boolean turnsOver = forgotten > 0 && fillTick >= 0 && lastMintTick > fillTick;
-        Probes.leave("VERDICT " + (turnsOver ? "BOOK_TURNS_OVER" : "BOOK_FOSSILIZED"), turnsOver);
-    }
+        Probes.leave("VERDICT " + (turnsOver ? "BOOK_TURNS_OVER" : "BOOK_FOSSILIZED")
+                + " forgot_none=" + (forgotten > 0 ? 0 : 1)
+                + " fill_none=" + (fillTick >= 0 ? 0 : 1)
+                + " stale_mint=" + (lastMintTick > fillTick ? 0 : 1),
+                turnsOver);    }
 }
