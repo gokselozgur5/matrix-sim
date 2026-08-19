@@ -77,11 +77,15 @@ public final class LatticeFence {
 
     /** Any reverse reference, imported or fully qualified. */
     private static final Pattern REAL_WORLD_REFERENCE =
-            Pattern.compile("\\bmatrix\\.realworld\\.");
+            Pattern.compile("\\bmatrix\\s*\\.\\s*realworld\\s*\\.");
 
     /** The neutral grammar may depend on Java and itself, never a runtime room. */
     private static final Pattern OUTSIDE_CAUSAL_REFERENCE =
-            Pattern.compile("\\bmatrix\\.(?!causal(?:\\.|\\b))[A-Za-z_]");
+            Pattern.compile("\\bmatrix\\s*\\.\\s*(?!causal\\b)[A-Za-z_]");
+
+    /** The entry point is a forbidden type/value dependency under any dot spacing. */
+    private static final Pattern MAIN_REFERENCE =
+            Pattern.compile("\\b(?:matrix\\s*\\.\\s*)?Main\\b");
 
     /** A mind-side causal participant is derived from its input/output vocabulary. */
     private static final Pattern MIND_REDUCER_VOCABULARY = Pattern.compile(
@@ -201,7 +205,7 @@ public final class LatticeFence {
             // CLAUSE 7 — nothing depends on the composition root's entry point.
             if (!file.getFileName().toString().equals("Main.java")) {
                 for (String line : code) {
-                    if (line.contains("matrix.Main") || line.matches(".*\\bMain\\s*\\..*")) {
+                    if (MAIN_REFERENCE.matcher(line).find()) {
                         mainDepended++;
                         offences.add("LATTICE main " + file + " depends on Main");
                     }
@@ -339,7 +343,7 @@ public final class LatticeFence {
             cases.add(readCase(scratch, "entities-realworld",
                     changed(clean, "matrix/entities/Avatar.java",
                             "package matrix.entities;\n"
-                                    + "import matrix.realworld.Human;\n"
+                                    + "import matrix . realworld . Human;\n"
                                     + "public final class Avatar { Human mind; }\n"),
                     reading -> oneFinding(reading, reading.entitiesReach())));
             cases.add(readCase(scratch, "core-realworld",
@@ -358,13 +362,13 @@ public final class LatticeFence {
                     changed(clean, "matrix/entities/Avatar.java",
                             "package matrix.entities;\n"
                                     + "public final class Avatar {\n"
-                                    + "  void run() { matrix.Main.run(); }\n"
+                                    + "  void run() { matrix . Main . run(); }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.mainDepended())));
             cases.add(readCase(scratch, "causal-runtime-reach",
                     changed(clean, "matrix/causal/Leak.java",
                             "package matrix.causal;\n"
-                                    + "final class Leak { matrix.realworld.Human mind; }\n"),
+                                    + "final class Leak { matrix . realworld . Human mind; }\n"),
                     reading -> oneFinding(reading, reading.causalReach())));
             cases.add(readCase(scratch, "reducer-queries-world",
                     changed(clean, "matrix/realworld/MindReducer.java",
