@@ -142,6 +142,14 @@ D-066 opens causality without opening the package fire-door. The accepted target
 
 Only `Simulation` may coordinate both sides. Matrix packages receive no `Brain` or mind reference; a mind receives no omniscient `World` query. Audit-side actual source and truth provenance stay separate from the mind-visible receipt projection: with prior mind state and that ordered projection fixed, hidden-only changes cannot alter receipt identity/order, mind state or intent. Explicit percept identities and immutable receipts/intents/actions/effects cross the root. `World` applies only committed actions or typed non-choice causes, and every Human-affecting effect carries causal origin separately from each affected Human's actor/consenter/without-choice role. All causal state and pending order that can change a future result belongs in digest, snapshot and replay. Observer presence remains causally inert.
 
+The first realized seam is `matrix.causal.CausalId` (#1686): one neutral,
+sealed vocabulary with distinct `Percept`, `Choice`, `Intent`, `Commit`,
+`Effect`, and `Cause` record domains. Each identity contains only canonical
+tick and within-domain sequence. Hidden provenance, subject names, mutable
+objects, randomness, and wall time have no representation in it; allocation
+policy remains root-owned and the percept-specific noninterference lock lands
+separately under #1693.
+
 ## Sequence — jack-in and the death rule
 
 ```mermaid
