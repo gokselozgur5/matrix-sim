@@ -2,8 +2,8 @@
 
 One row per decision; the full MADR record (Y-statement, context, drivers, options with pros and cons, outcome, confirmation) lives under [docs/adr/](adr/) — next decision starts from [adr/TEMPLATE.md](adr/TEMPLATE.md). One rule stands: a 🟡 decision is **never merged into code before being discussed together** — discussion happens in the linked thread. Records are immutable: changed minds supersede, they do not rewrite. 🟢 accepted · 🟡 proposed · ❌ rejected · 🔵 parked idea.
 
-<!-- figure: ls docs/adr/D-*.md | wc -l == 59 -->
-<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 59 -->
+<!-- figure: ls docs/adr/D-*.md | wc -l == 60 -->
+<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 60 -->
 
 | ID | Decision | Status | Gate | Thread |
 |---|---|---|---|---|
@@ -66,7 +66,8 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-059](adr/D-059-issue-tree.md) | The issue tree: work branches until a leaf is one PR | 🟢 | all | #358 |
 | [D-060](adr/D-060-the-balance-law.md) | The balance law: four quarters, and the meter that proves it | 🟢 | all | #781 |
 | [D-061](adr/D-061-merge-strategy.md) | The merge strategy is a term of the balance law: rebase, and the meter reads the button | 🟢 | all | #911 |
+| [D-062](adr/D-062-human-subject-contract.md) | The human is the subject: causal agency before character mechanics | 🟡 | Human Foundation | #1662 |
 
-**The D-055–D-057 gap.** No record was ever written for D-055, D-056 or D-057, and outside this paragraph one line in the repository names them — `grep -rn 'D-05[567]' . --exclude=DECISIONS.md` returns `probes/DocLint.java`, whose javadoc lists the three numbers to say which gap it is checking for, so the only citation of the missing numbers belongs to the probe that enforces this paragraph; nothing depends on them as decisions. The gap is a numbering artifact, not three lost or superseded decisions: numbers were being claimed ahead of their records while Season Three's dossiers were still landing, and `git log --diff-filter=A --date=iso -- docs/adr/` shows the process records arriving out of numeric order — D-059 at 2026-08-11 15:20, D-060 at 2026-08-12 04:18, D-058 at 2026-08-12 04:22 — with 055, 056 and 057 skipped and never written. The three numbers stay unissued. A D-number is a citation key used by issue threads, commit subjects and cross-record links, so reusing one would make an old citation ambiguous — D-061 took the next number and the one after it takes D-062, and this gap is closed by an explanation, never by renumbering.
+**The D-055–D-057 gap.** No record was ever written for D-055, D-056 or D-057, and outside this paragraph one line in the repository names them — `grep -rn 'D-05[567]' . --exclude=DECISIONS.md` returns `probes/DocLint.java`, whose javadoc lists the three numbers to say which gap it is checking for, so the only citation of the missing numbers belongs to the probe that enforces this paragraph; nothing depends on them as decisions. The gap is a numbering artifact, not three lost or superseded decisions: numbers were being claimed ahead of their records while Season Three's dossiers were still landing, and `git log --diff-filter=A --date=iso -- docs/adr/` shows the process records arriving out of numeric order — D-059 at 2026-08-11 15:20, D-060 at 2026-08-12 04:18, D-058 at 2026-08-12 04:22 — with 055, 056 and 057 skipped and never written. The three numbers stay unissued. A D-number is a citation key used by issue threads, commit subjects and cross-record links, so reusing one would make an old citation ambiguous — D-061 took the next number and D-062 took the one after it, and this gap is closed by an explanation, never by renumbering.
 
 **Recorded assumption (will age badly, on purpose):** `processes accept SIGTERM`. The entire trilogy is the collapse of this one line; in this codebase the collapse has a name — `DeletionRefusedException`.

@@ -138,6 +138,16 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 
 *Continuous programs, all year: the Chronicle (authored canon most days) · the Census (atlas science) · the Bench (instruments) · the Archaeology (MxO, Animatrix, comics, the games) · the Spec (data survives; closed math dies). Pacing law: gates open progressively; v1 then deepen; every season ends with its skeptic, its release, its brief.*
 
+## Human Foundation — the subject before the character
+
+*Proposed constitutional turn; tracker #1661. Further human and character runtime units wait behind one prior question: is a Human merely represented, or does the world causally pass through their experience? The gate is deliberately smaller than a psychology model or rewrite.*
+
+| Gate | Decision | Status | Thread |
+|---|---|---|---|
+| Human-subject causal contract | D-062 | 🟡 proposed | #1662 |
+
+**Decision DoD:** the Architect's verdict is recorded in #1662, then D-062, the DECISIONS index, and this gate mirror that verdict in one docs-only commit. If accepted, realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
+
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
 *The Architect's verdict on the finished miniature: the cell physics are done; nobody inside is anyone. Season Three grows characters ON TOP of the sealed engine — four ontological families (humans / machines / systems / programs), modeled separately, behaviored separately; sheets derived from identity; the meta entering the object. Named for the hotel where the film begins and where love overwrites death.*
