@@ -55,6 +55,23 @@ import java.util.regex.Pattern;
  * (#1649). If the base cannot be read, the comparison refuses to call itself a
  * pass.
  *
+ * <p>A Git checkout supplies that base from local history. A pinned archive has
+ * no history by design, so archive evidence pins BOTH inputs: extract the head
+ * archive as usual, extract the base archive separately, and set
+ * {@code VACUOUS_BASELINE_TREE} to the latter directory and
+ * {@code VACUOUS_BASELINE_REF} to its commit SHA. The ref is a caller-attested
+ * evidence label; the tree supplies the bytes. Supplying only one is unreadable,
+ * never permission to compare the head with itself. Both roots must be gitless
+ * and distinct (including through symlinks), and Git subprocesses discard inherited
+ * {@code GIT_*} selectors. The canonical fresh extraction attests provenance,
+ * immutability during the run and label-to-bytes identity; policy cannot prove those
+ * properties from an arbitrary gitless directory (Ag9, probe-contract clause 6).
+ * Checkout mode never fetches either: a local run inherits whatever
+ * {@code origin/main} the operator last fetched, and a topic must contain that exact
+ * tip. The ritual's hardline {@code git fetch origin main} followed by required
+ * {@code git rebase origin/main} is the prerequisite to evidence. Topic-merge
+ * fixtures exercise resolver topology; they do not authorize merge-based branch prep.
+ *
  * <h2>What it cannot see</h2>
  *
  * The {@code NEVER_AROSE} test is textual and therefore generous: it asks
@@ -70,6 +87,9 @@ import java.util.regex.Pattern;
  * {@code LeaveContract} called it a style preference.
  *
  * <p>Usage: {@code java -cp out:probes/out VacuousGuard [repo-root]}
+ *
+ * <p>Pinned archive usage: {@code VACUOUS_BASELINE_TREE=/path/to/base
+ * VACUOUS_BASELINE_REF=<base-sha> java -cp out:probes/out VacuousGuard}
  */
 public final class VacuousGuard {
 
@@ -136,13 +156,16 @@ public final class VacuousGuard {
         // cap accumulates slack. The only baseline that can make EVERY growth cost a
         // unit is the tree the unit is changing.
         //
-        // In a pull-request merge checkout that is HEAD's first parent. On a local work
-        // branch it is the merge-base with origin/main; on main it is HEAD's parent.
-        // No network is used. If history is absent, UNCOMPARED is red rather than a
-        // fixed number silently standing in for a comparison.
+        // Every checkout requires origin/main. A named main is that tip or one local
+        // commit on it; named topics and detached commits must CONTAIN that exact tip,
+        // not merely share a stale ancestor. This topology rule also handles GitHub's
+        // synthetic PR merge without trusting forgeable event variables. A pinned
+        // archive instead supplies an explicit base tree and ref. No network is used.
+        // Any ambiguity is UNCOMPARED and red.
         Baseline baseline;
         try {
-            baseline = baseline(root);
+            baseline = baseline(root, System.getenv("VACUOUS_BASELINE_TREE"),
+                    System.getenv("VACUOUS_BASELINE_REF"));
         } catch (IOException | InterruptedException e) {
             baseline = new Baseline("unread", null);
         }
@@ -168,6 +191,11 @@ public final class VacuousGuard {
 
     /** The Git tree a unit is measured against and the census read from it. */
     private record Baseline(String ref, Census census) {}
+
+    /** Commit graph used by the resolver's retained topology cases. */
+    private record HistoryFixture(Path repo, String mainTip, String topic,
+                                  String mainAdvanced, String freshTopic,
+                                  String topicMerge, String prMerge) {}
 
     /** The stable verdict surface: counts stay on census lines, policy stays pinned. */
     private record Policy(String word, int growth, int judgedNone, int baselineNone,
@@ -258,26 +286,43 @@ public final class VacuousGuard {
         return new Census(rows, byField, byWord, unguarded, missing);
     }
 
-    /** Read the same census from the tree this unit changes. No fetch or network. */
-    private static Baseline baseline(Path root) throws IOException, InterruptedException {
+    /** Read the same census from an explicit pinned tree or from unambiguous local history. */
+    private static Baseline baseline(Path root, String explicitTree, String explicitRef)
+            throws IOException, InterruptedException {
+        boolean hasTree = explicitTree != null && !explicitTree.isBlank();
+        boolean hasRef = explicitRef != null && !explicitRef.isBlank();
+        if (hasTree != hasRef) {
+            throw new IOException("archive baseline requires both tree and ref");
+        }
+        if (hasTree) {
+            Path current = root.toAbsolutePath().normalize();
+            if (!git(current, "rev-parse", "--git-dir").isEmpty()) {
+                throw new IOException("archive baseline is refused inside a Git checkout");
+            }
+            if (!explicitRef.matches("[0-9a-f]{40}|[0-9a-f]{64}")) {
+                throw new IOException("archive baseline ref is not a full commit SHA");
+            }
+            Path tree = Path.of(explicitTree).toAbsolutePath().normalize();
+            if (!Files.isDirectory(tree)) {
+                throw new IOException("archive baseline tree is not a readable directory");
+            }
+            if (Files.isSameFile(current, tree)) {
+                throw new IOException("archive baseline tree aliases the current tree");
+            }
+            if (!git(tree, "rev-parse", "--git-dir").isEmpty()) {
+                throw new IOException("archive baseline tree is a live Git checkout");
+            }
+            if (!Files.isReadable(tree.resolve("probes/bench.sh"))) {
+                throw new IOException("archive baseline has no probes/bench.sh");
+            }
+            return new Baseline(explicitRef, census(tree));
+        }
+
         Path repo = root.toAbsolutePath().normalize();
         String ref = baselineRef(repo);
         Path tree = Files.createTempDirectory("vacuousguard-baseline");
         try {
-            Path bench = tree.resolve("probes/bench.sh");
-            if (!writeGitFile(repo, ref, "probes/bench.sh", bench)) {
-                throw new IOException("baseline has no probes/bench.sh");
-            }
-            Set<String> probes = new LinkedHashSet<>();
-            for (Probes.BenchRow row : Probes.benchRows(bench)) {
-                if (row.judged()) {
-                    probes.add(row.probe());
-                }
-            }
-            for (String probe : probes) {
-                String relative = "probes/" + probe + ".java";
-                writeGitFile(repo, ref, relative, tree.resolve(relative));
-            }
+            materializeCensusTree(repo, ref, tree);
             return new Baseline(ref, census(tree));
         } finally {
             deleteTree(tree);
@@ -285,40 +330,95 @@ public final class VacuousGuard {
     }
 
     /**
-     * Pick the comparison tree from local history.
+     * Pick the comparison tree from local history without guessing checkout identity.
      *
-     * <p>A pull-request checkout is a merge commit, so its first parent is the base.
-     * A local topic branch uses the already-present {@code origin/main} merge-base.
-     * Main and detached single-parent checkouts use the parent. The printed ref makes
-     * the choice observable; no remote is contacted.
+     * <p>Every checkout requires the already-present {@code origin/main}. Named main
+     * may be that ref itself or one local commit whose first parent is that ref; named
+     * topics use their merge-base. Detached checkouts need no forgeable event metadata:
+     * origin/main itself uses its parent, while every other accepted head uses a
+     * non-self merge-base. An ancestor, unrelated graph or divergent named main refuses
+     * comparison. No remote is contacted.
      */
-    private static String baselineRef(Path root) throws IOException, InterruptedException {
+    private static String baselineRef(Path root)
+            throws IOException, InterruptedException {
         String ancestry = git(root, "rev-list", "--parents", "-n", "1", "HEAD");
         String[] commits = ancestry.split("\\s+");
         if (commits.length < 2) {
             throw new IOException("HEAD has no readable parent");
         }
-        if (commits.length > 2) {
-            return commits[1];
+        String head = commits[0];
+        String firstParent = commits[1];
+        String remoteBase = git(root, "rev-parse", "refs/remotes/origin/main");
+        if (remoteBase.isEmpty()) {
+            throw new IOException("checkout has no readable origin/main");
+        }
+        String branch = git(root, "branch", "--show-current");
+        if (!branch.isEmpty()) {
+            return baselineForBranch(root, branch, head, firstParent, remoteBase);
         }
 
-        String branch = git(root, "branch", "--show-current");
-        if (!"main".equals(branch)) {
-            String mergeBase = git(root, "merge-base", "HEAD", "refs/remotes/origin/main");
-            if (!mergeBase.isEmpty() && !mergeBase.equals(commits[0])) {
-                return mergeBase;
+        if (head.equals(remoteBase)) {
+            return firstParent;
+        }
+        String mergeBase = git(root, "merge-base", head, remoteBase);
+        if (!mergeBase.equals(remoteBase)) {
+            throw new IOException("detached checkout does not contain local origin/main");
+        }
+        return mergeBase;
+    }
+
+    /** Main changes its known tip; every topic changes its distinct merge-base with main. */
+    private static String baselineForBranch(Path root, String branch, String head,
+                                            String firstParent, String remoteBase)
+            throws IOException, InterruptedException {
+        if (branch.equals("main")) {
+            if (head.equals(remoteBase)) {
+                return firstParent;
+            }
+            if (firstParent.equals(remoteBase)) {
+                return remoteBase;
+            }
+            throw new IOException("named main diverges from local origin/main");
+        }
+        String mergeBase = git(root, "merge-base", head, remoteBase);
+        if (!mergeBase.equals(remoteBase)) {
+            throw new IOException("topic checkout does not contain local origin/main");
+        }
+        return mergeBase;
+    }
+
+    /** Materialize exactly the files the census reads, without checking out the ref. */
+    private static void materializeCensusTree(Path repo, String ref, Path tree)
+            throws IOException, InterruptedException {
+        Path bench = tree.resolve("probes/bench.sh");
+        if (!writeGitFile(repo, ref, "probes/bench.sh", bench)) {
+            throw new IOException("baseline has no probes/bench.sh");
+        }
+        Set<String> probes = new LinkedHashSet<>();
+        for (Probes.BenchRow row : Probes.benchRows(bench)) {
+            if (row.judged()) {
+                probes.add(row.probe());
             }
         }
-        return commits[1];
+        for (String probe : probes) {
+            String relative = "probes/" + probe + ".java";
+            writeGitFile(repo, ref, relative, tree.resolve(relative));
+        }
+    }
+
+    /** One Git process, insulated from caller selectors that can redirect its repository. */
+    private static ProcessBuilder gitProcess(Path root, String... args) {
+        List<String> command = new ArrayList<>();
+        command.add("git");
+        command.addAll(List.of(args));
+        ProcessBuilder builder = new ProcessBuilder(command).directory(root.toFile());
+        builder.environment().keySet().removeIf(key -> key.startsWith("GIT_"));
+        return builder;
     }
 
     /** One local Git query; a missing optional ref is the empty answer. */
     private static String git(Path root, String... args) throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>();
-        command.add("git");
-        command.addAll(List.of(args));
-        Process process = new ProcessBuilder(command)
-                .directory(root.toFile())
+        Process process = gitProcess(root, args)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start();
         byte[] stdout = process.getInputStream().readAllBytes();
@@ -328,11 +428,153 @@ public final class VacuousGuard {
         return new String(stdout, StandardCharsets.UTF_8).trim();
     }
 
+    /** A Git mutation used only inside the selfcheck's private fixture repository. */
+    private static void fixtureGit(Path root, String... args)
+            throws IOException, InterruptedException {
+        Process process = gitProcess(root, args)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start();
+        if (process.waitFor() != 0) {
+            throw new IOException("fixture git command failed: " + String.join(" ", args));
+        }
+    }
+
+    /** Build the graph that distinguishes main, topics, local merges and PR merges. */
+    private static HistoryFixture historyFixture(Path tmp)
+            throws IOException, InterruptedException {
+        Path repo = tmp.resolve("history");
+        Files.createDirectories(repo.resolve("probes"));
+        fixtureGit(repo, "-c", "init.defaultBranch=main", "init", "-q");
+        Files.createDirectories(repo.resolve(".git/no-hooks"));
+        fixtureGit(repo, "config", "user.name", "VacuousGuard selfcheck");
+        fixtureGit(repo, "config", "user.email", "vacuousguard@invalid");
+        fixtureGit(repo, "config", "commit.gpgsign", "false");
+        fixtureGit(repo, "config", "merge.gpgsign", "false");
+        fixtureGit(repo, "config", "core.hooksPath", ".git/no-hooks");
+
+        Files.writeString(repo.resolve("probes/bench.sh"),
+                "  judge BaseBlind 'VERDICT BASE_BLIND'\n", StandardCharsets.UTF_8);
+        Files.writeString(repo.resolve("probes/BaseBlind.java"),
+                "public final class BaseBlind {}\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "probes");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: base census");
+
+        Files.writeString(repo.resolve("main-note"), "tip\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "main-note");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: main tip");
+        String mainTip = git(repo, "rev-parse", "HEAD");
+
+        fixtureGit(repo, "checkout", "-q", "-b", "topic");
+        Files.writeString(repo.resolve("probes/bench.sh"),
+                "  judge BaseBlind 'VERDICT BASE_BLIND'\n"
+                        + "  judge NewBlind 'VERDICT NEW_BLIND'\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(repo.resolve("probes/NewBlind.java"),
+                "public final class NewBlind {}\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "probes");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: blind row grows");
+        Files.writeString(repo.resolve("topic-note"), "tail\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "topic-note");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: topic tail");
+        String topic = git(repo, "rev-parse", "HEAD");
+
+        fixtureGit(repo, "checkout", "-q", "main");
+        Files.writeString(repo.resolve("main-later"), "advanced\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "main-later");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: main advances");
+        String mainAdvanced = git(repo, "rev-parse", "HEAD");
+        fixtureGit(repo, "update-ref", "refs/remotes/origin/main", mainAdvanced);
+
+        // A topic rebased onto the current local main: unlike `topic` above, its
+        // merge-base is exactly origin/main and the +1 comparison is admissible.
+        fixtureGit(repo, "checkout", "-q", "-b", "fresh-topic", mainAdvanced);
+        Files.writeString(repo.resolve("probes/bench.sh"),
+                "  judge BaseBlind 'VERDICT BASE_BLIND'\n"
+                        + "  judge NewBlind 'VERDICT NEW_BLIND'\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(repo.resolve("probes/NewBlind.java"),
+                "public final class NewBlind {}\n", StandardCharsets.UTF_8);
+        fixtureGit(repo, "add", "probes");
+        fixtureGit(repo, "commit", "-q", "-m", "fixture: fresh topic grows");
+        String freshTopic = git(repo, "rev-parse", "HEAD");
+
+        fixtureGit(repo, "checkout", "-q", "-b", "topic-merge", topic);
+        fixtureGit(repo, "merge", "-q", "--no-ff", "main", "-m", "fixture: main into topic");
+        String topicMerge = git(repo, "rev-parse", "HEAD");
+
+        fixtureGit(repo, "checkout", "-q", "-b", "pr-checkout", mainAdvanced);
+        fixtureGit(repo, "merge", "-q", "--no-ff", topic, "-m", "fixture: synthetic pr merge");
+        String prMerge = git(repo, "rev-parse", "HEAD");
+        return new HistoryFixture(repo, mainTip, topic, mainAdvanced, freshTopic,
+                topicMerge, prMerge);
+    }
+
+    /** Exercise the real resolver and materializer, then the policy they feed. */
+    private static boolean baselineCase(String name, Path root,
+                                        String explicitTree, String explicitRef,
+                                        String wantRef, int wantCurrent, int wantBase,
+                                        String wantWord, int wantExit)
+            throws IOException, InterruptedException {
+        Census current = census(root);
+        Baseline got = null;
+        try {
+            got = baseline(root, explicitTree, explicitRef);
+        } catch (IOException ignored) {
+            // Unreadable is an asserted result in the fail-closed cases below.
+        }
+        int baseCount = got == null ? -1 : got.census().unguarded().size();
+        Policy policy = policy(current.unguarded().size(), baseCount,
+                current.missing().isEmpty() && !current.rows().isEmpty(),
+                got != null && got.census().missing().isEmpty() && !got.census().rows().isEmpty());
+        boolean refOk = wantRef == null ? got == null : got != null && got.ref().equals(wantRef);
+        String wantLine = "VERDICT " + wantWord
+                + " growth=" + (wantWord.equals("VACUOUS_GUARD_GREW") ? 1 : 0)
+                + " judged_none=0 baseline_none=" + (wantBase < 0 ? 1 : 0);
+        boolean lineOk = policy.line().equals(wantLine);
+        boolean ok = current.unguarded().size() == wantCurrent
+                && baseCount == wantBase
+                && policy.word().equals(wantWord)
+                && policy.outcome().code() == wantExit
+                && refOk && lineOk;
+        System.out.printf("VACUOUS_BASECASE case=%-25s want=%-26s/%d got=%-26s/%d"
+                        + " current=%d base=%s ref=%s line=%s %s%n",
+                name, wantWord, wantExit, policy.word(), policy.outcome().code(),
+                current.unguarded().size(), baseCount < 0 ? "unread" : String.valueOf(baseCount),
+                refOk ? "OK" : "WRONG", lineOk ? "OK" : "WRONG", ok ? "OK" : "BROKEN");
+        return ok;
+    }
+
+    /** Extract the exact supported evidence form: a Git archive with no .git directory. */
+    private static void extractGitArchive(Path repo, String ref, Path target)
+            throws IOException, InterruptedException {
+        Files.createDirectories(target);
+        ProcessBuilder archiveBuilder = gitProcess(repo, "archive", ref)
+                .redirectError(ProcessBuilder.Redirect.DISCARD);
+        ProcessBuilder extractBuilder = new ProcessBuilder("tar", "-x", "-C", target.toString())
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD);
+        // The host may export a locale its tar does not have; archive bytes need no locale.
+        archiveBuilder.environment().put("LC_ALL", "C");
+        archiveBuilder.environment().put("LANG", "C");
+        extractBuilder.environment().put("LC_ALL", "C");
+        extractBuilder.environment().put("LANG", "C");
+        Process archive = archiveBuilder.start();
+        Process extract = extractBuilder.start();
+        try (var source = archive.getInputStream(); var sink = extract.getOutputStream()) {
+            source.transferTo(sink);
+        }
+        int archiveExit = archive.waitFor();
+        int extractExit = extract.waitFor();
+        if (archiveExit != 0 || extractExit != 0 || Files.exists(target.resolve(".git"))) {
+            throw new IOException("fixture archive extraction failed");
+        }
+    }
+
     /** Materialize one baseline file without checking out or mutating that tree. */
     private static boolean writeGitFile(Path root, String ref, String relative, Path target)
             throws IOException, InterruptedException {
-        Process process = new ProcessBuilder("git", "show", ref + ":" + relative)
-                .directory(root.toFile())
+        Process process = gitProcess(root, "show", ref + ":" + relative)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start();
         byte[] content = process.getInputStream().readAllBytes();
@@ -440,7 +682,7 @@ public final class VacuousGuard {
      * read as unguarded, so widening the number breaks a case rather than quietly changing
      * a census.
      */
-    private static int selfcheck(Path tmp) throws IOException {
+    private static int selfcheck(Path tmp) throws IOException, InterruptedException {
         int pass = 0;
         int fail = 0;
         String never = "Probes.Outcome." + "NEVER_" + "AROSE";
@@ -505,6 +747,160 @@ public final class VacuousGuard {
                     && got.outcome().code() == Integer.parseInt(c[6]);
             System.out.printf("VACUOUS_POLICY case=%-22s want=%-26s/%s got=%-26s/%d %s%n",
                     c[0], c[5], c[6], got.word(), got.outcome().code(), ok ? "OK" : "BROKEN");
+            if (ok) {
+                pass++;
+            } else {
+                fail++;
+            }
+        }
+
+        // THE RESOLVER AND MATERIALIZER, NOT A PURE MODEL OF THEM. The first ratchet
+        // suite exercised `policy` only; a named topic without origin/main therefore
+        // fell back to HEAD^, and a local topic merge was mistaken for GitHub's merge
+        // checkout. Both compared the synthetic +1 backlog (2) with itself (2) and
+        // printed COUNTED. These fixtures commit that exact topology in a private repo.
+        HistoryFixture history = historyFixture(tmp);
+        Path repo = history.repo();
+        List<Boolean> baselineCases = new ArrayList<>();
+
+        fixtureGit(repo, "checkout", "-q", "main");
+        baselineCases.add(baselineCase("named-main", repo,
+                null, null, history.mainTip(), 1, 1, "VACUOUS_GUARD_COUNTED", 0));
+
+        // Main may be exactly origin/main or one local commit whose first parent is it.
+        // A different first parent is a renamed/diverged topic, not main evidence.
+        fixtureGit(repo, "checkout", "-q", "-B", "main", history.prMerge());
+        baselineCases.add(baselineCase("named-main-one-local", repo,
+                null, null, history.mainAdvanced(), 2, 1, "VACUOUS_GUARD_GREW", 1));
+        fixtureGit(repo, "checkout", "-q", "-B", "main", history.topicMerge());
+        baselineCases.add(baselineCase("named-main-diverged", repo,
+                null, null, null, 2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        fixtureGit(repo, "checkout", "-q", "-B", "main", history.mainAdvanced());
+
+        // `topic` forked before main advanced. A stale merge-base cannot stand in for
+        // the current local main; required hardline rebase is a prerequisite.
+        fixtureGit(repo, "checkout", "-q", "topic");
+        baselineCases.add(baselineCase("named-topic-stale", repo,
+                null, null, null, 2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+
+        fixtureGit(repo, "checkout", "-q", "fresh-topic");
+        baselineCases.add(baselineCase("named-topic-fresh", repo,
+                null, null, history.mainAdvanced(), 2, 1, "VACUOUS_GUARD_GREW", 1));
+
+        // HEAD^ already contains NewBlind here. Removing origin/main must be unreadable,
+        // not a silent 2-versus-2 comparison against that parent.
+        fixtureGit(repo, "checkout", "-q", "topic");
+        fixtureGit(repo, "update-ref", "-d", "refs/remotes/origin/main");
+        baselineCases.add(baselineCase("topic-no-origin", repo,
+                null, null, null, 2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        fixtureGit(repo, "update-ref", "refs/remotes/origin/main", history.mainAdvanced());
+
+        // First parent is the topic (and already reads 2); merge-base with main reads 1.
+        fixtureGit(repo, "checkout", "-q", "topic-merge");
+        baselineCases.add(baselineCase("named-topic-merge", repo,
+                null, null, history.mainAdvanced(), 2, 1, "VACUOUS_GUARD_GREW", 1));
+
+        fixtureGit(repo, "checkout", "-q", "--detach", history.prMerge());
+        baselineCases.add(baselineCase("detached-pr-merge", repo,
+                null, null, history.mainAdvanced(), 2, 1, "VACUOUS_GUARD_GREW", 1));
+
+        fixtureGit(repo, "checkout", "-q", "--detach", history.topicMerge());
+        baselineCases.add(baselineCase("detached-topic-merge", repo,
+                null, null, history.mainAdvanced(), 2, 1, "VACUOUS_GUARD_GREW", 1));
+
+        fixtureGit(repo, "checkout", "-q", "--detach", history.mainAdvanced());
+        baselineCases.add(baselineCase("detached-main-tip", repo,
+                null, null, history.mainTip(), 1, 1, "VACUOUS_GUARD_COUNTED", 0));
+
+        fixtureGit(repo, "checkout", "-q", "--detach", history.topic());
+        baselineCases.add(baselineCase("detached-topic-stale", repo,
+                null, null, null, 2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+
+        fixtureGit(repo, "checkout", "-q", "--detach", history.mainTip());
+        baselineCases.add(baselineCase("detached-main-ancestor", repo,
+                null, null, null, 1, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+
+        // THE ORIGINAL SHALLOW FAILURES AS CHECKOUTS, NOT ONLY ABSENT-REF MODELS.
+        // Depth 1 main has no parent. Depth 2 topic contains the +1 commit and its
+        // unchanged child but not origin/main: the old fallback compared 2 with 2.
+        String fixtureUrl = repo.toUri().toASCIIString();
+        Path shallowMain = tmp.resolve("shallow-main");
+        fixtureGit(repo, "clone", "-q", "--depth", "1", "--single-branch",
+                "--branch", "main", fixtureUrl, shallowMain.toString());
+        baselineCases.add(baselineCase("shallow-depth1-main", shallowMain,
+                null, null, null,
+                1, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        Path shallowTopic = tmp.resolve("shallow-topic");
+        fixtureGit(repo, "clone", "-q", "--depth", "2", "--single-branch",
+                "--branch", "topic", fixtureUrl, shallowTopic.toString());
+        baselineCases.add(baselineCase("shallow-depth2-topic", shallowTopic,
+                null, null, null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+
+        // A git archive cannot derive its base: two pinned trees are the complete input.
+        // Extract the supported Ag9 form itself — not a hand-built lookalike. The ref is
+        // identity for evidence; the separate tree supplies the bytes, and neither has
+        // a .git directory from which the resolver could accidentally borrow an answer.
+        Path headArchive = tmp.resolve("head-archive");
+        Path baseArchive = tmp.resolve("base-archive");
+        extractGitArchive(repo, history.topic(), headArchive);
+        extractGitArchive(repo, history.mainTip(), baseArchive);
+        baselineCases.add(baselineCase("archive-pair", headArchive,
+                baseArchive.toString(), history.mainTip(), history.mainTip(),
+                2, 1, "VACUOUS_GUARD_GREW", 1));
+        baselineCases.add(baselineCase("archive-no-base", headArchive,
+                null, null, null, 2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        baselineCases.add(baselineCase("archive-tree-only", headArchive,
+                baseArchive.toString(), null, null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        baselineCases.add(baselineCase("archive-ref-only", headArchive,
+                null, history.mainTip(), null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        baselineCases.add(baselineCase("archive-short-ref", headArchive,
+                baseArchive.toString(), "deadbeef", null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        baselineCases.add(baselineCase("archive-base-is-checkout", headArchive,
+                repo.toString(), history.mainTip(), null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        baselineCases.add(baselineCase("archive-base-is-head", headArchive,
+                headArchive.toString(), history.mainTip(), null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+        Path headArchiveAlias = tmp.resolve("head-archive-alias");
+        Files.createSymbolicLink(headArchiveAlias, headArchive);
+        baselineCases.add(baselineCase("archive-base-is-head-alias", headArchive,
+                headArchiveAlias.toString(), history.mainTip(), null,
+                2, -1, "VACUOUS_GUARD_UNCOMPARED", 1));
+
+        // An inherited environment must not override a real checkout by pointing the
+        // baseline tree at the head itself. The nested GIT_DIR case below exercises
+        // this refusal and the selector sanitization together.
+        fixtureGit(repo, "checkout", "-q", "topic");
+
+        // Git repository selectors are inherited process environment, not evidence.
+        // Without sanitizing them, an invalid GIT_DIR makes this live checkout look
+        // gitless and the already-regressed head archive false-greens as its baseline.
+        ProcessBuilder spoofBuilder = new ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                "-cp", System.getProperty("java.class.path"),
+                VacuousGuard.class.getName(), repo.toString());
+        spoofBuilder.environment().put("GIT_DIR", tmp.resolve("spoofed-missing.git").toString());
+        spoofBuilder.environment().put("VACUOUS_BASELINE_TREE", headArchive.toString());
+        spoofBuilder.environment().put("VACUOUS_BASELINE_REF", history.topic());
+        Process spoof = spoofBuilder.redirectErrorStream(true).start();
+        String spoofOutput = new String(spoof.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8);
+        int spoofExit = spoof.waitFor();
+        boolean spoofOk = spoofExit == 1
+                && spoofOutput.contains("VACUOUS_BASELINE ref=unread unguarded=unread delta=unread")
+                && spoofOutput.contains("VERDICT VACUOUS_GUARD_UNCOMPARED"
+                        + " growth=0 judged_none=0 baseline_none=1");
+        System.out.printf("VACUOUS_SUBPROCESS case=%-25s want=%-26s/%d got=%s/%d %s%n",
+                "git-dir-spoof-refused", "VACUOUS_GUARD_UNCOMPARED", 1,
+                spoofOk ? "VACUOUS_GUARD_UNCOMPARED" : "WRONG", spoofExit,
+                spoofOk ? "OK" : "BROKEN");
+        baselineCases.add(spoofOk);
+
+        for (boolean ok : baselineCases) {
             if (ok) {
                 pass++;
             } else {
