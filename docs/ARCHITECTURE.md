@@ -161,7 +161,18 @@ that audit with the separately immutable visible receipt. Effects carry an
 exclusive choice/non-choice origin and affected-Human participation separately;
 settlement names its owner and subjects. All collection components are copied,
 all references are neutral IDs/value tokens, and no carrier can hold either
-world or a mind object. This is grammar only: #1688 still owns phase execution.
+world or a mind object. The carrier grammar itself contains no behavior.
+
+The third seam is the root-owned causal spine (#1688). `CausalPhase` names the
+nine hand-overs without owning a world, callback, cursor, or record;
+`Simulation` alone advances them. Every tick enters snapshot before either
+world advances, then delivery, mind reduction, proposal, validation/commit,
+effect and settlement hooks, then digest and observation as two separate
+phases. The root refuses the first missing, repeated, or reordered hand-over
+and exposes only an immutable last-completed phase receipt. These hooks are
+empty in this seam, so the film, random stream, digest and output bytes remain
+unchanged; later leaves put behavior behind one named hook at a time rather
+than creating another scheduler beside the root.
 
 ## Sequence — jack-in and the death rule
 
