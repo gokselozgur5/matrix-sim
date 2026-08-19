@@ -146,11 +146,13 @@ Build units: #130–#136 (region map + ATTN line, COLD cadence stretch, true par
 |---|---|---|---|
 | Human-subject causal contract | D-062 | 🟢 accepted | #1662 |
 | Quality admits; value leads; activity breaks ties | D-063 | 🟢 accepted | #1668 |
-| Reciprocal debt: resistance belongs to mind; breach belongs to actor | D-064 | 🟡 proposed | #1670 |
+| Reciprocal debt: resistance belongs to mind; breach belongs to actor | D-064 | 🟢 accepted | #1670 |
 
 **Decision DoD:** the Architect's acceptance is recorded in #1662, and D-062, the DECISIONS index, and this gate mirror it through docs-only PR #1666. Realization is decomposed under D-059 before any Java build unit is cut. Its future proof begins with an ordinary resident's full causal day — truth → situated perception → meaning/belief/memory → needs/values/goals → intent → committed consequence → biography → future perception — not with a named hero or an operator string.
 
 **Process-decision DoD:** the Architect's quality-first, numbers-underneath verdict is recorded in #1668; D-063, the DECISIONS index and this gate mirror it in one acceptance commit. D-054's numeric floor is superseded; D-060 becomes an advisory tie-breaker among comparably valuable, independently justified ready units after human/world and dependency value; D-039/D-059 and rebase remain on coherence, falsifiability and history grounds. No contribution total admits work, outranks value or satisfies this gate.
+
+**Debt-decision DoD:** the Architect's two-ledger verdict is recorded in #1670; D-064, the DECISIONS index, this gate and D-022's reciprocal disposition agree. Epistemic resistance belongs to the persistent Human and changes only through received evidence plus mind revision. Contract debt belongs to the accountable actor or institution toward named subjects and clauses and changes only through named breach/repair entries. Film residue and the anomaly ledger retain their historical meanings. Runtime realization waits for D-065/D-066 and the exact child decomposition.
 
 ## Season Three (D-041, accepted 2026-08-12) — the character layer
 
