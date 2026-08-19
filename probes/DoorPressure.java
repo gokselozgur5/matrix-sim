@@ -194,10 +194,22 @@ public final class DoorPressure {
                 fact("no_grant_without_a_pod", rackFull.door.granted() == 0),
                 fact("no_grant_without_a_slot", starved.door.granted() == 0));
 
-        System.out.println("DOORPRESSURE scenarios=" + scenarios + " anomalies=" + anomalies);
-        Probes.leave(anomalies == 0
-                ? "VERDICT DOOR_PRESSURE_HELD" : "VERDICT DOOR_PRESSURE_BROKEN", anomalies == 0);
-    }
+        // `scenarios=` AND `anomalies=` RIDE THE VERDICT SINCE #1640, and the census
+        // line that carried them is gone rather than duplicated (#1624, #1633). This
+        // is `PodOptional`'s repair (#1584) applied to its twin: one counter idiom,
+        // one census line, four named scenarios an author chose rather than a world
+        // produced — so `anomalies=` is the field the word is about and `scenarios=`
+        // is the SUITE's own count, exact and not a floor, because each of the four is
+        // a named pressure and an exchange is a real change of subject (#1615).
+        //
+        // THE IDIOM HAS FIVE CARRIERS, measured rather than guessed (#1640): grep
+        // `anomalies=" + anomalies` over probes/ finds this, `PodOptional`,
+        // `PirateSever`, `FleetLines` and `HullRoster`. That number is why the
+        // remaining backlog is not twenty-two arguments — three of it is this one,
+        // already made twice.
+        Probes.leave((anomalies == 0 ? "VERDICT DOOR_PRESSURE_HELD" : "VERDICT DOOR_PRESSURE_BROKEN")
+                + " scenarios=" + scenarios + " anomalies=" + anomalies,
+                anomalies == 0);    }
 
     /**
      * The premise, measured rather than asserted: what the canonical film does
