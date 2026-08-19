@@ -230,7 +230,7 @@ table() {
   # reached main three times (#806, #948, #1056). Same shape as its neighbour:
   # a pure function walked over the ordinals, no universe, both values of the
   # loss flag at every ordinal that can carry one.
-  judge FleetLines   'VERDICT FLEET_LINES_TRUE'  3000
+  judge FleetLines   'VERDICT FLEET_LINES_TRUE anomalies=0 swept_none=0'  3000
   judge DistrictNeutral 'VERDICT DISTRICTS_DRAW_NOTHING'
   # Seed 42 explicitly rather than $TICKS: this probe's only argument is a
   # seed, and its cost is one boot, not an arc. Judged rather than run — the
