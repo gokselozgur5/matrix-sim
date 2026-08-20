@@ -30,22 +30,30 @@ public final class IdiomCensus {
         matrix.Streams.utf8();
         Path root = Path.of(args.length > 0 ? args[0] : "probes");
         List<String> carriers = new ArrayList<>();
+        int scanned = 0;
         try (var files = Files.list(root)) {
             for (Path f : files.sorted().toList()) {
                 String name = f.getFileName().toString();
                 if (!name.endsWith(".java") || name.equals("IdiomCensus.java")) {
                     continue;
                 }
+                scanned++;
                 if (printsAnomalies(f)) {
                     carriers.add(name.substring(0, name.length() - ".java".length()));
                 }
             }
         }
         int grepFloor = 5;
+        // A census of nothing and a census that found nothing print the same
+        // "carriers=0" — this line's own subject, so it needs the guard it
+        // would otherwise be reporting on (#900, #970, #1207).
+        int scannedNone = scanned == 0 ? 1 : 0;
         System.out.println("IDIOM_CENSUS carriers=" + carriers.size()
-                + " grep_floor=" + grepFloor + " at " + String.join(",", carriers));
-        Probes.leave("IDIOM_CENSUS carriers=" + carriers.size() + " grep_floor=" + grepFloor,
-                carriers.size() >= grepFloor);
+                + " grep_floor=" + grepFloor + " scanned_none=" + scannedNone
+                + " at " + String.join(",", carriers));
+        Probes.leave("IDIOM_CENSUS carriers=" + carriers.size() + " grep_floor=" + grepFloor
+                + " scanned_none=" + scannedNone,
+                scanned > 0 && carriers.size() >= grepFloor);
     }
 
     /** Does this source print {@code anomalies=} anywhere, comments stripped (#1586)? */
