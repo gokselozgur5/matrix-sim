@@ -176,7 +176,7 @@ table() {
   judge DoorPressure 'VERDICT DOOR_PRESSURE_HELD scenarios=4 anomalies=0' "$TICKS"
   # A static text census, not a universe: no seed, no tick budget, so it takes
   # neither and is not doubled at seed 7 (#1642).
-  judge IdiomCensus  'IDIOM_CENSUS carriers=6 grep_floor=5'
+  judge IdiomCensus  'IDIOM_CENSUS carriers=6 grep_floor=5 scanned_none=0'
 
   # The second universe (#1094). A PROPERTY row claims something true of every world —
   # a contract held, a breach count of zero — and one seed cannot support that claim: three
