@@ -149,12 +149,41 @@ public final class ChronosLog {
         StringBuilder canon = new StringBuilder();
         for (Field f : fields) {
             int m = f.getModifiers();
-            if (Modifier.isPublic(m) && Modifier.isStatic(m) && Modifier.isFinal(m)) {
-                try {
-                    canon.append(f.getName()).append('=').append(f.get(null)).append('\n');
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Config refused reflection: " + f.getName(), e);
-                }
+            if (!Modifier.isPublic(m) || !Modifier.isStatic(m) || !Modifier.isFinal(m)) {
+                continue;
+            }
+            // SELECTION IS A CONTRACT NOW, NOT AN ACCIDENT OF MODIFIER (#790).
+            // `public static final` says how a field is declared; it does not
+            // say whether the field describes the world. `HUNT_VERIFY` reads a
+            // JVM system property, so while it was hashed one build at one seed
+            // had two physics and the fold refused its own recording. A field
+            // opts out by CLAIMING it cannot change a result, with the reason
+            // required — an opt-out that can be spent silently reopens this
+            // hole one field later.
+            NotPhysics excluded = f.getAnnotation(NotPhysics.class);
+            if (excluded != null) {
+                continue;
+            }
+            // AND THE FAILURE MODE IS LOUD (#790). `append(Object)` calls
+            // toString(), which for a type that does not override it is
+            // `ClassName@1b6d3586` — an identity hash that differs between two
+            // runs of the same build. That would not refuse a fold; it would
+            // refuse EVERY fold, intermittently, with a fingerprint that is
+            // not a function of anything. Every field here is a primitive
+            // today, so this guard has never fired and is preventive: the next
+            // `public static final int[]` is caught at the boundary instead of
+            // silently making the universe unidentifiable.
+            Class<?> type = f.getType();
+            if (!type.isPrimitive() && type != String.class && !type.isEnum()) {
+                throw new IllegalStateException("Config." + f.getName() + " is a "
+                        + type.getName() + ", which has no canonical text form — the physics"
+                        + " fingerprint takes primitives, Strings and enums, or a field must"
+                        + " declare @NotPhysics and say why");
+            }
+            try {
+                canon.append(f.getName()).append('=').append(f.get(null)).append('\n');
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Config refused reflection: " + f.getName(), e);
             }
         }
         byte[] digest = sha256().digest(canon.toString().getBytes(StandardCharsets.UTF_8));
