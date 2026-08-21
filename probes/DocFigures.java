@@ -76,11 +76,21 @@ public final class DocFigures {
             // reading only the documents that already have markers cannot notice a
             // document that has none. `docs/DECISIONS.md` carries the sharpest
             // countable pair in the tree — a table of decisions beside the records
-            // on disk — and had never been checked. `ROADMAP.md` and
-            // `docs/ARCHITECTURE.md` stay out on purpose: #1342 drew the boundary,
-            // and a marker is for a number whose PRODUCER is a command, not for
-            // every integer somebody wrote down.
+            // on disk — and had never been checked. `ROADMAP.md` stays out on
+            // purpose: #1342 drew the boundary, and a marker is for a number whose
+            // PRODUCER is a command, not for every integer somebody wrote down.
             "docs/DECISIONS.md", "PRINCIPLES.md",
+            // #798: `docs/ARCHITECTURE.md` joins them, and it joins them BY #1342's
+            // own bar rather than against it. The census chapter's fourth law does
+            // not merely state an integer — it writes the command that produces it
+            // and instructs a contributor to run it. That is the exact shape a
+            // marker is for. It was also the shape that rotted: the law said 6, the
+            // command printed 9, and it had been wrong since #786 opened `docs/spec/`
+            // as a sanctioned kind without teaching the fence. A fence nobody runs
+            // goes stale silently; a fence that cries wolf is retired quietly by
+            // everyone. This document is admitted for the one law in it whose
+            // producer is a command, not for the integers around it.
+            "docs/ARCHITECTURE.md",
     };
 
     public static void main(String[] args) throws Exception {
