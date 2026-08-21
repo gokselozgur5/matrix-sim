@@ -526,7 +526,7 @@ table() {
   # the four failure verdicts are exercised here or nowhere. When the fixture
   # lands, this row gains a sibling that runs the lane for real.
   judge NeutralDiff  'SELFCHECK VERDICT REFEREE_HOLDS' --selfcheck
-  run   SeedAtlas    1 5 "$TICKS"
+  judge SeedAtlas    'VERDICT PLAYBOOK_EMPTY n=5' 1 5 "$TICKS"
 }
 
 PROBES=0 JUDGED=0 PASS=0 FAIL=0 RAN=0 UNEXERCISED=0
