@@ -294,7 +294,16 @@ public final class Config {
      * divergence — object identity, not equals. Ships false; equivalence
      * evidence runs flip it. Results never depend on it: the ring is exact,
      * the referee only proves it.
+     *
+     * <p>OUTSIDE THE PHYSICS FINGERPRINT (#790). Its value comes from a JVM
+     * system property, so it is a property of the invocation and not of the
+     * build. While it was hashed, one build at one seed produced two universes
+     * — running the referee changed the identity of the world it was refereeing,
+     * and the fold refused its own recording. The sentence above is what makes
+     * the exclusion legitimate rather than convenient: results never depend on
+     * it, so it cannot be physics.
      */
+    @NotPhysics("read from -Dmatrix.huntVerify, so it describes the invocation, not the build")
     public static final boolean HUNT_VERIFY = Boolean.getBoolean("matrix.huntVerify");
     public static final int FLOCK_NEIGHBOR_RADIUS_CM = 8_000;
     public static final int FLOCK_SEPARATION_CM = 1_500;
