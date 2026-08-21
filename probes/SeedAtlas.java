@@ -46,12 +46,16 @@ public final class SeedAtlas {
         int fullArc = 0, treaty = 0, war = 0, quiet = 0, oldPlaybook = 0;
         long minBirth = Long.MAX_VALUE, maxBirth = -1;
         List<Row> rows = new ArrayList<>();
+        // WHICH seeds, not merely how many (#815). A verdict naming the count
+        // alone sends a reader back to the SEED rows to find the universe that
+        // changed, and those rows are what the census command strips.
+        List<String> playbookSeeds = new ArrayList<>();
 
         for (long seed = from; seed <= to; seed++) {
             Row r = census(seed, ticks);
             rows.add(r);
             switch (r.verdict()) {
-                case "OLD_PLAYBOOK" -> oldPlaybook++;
+                case "OLD_PLAYBOOK" -> { oldPlaybook++; playbookSeeds.add(Long.toString(seed)); }
                 case "FULL_ARC" -> fullArc++;
                 case "TREATY" -> treaty++;
                 case "WAR" -> war++;
@@ -72,6 +76,41 @@ public final class SeedAtlas {
                 + " quiet=" + quiet + " old_playbook=" + oldPlaybook
                 + " birth_min=" + (maxBirth < 0 ? -1 : minBirth)
                 + " birth_max=" + maxBirth);
+
+        // THE CLAIM THIS INSTRUMENT ESTABLISHED, NOW WATCHED BY SOMETHING (#815).
+        // Field manual entry 1 asserts that the emergency reload — overflow
+        // arriving with no One alive — has never happened in the census sample.
+        // `old_playbook=0` printed that fact and asserted nothing: `=1` printed
+        // in the same shape at exit 0, because this was a `run` row whose only
+        // contract was surviving.
+        //
+        // WHAT A GREEN HERE IS NOT. It is k=0 in a sample of n, not proof the
+        // emergency reload is impossible — `CensusSampleSize` prices this exact
+        // claim, and at the bench's n=5 the rule of three bounds the rate only
+        // at 3/5. So `n=` rides the verdict: a reader who sees the word without
+        // the denominator would be reading a proof that was never measured
+        // (#900, #1429). The verdict's job is to notice the day the first one
+        // appears, not to claim that day cannot come.
+        //
+        // An empty range walks no universe, and a count of OLD_PLAYBOOK
+        // universes is zero both when none occurred and when none was looked
+        // for (#970, #1207). That third state gets its own WORD and its own
+        // code rather than the passing word at a failing exit: #1652's rule is
+        // that a verdict keeps its shape across its own two branches, and a
+        // situation the run never reached is not one of those branches — it is
+        // NEVER_AROSE, whose javadoc names this exact hazard ("a probe that
+        // prints a passing verdict here would be certifying a question nobody
+        // asked"). `PLAYBOOK_EMPTY` at exit 1 was the BirthInputs shape and is
+        // not shipped.
+        if (rows.isEmpty()) {
+            Probes.leave("VERDICT PLAYBOOK_UNSWEPT n=0", Probes.Outcome.NEVER_AROSE);
+        }
+        Probes.leave((playbookSeeds.isEmpty()
+                        ? "VERDICT PLAYBOOK_EMPTY"
+                        : "VERDICT PLAYBOOK_USED seeds=" + String.join(",", playbookSeeds))
+                        + " n=" + rows.size(),
+                playbookSeeds.isEmpty()
+                        ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /** The five fates, in the order the ATLAS line counts them. */
