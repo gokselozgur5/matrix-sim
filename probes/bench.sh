@@ -442,7 +442,7 @@ table() {
   # fixed while the census moves.
   vary  'prints its own wall-clock: two of its markers run the daemon (4,500 and 20,000 ticks) and the second run of a pair is warmer, so secs= lands anywhere in 4-6 while checked= and docs= hold (#1302, #1328)' \
         --lines '^FIGURE_CENSUS ' --cut 1 \
-        judge DocFigures   'VERDICT FIGURES_AGREE checked=10 stale=0 refused=0 checked_none=0'
+        judge DocFigures   'VERDICT FIGURES_AGREE checked=11 stale=0 refused=0 checked_none=0'
   judge BondBook     'VERDICT BOOK_TURNS_OVER forgot_none=0 fill_none=0 stale_mint=0'  "$TICKS"
   # NO_COUNTER SameTick: its emptiness is guarded by an exit code rather than by a field.
   # `census == 0` leaves NEVER_AROSE (#1138) and `judge` fails a nonzero exit, so a run
