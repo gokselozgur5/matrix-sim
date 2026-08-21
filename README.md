@@ -197,12 +197,20 @@ Measured on `main` at `1e0e236`, seed 42 — the default when `--seed` is absent
 
 **Scenario flags** fire a console command inside a headless run, so a scenario is reproducible without a human at the keyboard — `--sink-at T` scuttles the active ship in tick *T*'s zion slot (#119), `--sink-every N` files that same order every *N* ticks (#905), `--reload-at T` fires the Architect's reload right before tick *T* (#128; with `--chronos` the epoch seals onto the record first, written before the purge). The fleet only exists to be sunk after it launches:
 
+Tick 0 is a real reload boundary: it means after boot and before the first tick. A requested reload must survive both the recording and the fold; this figure is the positive expectation that prevents a command-free run from standing in for the scenario:
+
+```bash
+java -cp out matrix.Main --headless --ticks 100 --reload-at 0 --chronos /tmp/matrix-reload-0.jsonl >/dev/null
+java -cp out matrix.Main --replay /tmp/matrix-reload-0.jsonl --ticks 100 > /tmp/matrix-reload-0.chain
+java -cp out matrix.Main --replay /tmp/matrix-reload-0.jsonl --expect /tmp/matrix-reload-0.chain | grep '^REPLAY OK'
+# REPLAY OK seed=42 ticks=100 links=1 commands_applied=1 births_folded=0 seals_verified=1
+```
 ```bash
 java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400
 # [004076] FATE  the first hull: the Nebuchadnezzar joins the fleet — the census learns to fly
 # [004400] FATE  the Nebuchadnezzar goes down — 3 wires cut, 0 souls lost with the hull
 ```
-<!-- figure: java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400 2>/dev/null | grep 'goes down' == [004400] FATE  the Nebuchadnezzar goes down — 3 wires cut, 0 souls lost with the hull -->
+<!-- figure: java -cp out matrix.Main --headless --ticks 100 --reload-at 0 --chronos /tmp/matrix-reload-0.jsonl >/dev/null && java -cp out matrix.Main --replay /tmp/matrix-reload-0.jsonl --ticks 100 > /tmp/matrix-reload-0.chain && java -cp out matrix.Main --replay /tmp/matrix-reload-0.jsonl --expect /tmp/matrix-reload-0.chain | grep -qxF 'REPLAY OK seed=42 ticks=100 links=1 commands_applied=1 births_folded=0 seals_verified=1' && java -cp out matrix.Main --headless --ticks 4500 --seed 42 --sink-at 4400 2>/dev/null | grep 'goes down' == [004400] FATE  the Nebuchadnezzar goes down — 3 wires cut, 0 souls lost with the hull -->
 
 One tick number cannot state a scenario that needs three losses to reach. `--sink-every N` can, and it is the only way to run the city past the end of its roster (#806): the fourth keel re-issues the first name under a generation mark.
 

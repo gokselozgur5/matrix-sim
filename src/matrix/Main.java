@@ -77,6 +77,7 @@ public final class Main {
         long sinkAt = -1;
         long sinkEvery = -1;
         long reloadAt = -1;
+        boolean reloadRequested = false;
         String chronosPath = null;
         String replayPath = null;
         String expectPath = null;
@@ -106,7 +107,10 @@ public final class Main {
                         System.exit(2);
                     }
                 }
-                case "--reload-at" -> reloadAt = Long.parseLong(args[++i]);
+                case "--reload-at" -> {
+                    reloadAt = Long.parseLong(args[++i]);
+                    reloadRequested = true;
+                }
                 case "--chronos" -> chronosPath = args[++i];
                 case "--replay" -> replayPath = args[++i];
                 case "--expect" -> expectPath = args[++i];
@@ -163,7 +167,7 @@ public final class Main {
         // argument was dropped, and exit 0 says it was not.
         if (auditPath != null && (replayPath != null || expectPath != null || chronosPath != null
                 || headless || selftest || bench || neutral || follow != null
-                || sinkAt >= 0 || sinkEvery > 0 || reloadAt >= 0 || snapshotAt != null)) {
+                || sinkAt >= 0 || sinkEvery > 0 || reloadRequested || snapshotAt != null)) {
             System.err.println("--audit walks the record alone — it boots no universe and folds nothing");
             System.exit(2);
         }
@@ -200,6 +204,16 @@ public final class Main {
             usage();
             System.exit(2);
         }
+        if (reloadRequested && (replayPath != null || !headless || selftest || bench)) {
+            System.err.println("--reload-at rides with --headless — a live run, not the fold");
+            usage();
+            System.exit(2);
+        }
+        if (reloadRequested && snapshotAt != null) {
+            System.err.println("--reload-at and --snapshot-at are separate scenarios — run them separately");
+            usage();
+            System.exit(2);
+        }
         // Judged here rather than at the parse site, because --ticks may be
         // read after this flag. A period longer than the run files nothing:
         // that is a scenario the operator did not get, so it is refused like
@@ -211,6 +225,15 @@ public final class Main {
         }
         if (snapshotAt != null && (snapshotAt < 0 || snapshotAt > ticks)) {
             System.err.println("--snapshot-at " + snapshotAt + " lies outside the run (0.." + ticks + ")");
+            System.exit(2);
+        }
+        // A scenario flag is a promise that its command will happen. Keep the
+        // same inclusive horizon as --snapshot-at: tick 0 means the boundary
+        // immediately after boot and before the first tick, while tick T means
+        // immediately before the run's final tick. Anything else would finish
+        // green without ever executing the reload (#791).
+        if (reloadRequested && (reloadAt < 0 || reloadAt > ticks)) {
+            System.err.println("--reload-at " + reloadAt + " lies outside the run (0.." + ticks + ")");
             System.exit(2);
         }
         if (selftest) {
@@ -407,6 +430,14 @@ public final class Main {
                 }
                 sim.run(ticks - snapshotAt);
             } else {
+                // Tick 0 is an intentional boundary, not a sentinel: it gives
+                // the scenario grammar a meaningful "before the first tick"
+                // reload and records a command the fold can re-execute at its
+                // own initial boundary.
+                if (reloadAt == 0) {
+                    sim.recordCommand("reload");
+                    sim.commandReload();
+                }
                 for (long t = 1; t <= ticks; t++) {
                     // One order per tick even when both doors point at the
                     // same tick: Zion.orderSink is a latch, so a second file
