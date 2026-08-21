@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * <p>ONE-OFF: run by hand, not in the bench. It answers a question once rather than
- * guarding a property on every push, so a row would cost the lane wall clock and buy
- * nothing (#1162). The rule is that the absence is DECLARED, not that it is unusual.
+ * <p>THE TABLE COMPARISON IS ONE-OFF: two tables captured at two pinned trees are
+ * something somebody does when a digest move is declared, not on every push, so
+ * #1162's wall-clock argument still stands for it and that absence stays declared.
+ * Since #816 the IDENTITY law — the same table on both sides must print every delta
+ * as zero — is swept against a frozen fixture, which grows no universe.
  *
  * Probe: what a census owes a declared digest move.
  *
@@ -100,8 +102,7 @@ public final class CensusReverdict {
         }
         if (positional.size() < 2) {
             System.out.println("usage: CensusReverdict <old-table> <new-table> [--sd-ratio R]");
-            System.out.println("VERDICT REFUSED reason=missing_tables");
-            return;
+            Probes.leave("VERDICT REVERDICT_REFUSED reason=missing_tables", Probes.Outcome.REFUSED);
         }
         Table before = parse(positional.get(0));
         Table after = parse(positional.get(1));
@@ -113,8 +114,7 @@ public final class CensusReverdict {
 
         if (before.from() != after.from() || before.to() != after.to()
                 || before.ticks() != after.ticks() || before.n() != after.n()) {
-            System.out.println("VERDICT REFUSED reason=sample_mismatch");
-            return;
+            Probes.leave("VERDICT REVERDICT_REFUSED reason=sample_mismatch", Probes.Outcome.REFUSED);
         }
         int n = before.n();
 
@@ -189,7 +189,20 @@ public final class CensusReverdict {
         head.append(" band=").append(before.bandMin()).append('-').append(before.bandMax())
                 .append("->").append(after.bandMin()).append('-').append(after.bandMax());
         String verdict = reshaped ? "RESHAPED" : shifted ? "SHIFTED" : "STABLE";
+        // The census line keeps its shape and its trailing word for every reader
+        // that already greps it.
         System.out.println(head + " VERDICT " + verdict);
+        // THE VERDICT ALSO LEAVES ON A LINE OF ITS OWN (#816). It rode only as a
+        // SUFFIX on the REVERDICT census line, and the sweep judges by exact-line
+        // grep (`grep -qxF`) — deliberately, so `=0` cannot match `=01`. A verdict
+        // that can only be matched as a substring is a verdict the lane cannot
+        // hold, which is why this probe was unjudgeable rather than merely
+        // unjudged. `sample=` rides it because a re-verdict over an empty sample
+        // is STABLE for the wrong reason (#900, #1429).
+        Probes.leave("VERDICT REVERDICT_" + verdict + " sample=" + n
+                        + " sample_none=" + (n == 0 ? 1 : 0),
+                "STABLE".equals(verdict) && n > 0
+                        ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /** Parse SeedAtlas stdout: the SEED rows carry the sample, the ATLAS line the totals. */

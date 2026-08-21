@@ -206,7 +206,7 @@ table() {
   # door's draw-order table never had", and a KEEPER is the shape of a thing judged on
   # every push. The exemption survives for the two that genuinely cannot be judged: one
   # prints no verdict without arguments, the other REFUSES for want of a fixture.
-  judge CensusSampleSize 'VERDICT SAMPLE_LAWS_PRICED'
+  judge CensusSampleSize 'VERDICT SAMPLE_LAWS_PRICED checks=30 broken=0'
   judge OrderTable   'VERDICT ORDER_TABLE_HELD orders=6 classes=4 silent=1'
   # `vary`, and it took --twice to find out (#1184). #1175 measured this probe's cost and
   # its verdict's stability across two runs and made it a judge row — but a judge row's
@@ -526,6 +526,15 @@ table() {
   # the four failure verdicts are exercised here or nowhere. When the fixture
   # lands, this row gains a sibling that runs the lane for real.
   judge NeutralDiff  'SELFCHECK VERDICT REFEREE_HOLDS' --selfcheck
+  # The census wing's two unswept instruments (#816). Both were declared one-off
+  # under #1162's wall-clock argument, and that argument is about the TABLE RUN:
+  # growing twenty universes on every push buys nothing. Neither row below grows
+  # one. CensusCensor judges the censoring classifier over rows it constructs;
+  # CensusReverdict drives the identity law its own javadoc names, against ten
+  # frozen rows. The by-hand table runs stay out of the lane, exactly as declared.
+  judge CensusCensor 'CENSOR SELFCHECK VERDICT CLASSIFIER_HOLDS cases=11 cases_none=0 failed=0' --selfcheck
+  judge CensusReverdict 'VERDICT REVERDICT_STABLE sample=10 sample_none=0' \
+                                    probes/reverdict.fixture probes/reverdict.fixture
   judge SeedAtlas    'VERDICT PLAYBOOK_EMPTY n=5' 1 5 "$TICKS"
 }
 
