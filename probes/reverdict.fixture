@@ -1,0 +1,21 @@
+# probes/reverdict.fixture — a census table used only to drive the identity law.
+#
+# CensusReverdict's own javadoc names its identity falsifier: invoked with the
+# same table on both sides it must print every delta as zero and STABLE. That
+# property is about the COMPARISON and not about the multiverse, so the lane
+# drives it from ten frozen rows rather than by growing twenty universes on
+# every push — the wall-clock argument #1162 made for keeping the table run
+# out of the bench. These rows were captured from SeedAtlas 1 20 6000 at
+# f26af14 and are inputs to a law, not a claim about the world: nothing here
+# is re-derived from a run, so a lawful digest move does not stale them.
+SEED 1 birth=1179 overflow=-1 peace=-1 rebirth=-1 verdict=QUIET
+SEED 2 birth=1299 overflow=3316 peace=3356 rebirth=4259 verdict=FULL_ARC
+SEED 3 birth=1279 overflow=4182 peace=4222 rebirth=5189 verdict=FULL_ARC
+SEED 4 birth=1309 overflow=5168 peace=5208 rebirth=-1 verdict=TREATY
+SEED 5 birth=1289 overflow=3648 peace=3688 rebirth=4599 verdict=FULL_ARC
+SEED 6 birth=1229 overflow=3920 peace=3960 rebirth=4879 verdict=FULL_ARC
+SEED 7 birth=1259 overflow=3920 peace=3960 rebirth=4879 verdict=FULL_ARC
+SEED 8 birth=1329 overflow=3531 peace=3571 rebirth=4489 verdict=FULL_ARC
+SEED 9 birth=1289 overflow=4093 peace=4133 rebirth=5179 verdict=FULL_ARC
+SEED 10 birth=1299 overflow=3282 peace=3322 rebirth=4349 verdict=FULL_ARC
+ATLAS seeds=1..10 ticks=6000 full_arc=8 treaty=1 war=0 quiet=1 old_playbook=0 birth_min=1179 birth_max=1339

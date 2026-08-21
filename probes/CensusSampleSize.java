@@ -70,17 +70,80 @@ public final class CensusSampleSize {
             }
         }
 
+        // THE LAWS ARE CHECKED AGAINST THEMSELVES AS THEY ARE PRINTED (#816).
+        // Every value judged below is the one that went to stdout, not a second
+        // computation of it — a suite that re-derives the number it is checking
+        // is testing a copy (#1512).
+        int broken = 0;
+        int checks = 0;
+
         System.out.println("LAW fraction - n = (1.96/h)^2 * p(1-p)");
+        long prevWorst = Long.MIN_VALUE;
         for (double h : new double[] {0.10, 0.05, 0.03, 0.015, 0.01}) {
+            long worst = (long) Math.ceil(sq(Z / h) * 0.25);
+            long atP = (long) Math.ceil(sq(Z / h) * p * (1 - p));
             System.out.println("FRACTION half_width=" + pct(h)
-                    + " n_worst_case_p50=" + (long) Math.ceil(sq(Z / h) * 0.25)
-                    + " n_at_p=" + fmt(p) + ":" + (long) Math.ceil(sq(Z / h) * p * (1 - p)));
+                    + " n_worst_case_p50=" + worst
+                    + " n_at_p=" + fmt(p) + ":" + atP);
+            // A narrower interval costs more seeds, never fewer.
+            checks++;
+            if (worst <= prevWorst) {
+                broken++;
+                System.out.println("LAW_BROKEN fraction not monotone: half_width=" + pct(h)
+                        + " n=" + worst + " did not exceed the previous " + prevWorst);
+            }
+            prevWorst = worst;
+            // p=0.5 maximises p(1-p), so the worst case is the worst case.
+            checks++;
+            if (atP > worst) {
+                broken++;
+                System.out.println("LAW_BROKEN fraction p=" + fmt(p) + " needs " + atP
+                        + " seeds, more than the p=0.5 worst case " + worst);
+            }
+            // AN EXTERNAL ANCHOR, BECAUSE INTERNAL CONSISTENCY CANNOT CATCH A
+            // WRONG FORMULA (#816). The monotonicity and worst-case checks above
+            // are relations between this probe's own outputs, and a mutation
+            // proved what that misses: dropping the (1-p) factor from `n_at_p`
+            // left every one of them green, because 0.17 and 0.141 are both
+            // below 0.25. Deriving the comparison from the same expression only
+            // moves the copy (#1512) — two spellings of a wrong law agree with
+            // each other perfectly.
+            //
+            // So one rung is pinned to a value this probe did not produce:
+            // n = (1.96/0.05)^2 * 0.25 = 384.16 -> 385 is the textbook sample
+            // size for a +/-5% proportion at 95%, quoted in every survey-methods
+            // table. If this row stops printing 385, the law changed.
+            if (h == 0.05) {
+                checks++;
+                if (worst != 385) {
+                    broken++;
+                    System.out.println("LAW_BROKEN fraction at half_width=5.0% gives n="
+                            + worst + ", and the textbook value is 385");
+                }
+            }
         }
+        double prevHalf = Double.MAX_VALUE;
         for (long n : SAMPLES) {
             double[] ci = wilson(p, n);
+            double half = (ci[1] - ci[0]) / 2;
             System.out.println("INTERVAL n=" + n + " p=" + fmt(p)
                     + " wilson95=[" + pct(ci[0]) + ", " + pct(ci[1]) + "]"
-                    + " half_width=" + pct((ci[1] - ci[0]) / 2));
+                    + " half_width=" + pct(half));
+            // More seeds, a tighter interval — and the interval must contain
+            // the estimate it is an interval for.
+            checks++;
+            if (half >= prevHalf) {
+                broken++;
+                System.out.println("LAW_BROKEN interval not tightening at n=" + n
+                        + ": half_width " + pct(half) + " did not fall below " + pct(prevHalf));
+            }
+            prevHalf = half;
+            checks++;
+            if (p < ci[0] || p > ci[1]) {
+                broken++;
+                System.out.println("LAW_BROKEN interval at n=" + n
+                        + " does not contain p=" + fmt(p));
+            }
         }
         System.out.println("ZERO_RULE - k=0 in n bounds the rate at 3/n (95%): "
                 + "n=100 -> <=" + pct(3.0 / 100) + " | n=1000 -> <=" + pct(3.0 / 1000)
@@ -95,6 +158,7 @@ public final class CensusSampleSize {
         System.out.println("LAW ranking - measured, not derived (trials=" + trials
                 + " seed=" + seed + " k=" + probs.length + " probs=" + fmtArr(probs) + ")");
         Random rng = new Random(seed);
+        double firstExact = -1, lastExact = -1;
         for (long n : SAMPLES) {
             int exact = 0, top1 = 0;
             for (int t = 0; t < trials; t++) {
@@ -109,8 +173,43 @@ public final class CensusSampleSize {
             System.out.println("RANKING n=" + n
                     + " exact_order_correct=" + pct(exact / (double) trials)
                     + " top1_correct=" + pct(top1 / (double) trials));
+            // Reproducing the WHOLE order implies getting the top right, so
+            // this holds trial by trial and not merely on average — a Monte
+            // Carlo that violates it has a broken comparator, not bad luck.
+            checks++;
+            if (top1 < exact) {
+                broken++;
+                System.out.println("LAW_BROKEN ranking n=" + n + " top1=" + top1
+                        + " below exact_order=" + exact + " — the whole order implies the top");
+            }
+            if (firstExact < 0) {
+                firstExact = exact / (double) trials;
+            }
+            lastExact = exact / (double) trials;
         }
-        Probes.leave("VERDICT SAMPLE_LAWS_PRICED", true);
+        // The probe's entire thesis: a ranking read off twenty runs is mostly
+        // noise and more seeds buy accuracy. Asserted at the endpoints rather
+        // than pairwise, because adjacent rungs can cross on Monte Carlo noise
+        // and a flaky lane row is worse than none (#1221).
+        checks++;
+        if (!(lastExact > firstExact)) {
+            broken++;
+            System.out.println("LAW_BROKEN ranking accuracy did not improve from n="
+                    + SAMPLES[0] + " (" + pct(firstExact) + ") to n="
+                    + SAMPLES[SAMPLES.length - 1] + " (" + pct(lastExact) + ")");
+        }
+
+        // IT USED TO PRINT THIS WORD UNCONDITIONALLY (#816). `Probes.leave(...,
+        // true)` was a literal: nothing this calculator computed could make it
+        // say anything else, so it was a calculator wearing a verdict, and a
+        // green row certified that the program had reached its last line.
+        //
+        // What is judged now is what a wrong implementation would break — the
+        // laws' own shape. `checks=` is the denominator, because zero broken
+        // laws is zero both when every law held and when none was examined
+        // (#900, #1429).
+        Probes.leave("VERDICT SAMPLE_LAWS_PRICED checks=" + checks + " broken=" + broken,
+                broken == 0 && checks > 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /** Counts are generated in the true order, so "correct" means non-increasing. */
