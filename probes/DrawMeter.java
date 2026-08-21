@@ -153,6 +153,36 @@ public final class DrawMeter {
                 + (freezeTicks > 0 && freezeDraws == 0 ? " (the world holds its breath — zero draws)" : ""));
         System.out.println("DRAWMETER seed=" + seed + " ticks=" + ticks
                 + " final_draws=" + prev);
+
+        // THE FIELD MANUAL'S MOST QUOTED LINE, NOW JUDGED (#814). The
+        // negotiation freeze spending exactly zero draws is the world holding
+        // its breath, instrumented — and it was printed and asserted by
+        // nothing: `total=1` printed in the same shape, with the parenthetical
+        // simply vanishing, and the sweep stayed green because bench.sh carried
+        // this as a `run` row whose only contract was surviving. A law that is
+        // printed and not judged reads as covered in every summary and is
+        // covered by nothing (D-020).
+        //
+        // `window=` is the denominator and rides the verdict: `total=0` is zero
+        // both when the freeze spent nothing and when there was no freeze to
+        // spend it (#900, #1429). The two are not the same testimony and must
+        // not print the same word.
+        //
+        // THE QUIET UNIVERSE IS THE INTERESTING HALF. A seed whose negotiation
+        // never opens has no window to judge, and passing by default would be
+        // certifying a question nobody asked. The windows here are derived from
+        // state transitions rather than tick literals (#363), so the probe can
+        // already tell "no such phase in this universe" from "the phase held" —
+        // it just had nowhere to say it. That is NEVER_AROSE, and it is a third
+        // word rather than the passing word at a red exit (#1652).
+        if (freezeTicks == 0) {
+            Probes.leave("VERDICT FREEZE_ABSENT window=0", Probes.Outcome.NEVER_AROSE);
+        }
+        Probes.leave((freezeDraws == 0
+                        ? "VERDICT FREEZE_HELD"
+                        : "VERDICT FREEZE_SPENT draws=" + freezeDraws)
+                        + " window=" + freezeTicks,
+                freezeDraws == 0 ? Probes.Outcome.HELD : Probes.Outcome.BROKE);
     }
 
     /**

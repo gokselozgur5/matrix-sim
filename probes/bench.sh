@@ -489,7 +489,7 @@ table() {
   # quiet pass.
   judge CensusBeatDrift 'VERDICT DRIFT_WITHIN_BAND compared=16/16 band=200' \
         42,7 6000 --band 200 --baseline-file probes/beatdrift.baseline
-  run   DrawMeter    "$TICKS"
+  judge DrawMeter    'VERDICT FREEZE_HELD window=40' "$TICKS"
   run   ChainDump    "$TICKS"
   run   LinkTrace    "Nadia Petrov" "$TICKS"
   run   NameCensus   42
