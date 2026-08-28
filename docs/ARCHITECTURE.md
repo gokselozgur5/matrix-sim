@@ -184,10 +184,14 @@ mind-visible receipts. Its V1 eligibility rule includes only a resident whose
 current link is open, whose brain and avatar are alive, and whose avatar is
 still present in `World`. For each such stable Human ordinal, phase one freezes
 one real-side fact (`brain.alive`) and two world-side facts (`avatar.pill`,
-`avatar.position_cm`). Subjects are sorted by immutable growth ordinal and each
-complete fact group receives a dense sequence; the aggregate refuses unknown
-predicates, malformed values, wrong provenance, omissions, duplicates and
-alternate ordering. Empty is an explicit value. Phase two currently accepts
+`avatar.position_cm`). A reusable scalar builder keeps candidates in immutable
+growth-ordinal order, then each published snapshot owns compact primitive
+arrays; its typed, read-only entry view derives complete dense fact groups only
+when a consumer asks. There is no generic fact/provenance constructor through
+which an unknown predicate, malformed payload or alternate order can enter.
+The builder refuses duplicate subjects, invalid scalars and broken capture
+state, and later builder reuse cannot move published arrays. Empty is an
+explicit value. Phase two currently accepts
 the exact phase-one object and nothing else: delivery policy, fidelity,
 outcome, audit, visible projection and percept allocation remain #1691–#1693.
 Consequently a same-tick move, pill change or brain death after phase one

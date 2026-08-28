@@ -17,7 +17,6 @@ import matrix.core.Snapshot;
 import matrix.core.World;
 import matrix.core.WorldEvent;
 import matrix.causal.CausalPhase;
-import matrix.causal.CausalRecord;
 import matrix.causal.TruthSnapshot;
 import matrix.entities.Agent;
 import matrix.entities.AgentSmith;
@@ -38,7 +37,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -103,6 +101,8 @@ public final class Simulation {
     private TruthSnapshot tickTruth;
     /** The exact immutable phase-one object accepted by phase two. */
     private TruthSnapshot deliveryTruth;
+    /** Reused primitive staging; published snapshots own separate compact arrays. */
+    private final TruthSnapshot.Builder truthBuilder = new TruthSnapshot.Builder();
     private final PrintStream out;
     private final ChronosLog chronos;
     /**
@@ -684,50 +684,28 @@ public final class Simulation {
      * <p>Eligibility is one exact conjunction at this boundary: the Human's
      * current link is open, brain and avatar are alive, and that avatar is
      * still present in the Matrix registry. The real-side registry is only a
-     * candidate source: residents are sorted by their stable Human principal
-     * before dense sequence numbers are assigned, so list iteration order
-     * cannot become percept order. No ledger, RNG, birth key, pod, residue,
-     * other entity, or observer setting enters the snapshot.
+     * candidate source: the reusable builder inserts scalar candidates by
+     * immutable Human ordinal and publishes that compact ascending prefix,
+     * so list iteration order cannot become percept order. No ledger, RNG,
+     * birth key, pod, residue, other entity, or observer setting enters the
+     * snapshot.
      */
     private TruthSnapshot freezeTruth(long tick) {
-        List<Human> residents = new ArrayList<>();
+        truthBuilder.begin();
         for (Human human : realWorld.humans()) {
             NeuralLink link = human.link();
             if (link == null || link.closed() || !human.alive()
                     || !link.avatar.alive || !world.isPresent(link.avatar)) {
                 continue;
             }
-            residents.add(human);
+            TruthSnapshot.ResidentPill residentPill = switch (link.avatar.pill) {
+                case BLUE -> TruthSnapshot.ResidentPill.BLUE;
+                case RED -> TruthSnapshot.ResidentPill.RED;
+            };
+            truthBuilder.add(human.id, residentPill,
+                    link.avatar.xCm(), link.avatar.yCm());
         }
-        residents.sort(Comparator.comparingInt(human -> human.id));
-
-        List<CausalRecord.TruthEntry> entries = new ArrayList<>(residents.size()
-                * TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1
-                        .predicates().size());
-        int sequence = 0;
-        for (Human human : residents) {
-            CausalRecord.Principal subject = new CausalRecord.Principal(
-                    CausalRecord.PrincipalKind.HUMAN, "human-" + human.id);
-            NeuralLink link = human.link();
-            entries.add(truthEntry(tick, sequence++, subject,
-                    TruthSnapshot.Predicate.BRAIN_ALIVE,
-                    Boolean.toString(human.alive())));
-            entries.add(truthEntry(tick, sequence++, subject,
-                    TruthSnapshot.Predicate.AVATAR_PILL,
-                    link.avatar.pill == Pill.BLUE ? "blue" : "red"));
-            entries.add(truthEntry(tick, sequence++, subject,
-                    TruthSnapshot.Predicate.AVATAR_POSITION_CM,
-                    link.avatar.xCm() + "," + link.avatar.yCm()));
-        }
-        return new TruthSnapshot(tick,
-                TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1, entries);
-    }
-
-    private static CausalRecord.TruthEntry truthEntry(long tick, int sequence,
-            CausalRecord.Principal subject, TruthSnapshot.Predicate predicate,
-            String value) {
-        return new CausalRecord.TruthEntry(tick, sequence, subject,
-                predicate.fact(value), predicate.provenance());
+        return truthBuilder.build(tick);
     }
 
     /** Phase 3 hook: future real-side reducers consume only visible receipts here. */

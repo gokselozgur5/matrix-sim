@@ -317,7 +317,7 @@ table() {
   # order, explicit empty, iteration and hidden-ledger invariance, meaningful
   # pre/post-capture mutation, exact phase-two handoff, and a live-read source
   # mutant. The moving resident/entry populations stay on its census line.
-  judge TruthSnapshots 'VERDICT TRUTH_SNAPSHOT_HELD cases=47 cases_none=0 immutable_fail=0 eligibility_fail=0 order_fail=0 freeze_fail=0 delivery_live=0'
+  judge TruthSnapshots 'VERDICT TRUTH_SNAPSHOT_HELD cases=55 cases_none=0 immutable_fail=0 eligibility_fail=0 order_fail=0 freeze_fail=0 delivery_live=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).
