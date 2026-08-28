@@ -1,7 +1,10 @@
 package matrix.causal;
 
+import java.util.AbstractList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 
 /**
  * The immutable root-owned view of facts eligible for one tick's delivery.
@@ -14,17 +17,18 @@ import java.util.Objects;
  * <p>The eligibility rule is closed and named. Version one admits exactly the
  * connected resident's own living-brain fact plus pill and position facts
  * about that resident's present Matrix body. Every admitted subject has the
- * complete three-entry group in the rule's order. Empty means no subject met the rule;
- * it is a valid, explicit snapshot rather than a missing value.
+ * complete three-entry group in the rule's order. Empty means no subject met
+ * the rule; it is a valid, explicit snapshot rather than a missing value.
  *
- * <p>Construction rejects rather than repairs malformed input. The producer
- * must assign dense sequence numbers after canonical subject ordering, name
- * the correct source for every predicate, and use one source tick throughout.
- * That makes an unstable producer fail at the boundary instead of silently
- * sorting a lie into a plausible snapshot.
+ * <p>The snapshot owns compact primitive arrays in canonical Human-ordinal
+ * order. Its immutable {@link #entries()} view derives a typed
+ * {@link CausalRecord.TruthEntry} only when a consumer asks for that index.
+ * Tick-start capture therefore does not mint hundreds of short-lived record,
+ * fact, payload, principal, and string objects before any delivery exists.
+ * The derived view is not a second truth source: every byte comes from the
+ * owned tick, ordinal, pill, and coordinate arrays.
  */
-public record TruthSnapshot(long tick, EligibilityRule eligibility,
-                            List<CausalRecord.TruthEntry> entries) {
+public final class TruthSnapshot {
 
     /** The one accepted eligibility rule; a new rule is an ontology change. */
     public enum EligibilityRule {
@@ -45,174 +49,240 @@ public record TruthSnapshot(long tick, EligibilityRule eligibility,
 
     /** Closed fact vocabulary and the root-side system that supplied it. */
     public enum Predicate {
-        BRAIN_ALIVE("brain.alive", "real-world"),
-        AVATAR_PILL("avatar.pill", "matrix-world"),
-        AVATAR_POSITION_CM("avatar.position_cm", "matrix-world");
+        BRAIN_ALIVE("brain.alive", "real-world", "true", null),
+        AVATAR_PILL("avatar.pill", "matrix-world", "blue", "red"),
+        AVATAR_POSITION_CM("avatar.position_cm", "matrix-world", null, null);
 
         private final CausalRecord.Symbol symbol;
         private final CausalRecord.Principal provenance;
-        private final CausalRecord.Fact trueFact;
-        private final CausalRecord.Fact falseFact;
-        private final CausalRecord.Fact blueFact;
-        private final CausalRecord.Fact redFact;
+        private final CausalRecord.Fact primaryFact;
+        private final CausalRecord.Fact secondaryFact;
 
-        Predicate(String symbol, String provenance) {
+        Predicate(String symbol, String provenance,
+                String primaryValue, String secondaryValue) {
             this.symbol = new CausalRecord.Symbol(symbol);
             this.provenance = new CausalRecord.Principal(
                     CausalRecord.PrincipalKind.SYSTEM, provenance);
-            this.trueFact = rawFact("true");
-            this.falseFact = rawFact("false");
-            this.blueFact = rawFact("blue");
-            this.redFact = rawFact("red");
+            this.primaryFact = primaryValue == null ? null : rawFact(primaryValue);
+            this.secondaryFact = secondaryValue == null ? null : rawFact(secondaryValue);
         }
 
-        public CausalRecord.Symbol symbol() {
-            return symbol;
-        }
-
-        public CausalRecord.Principal provenance() {
-            return provenance;
-        }
-
-        public CausalRecord.Fact fact(String value) {
-            CausalRecord.Payload payload = new CausalRecord.Payload(value);
-            if (!accepts(payload)) {
-                throw new IllegalArgumentException(
-                        "truth value violates predicate " + symbol.value());
-            }
-            return switch (value) {
-                case "true" -> trueFact;
-                case "false" -> falseFact;
-                case "blue" -> blueFact;
-                case "red" -> redFact;
-                default -> new CausalRecord.Fact(symbol, payload);
-            };
-        }
-
-        private boolean accepts(CausalRecord.Payload payload) {
-            String value = payload.text();
+        private CausalRecord.Fact fact(ResidentPill pill, int xCm, int yCm) {
             return switch (this) {
-                case BRAIN_ALIVE -> value.equals("true") || value.equals("false");
-                case AVATAR_PILL -> value.equals("blue") || value.equals("red");
-                case AVATAR_POSITION_CM -> canonicalPosition(value);
+                case BRAIN_ALIVE -> primaryFact;
+                case AVATAR_PILL -> switch (pill) {
+                    case BLUE -> primaryFact;
+                    case RED -> secondaryFact;
+                };
+                case AVATAR_POSITION_CM -> rawFact(xCm + "," + yCm);
             };
         }
 
         private CausalRecord.Fact rawFact(String value) {
             return new CausalRecord.Fact(symbol, new CausalRecord.Payload(value));
         }
+    }
 
-        private static Predicate named(CausalRecord.Symbol symbol) {
-            for (Predicate predicate : values()) {
-                if (predicate.symbol.equals(symbol)) {
-                    return predicate;
-                }
+    /** Scalar pill spelling accepted by the neutral builder. */
+    public enum ResidentPill {
+        BLUE,
+        RED
+    }
+
+    /**
+     * Reusable root staging area. It accepts only the V1 scalar schema and
+     * keeps arbitrary candidate iteration in numeric ordinal order. A build
+     * copies the eligible prefix into a new compact snapshot; a
+     * later {@link #begin} can therefore reuse this mutable scratch without
+     * changing any snapshot already published.
+     */
+    public static final class Builder {
+        private static final int INITIAL_CAPACITY = 16;
+
+        private int[] ordinals = new int[INITIAL_CAPACITY];
+        private byte[] pills = new byte[INITIAL_CAPACITY];
+        private int[] xCm = new int[INITIAL_CAPACITY];
+        private int[] yCm = new int[INITIAL_CAPACITY];
+        private int count;
+        private boolean collecting;
+
+        /** Begin one capture, discarding only the previous scratch contents. */
+        public void begin() {
+            if (collecting) {
+                throw new IllegalStateException("truth builder already has an open capture");
             }
-            throw new IllegalArgumentException(
-                    "truth predicate is not perception-eligible: " + symbol.value());
+            count = 0;
+            collecting = true;
+        }
+
+        /** Add one subject that already satisfied the root's eligibility conjunction. */
+        public void add(int humanOrdinal, ResidentPill pill, int x, int y) {
+            if (!collecting) {
+                throw new IllegalStateException("truth builder has not begun a capture");
+            }
+            if (humanOrdinal < 0) {
+                throw new IllegalArgumentException("Human ordinal must be nonnegative");
+            }
+            Objects.requireNonNull(pill, "resident pill");
+            if (x < 0 || y < 0) {
+                throw new IllegalArgumentException("resident coordinates must be nonnegative");
+            }
+            int insertion = Arrays.binarySearch(ordinals, 0, count, humanOrdinal);
+            if (insertion >= 0) {
+                throw new IllegalArgumentException(
+                        "truth subject ordinal appears more than once: " + humanOrdinal);
+            }
+            insertion = -insertion - 1;
+            ensureCapacity(count + 1);
+            if (insertion < count) {
+                int moved = count - insertion;
+                System.arraycopy(ordinals, insertion, ordinals, insertion + 1, moved);
+                System.arraycopy(pills, insertion, pills, insertion + 1, moved);
+                System.arraycopy(xCm, insertion, xCm, insertion + 1, moved);
+                System.arraycopy(yCm, insertion, yCm, insertion + 1, moved);
+            }
+            ordinals[insertion] = humanOrdinal;
+            pills[insertion] = switch (pill) {
+                case BLUE -> (byte) 1;
+                case RED -> (byte) 2;
+            };
+            xCm[insertion] = x;
+            yCm[insertion] = y;
+            count++;
+        }
+
+        /** Publish one immutable value and close this capture. */
+        public TruthSnapshot build(long tick) {
+            if (!collecting) {
+                throw new IllegalStateException("truth builder has no open capture");
+            }
+            requireTick(tick);
+            int[] compactOrdinals = Arrays.copyOf(ordinals, count);
+            byte[] compactPills = Arrays.copyOf(pills, count);
+            int[] compactX = Arrays.copyOf(xCm, count);
+            int[] compactY = Arrays.copyOf(yCm, count);
+            collecting = false;
+            return new TruthSnapshot(tick, compactOrdinals,
+                    compactPills, compactX, compactY);
+        }
+
+        private void ensureCapacity(int needed) {
+            if (needed <= ordinals.length) {
+                return;
+            }
+            int capacity = ordinals.length;
+            while (capacity < needed) {
+                capacity = Math.multiplyExact(capacity, 2);
+            }
+            ordinals = Arrays.copyOf(ordinals, capacity);
+            pills = Arrays.copyOf(pills, capacity);
+            xCm = Arrays.copyOf(xCm, capacity);
+            yCm = Arrays.copyOf(yCm, capacity);
         }
     }
 
-    public TruthSnapshot {
-        if (tick < 0) {
-            throw new IllegalArgumentException("truth snapshot tick must be nonnegative");
-        }
-        Objects.requireNonNull(eligibility, "truth eligibility rule");
-        entries = List.copyOf(Objects.requireNonNull(entries, "truth entries"));
+    private final long tick;
+    private final int[] ordinals;
+    private final byte[] pills;
+    private final int[] xCm;
+    private final int[] yCm;
+    private final List<CausalRecord.TruthEntry> entries;
 
-        List<Predicate> predicates = eligibility.predicates();
-        if (entries.size() % predicates.size() != 0) {
-            throw new IllegalArgumentException(
-                    "truth snapshot must carry one complete fact group per subject");
-        }
-
-        int previousSubject = -1;
-        for (int i = 0; i < entries.size(); i++) {
-            CausalRecord.TruthEntry entry = entries.get(i);
-            if (entry.tick() != tick || entry.sequence() != i) {
-                throw new IllegalArgumentException(
-                        "truth entries must use the snapshot tick and dense canonical sequence");
-            }
-            if (entry.subject().kind() != CausalRecord.PrincipalKind.HUMAN) {
-                throw new IllegalArgumentException(
-                        "connected-resident truth requires a Human subject");
-            }
-            int subject = humanOrdinal(entry.subject());
-
-            int position = i % predicates.size();
-            Predicate predicate = Predicate.named(entry.fact().predicate());
-            Predicate expected = predicates.get(position);
-            if (predicate != expected || !expected.accepts(entry.fact().value())
-                    || !entry.provenance().equals(expected.provenance())) {
-                throw new IllegalArgumentException(
-                        "truth fact order, value, or provenance violates the eligibility rule");
-            }
-
-            if (position == 0) {
-                if (subject <= previousSubject) {
-                    throw new IllegalArgumentException(
-                            "truth subjects must be strictly canonical and duplicate-free");
-                }
-                previousSubject = subject;
-            } else if (subject != previousSubject) {
-                throw new IllegalArgumentException(
-                        "one truth fact group cannot cross subject identities");
-            }
-        }
+    private TruthSnapshot(long tick, int[] ordinals, byte[] pills,
+            int[] xCm, int[] yCm) {
+        requireTick(tick);
+        this.tick = tick;
+        this.ordinals = ordinals;
+        this.pills = pills;
+        this.xCm = xCm;
+        this.yCm = yCm;
+        this.entries = new EntryView();
     }
 
     /** Explicit no-eligible-subject value for the named rule and source tick. */
     public static TruthSnapshot empty(long tick) {
-        return new TruthSnapshot(tick, EligibilityRule.CONNECTED_RESIDENT_SELF_V1,
-                List.of());
+        return new TruthSnapshot(tick, new int[0], new byte[0], new int[0], new int[0]);
     }
 
-    /** Number of eligible residents, not number of entries. */
+    public long tick() {
+        return tick;
+    }
+
+    public EligibilityRule eligibility() {
+        return EligibilityRule.CONNECTED_RESIDENT_SELF_V1;
+    }
+
+    /** Immutable, canonically ordered, lazily derived typed fact view. */
+    public List<CausalRecord.TruthEntry> entries() {
+        return entries;
+    }
+
+    /** Number of eligible residents, not number of derived entries. */
     public int subjects() {
-        return entries.size() / eligibility.predicates().size();
+        return ordinals.length;
     }
 
     public boolean isEmpty() {
-        return entries.isEmpty();
+        return ordinals.length == 0;
     }
 
-    /** Human identity is the immutable growth ordinal, with one canonical spelling. */
-    private static int humanOrdinal(CausalRecord.Principal subject) {
-        String key = subject.key().value();
-        if (!key.startsWith("human-") || key.length() == "human-".length()) {
-            throw new IllegalArgumentException("truth subject must use human-N identity");
-        }
-        String ordinal = key.substring("human-".length());
-        if (!canonicalNonnegativeInt(ordinal)) {
-            throw new IllegalArgumentException("truth subject must use canonical Human ordinal");
-        }
-        return Integer.parseInt(ordinal);
-    }
-
-    /** One comma, two strict decimal coordinates, no alternate byte spelling. */
-    private static boolean canonicalPosition(String value) {
-        int comma = value.indexOf(',');
-        return comma > 0 && comma == value.lastIndexOf(',')
-                && comma < value.length() - 1
-                && canonicalNonnegativeInt(value.substring(0, comma))
-                && canonicalNonnegativeInt(value.substring(comma + 1));
-    }
-
-    private static boolean canonicalNonnegativeInt(String value) {
-        if (value.isEmpty() || value.length() > 10
-                || value.length() > 1 && value.charAt(0) == '0') {
-            return false;
-        }
-        for (int i = 0; i < value.length(); i++) {
-            if (value.charAt(i) < '0' || value.charAt(i) > '9') {
-                return false;
-            }
-        }
-        try {
-            Integer.parseInt(value);
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
-        } catch (NumberFormatException e) {
+        }
+        if (!(other instanceof TruthSnapshot snapshot)) {
             return false;
+        }
+        return tick == snapshot.tick
+                && Arrays.equals(ordinals, snapshot.ordinals)
+                && Arrays.equals(pills, snapshot.pills)
+                && Arrays.equals(xCm, snapshot.xCm)
+                && Arrays.equals(yCm, snapshot.yCm);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = Long.hashCode(tick);
+        hash = 31 * hash + Arrays.hashCode(ordinals);
+        hash = 31 * hash + Arrays.hashCode(pills);
+        hash = 31 * hash + Arrays.hashCode(xCm);
+        return 31 * hash + Arrays.hashCode(yCm);
+    }
+
+    /** One read-only projection over the snapshot's owned primitive state. */
+    private final class EntryView extends AbstractList<CausalRecord.TruthEntry>
+            implements RandomAccess {
+        @Override
+        public CausalRecord.TruthEntry get(int index) {
+            Objects.checkIndex(index, size());
+            int factCount = eligibility().predicates().size();
+            int subjectIndex = index / factCount;
+            Predicate predicate = eligibility().predicates().get(index % factCount);
+            ResidentPill pill = switch (pills[subjectIndex]) {
+                case 1 -> ResidentPill.BLUE;
+                case 2 -> ResidentPill.RED;
+                default -> throw new IllegalStateException(
+                        "truth snapshot carries an unknown pill code");
+            };
+            CausalRecord.Principal subject = new CausalRecord.Principal(
+                    CausalRecord.PrincipalKind.HUMAN,
+                    "human-" + ordinals[subjectIndex]);
+            return new CausalRecord.TruthEntry(tick, index, subject,
+                    predicate.fact(pill, xCm[subjectIndex], yCm[subjectIndex]),
+                    predicate.provenance);
+        }
+
+        @Override
+        public int size() {
+            return Math.multiplyExact(ordinals.length,
+                    eligibility().predicates().size());
+        }
+    }
+
+    private static void requireTick(long tick) {
+        if (tick < 0) {
+            throw new IllegalArgumentException("truth snapshot tick must be nonnegative");
         }
     }
 }

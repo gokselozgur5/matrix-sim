@@ -8,14 +8,15 @@ import matrix.realworld.NeuralLink;
 import matrix.realworld.RealWorld;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,17 +33,18 @@ import java.util.regex.Pattern;
  * real-side state after capture cannot change the object handed to delivery;
  * and making the same change before capture does change the result.
  *
- * <p>The constructor half attacks the aggregate rather than trusting Java
- * record syntax. Caller-list mutation, returned-list mutation, incomplete
- * groups, wrong tick/sequence, unknown predicates, wrong provenance, non-Human
- * subjects, duplicate subjects, and unstable group order each have a retained
- * case. Empty is a first-class value with its tick and rule intact.
+ * <p>The aggregate half attacks the compact door rather than trusting its
+ * private arrays. Only ordinal, pill, and coordinates can enter the reusable
+ * builder; numeric ordering is independent of insertion order; published
+ * arrays cannot be reached or moved by builder reuse; typed entries are a
+ * read-only derivation; malformed scalar and builder states are refused. Empty
+ * is a first-class value with its tick and rule intact.
  *
  * <p>The source half keeps #1691's door narrow before #1691 exists: the
  * production delivery hook must hand over {@code tickTruth} and may not name
- * {@code world} or {@code realWorld}. It also reads the three production
- * predicate constants and drives the same scanner over a private live-read
- * mutant, so a green source count cannot mean the reader forgot its subject.
+     * {@code world} or {@code realWorld}. It also drives the same scanner over
+     * a private live-read mutant, so a green source count cannot mean the
+     * reader forgot its subject.
  *
  * <p>Usage: {@code java -cp out:probes/out TruthSnapshots [--root src]}
  */
@@ -55,9 +57,6 @@ public final class TruthSnapshots {
 
     private static final Pattern LIVE_DELIVERY_READ =
             Pattern.compile("\\b(?:world|realWorld)\\b");
-    private static final Pattern PREDICATE_REFERENCE =
-            Pattern.compile("TruthSnapshot\\.Predicate\\.([A-Z_]+)");
-
     private static final Map<String, Integer> CASES = new LinkedHashMap<>();
     private static final Map<String, Integer> FAILURES = new LinkedHashMap<>();
     private static final List<String> BREAKS = new ArrayList<>();
@@ -95,117 +94,106 @@ public final class TruthSnapshots {
                 + " delivery_live=" + failures("delivery"), held);
     }
 
-    /** The aggregate rejects every malformed shape instead of normalizing it. */
+    /** The compact aggregate exposes no generic door through which hidden facts fit. */
     private static void aggregateContract() {
         TruthSnapshot empty = TruthSnapshot.empty(7);
         check("eligibility", "empty-explicit",
                 empty.tick() == 7 && empty.isEmpty() && empty.subjects() == 0
                         && empty.eligibility()
                         == TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1);
+        check("eligibility", "closed-rule-roster",
+                empty.eligibility().predicates().equals(PREDICATES));
 
-        CausalRecord.Principal alice = human("human-1");
-        List<CausalRecord.TruthEntry> caller = new ArrayList<>(group(7, 0, alice));
-        TruthSnapshot snapshot = snapshot(7, caller);
-        caller.clear();
-        check("immutable", "caller-list-copied", snapshot.entries().size() == PREDICATES.size());
+        TruthSnapshot.Builder builder = begun();
+        builder.add(10, TruthSnapshot.ResidentPill.RED, 30, 40);
+        builder.add(2, TruthSnapshot.ResidentPill.BLUE, 10, 20);
+        TruthSnapshot snapshot = builder.build(7);
         rejectsListMutation("returned-list-add", snapshot.entries(), true);
         rejectsListMutation("returned-list-set", snapshot.entries(), false);
         rejectsPredicateMutation("rule-list-add", empty.eligibility().predicates(), true);
         rejectsPredicateMutation("rule-list-set", empty.eligibility().predicates(), false);
 
-        List<CausalRecord.TruthEntry> incomplete = new ArrayList<>(group(7, 0, alice));
-        incomplete.remove(incomplete.size() - 1);
-        rejects("eligibility", "incomplete-group", () -> snapshot(7, incomplete));
-
-        List<CausalRecord.TruthEntry> unknown = new ArrayList<>(group(7, 0, alice));
-        CausalRecord.TruthEntry old = unknown.get(0);
-        unknown.set(0, new CausalRecord.TruthEntry(7, 0, alice,
-                new CausalRecord.Fact(new CausalRecord.Symbol("ledger.balance"),
-                        new CausalRecord.Payload("secret")), old.provenance()));
-        rejects("eligibility", "hidden-predicate", () -> snapshot(7, unknown));
-
-        List<CausalRecord.TruthEntry> wrongSource = new ArrayList<>(group(7, 0, alice));
-        old = wrongSource.get(0);
-        wrongSource.set(0, new CausalRecord.TruthEntry(7, 0, alice, old.fact(),
-                new CausalRecord.Principal(CausalRecord.PrincipalKind.SYSTEM,
-                        "matrix-world")));
-        rejects("eligibility", "wrong-provenance", () -> snapshot(7, wrongSource));
-
-        List<CausalRecord.TruthEntry> hiddenValue = new ArrayList<>(group(7, 0, alice));
-        old = hiddenValue.get(0);
-        hiddenValue.set(0, new CausalRecord.TruthEntry(7, 0, alice,
-                new CausalRecord.Fact(TruthSnapshot.Predicate.BRAIN_ALIVE.symbol(),
-                        new CausalRecord.Payload("ledger-secret")),
-                old.provenance()));
-        rejects("eligibility", "hidden-value-under-eligible-name",
-                () -> snapshot(7, hiddenValue));
-
-        for (String bad : List.of("BLUE", "unknown")) {
-            List<CausalRecord.TruthEntry> wrongPill = new ArrayList<>(group(7, 0, alice));
-            old = wrongPill.get(1);
-            wrongPill.set(1, new CausalRecord.TruthEntry(7, 1, alice,
-                    new CausalRecord.Fact(TruthSnapshot.Predicate.AVATAR_PILL.symbol(),
-                            new CausalRecord.Payload(bad)), old.provenance()));
-            rejects("eligibility", "pill-value-" + bad,
-                    () -> snapshot(7, wrongPill));
+        List<CausalRecord.TruthEntry> entries = snapshot.entries();
+        check("order", "subject-order-is-numeric",
+                entries.get(0).subject().key().value().equals("human-2")
+                        && entries.get(3).subject().key().value().equals("human-10"));
+        boolean dense = true;
+        for (int i = 0; i < entries.size(); i++) {
+            dense &= entries.get(i).tick() == 7 && entries.get(i).sequence() == i;
         }
+        check("order", "tick-and-sequence-dense", dense);
+        check("eligibility", "first-group-values",
+                fact(entries.get(0)).equals("brain.alive=true")
+                        && fact(entries.get(1)).equals("avatar.pill=blue")
+                        && fact(entries.get(2)).equals("avatar.position_cm=10,20"));
+        check("eligibility", "second-group-values",
+                fact(entries.get(3)).equals("brain.alive=true")
+                        && fact(entries.get(4)).equals("avatar.pill=red")
+                        && fact(entries.get(5)).equals("avatar.position_cm=30,40"));
+        check("eligibility", "provenance-closed",
+                entries.get(0).provenance().key().value().equals("real-world")
+                        && entries.get(1).provenance().key().value().equals("matrix-world")
+                        && entries.get(2).provenance().key().value().equals("matrix-world"));
 
-        for (String bad : List.of("-1,0", "01,0", "2147483648,0", "x,0",
-                "0", "0,1,2")) {
-            List<CausalRecord.TruthEntry> wrongCoordinate =
-                    new ArrayList<>(group(7, 0, alice));
-            old = wrongCoordinate.get(2);
-            wrongCoordinate.set(2, new CausalRecord.TruthEntry(7, 2, alice,
-                    new CausalRecord.Fact(
-                            TruthSnapshot.Predicate.AVATAR_POSITION_CM.symbol(),
-                            new CausalRecord.Payload(bad)), old.provenance()));
-            rejects("eligibility", "coordinate-value-" + bad,
-                    () -> snapshot(7, wrongCoordinate));
+        List<CausalRecord.TruthEntry> before = List.copyOf(entries);
+        builder.begin();
+        builder.add(2, TruthSnapshot.ResidentPill.RED, 99, 100);
+        TruthSnapshot next = builder.build(8);
+        check("immutable", "builder-reuse-cannot-move-published-snapshot",
+                snapshot.entries().equals(before) && !snapshot.equals(next));
+        check("immutable", "equal-values-share-hash",
+                snapshot.equals(rebuildSame()) && snapshot.hashCode() == rebuildSame().hashCode());
+
+        TruthSnapshot base = oneSubject(7, 5, TruthSnapshot.ResidentPill.BLUE, 10, 20);
+        check("immutable", "equality-separates-tick",
+                !base.equals(oneSubject(8, 5, TruthSnapshot.ResidentPill.BLUE, 10, 20)));
+        check("immutable", "equality-separates-ordinal",
+                !base.equals(oneSubject(7, 6, TruthSnapshot.ResidentPill.BLUE, 10, 20)));
+        check("immutable", "equality-separates-pill",
+                !base.equals(oneSubject(7, 5, TruthSnapshot.ResidentPill.RED, 10, 20)));
+        check("immutable", "equality-separates-x",
+                !base.equals(oneSubject(7, 5, TruthSnapshot.ResidentPill.BLUE, 11, 20)));
+        check("immutable", "equality-separates-y",
+                !base.equals(oneSubject(7, 5, TruthSnapshot.ResidentPill.BLUE, 10, 21)));
+
+        rejectsState("add-before-begin", () -> new TruthSnapshot.Builder().add(
+                1, TruthSnapshot.ResidentPill.BLUE, 0, 0));
+        rejectsState("build-before-begin", () -> new TruthSnapshot.Builder().build(0));
+        TruthSnapshot.Builder alreadyBegun = begun();
+        rejectsState("begin-twice", alreadyBegun::begin);
+        rejects("eligibility", "negative-ordinal", () -> begun().add(
+                -1, TruthSnapshot.ResidentPill.BLUE, 0, 0));
+        rejects("eligibility", "negative-x", () -> begun().add(
+                1, TruthSnapshot.ResidentPill.BLUE, -1, 0));
+        rejects("eligibility", "negative-y", () -> begun().add(
+                1, TruthSnapshot.ResidentPill.BLUE, 0, -1));
+        rejectsNull("null-pill", () -> begun().add(1, null, 0, 0));
+
+        TruthSnapshot.Builder duplicate = begun();
+        duplicate.add(1, TruthSnapshot.ResidentPill.BLUE, 0, 0);
+        rejects("order", "duplicate-subject", () -> duplicate.add(
+                1, TruthSnapshot.ResidentPill.RED, 1, 1));
+        rejects("order", "negative-tick", () -> begun().build(-1));
+        TruthSnapshot.Builder largest = begun();
+        largest.add(Integer.MAX_VALUE, TruthSnapshot.ResidentPill.BLUE, 0, 0);
+        check("order", "max-ordinal-is-value-not-capacity",
+                largest.build(0).entries().get(0).subject().key().value()
+                        .equals("human-2147483647"));
+
+        TruthSnapshot.Builder closed = begun();
+        closed.build(0);
+        rejectsState("add-after-build", () -> closed.add(
+                1, TruthSnapshot.ResidentPill.BLUE, 0, 0));
+        rejectsState("build-twice", () -> closed.build(0));
+
+        boolean constructorsPrivate = true;
+        for (Constructor<?> constructor : TruthSnapshot.class.getDeclaredConstructors()) {
+            constructorsPrivate &= Modifier.isPrivate(constructor.getModifiers());
         }
-
-        List<CausalRecord.TruthEntry> wrongKind = group(7, 0,
-                new CausalRecord.Principal(CausalRecord.PrincipalKind.MACHINE, "machine-a"));
-        rejects("eligibility", "non-human-subject", () -> snapshot(7, wrongKind));
-
-        for (String bad : List.of("human-a", "human-01", "human--1",
-                "human-2147483648")) {
-            List<CausalRecord.TruthEntry> malformedSubject = group(7, 0, human(bad));
-            rejects("eligibility", "subject-key-" + bad,
-                    () -> snapshot(7, malformedSubject));
-        }
-        rejects("eligibility", "predicate-factory-refuses-hidden-value",
-                () -> TruthSnapshot.Predicate.BRAIN_ALIVE.fact("ledger-secret"));
-
-        List<CausalRecord.TruthEntry> wrongTick = new ArrayList<>(group(7, 0, alice));
-        old = wrongTick.get(0);
-        wrongTick.set(0, new CausalRecord.TruthEntry(8, 0, alice,
-                old.fact(), old.provenance()));
-        rejects("order", "entry-tick-mismatch", () -> snapshot(7, wrongTick));
-
-        List<CausalRecord.TruthEntry> sequenceGap = new ArrayList<>(group(7, 0, alice));
-        old = sequenceGap.get(2);
-        sequenceGap.set(2, new CausalRecord.TruthEntry(7, 9, alice,
-                old.fact(), old.provenance()));
-        rejects("order", "sequence-gap", () -> snapshot(7, sequenceGap));
-
-        List<CausalRecord.TruthEntry> wrongFactOrder = new ArrayList<>(group(7, 0, alice));
-        Collections.swap(wrongFactOrder, 0, 1);
-        wrongFactOrder = resequence(7, wrongFactOrder);
-        List<CausalRecord.TruthEntry> finalWrongFactOrder = wrongFactOrder;
-        rejects("order", "fact-order", () -> snapshot(7, finalWrongFactOrder));
-
-        List<CausalRecord.TruthEntry> duplicate = new ArrayList<>(group(7, 0, alice));
-        duplicate.addAll(group(7, PREDICATES.size(), alice));
-        rejects("order", "duplicate-subject", () -> snapshot(7, duplicate));
-
-        CausalRecord.Principal bob = human("human-2");
-        List<CausalRecord.TruthEntry> descending = new ArrayList<>(group(7, 0, bob));
-        descending.addAll(group(7, PREDICATES.size(), alice));
-        rejects("order", "subject-order", () -> snapshot(7, descending));
-
-        List<CausalRecord.TruthEntry> numeric = new ArrayList<>(group(7, 0, bob));
-        numeric.addAll(group(7, PREDICATES.size(), human("human-10")));
-        check("order", "subject-order-is-numeric", snapshot(7, numeric).subjects() == 2);
+        check("eligibility", "no-public-generic-constructor", constructorsPrivate);
+        check("eligibility", "builder-constructor-is-sole-no-arg", soleNoArgConstructor());
+        check("eligibility", "builder-public-roster-exact", exactBuilderRoster());
+        check("immutable", "owned-arrays-are-private-final", ownedArraysPrivateFinal());
     }
 
     /** Drive the actual root and both named post-capture mutation domains. */
@@ -223,17 +211,31 @@ public final class TruthSnapshots {
         check("freeze", "complete-groups",
                 frozen.entries().size() == frozen.subjects() * PREDICATES.size());
 
+        ineligibleWhen("ineligible-null-link", frozen,
+                (human, world) -> clearLink(human));
+        ineligibleWhen("ineligible-closed-link", frozen,
+                (human, world) -> closeLinkOnly(human));
+        ineligibleWhen("ineligible-dead-avatar", frozen,
+                (human, world) -> human.link().avatar.alive = false);
+        ineligibleWhen("ineligible-world-absent-avatar", frozen,
+                (human, world) -> world.entities().remove(human.link().avatar));
+        ineligibleWhen("ineligible-dead-brain", frozen,
+                (human, world) -> human.brain.flatline());
+
         Simulation reordered = new Simulation(42, null, null);
         RealWorld reorderedReal = field(reordered, "realWorld", RealWorld.class);
         Collections.reverse(reorderedReal.humans());
-        World reorderedWorld = field(reordered, "world", World.class);
-        reorderedWorld.ledger().accrue(9_999);
         invoke(reordered, "beginCausalTick");
         invoke(reordered, "snapshotTruth");
         check("order", "registry-order-independent",
                 frozen.equals(truth(reordered, "tickTruth")));
+
+        Simulation ledgered = new Simulation(42, null, null);
+        field(ledgered, "world", World.class).ledger().accrue(9_999);
+        invoke(ledgered, "beginCausalTick");
+        invoke(ledgered, "snapshotTruth");
         check("eligibility", "hidden-ledger-ineligible",
-                frozen.equals(truth(reordered, "tickTruth")));
+                frozen.equals(truth(ledgered, "tickTruth")));
 
         List<CausalRecord.TruthEntry> before = List.copyOf(frozen.entries());
         RealWorld real = field(canonical, "realWorld", RealWorld.class);
@@ -278,9 +280,6 @@ public final class TruthSnapshots {
         check("delivery", "production-source-read", production.swept() == 1);
         check("delivery", "no-live-delivery-read", production.liveReads() == 0);
         check("delivery", "one-frozen-handover", production.handovers() == 1);
-        check("eligibility", "closed-production-predicate-roster",
-                production.predicates().equals(predicateNames()));
-
         Path scratch = Files.createTempDirectory("truth-snapshot-source-");
         Path file = scratch.resolve("Simulation.java");
         try {
@@ -300,31 +299,21 @@ public final class TruthSnapshots {
     }
 
     private static String fixture(String deliveryBody) {
-        StringBuilder predicates = new StringBuilder();
-        for (TruthSnapshot.Predicate predicate : PREDICATES) {
-            predicates.append("TruthSnapshot.Predicate.").append(predicate.name()).append(";\n");
-        }
         return "class Simulation {\n"
-                + "  void predicates() {\n" + predicates + "  }\n"
                 + "  private void deliverPercepts() { " + deliveryBody + " }\n"
                 + "}\n";
     }
 
     private static SourceReading inspect(Path source) throws IOException {
         if (!Files.isRegularFile(source)) {
-            return new SourceReading(0, 0, 0, Set.of());
+            return new SourceReading(0, 0, 0);
         }
         String code = String.join("\n", Probes.uncommentedLines(source));
         String body = methodBody(code, "private void deliverPercepts()");
         int liveReads = occurrences(LIVE_DELIVERY_READ, body);
         int handovers = occurrences(Pattern.compile(
                 "\\bdeliveryTruth\\s*=\\s*tickTruth\\s*;"), body);
-        Set<String> predicates = new LinkedHashSet<>();
-        Matcher matcher = PREDICATE_REFERENCE.matcher(code);
-        while (matcher.find()) {
-            predicates.add(matcher.group(1));
-        }
-        return new SourceReading(1, liveReads, handovers, Set.copyOf(predicates));
+        return new SourceReading(1, liveReads, handovers);
     }
 
     private static String methodBody(String code, String signature) {
@@ -357,45 +346,176 @@ public final class TruthSnapshots {
         return count;
     }
 
-    private static Set<String> predicateNames() {
-        Set<String> names = new LinkedHashSet<>();
-        for (TruthSnapshot.Predicate predicate : PREDICATES) {
-            names.add(predicate.name());
+    private static TruthSnapshot.Builder begun() {
+        TruthSnapshot.Builder builder = new TruthSnapshot.Builder();
+        builder.begin();
+        return builder;
+    }
+
+    /**
+     * One fixture, one cause: the named clause alone must drop exactly that
+     * resident out of the frozen census and carry no entry for the ordinal.
+     */
+    private static void ineligibleWhen(String name, TruthSnapshot baseline, Ineligible cause)
+            throws Exception {
+        Simulation fixture = new Simulation(42, null, null);
+        RealWorld real = field(fixture, "realWorld", RealWorld.class);
+        World world = field(fixture, "world", World.class);
+        Human target = firstEligible(real, world);
+        if (target == null) {
+            check("eligibility", name, false);
+            return;
         }
-        return Set.copyOf(names);
-    }
-
-    private static TruthSnapshot snapshot(long tick,
-            List<CausalRecord.TruthEntry> entries) {
-        return new TruthSnapshot(tick,
-                TruthSnapshot.EligibilityRule.CONNECTED_RESIDENT_SELF_V1, entries);
-    }
-
-    private static List<CausalRecord.TruthEntry> group(long tick, int start,
-            CausalRecord.Principal subject) {
-        List<CausalRecord.TruthEntry> entries = new ArrayList<>();
-        List<String> values = List.of("true", "blue", "10,20");
-        for (int i = 0; i < PREDICATES.size(); i++) {
-            TruthSnapshot.Predicate predicate = PREDICATES.get(i);
-            entries.add(new CausalRecord.TruthEntry(tick, start + i, subject,
-                    predicate.fact(values.get(i)), predicate.provenance()));
+        cause.apply(target, world);
+        TruthSnapshot truth;
+        try {
+            invoke(fixture, "beginCausalTick");
+            invoke(fixture, "snapshotTruth");
+            truth = truth(fixture, "tickTruth");
+        } catch (Exception thrown) {
+            // A root that cannot capture this state has not judged it ineligible:
+            // that is this case's failure, reported by name rather than as a crash.
+            check("eligibility", name, false);
+            return;
         }
-        return entries;
+        check("eligibility", name, sameExceptSubject(baseline, truth, target.id));
     }
 
-    private static List<CausalRecord.TruthEntry> resequence(long tick,
-            List<CausalRecord.TruthEntry> entries) {
-        List<CausalRecord.TruthEntry> result = new ArrayList<>();
-        for (int i = 0; i < entries.size(); i++) {
-            CausalRecord.TruthEntry entry = entries.get(i);
-            result.add(new CausalRecord.TruthEntry(tick, i, entry.subject(),
-                    entry.fact(), entry.provenance()));
+    private static Human firstEligible(RealWorld real, World world) {
+        for (Human human : real.humans()) {
+            NeuralLink link = human.link();
+            if (link != null && !link.closed() && human.alive()
+                    && link.avatar.alive && world.isPresent(link.avatar)) {
+                return human;
+            }
         }
-        return result;
+        return null;
     }
 
-    private static CausalRecord.Principal human(String key) {
-        return new CausalRecord.Principal(CausalRecord.PrincipalKind.HUMAN, key);
+    /** The package-private attachment the root reads through {@code link()}. */
+    private static void clearLink(Human human) throws Exception {
+        Field attachment = Human.class.getDeclaredField("link");
+        attachment.setAccessible(true);
+        attachment.set(human, null);
+    }
+
+    /** Close only the wire, leaving its Human attachment and both bodies intact. */
+    private static void closeLinkOnly(Human human) throws Exception {
+        Field closed = NeuralLink.class.getDeclaredField("closed");
+        closed.setAccessible(true);
+        closed.setBoolean(human.link(), true);
+    }
+
+    /** Exact canonical baseline remainder, with sequence numbers re-densified. */
+    private static boolean sameExceptSubject(TruthSnapshot baseline,
+            TruthSnapshot observed, int removedOrdinal) {
+        String removed = "human-" + removedOrdinal;
+        int observedIndex = 0;
+        for (CausalRecord.TruthEntry expected : baseline.entries()) {
+            if (expected.subject().key().value().equals(removed)) {
+                continue;
+            }
+            if (observedIndex >= observed.entries().size()) {
+                return false;
+            }
+            CausalRecord.TruthEntry actual = observed.entries().get(observedIndex);
+            if (actual.tick() != baseline.tick()
+                    || actual.sequence() != observedIndex
+                    || !actual.subject().equals(expected.subject())
+                    || !actual.fact().equals(expected.fact())
+                    || !actual.provenance().equals(expected.provenance())) {
+                return false;
+            }
+            observedIndex++;
+        }
+        return observed.tick() == baseline.tick()
+                && observed.subjects() == baseline.subjects() - 1
+                && observedIndex == observed.entries().size();
+    }
+
+    private static TruthSnapshot oneSubject(long tick, int ordinal,
+            TruthSnapshot.ResidentPill pill, int x, int y) {
+        TruthSnapshot.Builder builder = begun();
+        builder.add(ordinal, pill, x, y);
+        return builder.build(tick);
+    }
+
+    private static TruthSnapshot rebuildSame() {
+        TruthSnapshot.Builder builder = begun();
+        builder.add(10, TruthSnapshot.ResidentPill.RED, 30, 40);
+        builder.add(2, TruthSnapshot.ResidentPill.BLUE, 10, 20);
+        return builder.build(7);
+    }
+
+    private static String fact(CausalRecord.TruthEntry entry) {
+        return entry.fact().predicate().value() + "=" + entry.fact().value().text();
+    }
+
+    private static boolean soleNoArgConstructor() {
+        Constructor<?>[] constructors =
+                TruthSnapshot.Builder.class.getDeclaredConstructors();
+        return constructors.length == 1
+                && Modifier.isPublic(constructors[0].getModifiers())
+                && constructors[0].getParameterCount() == 0;
+    }
+
+    /**
+     * The whole public Builder surface, not only the shape of {@code add}: an
+     * added public or protected method is a new door even when every existing
+     * door still matches.
+     */
+    private static boolean exactBuilderRoster() {
+        int doors = 0;
+        for (Method method : TruthSnapshot.Builder.class.getDeclaredMethods()) {
+            if (method.isSynthetic()) {
+                continue;
+            }
+            int modifiers = method.getModifiers();
+            if (!Modifier.isPublic(modifiers) && !Modifier.isProtected(modifiers)) {
+                continue;
+            }
+            doors++;
+            if (!Modifier.isPublic(modifiers) || !declaredDoor(method)) {
+                return false;
+            }
+        }
+        return doors == 3;
+    }
+
+    private static boolean declaredDoor(Method method) {
+        Class<?>[] parameters = method.getParameterTypes();
+        return switch (method.getName()) {
+            case "begin" -> method.getReturnType() == void.class
+                    && parameters.length == 0;
+            case "add" -> method.getReturnType() == void.class
+                    && parameters.length == 4
+                    && parameters[0] == int.class
+                    && parameters[1] == TruthSnapshot.ResidentPill.class
+                    && parameters[2] == int.class
+                    && parameters[3] == int.class;
+            case "build" -> method.getReturnType() == TruthSnapshot.class
+                    && parameters.length == 1
+                    && parameters[0] == long.class;
+            default -> false;
+        };
+    }
+
+    private static boolean ownedArraysPrivateFinal() {
+        Set<String> owned = Set.of("ordinals", "pills", "xCm", "yCm");
+        int seen = 0;
+        for (Field field : TruthSnapshot.class.getDeclaredFields()) {
+            if (!owned.contains(field.getName())) {
+                continue;
+            }
+            seen++;
+            int modifiers = field.getModifiers();
+            if (!field.getType().isArray()
+                    || !Modifier.isPrivate(modifiers)
+                    || !Modifier.isFinal(modifiers)) {
+                return false;
+            }
+        }
+        return seen == owned.size();
     }
 
     private static int eligibleSubjects(RealWorld real, World world) {
@@ -422,12 +542,36 @@ public final class TruthSnapshots {
         check(subject, name, refused);
     }
 
+    private static void rejectsState(String name, Throwing action) {
+        boolean refused = false;
+        try {
+            action.run();
+        } catch (IllegalStateException expected) {
+            refused = true;
+        } catch (Exception unexpected) {
+            throw new AssertionError(unexpected);
+        }
+        check("order", name, refused);
+    }
+
+    private static void rejectsNull(String name, Throwing action) {
+        boolean refused = false;
+        try {
+            action.run();
+        } catch (NullPointerException expected) {
+            refused = true;
+        } catch (Exception unexpected) {
+            throw new AssertionError(unexpected);
+        }
+        check("eligibility", name, refused);
+    }
+
     private static void rejectsListMutation(String name,
             List<CausalRecord.TruthEntry> entries, boolean add) {
         boolean refused = false;
         try {
             if (add) {
-                entries.add(group(7, entries.size(), human("human-99")).get(0));
+                entries.add(entries.get(0));
             } else {
                 entries.set(0, entries.get(0));
             }
@@ -496,10 +640,14 @@ public final class TruthSnapshots {
         void run() throws Exception;
     }
 
+    @FunctionalInterface
+    private interface Ineligible {
+        void apply(Human human, World world) throws Exception;
+    }
+
     private record Production(long tick, int subjects, int entries) {}
 
-    private record SourceReading(int swept, int liveReads, int handovers,
-                                 Set<String> predicates) {}
+    private record SourceReading(int swept, int liveReads, int handovers) {}
 
     private TruthSnapshots() {}
 }
