@@ -346,7 +346,11 @@ table() {
   # attempts pair one supplied visible ID/uncertainty with one root audit;
   # occlusion emits nothing, while attributed capability mutants keep hidden
   # truth, actual source, live state, callbacks, and native escape outside.
-  judge PerceptReceipts 'VERDICT PERCEPT_RECEIPTS_HELD cases=64 cases_none=0 projection_fail=0 hidden_leak=0 constructor_fail=0 silence_fail=0 source_fail=0 roster_fail=0'
+  judge PerceptReceipts 'VERDICT PERCEPT_RECEIPTS_HELD cases=67 cases_none=0 projection_fail=0 hidden_leak=0 constructor_fail=0 silence_fail=0 source_fail=0 roster_fail=0'
+  # #1765's typed visible claim seam. Claim identity and presented position
+  # cross projection/allocation/reduction without becoming truth; explicit
+  # legacy neutrality and attributed complete-tree derivation mutants stay red.
+  judge PresentedClaims 'VERDICT PRESENTED_CLAIMS_HELD cases=39 cases_none=0 claim_fail=0 source_red=6'
   # D-066's sole subject-local mind ingress (#1693). Visible-only ordering
   # preserves equal occurrences before allocation; scoped identity then makes
   # exact retransmission idempotent and conflicting reuse impossible.

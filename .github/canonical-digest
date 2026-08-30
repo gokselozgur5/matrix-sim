@@ -1,6 +1,6 @@
 # The canonical digest — the seal's one home in the tree.
 #
-# sealed: 2026-08-30 #1695 crown #1763
+# sealed: 2026-08-30 #1765 crown #1766
 #
 # The date this value was set, so "how long has this world stood" is a READ and not a
 # walk of the log. Forty units landed in one night against this sha and nothing in the
@@ -53,4 +53,4 @@
 #
 #     git log --format=%B | grep '^Declared digest move:'
 
-0562e4a52b58439b4b29edd76bec53ca809ee338f0d835637ccf83250a640f24  seed 42, 6,000 ticks — moved by #1695 because the MindState schema now encodes the complete typed visible interpretation: channel, presented content, perceived source kind/key, supplied uncertainty, presented fidelity and explicit UNRESOLVED status. The simulated film and draw order are unchanged; every genesis mind now carries schema V2 so a later retained interpretation cannot be omitted from the seal. Was 5fa058ca3b754fe6ce8f6b176afb7a9716a6607d4e9932ebffb7dc5c382d7cd1; crown #1763.
+5ae37ca3d81d84a3a35399940210583e13591112a22f3b7c46600dce882bde3d  seed 42, 6,000 ticks — moved by #1765 because MindState schema V3 now retains the exact visible claim class, claim key, and presented position beside each unresolved interpretation. These fields identify what was presented without declaring truth or belief. The film events and draw order are unchanged. Was 0562e4a52b58439b4b29edd76bec53ca809ee338f0d835637ccf83250a640f24; crown #1766.

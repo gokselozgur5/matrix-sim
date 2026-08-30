@@ -40,7 +40,8 @@ public final class MindReducer {
                     new MindState.InterpretationV1(
                             receipt.channel(), receipt.content(), receipt.perceivedSource(),
                             receipt.uncertaintyBasisPoints(), receipt.fidelity(),
-                            MindState.EpistemicStatus.UNRESOLVED)));
+                            MindState.EpistemicStatus.UNRESOLVED,
+                            receipt.presentedClaim())));
         }
         return new MindState(prior.subject(), revision, history);
     }

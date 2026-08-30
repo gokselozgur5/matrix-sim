@@ -186,7 +186,8 @@ public final class CausalRecords {
                 CausalRecord.ObligationClass.NONE_CITED);
         CausalRecord.PerceptReceipt receipt = new CausalRecord.PerceptReceipt(
                 new CausalId.Percept(10, 0), neo, CausalRecord.Channel.VISION,
-                visible, matrix, 250, CausalRecord.Fidelity.FULL);
+                visible, CausalRecord.PresentedClaim.structured("door.state", "open"),
+                matrix, 250, CausalRecord.Fidelity.FULL);
         CausalRecord.ReceiptAudit audit = new CausalRecord.ReceiptAudit(receipt, delivery);
         CausalRecord.IntentProposal intent = new CausalRecord.IntentProposal(
                 new CausalId.Intent(10, 0), new CausalId.Choice(10, 0), neo,
@@ -264,7 +265,7 @@ public final class CausalRecords {
                 .map(RecordComponent::getName)
                 .toList();
         check("visibility", "receipt-exact-fields", receiptFields.equals(List.of(
-                "id", "subject", "channel", "content", "perceivedSource",
+                "id", "subject", "channel", "content", "presentedClaim", "perceivedSource",
                 "uncertaintyBasisPoints", "fidelity")));
         for (String forbidden : List.of("actual", "truth", "audit", "provenance",
                 "delivery", "outcome")) {
@@ -304,7 +305,8 @@ public final class CausalRecords {
                 CausalRecord.ObligationClass.NONE_CITED);
         CausalRecord.PerceptReceipt partialReceipt = new CausalRecord.PerceptReceipt(
                 fixture.receipt.id(), fixture.receipt.subject(), fixture.receipt.channel(),
-                fixture.receipt.content(), fixture.receipt.perceivedSource(), 250,
+                fixture.receipt.content(), fixture.receipt.presentedClaim(),
+                fixture.receipt.perceivedSource(), 250,
                 CausalRecord.Fidelity.PARTIAL);
         CausalRecord.ReceiptAudit auditA = new CausalRecord.ReceiptAudit(
                 partialReceipt, deliveryA);
@@ -334,21 +336,24 @@ public final class CausalRecords {
                 () -> new CausalRecord.ReceiptAudit(
                         new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                                 fixture.receipt.subject(), fixture.receipt.channel(),
-                                payload("different"), fixture.receipt.perceivedSource(), 0,
+                                payload("different"), fixture.receipt.presentedClaim(),
+                                fixture.receipt.perceivedSource(), 0,
                                 fixture.receipt.fidelity()),
                         fixture.delivery));
         rejects("constructor", "receipt-source-must-match-claim",
                 () -> new CausalRecord.ReceiptAudit(
                         new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                                 fixture.receipt.subject(), fixture.receipt.channel(),
-                                fixture.receipt.content(), CausalRecord.Principal.unknown(), 0,
+                                fixture.receipt.content(), fixture.receipt.presentedClaim(),
+                                CausalRecord.Principal.unknown(), 0,
                                 fixture.receipt.fidelity()),
                         fixture.delivery));
         rejects("constructor", "receipt-fidelity-must-match-audit",
                 () -> new CausalRecord.ReceiptAudit(
                         new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                                 fixture.receipt.subject(), fixture.receipt.channel(),
-                                fixture.receipt.content(), fixture.receipt.perceivedSource(), 0,
+                                fixture.receipt.content(), fixture.receipt.presentedClaim(),
+                                fixture.receipt.perceivedSource(), 0,
                                 CausalRecord.Fidelity.PARTIAL), fixture.delivery));
     }
 
@@ -687,7 +692,8 @@ public final class CausalRecords {
     private static CausalRecord.PerceptReceipt percept(Fixture fixture, int uncertainty) {
         return new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                 fixture.receipt.subject(), fixture.receipt.channel(),
-                fixture.receipt.content(), fixture.receipt.perceivedSource(), uncertainty,
+                fixture.receipt.content(), fixture.receipt.presentedClaim(),
+                fixture.receipt.perceivedSource(), uncertainty,
                 fixture.receipt.fidelity());
     }
 

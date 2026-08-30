@@ -168,6 +168,89 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         }
     }
 
+    /** Whether a presented claim has a structured identity or only legacy provenance. */
+    enum ClaimClass {
+        STRUCTURED,
+        LEGACY_UNCLASSIFIED
+    }
+
+    /**
+     * Stable identity of the question a presentation purports to address.
+     * It does not identify truth, policy, authority, consent, or audit state.
+     */
+    record ClaimKey(Symbol key) implements Comparable<ClaimKey> {
+        public ClaimKey {
+            Objects.requireNonNull(key, "claim key");
+        }
+
+        public ClaimKey(String key) {
+            this(new Symbol(key));
+        }
+
+        @Override public int compareTo(ClaimKey other) {
+            return key.compareTo(Objects.requireNonNull(other, "other claim key").key);
+        }
+    }
+
+    /** One alternative explicitly presented for a claim; never belief or correctness. */
+    record ClaimPosition(Symbol key) implements Comparable<ClaimPosition> {
+        public ClaimPosition {
+            Objects.requireNonNull(key, "claim position");
+        }
+
+        public ClaimPosition(String key) {
+            this(new Symbol(key));
+        }
+
+        @Override public int compareTo(ClaimPosition other) {
+            return key.compareTo(Objects.requireNonNull(other, "other claim position").key);
+        }
+    }
+
+    /**
+     * The claim identity and alternative visible in one presentation.
+     *
+     * <p>The legacy value is deliberately non-relatable: it prevents old film
+     * payloads from acquiring inferred meaning merely because their strings
+     * happen to match. Structured values may not use either reserved symbol.
+     */
+    record PresentedClaim(ClaimClass claimClass, ClaimKey claim,
+                          ClaimPosition position) {
+        public PresentedClaim {
+            Objects.requireNonNull(claimClass, "presented claim class");
+            Objects.requireNonNull(claim, "presented claim key");
+            Objects.requireNonNull(position, "presented claim position");
+            boolean reservedClaim = claim.key().value().equals("legacy-film.unclassified");
+            boolean reservedPosition = position.key().value().equals("unclassified");
+            boolean legacyPair = reservedClaim && reservedPosition;
+            if ((claimClass == ClaimClass.LEGACY_UNCLASSIFIED) != legacyPair) {
+                throw new IllegalArgumentException(
+                        "only the exact legacy pair may be unclassified");
+            }
+            if (claimClass == ClaimClass.STRUCTURED
+                    && (reservedClaim || reservedPosition)) {
+                throw new IllegalArgumentException(
+                        "structured claims cannot use a legacy reserved symbol");
+            }
+        }
+
+        public static PresentedClaim structured(String claim, String position) {
+            return new PresentedClaim(ClaimClass.STRUCTURED,
+                    new ClaimKey(claim), new ClaimPosition(position));
+        }
+
+        public static PresentedClaim legacyUnclassified() {
+            return new PresentedClaim(ClaimClass.LEGACY_UNCLASSIFIED,
+                    new ClaimKey("legacy-film.unclassified"),
+                    new ClaimPosition("unclassified"));
+        }
+
+        /** Only structured presentations may participate in later claim relations. */
+        public boolean relatable() {
+            return claimClass == ClaimClass.STRUCTURED;
+        }
+    }
+
     /** Stable Human identity token; never a Human or Avatar reference. */
     record Subject(Symbol key) implements Comparable<Subject> {
         public Subject {
@@ -421,7 +504,8 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
      * hidden fact and provenance.
      */
     record PerceptReceipt(CausalId.Percept id, Subject subject, Channel channel,
-                          Payload content, Principal perceivedSource,
+                          Payload content, PresentedClaim presentedClaim,
+                          Principal perceivedSource,
                           int uncertaintyBasisPoints, Fidelity fidelity)
             implements CausalRecord, Comparable<PerceptReceipt> {
         public PerceptReceipt {
@@ -429,6 +513,7 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
             Objects.requireNonNull(subject, "percept subject");
             Objects.requireNonNull(channel, "percept channel");
             Objects.requireNonNull(content, "percept content");
+            Objects.requireNonNull(presentedClaim, "percept presented claim");
             Objects.requireNonNull(perceivedSource, "perceived source");
             Objects.requireNonNull(fidelity, "presented percept fidelity");
             if (channel == Channel.NO_SIGNAL) {
@@ -464,6 +549,16 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
                         other.uncertaintyBasisPoints);
             }
             if (order == 0) order = fidelity.compareTo(other.fidelity);
+            if (order == 0) {
+                order = presentedClaim.claimClass().compareTo(
+                        other.presentedClaim.claimClass());
+            }
+            if (order == 0) {
+                order = presentedClaim.claim().compareTo(other.presentedClaim.claim());
+            }
+            if (order == 0) {
+                order = presentedClaim.position().compareTo(other.presentedClaim.position());
+            }
             return order;
         }
     }

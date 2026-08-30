@@ -215,7 +215,7 @@ public final class PerceptInputs {
 
         CausalRecord.PerceptReceipt conflict = new CausalRecord.PerceptReceipt(
                 one.id(), one.subject(), one.channel(),
-                new CausalRecord.Payload("conflict"), one.perceivedSource(),
+                new CausalRecord.Payload("conflict"), one.presentedClaim(), one.perceivedSource(),
                 one.uncertaintyBasisPoints(), one.fidelity());
         check("scoped", "conflict-order-is-not-equality",
                 one.compareTo(conflict) != 0 && !one.equals(conflict));
@@ -234,7 +234,8 @@ public final class PerceptInputs {
         check("scoped", "same-local-id-different-subject",
                 !zero.ref().equals(otherRef) && zero.ref().compareTo(otherRef) != 0);
         CausalRecord.PerceptReceipt otherReceipt = new CausalRecord.PerceptReceipt(
-                zero.id(), other, zero.channel(), zero.content(), zero.perceivedSource(),
+                zero.id(), other, zero.channel(), zero.content(), zero.presentedClaim(),
+                zero.perceivedSource(),
                 zero.uncertaintyBasisPoints(), zero.fidelity());
         check("scoped", "receipt-order-is-subject-scoped",
                 zero.compareTo(otherReceipt) != 0);
@@ -283,6 +284,7 @@ public final class PerceptInputs {
                 new CausalId.Percept(12, 1), copied.input().receipts().get(0).subject(),
                 copied.input().receipts().get(0).channel(),
                 copied.input().receipts().get(0).content(),
+                copied.input().receipts().get(0).presentedClaim(),
                 copied.input().receipts().get(0).perceivedSource(),
                 copied.input().receipts().get(0).uncertaintyBasisPoints(),
                 copied.input().receipts().get(0).fidelity());
@@ -506,12 +508,20 @@ public final class PerceptInputs {
                 "matrix.causal.CausalRecord.PerceptReceipt#fidelity()",
                 "matrix.causal.CausalRecord.PerceptReceipt#id()",
                 "matrix.causal.CausalRecord.PerceptReceipt#perceivedSource()",
+                "matrix.causal.CausalRecord.PerceptReceipt#presentedClaim()",
                 "matrix.causal.CausalRecord.PerceptReceipt#subject()",
                 "matrix.causal.CausalRecord.PerceptReceipt#tick()",
                 "matrix.causal.CausalRecord.PerceptReceipt#uncertaintyBasisPoints()",
                 "matrix.causal.CausalRecord.Principal#compareTo(matrix.causal.CausalRecord.Principal)",
                 "matrix.causal.CausalRecord.Principal#key()",
                 "matrix.causal.CausalRecord.Principal#kind()",
+                "matrix.causal.CausalRecord.PresentedClaim#claimClass()",
+                "matrix.causal.CausalRecord.PresentedClaim#claim()",
+                "matrix.causal.CausalRecord.PresentedClaim#position()",
+                "matrix.causal.CausalRecord.ClaimKey#key()",
+                "matrix.causal.CausalRecord.ClaimKey#compareTo(matrix.causal.CausalRecord.ClaimKey)",
+                "matrix.causal.CausalRecord.ClaimPosition#key()",
+                "matrix.causal.CausalRecord.ClaimPosition#compareTo(matrix.causal.CausalRecord.ClaimPosition)",
                 "matrix.causal.CausalRecord.ReceiptAudit#delivery()",
                 "matrix.causal.CausalRecord.ReceiptAudit#receipt()",
                 "matrix.causal.CausalRecord.Subject#equals(java.lang.Object)",
@@ -539,13 +549,15 @@ public final class PerceptInputs {
                 "matrix.causal.CausalRecord.PrincipalKind#UNKNOWN",
                 "matrix.causal.CausalRecord.Fidelity#FULL",
                 "matrix.causal.CausalRecord.Fidelity#PARTIAL",
-                "matrix.causal.CausalRecord.Fidelity#NONE");
+                "matrix.causal.CausalRecord.Fidelity#NONE",
+                "matrix.causal.CausalRecord.ClaimClass#STRUCTURED",
+                "matrix.causal.CausalRecord.ClaimClass#LEGACY_UNCLASSIFIED");
         Set<String> allowedConstructors = Set.of(
                 "java.lang.IllegalArgumentException#<init>(java.lang.String)",
                 "java.lang.StringBuilder#<init>(java.lang.String)",
                 "java.util.ArrayList#<init>(int)",
                 "matrix.causal.CausalId.Percept#<init>(long,int)",
-                "matrix.causal.CausalRecord.PerceptReceipt#<init>(matrix.causal.CausalId.Percept,matrix.causal.CausalRecord.Subject,matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity)",
+                "matrix.causal.CausalRecord.PerceptReceipt#<init>(matrix.causal.CausalId.Percept,matrix.causal.CausalRecord.Subject,matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.PresentedClaim,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity)",
                 "matrix.causal.CausalRecord.ReceiptAudit#<init>(matrix.causal.CausalRecord.PerceptReceipt,matrix.causal.CausalRecord.DeliveryAttempt)",
                 "matrix.causal.PerceptInputs.Allocation#<init>(matrix.causal.PerceptInputs.MindInput,java.util.List)",
                 "matrix.causal.PerceptInputs.MindInput#<init>(long,matrix.causal.CausalRecord.Subject,java.util.List)"
@@ -692,14 +704,16 @@ public final class PerceptInputs {
                 "matrix.causal.CausalRecord.PerceptReceipt#content()",
                 "matrix.causal.CausalRecord.PerceptReceipt#perceivedSource()",
                 "matrix.causal.CausalRecord.PerceptReceipt#uncertaintyBasisPoints()",
-                "matrix.causal.CausalRecord.PerceptReceipt#fidelity()");
+                "matrix.causal.CausalRecord.PerceptReceipt#fidelity()",
+                "matrix.causal.CausalRecord.PerceptReceipt#presentedClaim()");
         Set<String> expectedCanonicalReads = Set.of(
                 "matrix.causal.CausalRecord.PerceptReceipt#id()",
                 "matrix.causal.CausalRecord.PerceptReceipt#channel()",
                 "matrix.causal.CausalRecord.PerceptReceipt#content()",
                 "matrix.causal.CausalRecord.PerceptReceipt#perceivedSource()",
                 "matrix.causal.CausalRecord.PerceptReceipt#uncertaintyBasisPoints()",
-                "matrix.causal.CausalRecord.PerceptReceipt#fidelity()");
+                "matrix.causal.CausalRecord.PerceptReceipt#fidelity()",
+                "matrix.causal.CausalRecord.PerceptReceipt#presentedClaim()");
         TypeElement mapper = elements.getTypeElement("matrix.causal.PerceptInputs");
         TypeElement mindInput = elements.getTypeElement("matrix.causal.PerceptInputs.MindInput");
         TypeElement allocation = elements.getTypeElement("matrix.causal.PerceptInputs.Allocation");
@@ -756,6 +770,7 @@ public final class PerceptInputs {
                 "matrix.causal.PerceptInputs#channelRank(matrix.causal.CausalRecord.Channel)",
                 "matrix.causal.PerceptInputs#principalKindRank(matrix.causal.CausalRecord.PrincipalKind)",
                 "matrix.causal.PerceptInputs#fidelityRank(matrix.causal.CausalRecord.Fidelity)",
+                "matrix.causal.PerceptInputs#claimClassRank(matrix.causal.CausalRecord.ClaimClass)",
                 "matrix.causal.PerceptInputs#normalize(long,matrix.causal.CausalRecord.Subject,java.util.List)",
                 "matrix.causal.PerceptInputs#word(java.lang.StringBuilder,java.lang.String)",
                 "matrix.causal.PerceptInputs#number(java.lang.StringBuilder,long)"))
@@ -858,6 +873,7 @@ public final class PerceptInputs {
         return left.subject().equals(right.subject())
                 && left.channel() == right.channel()
                 && left.content().equals(right.content())
+                && left.presentedClaim().equals(right.presentedClaim())
                 && left.perceivedSource().equals(right.perceivedSource())
                 && left.uncertaintyBasisPoints() == right.uncertaintyBasisPoints()
                 && left.fidelity() == right.fidelity();
@@ -884,6 +900,7 @@ public final class PerceptInputs {
                 CausalRecord.ObligationClass.NONE_CITED);
         CausalRecord.PerceptReceipt receipt = new CausalRecord.PerceptReceipt(
                 new CausalId.Percept(tick, provisionalSequence), subject, channel, visible,
+                CausalRecord.PresentedClaim.structured("fixture.claim", "presented"),
                 declared, uncertainty, fidelity);
         return new CausalRecord.ReceiptAudit(receipt, attempt);
     }
