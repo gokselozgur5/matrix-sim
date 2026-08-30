@@ -95,6 +95,7 @@ public final class OperandRefusal {
     private static final Pattern ANY_ARM = Pattern.compile("case \"(--[a-z-]+)\" ->");
 
     public static void main(String[] args) throws IOException, InterruptedException {
+        matrix.Streams.utf8();
         String mainSource = DEFAULT_MAIN;
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--main") && i + 1 < args.length) {
