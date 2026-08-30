@@ -357,7 +357,10 @@ table() {
   judge PerceptInputs 'VERDICT PERCEPT_INPUTS_HELD cases=59 cases_none=0 allocation_fail=0 multiplicity_fail=0 hidden_leak=0 scoped_fail=0 canonical_fail=0 source_fail=0 roster_fail=0'
   # D-066's persistent real-side continuity substrate (#1694). Human owns one
   # stable Subject and bounded cited history while links, avatars and reload move.
-  judge MindStates 'VERDICT MIND_STATES_HELD cases=40 cases_none=0 lifecycle_fail=0 bounds_fail=0 canonical_fail=0 roster_fail=0'
+  judge MindStates 'VERDICT MIND_STATES_HELD cases=41 cases_none=0 lifecycle_fail=0 bounds_fail=0 canonical_fail=0 roster_fail=0'
+  # #1768's exact MindState V3 value codec. Independent frames and malformed
+  # bytes close the inverse law; attributed mutants keep ambient state out.
+  judge MindStateCodecs 'VERDICT MIND_STATE_CODECS_HELD cases=76 cases_none=0 roundtrip_fail=0 refusal_fail=0 future_fail=0 source_fail=0 source_red=11'
   # D-066's first real mind transition (#1695). It copies the complete visible
   # presentation into cited UNRESOLVED history without inventing truth or psychology.
   judge MindReducers 'VERDICT MIND_REDUCER_HELD cases=32 cases_none=0 transition_fail=0 boundary_fail=0 bounded_fail=0 deterministic_fail=0 roster_fail=0'

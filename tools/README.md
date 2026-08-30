@@ -191,8 +191,8 @@ verdict when it reached zero (#1485). `swept=` and `refused=` stayed.
 ## The exit grammar — what a low code means, and who may spend it
 
 <!-- figure: ls tools/*.sh | wc -l == 16 -->
-<!-- figure: ls probes/*.java | wc -l == 73 -->
-Every program in this tree that a script branches on: fifteen tools, fifty-odd
+<!-- figure: ls probes/*.java | wc -l == 74 -->
+Every program in this tree that a script branches on: sixteen tools, fifty-odd
 probes, and the teleprinter. Three populations, and until #1241 measured them,
 three different meanings for `2`.
 
