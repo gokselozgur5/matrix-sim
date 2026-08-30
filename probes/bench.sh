@@ -330,7 +330,7 @@ table() {
   # phases once; reflection drives the private refusal gate against reorder,
   # duplicate, early-observer, and incomplete shapes; a source fixture proves
   # that a second production scheduler is found.
-  judge CausalSpine 'VERDICT CAUSAL_SPINE_HELD cases=21 cases_none=0 order_fail=0 guard_fail=0 root_fail=0'
+  judge CausalSpine 'VERDICT CAUSAL_SPINE_HELD cases=42 cases_none=0 order_fail=0 guard_fail=0 root_fail=0'
   # D-066 phase one's first behavior (#1690). The aggregate attacks retain
   # immutability, closed eligibility/value/provenance grammar, dense canonical
   # order, explicit empty, iteration and hidden-ledger invariance, meaningful
