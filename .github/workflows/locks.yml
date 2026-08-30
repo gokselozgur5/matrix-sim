@@ -797,6 +797,28 @@ jobs:
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "COUNTERS SUITE FLOOR OK cases=$ran floor=$floor"
 
+      # WHY: #1769 — every lane in this repository is supplied by the branch it
+      # judges, and nobody had counted them. This step runs the census reader's
+      # own cases and NOTHING ELSE: the number it produces is not gated here and
+      # is not gated anywhere, because #1311's rule is that a gate installs at
+      # zero and `self_supplied=49` is not zero. The suite is offline by
+      # construction — no token, no network — so this step judges the reader and
+      # never the repository's settings.
+      - name: tools — the provenance census's own cases (#1769)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/provenance.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/provenance-selftest.log"
+          verdict="$(grep -E '^PROVENANCE SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/provenance-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the provenance suite did not reach a passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          floor=16   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "PROVENANCE SUITE FLOOR OK cases=$ran floor=$floor"
+
       # WHY: #1590 — two readers of one table, and until #1588 nothing compared them.
       # `counters.sh` walks `probes/bench.sh` in shell and `CatalogFlags` in Java, and
       # the shell one returned 67 of 70 rows for the file's whole life. It was found by
