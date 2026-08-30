@@ -314,7 +314,7 @@ table() {
   # literal spells — noise while `unresolved` is above zero, and SEAL_HYGIENE_HELD is the
   # proof: pinned, printed every green run, formatted rather than written. Pinning them
   # makes the next word to join them arrive as a decision instead of as a default.
-  judge VerdictCensus 'VERDICT VERDICT_CENSUS_STATED unasked=73 unresolved=9 unmatched=15 read_none=0'
+  judge VerdictCensus 'VERDICT VERDICT_CENSUS_STATED unasked=74 unresolved=9 unmatched=16 read_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
   # D-066's first runtime seam (#1686). Six nested records share one parser but
@@ -342,6 +342,11 @@ table() {
   # canonical order to immutable lazy attempts with closed channels and an
   # exact non-moral policy tuple; constructor and replay attacks stay separate.
   judge DeliveryAttempts 'VERDICT DELIVERY_ATTEMPTS_HELD cases=83 cases_none=0 bijection_fail=0 channel_fail=0 policy_fail=0 immutable_fail=0 replay_fail=0 constructor_fail=0 roster_fail=0 source_fail=0'
+  # D-066's one-attempt visible projection (#1692). Delivered and degraded
+  # attempts pair one supplied visible ID/uncertainty with one root audit;
+  # occlusion emits nothing, while attributed capability mutants keep hidden
+  # truth, actual source, live state, callbacks, and native escape outside.
+  judge PerceptReceipts 'VERDICT PERCEPT_RECEIPTS_HELD cases=64 cases_none=0 projection_fail=0 hidden_leak=0 constructor_fail=0 silence_fail=0 source_fail=0 roster_fail=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).

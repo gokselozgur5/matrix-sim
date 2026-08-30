@@ -186,7 +186,7 @@ public final class CausalRecords {
                 CausalRecord.ObligationClass.NONE_CITED);
         CausalRecord.PerceptReceipt receipt = new CausalRecord.PerceptReceipt(
                 new CausalId.Percept(10, 0), neo, CausalRecord.Channel.VISION,
-                visible, matrix, 250);
+                visible, matrix, 250, CausalRecord.Fidelity.FULL);
         CausalRecord.ReceiptAudit audit = new CausalRecord.ReceiptAudit(receipt, delivery);
         CausalRecord.IntentProposal intent = new CausalRecord.IntentProposal(
                 new CausalId.Intent(10, 0), new CausalId.Choice(10, 0), neo,
@@ -265,19 +265,32 @@ public final class CausalRecords {
                 .toList();
         check("visibility", "receipt-exact-fields", receiptFields.equals(List.of(
                 "id", "subject", "channel", "content", "perceivedSource",
-                "uncertaintyBasisPoints")));
+                "uncertaintyBasisPoints", "fidelity")));
         for (String forbidden : List.of("actual", "truth", "audit", "provenance",
-                "delivery", "fidelity", "outcome")) {
+                "delivery", "outcome")) {
             check("visibility", "receipt-omits-" + forbidden,
                     receiptFields.stream().noneMatch(name -> name.contains(forbidden)));
         }
 
-        CausalRecord.Principal door = principal(CausalRecord.PrincipalKind.PLACE, "door");
-        CausalRecord.Principal sourceB = principal(CausalRecord.PrincipalKind.SYSTEM, "architect");
+        CausalRecord.Principal sourceA = principal(CausalRecord.PrincipalKind.SYSTEM, "sensor_a");
         CausalRecord.Principal provenanceB = principal(CausalRecord.PrincipalKind.SYSTEM, "sensor_b");
+        CausalRecord.TruthEntry hiddenA = new CausalRecord.TruthEntry(10, 0,
+                principal(CausalRecord.PrincipalKind.HUMAN, "neo"),
+                new CausalRecord.Fact(symbol("door.state"), payload("sealed")), sourceA);
         CausalRecord.TruthEntry hiddenB = new CausalRecord.TruthEntry(10, 1,
                 principal(CausalRecord.PrincipalKind.HUMAN, "neo"),
-                new CausalRecord.Fact(symbol("door.state"), payload("sealed")), provenanceB);
+                new CausalRecord.Fact(symbol("door.state"), payload("closed")), provenanceB);
+        CausalRecord.DeliveryAttempt deliveryA = new CausalRecord.DeliveryAttempt(
+                10, 0, fixture.receipt.subject(), fixture.receipt.channel(), sourceA,
+                fixture.receipt.perceivedSource(), hiddenA, CausalRecord.Fidelity.PARTIAL,
+                CausalRecord.DeliveryOutcome.DEGRADED,
+                Optional.of(fixture.receipt.content()),
+                CausalRecord.DeliveryRule.CONNECTED_RESIDENT_SELF_V1,
+                CausalRecord.AuthorityClass.UNESTABLISHED,
+                CausalRecord.ConsentClass.UNESTABLISHED,
+                CausalRecord.DisclosureClass.AUDIT_DIVERGED,
+                CausalRecord.ConstraintClass.NO_EVIDENCE,
+                CausalRecord.ObligationClass.NONE_CITED);
         CausalRecord.DeliveryAttempt deliveryB = new CausalRecord.DeliveryAttempt(
                 10, 1, fixture.receipt.subject(), fixture.receipt.channel(), provenanceB,
                 fixture.receipt.perceivedSource(), hiddenB, CausalRecord.Fidelity.PARTIAL,
@@ -289,14 +302,20 @@ public final class CausalRecords {
                 CausalRecord.DisclosureClass.AUDIT_DIVERGED,
                 CausalRecord.ConstraintClass.NO_EVIDENCE,
                 CausalRecord.ObligationClass.NONE_CITED);
+        CausalRecord.PerceptReceipt partialReceipt = new CausalRecord.PerceptReceipt(
+                fixture.receipt.id(), fixture.receipt.subject(), fixture.receipt.channel(),
+                fixture.receipt.content(), fixture.receipt.perceivedSource(), 250,
+                CausalRecord.Fidelity.PARTIAL);
+        CausalRecord.ReceiptAudit auditA = new CausalRecord.ReceiptAudit(
+                partialReceipt, deliveryA);
         CausalRecord.ReceiptAudit auditB = new CausalRecord.ReceiptAudit(
-                fixture.receipt, deliveryB);
+                partialReceipt, deliveryB);
         check("visibility", "hidden-audits-differ",
-                !fixture.audit.delivery().equals(auditB.delivery()));
+                !auditA.delivery().equals(auditB.delivery()));
         check("visibility", "visible-receipt-identical",
-                fixture.audit.receipt().equals(auditB.receipt()));
+                auditA.receipt().equals(auditB.receipt()));
         check("visibility", "visible-order-identical",
-                fixture.audit.receipt().compareTo(auditB.receipt()) == 0);
+                auditA.receipt().compareTo(auditB.receipt()) == 0);
 
         CausalRecord.DeliveryAttempt occluded = new CausalRecord.DeliveryAttempt(
                 10, 0, fixture.receipt.subject(), fixture.receipt.channel(),
@@ -315,14 +334,22 @@ public final class CausalRecords {
                 () -> new CausalRecord.ReceiptAudit(
                         new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                                 fixture.receipt.subject(), fixture.receipt.channel(),
-                                payload("different"), fixture.receipt.perceivedSource(), 0),
+                                payload("different"), fixture.receipt.perceivedSource(), 0,
+                                fixture.receipt.fidelity()),
                         fixture.delivery));
         rejects("constructor", "receipt-source-must-match-claim",
                 () -> new CausalRecord.ReceiptAudit(
                         new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                                 fixture.receipt.subject(), fixture.receipt.channel(),
-                                fixture.receipt.content(), CausalRecord.Principal.unknown(), 0),
+                                fixture.receipt.content(), CausalRecord.Principal.unknown(), 0,
+                                fixture.receipt.fidelity()),
                         fixture.delivery));
+        rejects("constructor", "receipt-fidelity-must-match-audit",
+                () -> new CausalRecord.ReceiptAudit(
+                        new CausalRecord.PerceptReceipt(fixture.receipt.id(),
+                                fixture.receipt.subject(), fixture.receipt.channel(),
+                                fixture.receipt.content(), fixture.receipt.perceivedSource(), 0,
+                                CausalRecord.Fidelity.PARTIAL), fixture.delivery));
     }
 
     private static void immutability(Fixture fixture) {
@@ -630,7 +657,8 @@ public final class CausalRecords {
     private static CausalRecord.PerceptReceipt percept(Fixture fixture, int uncertainty) {
         return new CausalRecord.PerceptReceipt(fixture.receipt.id(),
                 fixture.receipt.subject(), fixture.receipt.channel(),
-                fixture.receipt.content(), fixture.receipt.perceivedSource(), uncertainty);
+                fixture.receipt.content(), fixture.receipt.perceivedSource(), uncertainty,
+                fixture.receipt.fidelity());
     }
 
     private static CausalRecord.Participation actor(CausalRecord.Subject subject) {

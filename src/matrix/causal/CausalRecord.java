@@ -383,10 +383,18 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         }
     }
 
-    /** The complete and only carrier a mind may receive from a delivery phase. */
+    /**
+     * The complete and only carrier a mind may receive from a delivery phase.
+     *
+     * <p>{@code fidelity} is the delivery system's presented classification,
+     * not independent access to the root's frozen truth. Likewise,
+     * {@code perceivedSource} is only the source presented or claimed to the
+     * subject. The separate root audit is what can compare either claim with
+     * hidden fact and provenance.
+     */
     record PerceptReceipt(CausalId.Percept id, Subject subject, Channel channel,
                           Payload content, Principal perceivedSource,
-                          int uncertaintyBasisPoints)
+                          int uncertaintyBasisPoints, Fidelity fidelity)
             implements CausalRecord, Comparable<PerceptReceipt> {
         public PerceptReceipt {
             Objects.requireNonNull(id, "percept id");
@@ -394,13 +402,25 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
             Objects.requireNonNull(channel, "percept channel");
             Objects.requireNonNull(content, "percept content");
             Objects.requireNonNull(perceivedSource, "perceived source");
+            Objects.requireNonNull(fidelity, "presented percept fidelity");
+            if (channel == Channel.NO_SIGNAL) {
+                throw new IllegalArgumentException(
+                        "NO_SIGNAL needs typed observable availability evidence");
+            }
             if (uncertaintyBasisPoints < 0 || uncertaintyBasisPoints > 10_000) {
                 throw new IllegalArgumentException(
                         "percept uncertainty must be between 0 and 10000 basis points");
             }
+            if (fidelity == Fidelity.NONE) {
+                throw new IllegalArgumentException(
+                        "a percept receipt must present full or partial content");
+            }
         }
 
         @Override public Kind kind() { return Kind.PERCEPT_RECEIPT; }
+
+        /** Visible source tick, normalized through the percept identity. */
+        public long tick() { return id.tick(); }
 
         @Override public int compareTo(PerceptReceipt other) {
             return id.compareTo(Objects.requireNonNull(other, "other percept receipt").id);
@@ -420,7 +440,8 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
                     || !receipt.subject().equals(delivery.subject())
                     || receipt.channel() != delivery.channel()
                     || !receipt.content().equals(delivery.presentedContent().orElseThrow())
-                    || !receipt.perceivedSource().equals(delivery.declaredSource())) {
+                    || !receipt.perceivedSource().equals(delivery.declaredSource())
+                    || receipt.fidelity() != delivery.fidelity()) {
                 throw new IllegalArgumentException(
                         "receipt projection does not match its root-side delivery audit");
             }
