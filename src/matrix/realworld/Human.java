@@ -60,6 +60,8 @@ public final class Human {
      * name the same thing.
      */
     public final int id;
+    /** Canonical causal identity of this person; names and avatars are not bindings. */
+    public final matrix.causal.CausalRecord.Subject subject;
     /**
      * The birth event, mixed once and never again (#373, the #212 law): the
      * seed, the tick, the rack unit, the growth ordinal and the name — one
@@ -75,16 +77,26 @@ public final class Human {
      * the record and this unit does not put it there.
      */
     public final long birthKey;
+    /**
+     * Persistent lived state: owned by this Human, never by an Avatar or link.
+     * The value is immutable; #1695 will own its only lawful replacement path.
+     */
+    private MindState mindState;
     NeuralLink link;
 
     /** {@code pod} may be null — the free-born never had one; every reader guards. */
     public Human(String name, Brain brain, Pod pod, int id, long seed, long birthTick) {
+        if (id < 0) {
+            throw new IllegalArgumentException("human id must be nonnegative");
+        }
         this.name = name;
         this.brain = brain;
         this.pod = pod;
         this.id = id;
+        this.subject = new matrix.causal.CausalRecord.Subject("human-" + id);
         this.birthKey = AcceptanceLoop.birthKey(
                 seed, birthTick, pod == null ? "" : pod.rackUnit, id, name);
+        this.mindState = MindState.initial(subject);
     }
 
     public boolean alive() {
@@ -93,5 +105,10 @@ public final class Human {
 
     public NeuralLink link() {
         return link;
+    }
+
+    /** Stable across avatar, link, disconnect, reinsertion and Matrix reload. */
+    public MindState mindState() {
+        return mindState;
     }
 }

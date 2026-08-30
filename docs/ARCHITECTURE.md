@@ -138,6 +138,18 @@ Dependency direction is law, and `probes/LatticeFence.java` is the grep (#1417).
 
 #1689 extends that lattice into D-066's causal fire-door. `core` now shares the reverse-import refusal; the neutral `matrix.causal` grammar may reach no runtime room; any real-side class that handles a `CausalRecord`, `PerceptReceipt` or `IntentProposal` may not also query omniscient `World`; and neither `Simulation` nor `NeuralLink` may expose a new public/protected mutable domain object. This does not repeal D-013: the link class, its existing Human and Avatar fields, and its constructor form the exact mutable allowlist for the audited historical jack; immutable `LinkKind` is an audited value surface, not a mutable exception. Bridge vocabulary is derived from every runtime class/interface/record/enum declaration in the inspected tree, and the World-field vocabulary from every real-side declaration, so a new, nested or causal-package mind type joins the fence without a hand-kept blacklist edit. Causal records remain governed by their own closed immutability probe and cross only through an exact audited root/jack declaration; package location alone grants no trust. The rule closes *new causal transport* around immutable IDs and records rather than pretending the jack never held its two endpoints. Twenty-four retained private source trees falsify every clause, the allowlist itself, generic-record and visible-receipt reducers, future ordinary/causal bridge and World mind types, qualified names and fields split across lines, visibility hidden behind annotation/modifier order, and both false readings of method-body prose and string text as API/type declarations.
 
+#1694 puts continuity on the biological side without uploading a mind. `Human`
+owns one stable ordinal-derived `Subject` and one immutable `MindState`; avatar
+and link objects never copy or store it. The state is a bounded ordered list of
+interpretations, and every interpretation cites the exact Subject-scoped
+visible percept on which it rests. Clean exit, unclean sever, avatar death,
+reinsertion and Matrix reload therefore move or end bodies and wires without
+silently manufacturing a new person or erasing their history. The complete
+state has explicit schema-versioned canonical bytes and every Human enters the
+real-side digest in growth order even while disconnected or dead. This leaf
+opens no writer: #1695 must add the sole receipt-driven transition and prove
+equal visible inputs produce equal real reducer output.
+
 ## Accepted Human causal seam — D-066 (realization in progress)
 
 D-066 opens causality without opening the package fire-door. The accepted target is `frozen truth → audited delivery → immutable percept receipts → persistent real-side mind transition → immutable intent → root validation/commit → classified effect → biography/relationship/institution/obligation settlement → digest/observation`. This section describes accepted architecture, not current runtime completeness: phase-one self truth now freezes, but `Brain` is still an alive bit, no delivery attempt or receipt is issued, and `PerceptionFrame` remains an observer formatter.

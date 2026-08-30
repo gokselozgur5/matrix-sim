@@ -1,6 +1,6 @@
 # The canonical digest — the seal's one home in the tree.
 #
-# sealed: 2026-08-13 4316525 PR #888 (#377)
+# sealed: 2026-08-30 #1694 crown #1761
 #
 # The date this value was set, so "how long has this world stood" is a READ and not a
 # walk of the log. Forty units landed in one night against this sha and nothing in the
@@ -53,4 +53,4 @@
 #
 #     git log --format=%B | grep '^Declared digest move:'
 
-be383798973dfe15006edaf96884e2ea4472e22142ada7518fc85d6f60cfa969  seed 42, 6,000 ticks — moved by #377 (the Room 303 unwriting): the clause stops authorizing a death and starts preventing one, so Ivan Adeyemi is alive after t=1850 and Thomas Frost after t=5950, and every draw downstream of a mind who is still in the world lands somewhere else. Not a wider seal — the same fields over a different world. The film moves with it: overflow, flatline, peace, reboot and the door all arrive 254 ticks early at seed 42 and 213 late at seed 7, re-pinned in probes/beatdrift.baseline and README's beat column. Was 5b3b7c8f9bd035f219b04b64296b8d5eccf9374747877951e7b545284a3bb32b; argued in PR #888
+5fa058ca3b754fe6ce8f6b176afb7a9716a6607d4e9932ebffb7dc5c382d7cd1  seed 42, 6,000 ticks — moved by #1694 because every persistent Human now contributes a schema-versioned MindState byte segment in immutable ordinal order, including disconnected and dead Humans. The simulated film and its draw order are unchanged; the seal is intentionally wider, covering the lived-history state that #1695 may first revise. Was be383798973dfe15006edaf96884e2ea4472e22142ada7518fc85d6f60cfa969; crown #1761.

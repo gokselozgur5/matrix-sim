@@ -250,7 +250,11 @@ public final class TruthSnapshots {
 
         Simulation reordered = new Simulation(42, null, null);
         RealWorld reorderedReal = field(reordered, "realWorld", RealWorld.class);
-        Collections.reverse(reorderedReal.humans());
+        // The public census is immutable since #1694. This private-universe
+        // mutation remains the measured hostile registry permutation.
+        @SuppressWarnings("unchecked")
+        List<Human> reorderedRegistry = field(reorderedReal, "humans", List.class);
+        Collections.reverse(reorderedRegistry);
         invoke(reordered, "beginCausalTick");
         invoke(reordered, "snapshotTruth");
         check("order", "registry-order-independent",

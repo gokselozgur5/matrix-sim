@@ -230,17 +230,23 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         }
     }
 
-    record MemoryRef(Symbol key) implements Comparable<MemoryRef> {
+    /** Subject-scoped citation of one retained interpretation. */
+    record MemoryRef(Subject subject, long revision, int sequence)
+            implements Comparable<MemoryRef> {
         public MemoryRef {
-            Objects.requireNonNull(key, "memory key");
-        }
-
-        public MemoryRef(String key) {
-            this(new Symbol(key));
+            Objects.requireNonNull(subject, "memory subject");
+            if (revision <= 0 || sequence < 0) {
+                throw new IllegalArgumentException(
+                        "memory identity must be positive revision/nonnegative sequence");
+            }
         }
 
         @Override public int compareTo(MemoryRef other) {
-            return key.compareTo(Objects.requireNonNull(other, "other memory").key);
+            Objects.requireNonNull(other, "other memory");
+            int bySubject = subject.compareTo(other.subject);
+            if (bySubject != 0) return bySubject;
+            int byRevision = Long.compare(revision, other.revision);
+            return byRevision != 0 ? byRevision : Integer.compare(sequence, other.sequence);
         }
     }
 
@@ -514,6 +520,12 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
                 if (percept.id().tick() > id.tick()) {
                     throw new IllegalArgumentException(
                             "a future percept cannot be an intent basis");
+                }
+            }
+            for (MemoryRef memory : memoryBasis) {
+                if (!memory.subject().equals(actor)) {
+                    throw new IllegalArgumentException(
+                            "an intent cannot cite another subject's memory");
                 }
             }
         }

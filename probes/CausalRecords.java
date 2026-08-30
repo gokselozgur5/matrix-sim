@@ -357,21 +357,29 @@ public final class CausalRecords {
         receiptBasis.add(new CausalRecord.PerceptRef(
                 fixture.receipt.subject(), new CausalId.Percept(1, 0)));
         ArrayList<CausalRecord.MemoryRef> memoryBasis = new ArrayList<>();
-        memoryBasis.add(new CausalRecord.MemoryRef("first_memory"));
+        memoryBasis.add(new CausalRecord.MemoryRef(fixture.receipt.subject(), 1, 0));
         CausalRecord.IntentProposal intent = new CausalRecord.IntentProposal(
                 new CausalId.Intent(2, 0), new CausalId.Choice(2, 0),
                 fixture.receipt.subject(), symbol("remember"), symbol("wait"),
                 fixture.delivery.truth().subject(), receiptBasis, memoryBasis);
         receiptBasis.add(new CausalRecord.PerceptRef(
                 fixture.receipt.subject(), new CausalId.Percept(1, 1)));
-        memoryBasis.add(new CausalRecord.MemoryRef("second_memory"));
+        memoryBasis.add(new CausalRecord.MemoryRef(fixture.receipt.subject(), 1, 1));
         check("immutable", "intent-defensive-receipts", intent.receiptBasis().size() == 1);
         check("immutable", "intent-defensive-memories", intent.memoryBasis().size() == 1);
         rejectsMutation("intent-receipts-unmodifiable",
                 () -> intent.receiptBasis().add(new CausalRecord.PerceptRef(
                         fixture.receipt.subject(), new CausalId.Percept(1, 2))));
         rejectsMutation("intent-memories-unmodifiable",
-                () -> intent.memoryBasis().add(new CausalRecord.MemoryRef("third_memory")));
+                () -> intent.memoryBasis().add(new CausalRecord.MemoryRef(
+                        fixture.receipt.subject(), 1, 2)));
+        rejects("constructor", "intent-memory-basis-is-subject-scoped",
+                () -> new CausalRecord.IntentProposal(
+                        new CausalId.Intent(2, 1), new CausalId.Choice(2, 1),
+                        fixture.receipt.subject(), symbol("remember"), symbol("wait"),
+                        fixture.delivery.truth().subject(), List.of(),
+                        List.of(new CausalRecord.MemoryRef(
+                                new CausalRecord.Subject("human-999"), 1, 0))));
 
         ArrayList<CausalRecord.Participation> affected = new ArrayList<>(
                 fixture.effect.affected());
