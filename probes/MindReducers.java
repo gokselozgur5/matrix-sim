@@ -51,7 +51,8 @@ public final class MindReducers {
                     && value.perceivedSource().equals(source.perceivedSource())
                     && value.uncertaintyBasisPoints() == source.uncertaintyBasisPoints()
                     && value.presentedFidelity() == source.fidelity()
-                    && value.status() == MindState.EpistemicStatus.UNRESOLVED,
+                    && value.status() == MindState.EpistemicStatus.UNRESOLVED
+                    && value.presentedClaim().equals(source.presentedClaim()),
                     "complete-visible-unresolved-" + i);
         }
 
@@ -204,7 +205,8 @@ public final class MindReducers {
             int sequence, CausalRecord.Channel channel, String content,
             CausalRecord.Principal source, int uncertainty, CausalRecord.Fidelity fidelity) {
         return new CausalRecord.PerceptReceipt(new CausalId.Percept(tick, sequence), subject,
-                channel, new CausalRecord.Payload(content), source, uncertainty, fidelity);
+                channel, new CausalRecord.Payload(content), structuredClaim(), source,
+                uncertainty, fidelity);
     }
 
     private static CausalRecord.ReceiptAudit audit(CausalRecord.Subject subject,
@@ -226,8 +228,12 @@ public final class MindReducers {
                 CausalRecord.ObligationClass.NONE_CITED);
         return new CausalRecord.ReceiptAudit(new CausalRecord.PerceptReceipt(
                 new CausalId.Percept(tick, deliverySequence), subject,
-                CausalRecord.Channel.TEXT, shown, declared, 777,
+                CausalRecord.Channel.TEXT, shown, structuredClaim(), declared, 777,
                 CausalRecord.Fidelity.PARTIAL), attempt);
+    }
+
+    private static CausalRecord.PresentedClaim structuredClaim() {
+        return CausalRecord.PresentedClaim.structured("fixture.claim", "affirmed");
     }
 
     private static void transition(boolean ok, String name) { cases++; if (!ok) transitionFail++; }
@@ -344,6 +350,7 @@ public final class MindReducers {
                 "matrix.causal.CausalRecord.PerceptReceipt#content()",
                 "matrix.causal.CausalRecord.PerceptReceipt#fidelity()",
                 "matrix.causal.CausalRecord.PerceptReceipt#perceivedSource()",
+                "matrix.causal.CausalRecord.PerceptReceipt#presentedClaim()",
                 "matrix.causal.CausalRecord.PerceptReceipt#ref()",
                 "matrix.causal.CausalRecord.PerceptReceipt#uncertaintyBasisPoints()",
                 "matrix.causal.CausalRecord.PerceptRef#id()",
@@ -359,7 +366,7 @@ public final class MindReducers {
                 "java.util.ArrayList#<init>(int)",
                 "matrix.causal.CausalRecord.MemoryRef#<init>(matrix.causal.CausalRecord.Subject,long,int)",
                 "matrix.realworld.MindState#<init>(matrix.causal.CausalRecord.Subject,long,java.util.List)",
-                "matrix.realworld.MindState.InterpretationV1#<init>(matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity,matrix.realworld.MindState.EpistemicStatus)",
+                "matrix.realworld.MindState.InterpretationV1#<init>(matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity,matrix.realworld.MindState.EpistemicStatus,matrix.causal.CausalRecord.PresentedClaim)",
                 "matrix.realworld.MindState.MemoryTrace#<init>(matrix.causal.CausalRecord.MemoryRef,matrix.causal.CausalRecord.PerceptRef,matrix.realworld.MindState.InterpretationV1)");
         Set<String> allowedFields = Set.of(
                 "matrix.realworld.MindState#MAX_HISTORY_V1",

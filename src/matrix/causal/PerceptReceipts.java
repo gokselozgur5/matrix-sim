@@ -7,8 +7,8 @@ import java.util.Optional;
  * Pure one-attempt projection from a root delivery audit to mind-visible data.
  *
  * <p>This class does not allocate percept identities, traverse a batch, sort,
- * deduplicate, or choose an uncertainty value. Those are visible-input policy
- * decisions outside this leaf. The caller supplies an immutable
+ * deduplicate, or choose uncertainty or claim semantics. Those are
+ * visible-input policy decisions outside this leaf. The caller supplies an immutable
  * {@link Presentation} only when the attempt presented something. The mapper
  * copies only presented content, declared source, and the delivery system's
  * presented fidelity classification; actual source, frozen truth, provenance,
@@ -22,10 +22,15 @@ import java.util.Optional;
  */
 public final class PerceptReceipts {
 
-    /** Visible allocation and uncertainty chosen before this pure projection. */
-    public record Presentation(CausalId.Percept id, int uncertaintyBasisPoints) {
+    /**
+     * Visible allocation, uncertainty, and asserted claim chosen before projection.
+     * The claim says what was presented, never whether it was true or believed.
+     */
+    public record Presentation(CausalId.Percept id, int uncertaintyBasisPoints,
+                               CausalRecord.PresentedClaim presentedClaim) {
         public Presentation {
             Objects.requireNonNull(id, "visible percept id");
+            Objects.requireNonNull(presentedClaim, "visible presented claim");
             if (uncertaintyBasisPoints < 0 || uncertaintyBasisPoints > 10_000) {
                 throw new IllegalArgumentException(
                         "presented uncertainty must be between 0 and 10000 basis points");
@@ -73,6 +78,7 @@ public final class PerceptReceipts {
                 attempt.subject(),
                 attempt.channel(),
                 attempt.presentedContent().get(),
+                visible.presentedClaim(),
                 attempt.declaredSource(),
                 visible.uncertaintyBasisPoints(),
                 attempt.fidelity());

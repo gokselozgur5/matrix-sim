@@ -73,7 +73,7 @@ public final class MindStates {
         canonical(!Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
                 new MindState(s, 1, List.of(changedFidelity)).canonicalBytes()), "fidelity-covered");
         canonical(Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
-                independentV2(s, a)), "independent-complete-v2-frame");
+                independentV3(s, a)), "independent-complete-v3-frame");
         canonical(!Arrays.equals(genesis.canonicalBytes(), MindState.initial(new CausalRecord.Subject("human-8")).canonicalBytes()), "subject-covered");
 
         refused(() -> new MindState(s, -1, List.of()), "negative-revision");
@@ -188,12 +188,14 @@ public final class MindStates {
                 new CausalRecord.PerceptRef(s, new CausalId.Percept(tick, percept)),
                 new MindState.InterpretationV1(channel, new CausalRecord.Payload(text), source,
                         uncertainty, fidelity,
-                        MindState.EpistemicStatus.UNRESOLVED));
+                        MindState.EpistemicStatus.UNRESOLVED,
+                        CausalRecord.PresentedClaim.structured(
+                                "fixture.memory", "presented")));
     }
     private static CausalRecord.Subject otherSubject() { return new CausalRecord.Subject("human-999"); }
-    private static byte[] independentV2(CausalRecord.Subject subject, MindState.MemoryTrace trace) {
+    private static byte[] independentV3(CausalRecord.Subject subject, MindState.MemoryTrace trace) {
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-        putInt(out, 2); putWord(out, subject.key().value()); putLong(out, 1); putInt(out, 1);
+        putInt(out, 3); putWord(out, subject.key().value()); putLong(out, 1); putInt(out, 1);
         putWord(out, trace.id().subject().key().value()); putLong(out, trace.id().revision());
         putInt(out, trace.id().sequence()); putWord(out, trace.basis().subject().key().value());
         putLong(out, trace.basis().id().tick()); putInt(out, trace.basis().id().sequence());
@@ -202,7 +204,11 @@ public final class MindStates {
         putWord(out, value.perceivedSource().kind().name());
         putWord(out, value.perceivedSource().key().value());
         putInt(out, value.uncertaintyBasisPoints()); putWord(out, value.presentedFidelity().name());
-        putWord(out, value.status().name()); return out.toByteArray();
+        putWord(out, value.status().name());
+        putWord(out, value.presentedClaim().claimClass().name());
+        putWord(out, value.presentedClaim().claim().key().value());
+        putWord(out, value.presentedClaim().position().key().value());
+        return out.toByteArray();
     }
     private static void putWord(java.io.ByteArrayOutputStream out, String value) {
         byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);

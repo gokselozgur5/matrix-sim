@@ -134,7 +134,7 @@ public final class PerceptReceipts {
     private static void projectionMatrix(Fixture fixture) {
         matrix.causal.PerceptReceipts.Presentation presented =
                 new matrix.causal.PerceptReceipts.Presentation(
-                        new CausalId.Percept(7, 3), 321);
+                        new CausalId.Percept(7, 3), 321, structuredClaim());
         CausalRecord.ReceiptAudit delivered = matrix.causal.PerceptReceipts.project(
                 fixture.delivered, Optional.of(presented)).orElseThrow();
         exactProjection("delivered", delivered, fixture.delivered, presented,
@@ -157,7 +157,7 @@ public final class PerceptReceipts {
         rejects("projection", "tick-must-match",
                 () -> matrix.causal.PerceptReceipts.project(fixture.delivered,
                         Optional.of(new matrix.causal.PerceptReceipts.Presentation(
-                                new CausalId.Percept(8, 0), 321))));
+                                new CausalId.Percept(8, 0), 321, structuredClaim()))));
 
         CausalRecord.TruthEntry noSignalTruth = truth(7, 2,
                 principal(CausalRecord.PrincipalKind.HUMAN, "human-7"),
@@ -170,7 +170,7 @@ public final class PerceptReceipts {
         rejects("silence", "no-signal-needs-typed-availability",
                 () -> matrix.causal.PerceptReceipts.project(explicitNoSignal,
                         Optional.of(new matrix.causal.PerceptReceipts.Presentation(
-                                new CausalId.Percept(7, 4), 0))));
+                                new CausalId.Percept(7, 4), 0, legacyClaim()))));
     }
 
     private static void exactProjection(String name, CausalRecord.ReceiptAudit audit,
@@ -186,6 +186,8 @@ public final class PerceptReceipts {
         check("projection", name + "-channel", receipt.channel() == attempt.channel());
         check("projection", name + "-content",
                 receipt.content().equals(attempt.presentedContent().orElseThrow()));
+        check("projection", name + "-presented-claim",
+                receipt.presentedClaim().equals(presented.presentedClaim()));
         check("projection", name + "-claimed-source",
                 receipt.perceivedSource().equals(attempt.declaredSource()));
         check("projection", name + "-uncertainty",
@@ -204,7 +206,7 @@ public final class PerceptReceipts {
                 Optional.of(fixture.visible));
         matrix.causal.PerceptReceipts.Presentation presented =
                 new matrix.causal.PerceptReceipts.Presentation(
-                        new CausalId.Percept(7, 5), 777);
+                        new CausalId.Percept(7, 5), 777, structuredClaim());
         CausalRecord.ReceiptAudit first = matrix.causal.PerceptReceipts.project(
                 fixture.degraded, Optional.of(presented)).orElseThrow();
         CausalRecord.ReceiptAudit second = matrix.causal.PerceptReceipts.project(
@@ -220,7 +222,8 @@ public final class PerceptReceipts {
                 first.receipt().compareTo(second.receipt()) == 0);
 
         matrix.causal.PerceptReceipts.Presentation otherUncertainty =
-                new matrix.causal.PerceptReceipts.Presentation(presented.id(), 778);
+                new matrix.causal.PerceptReceipts.Presentation(
+                        presented.id(), 778, presented.presentedClaim());
         CausalRecord.PerceptReceipt changed = matrix.causal.PerceptReceipts.project(
                 fixture.degraded, Optional.of(otherUncertainty)).orElseThrow().receipt();
         check("projection", "visible-uncertainty-is-causal",
@@ -229,31 +232,35 @@ public final class PerceptReceipts {
 
     private static void constructorAndApiContract(Fixture fixture) throws Exception {
         rejects("constructor", "presentation-null-id",
-                () -> new matrix.causal.PerceptReceipts.Presentation(null, 0));
+                () -> new matrix.causal.PerceptReceipts.Presentation(
+                        null, 0, legacyClaim()));
         rejects("constructor", "presentation-negative-uncertainty",
                 () -> new matrix.causal.PerceptReceipts.Presentation(
-                        new CausalId.Percept(7, 0), -1));
+                        new CausalId.Percept(7, 0), -1, legacyClaim()));
         rejects("constructor", "presentation-high-uncertainty",
                 () -> new matrix.causal.PerceptReceipts.Presentation(
-                        new CausalId.Percept(7, 0), 10_001));
+                        new CausalId.Percept(7, 0), 10_001, legacyClaim()));
+        rejects("constructor", "presentation-null-claim",
+                () -> new matrix.causal.PerceptReceipts.Presentation(
+                        new CausalId.Percept(7, 0), 0, null));
         rejects("constructor", "receipt-none-fidelity",
                 () -> new CausalRecord.PerceptReceipt(new CausalId.Percept(7, 0),
                         fixture.subject, CausalRecord.Channel.VISION, fixture.visible,
-                        fixture.claimed, 0, CausalRecord.Fidelity.NONE));
+                        legacyClaim(), fixture.claimed, 0, CausalRecord.Fidelity.NONE));
         rejects("constructor", "receipt-null-fidelity",
                 () -> new CausalRecord.PerceptReceipt(new CausalId.Percept(7, 0),
                         fixture.subject, CausalRecord.Channel.VISION, fixture.visible,
-                        fixture.claimed, 0, null));
+                        legacyClaim(), fixture.claimed, 0, null));
         rejects("silence", "receipt-constructor-refuses-unproven-no-signal",
                 () -> new CausalRecord.PerceptReceipt(new CausalId.Percept(7, 0),
                         fixture.subject, CausalRecord.Channel.NO_SIGNAL, fixture.visible,
-                        fixture.claimed, 0, CausalRecord.Fidelity.FULL));
+                        legacyClaim(), fixture.claimed, 0, CausalRecord.Fidelity.FULL));
 
         List<String> receiptFields = java.util.Arrays.stream(
                         CausalRecord.PerceptReceipt.class.getRecordComponents())
                 .map(java.lang.reflect.RecordComponent::getName).toList();
         check("roster", "receipt-exact-visible-components", receiptFields.equals(List.of(
-                "id", "subject", "channel", "content", "perceivedSource",
+                "id", "subject", "channel", "content", "presentedClaim", "perceivedSource",
                 "uncertaintyBasisPoints", "fidelity")));
         for (String hidden : List.of("actual", "truth", "provenance", "audit", "delivery",
                 "outcome", "rule", "authority", "consent", "disclosure", "constraint",
@@ -266,11 +273,19 @@ public final class PerceptReceipts {
                                 matrix.causal.PerceptReceipts.Presentation.class
                                         .getRecordComponents())
                         .map(java.lang.reflect.RecordComponent::getName).toList()
-                        .equals(List.of("id", "uncertaintyBasisPoints")));
+                        .equals(List.of("id", "uncertaintyBasisPoints", "presentedClaim")));
         check("roster", "mapper-one-public-door",
                 java.util.Arrays.stream(matrix.causal.PerceptReceipts.class.getDeclaredMethods())
                         .filter(method -> java.lang.reflect.Modifier.isPublic(method.getModifiers()))
                         .map(java.lang.reflect.Method::getName).toList().equals(List.of("project")));
+    }
+
+    private static CausalRecord.PresentedClaim structuredClaim() {
+        return CausalRecord.PresentedClaim.structured("fixture.claim", "presented");
+    }
+
+    private static CausalRecord.PresentedClaim legacyClaim() {
+        return CausalRecord.PresentedClaim.legacyUnclassified();
     }
 
     private static void sourceContract(Path root) {
@@ -383,13 +398,17 @@ public final class PerceptReceipts {
         Elements elements = task.getElements();
         Types types = task.getTypes();
         Set<String> expectedTypes = Set.of("matrix.causal.PerceptReceipts",
-                "matrix.causal.PerceptReceipts.Presentation");
+                "matrix.causal.PerceptReceipts.Presentation",
+                "matrix.causal.CausalRecord.ClaimKey",
+                "matrix.causal.CausalRecord.ClaimPosition",
+                "matrix.causal.CausalRecord.PresentedClaim");
         Set<String> seenTypes = new HashSet<>();
         Set<String> violations = new LinkedHashSet<>();
 
         Set<String> allowedCalls = Set.of(
                 "java.lang.Object#<init>()",
                 "java.lang.Record#<init>()",
+                "java.lang.String#equals(java.lang.Object)",
                 "java.util.Objects#requireNonNull(java.lang.Object,java.lang.String)",
                 "java.util.Optional#isPresent()",
                 "java.util.Optional#isEmpty()",
@@ -405,17 +424,45 @@ public final class PerceptReceipts {
                 "matrix.causal.CausalRecord.DeliveryAttempt#fidelity()",
                 "matrix.causal.CausalId.Percept#tick()",
                 "matrix.causal.PerceptReceipts.Presentation#id()",
-                "matrix.causal.PerceptReceipts.Presentation#uncertaintyBasisPoints()"
+                "matrix.causal.PerceptReceipts.Presentation#uncertaintyBasisPoints()",
+                "matrix.causal.PerceptReceipts.Presentation#presentedClaim()"
+                ,"matrix.causal.CausalRecord.Symbol#compareTo(matrix.causal.CausalRecord.Symbol)"
+                ,"matrix.causal.CausalRecord.Symbol#value()"
         );
         Set<String> allowedConstructors = Set.of(
                 "java.lang.IllegalArgumentException#<init>(java.lang.String)",
-                "matrix.causal.CausalRecord.PerceptReceipt#<init>(matrix.causal.CausalId.Percept,matrix.causal.CausalRecord.Subject,matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity)",
+                "matrix.causal.CausalRecord.Symbol#<init>(java.lang.String)",
+                "matrix.causal.CausalRecord.ClaimKey#<init>(java.lang.String)",
+                "matrix.causal.CausalRecord.ClaimPosition#<init>(java.lang.String)",
+                "matrix.causal.CausalRecord.PresentedClaim#<init>(matrix.causal.CausalRecord.ClaimClass,matrix.causal.CausalRecord.ClaimKey,matrix.causal.CausalRecord.ClaimPosition)",
+                "matrix.causal.CausalRecord.PerceptReceipt#<init>(matrix.causal.CausalId.Percept,matrix.causal.CausalRecord.Subject,matrix.causal.CausalRecord.Channel,matrix.causal.CausalRecord.Payload,matrix.causal.CausalRecord.PresentedClaim,matrix.causal.CausalRecord.Principal,int,matrix.causal.CausalRecord.Fidelity)",
                 "matrix.causal.CausalRecord.ReceiptAudit#<init>(matrix.causal.CausalRecord.PerceptReceipt,matrix.causal.CausalRecord.DeliveryAttempt)"
         );
         Set<String> allowedFields = Set.of(
                 "matrix.causal.CausalRecord.DeliveryOutcome#OCCLUDED",
-                "matrix.causal.CausalRecord.Channel#NO_SIGNAL"
+                "matrix.causal.CausalRecord.Channel#NO_SIGNAL",
+                "matrix.causal.CausalRecord.ClaimClass#STRUCTURED",
+                "matrix.causal.CausalRecord.ClaimClass#LEGACY_UNCLASSIFIED",
+                "matrix.causal.CausalRecord.ClaimKey#key",
+                "matrix.causal.CausalRecord.ClaimPosition#key",
+                "matrix.causal.CausalRecord.PresentedClaim#claimClass",
+                "matrix.causal.CausalRecord.PresentedClaim#claim",
+                "matrix.causal.CausalRecord.PresentedClaim#position"
         );
+        Set<String> exactSourceExecutables = Set.of(
+                "matrix.causal.PerceptReceipts#<init>()",
+                "matrix.causal.PerceptReceipts#project(matrix.causal.CausalRecord.DeliveryAttempt,java.util.Optional)",
+                "matrix.causal.PerceptReceipts.Presentation#<init>(matrix.causal.CausalId.Percept,int,matrix.causal.CausalRecord.PresentedClaim)",
+                "matrix.causal.CausalRecord.ClaimKey#<init>(matrix.causal.CausalRecord.Symbol)",
+                "matrix.causal.CausalRecord.ClaimKey#<init>(java.lang.String)",
+                "matrix.causal.CausalRecord.ClaimKey#compareTo(matrix.causal.CausalRecord.ClaimKey)",
+                "matrix.causal.CausalRecord.ClaimPosition#<init>(matrix.causal.CausalRecord.Symbol)",
+                "matrix.causal.CausalRecord.ClaimPosition#<init>(java.lang.String)",
+                "matrix.causal.CausalRecord.ClaimPosition#compareTo(matrix.causal.CausalRecord.ClaimPosition)",
+                "matrix.causal.CausalRecord.PresentedClaim#<init>(matrix.causal.CausalRecord.ClaimClass,matrix.causal.CausalRecord.ClaimKey,matrix.causal.CausalRecord.ClaimPosition)",
+                "matrix.causal.CausalRecord.PresentedClaim#structured(java.lang.String,java.lang.String)",
+                "matrix.causal.CausalRecord.PresentedClaim#legacyUnclassified()",
+                "matrix.causal.CausalRecord.PresentedClaim#relatable()");
 
         for (CompilationUnitTree unit : units) {
             boolean mapperFile = unit.getSourceFile().getName()
@@ -437,8 +484,8 @@ public final class PerceptReceipts {
                     Element element = trees.getElement(getCurrentPath());
                     if (element instanceof TypeElement type) {
                         String name = type.getQualifiedName().toString();
+                        if (expectedTypes.contains(name)) seenTypes.add(name);
                         if (mapperFile) {
-                            seenTypes.add(name);
                             if (!expectedTypes.contains(name)) violations.add("type " + name);
                         }
                     }
@@ -452,6 +499,25 @@ public final class PerceptReceipts {
                                 || node.getBody() == null
                                 || executable.getModifiers().contains(Modifier.NATIVE)) {
                             violations.add("bodyless executable");
+                        } else if (!exactSourceExecutables.contains(key(executable, types))) {
+                            violations.add("unexpected executable " + key(executable, types));
+                        } else {
+                            String executableKey = key(executable, types);
+                            if (executableKey.startsWith(
+                                    "matrix.causal.CausalRecord.ClaimKey#")
+                                    || executableKey.startsWith(
+                                    "matrix.causal.CausalRecord.ClaimPosition#")
+                                    || executableKey.startsWith(
+                                    "matrix.causal.CausalRecord.PresentedClaim#")) {
+                                Set<Modifier> expected = executableKey.contains("#structured(")
+                                        || executableKey.contains("#legacyUnclassified(")
+                                        ? Set.of(Modifier.PUBLIC, Modifier.STATIC)
+                                        : Set.of(Modifier.PUBLIC);
+                                if (!executable.getModifiers().equals(expected)) {
+                                    violations.add("claim executable modifiers "
+                                            + executableKey + "=" + executable.getModifiers());
+                                }
+                            }
                         }
                     }
                     return super.visitMethod(node, unused);
@@ -504,6 +570,20 @@ public final class PerceptReceipts {
                         if (!(element instanceof ExecutableElement executable)
                                 || !allowedConstructors.contains(key(executable, types))) {
                             violations.add("construction " + element);
+                        } else if (key(executable, types).startsWith(
+                                "matrix.causal.CausalRecord.PerceptReceipt#<init>")) {
+                            if (node.getArguments().size() != 8) {
+                                violations.add("percept constructor arity");
+                            } else {
+                                TreePath claimPath = new TreePath(getCurrentPath(),
+                                        node.getArguments().get(4));
+                                Element claimElement = trees.getElement(claimPath);
+                                if (!(claimElement instanceof ExecutableElement claimAccessor)
+                                        || !key(claimAccessor, types).equals(
+                                        "matrix.causal.PerceptReceipts.Presentation#presentedClaim()")) {
+                                    violations.add("percept claim is not exact presentation handoff");
+                                }
+                            }
                         }
                     }
                     return super.visitNewClass(node, unused);
@@ -565,12 +645,13 @@ public final class PerceptReceipts {
                         + ":typeparams=" + method.getTypeParameters().size())
                 .collect(java.util.stream.Collectors.toSet());
         Set<String> expectedPresentationExecutables = Set.of(
-                "matrix.causal.PerceptReceipts.Presentation#<init>(matrix.causal.CausalId.Percept,int)->void:[public]:typeparams=0",
+                "matrix.causal.PerceptReceipts.Presentation#<init>(matrix.causal.CausalId.Percept,int,matrix.causal.CausalRecord.PresentedClaim)->void:[public]:typeparams=0",
                 "matrix.causal.PerceptReceipts.Presentation#toString()->java.lang.String:[public, final]:typeparams=0",
                 "matrix.causal.PerceptReceipts.Presentation#hashCode()->int:[public, final]:typeparams=0",
                 "matrix.causal.PerceptReceipts.Presentation#equals(java.lang.Object)->boolean:[public, final]:typeparams=0",
                 "matrix.causal.PerceptReceipts.Presentation#id()->matrix.causal.CausalId.Percept:[public]:typeparams=0",
-                "matrix.causal.PerceptReceipts.Presentation#uncertaintyBasisPoints()->int:[public]:typeparams=0");
+                "matrix.causal.PerceptReceipts.Presentation#uncertaintyBasisPoints()->int:[public]:typeparams=0",
+                "matrix.causal.PerceptReceipts.Presentation#presentedClaim()->matrix.causal.CausalRecord.PresentedClaim:[public]:typeparams=0");
         boolean typeShape = mapper.getModifiers().containsAll(
                     Set.of(Modifier.PUBLIC, Modifier.FINAL))
                 && mapper.getSuperclass().toString().equals("java.lang.Object")
@@ -587,10 +668,11 @@ public final class PerceptReceipts {
                     .map(component -> component.getSimpleName() + ":" + component.asType())
                     .toList().equals(List.of(
                             "id:matrix.causal.CausalId.Percept",
-                            "uncertaintyBasisPoints:int"))
+                            "uncertaintyBasisPoints:int",
+                            "presentedClaim:matrix.causal.CausalRecord.PresentedClaim"))
                 && presentation.getEnclosedElements().stream()
                     .filter(element -> element.getKind().isField())
-                    .allMatch(field -> Set.of("id", "uncertaintyBasisPoints")
+                    .allMatch(field -> Set.of("id", "uncertaintyBasisPoints", "presentedClaim")
                             .contains(field.getSimpleName().toString())
                             && field.getModifiers().containsAll(
                                     Set.of(Modifier.PRIVATE, Modifier.FINAL)));

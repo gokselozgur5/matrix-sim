@@ -7,6 +7,7 @@ import matrix.causal.CausalRecord.MemoryRef;
 import matrix.causal.CausalRecord.Channel;
 import matrix.causal.CausalRecord.Fidelity;
 import matrix.causal.CausalRecord.Principal;
+import matrix.causal.CausalRecord.PresentedClaim;
 import matrix.causal.CausalId.Percept;
 
 import java.io.ByteArrayOutputStream;
@@ -17,14 +18,15 @@ import java.util.Objects;
 /** The bounded, immutable lived history owned by one persistent Human. */
 public record MindState(Subject subject, long revision, List<MemoryTrace> history) {
     public static final int MAX_HISTORY_V1 = 64;
-    private static final int SCHEMA_V2 = 2;
+    private static final int SCHEMA_V3 = 3;
 
     /** V1 deliberately records an unresolved visible presentation, not a truth verdict. */
     public record InterpretationV1(Channel channel, Payload presentedContent,
                                    Principal perceivedSource,
                                    int uncertaintyBasisPoints,
                                    Fidelity presentedFidelity,
-                                   EpistemicStatus status) {
+                                   EpistemicStatus status,
+                                   PresentedClaim presentedClaim) {
         public InterpretationV1 {
             Objects.requireNonNull(channel, "interpretation channel");
             Objects.requireNonNull(presentedContent, "interpretation content");
@@ -35,6 +37,7 @@ public record MindState(Subject subject, long revision, List<MemoryTrace> histor
             }
             Objects.requireNonNull(presentedFidelity, "interpretation presented fidelity");
             Objects.requireNonNull(status, "interpretation epistemic status");
+            Objects.requireNonNull(presentedClaim, "interpretation presented claim");
         }
     }
 
@@ -91,7 +94,7 @@ public record MindState(Subject subject, long revision, List<MemoryTrace> histor
     /** Exact schema-versioned bytes; each call returns a fresh array. */
     public byte[] canonicalBytes() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        writeInt(out, SCHEMA_V2);
+        writeInt(out, SCHEMA_V3);
         writeWord(out, subject.key().value());
         writeLong(out, revision);
         writeInt(out, history.size());
@@ -110,6 +113,9 @@ public record MindState(Subject subject, long revision, List<MemoryTrace> histor
             writeInt(out, interpretation.uncertaintyBasisPoints());
             writeWord(out, interpretation.presentedFidelity().name());
             writeWord(out, interpretation.status().name());
+            writeWord(out, interpretation.presentedClaim().claimClass().name());
+            writeWord(out, interpretation.presentedClaim().claim().key().value());
+            writeWord(out, interpretation.presentedClaim().position().key().value());
         }
         return out.toByteArray();
     }

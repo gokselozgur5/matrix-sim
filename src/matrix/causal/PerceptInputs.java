@@ -45,7 +45,7 @@ public final class PerceptInputs {
 
         /** Stable complete visible spelling; it contains no root audit field. */
         public String canonical() {
-            StringBuilder text = new StringBuilder("mind-input/1;");
+            StringBuilder text = new StringBuilder("mind-input/2;");
             number(text, tick);
             word(text, subject.key().value());
             number(text, receipts.size());
@@ -57,6 +57,9 @@ public final class PerceptInputs {
                 word(text, receipt.perceivedSource().key().value());
                 number(text, receipt.uncertaintyBasisPoints());
                 word(text, receipt.fidelity().name());
+                word(text, receipt.presentedClaim().claimClass().name());
+                word(text, receipt.presentedClaim().claim().key().value());
+                word(text, receipt.presentedClaim().position().key().value());
             }
             return text.toString();
         }
@@ -153,6 +156,7 @@ public final class PerceptInputs {
                     subject,
                     visible.channel(),
                     visible.content(),
+                    visible.presentedClaim(),
                     visible.perceivedSource(),
                     visible.uncertaintyBasisPoints(),
                     visible.fidelity());
@@ -183,7 +187,25 @@ public final class PerceptInputs {
             order = Integer.compare(fidelityRank(left.fidelity()),
                     fidelityRank(right.fidelity()));
         }
+        if (order == 0) {
+            order = Integer.compare(claimClassRank(left.presentedClaim().claimClass()),
+                    claimClassRank(right.presentedClaim().claimClass()));
+        }
+        if (order == 0) {
+            order = left.presentedClaim().claim().compareTo(right.presentedClaim().claim());
+        }
+        if (order == 0) {
+            order = left.presentedClaim().position().compareTo(
+                    right.presentedClaim().position());
+        }
         return order;
+    }
+
+    private static int claimClassRank(CausalRecord.ClaimClass claimClass) {
+        return switch (claimClass) {
+            case STRUCTURED -> 0;
+            case LEGACY_UNCLASSIFIED -> 1;
+        };
     }
 
     private static int channelRank(CausalRecord.Channel channel) {
