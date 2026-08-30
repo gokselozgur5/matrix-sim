@@ -7,9 +7,36 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreePathScanner;
+import com.sun.source.util.Trees;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
+import javax.lang.model.util.Elements;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 
 /**
  * Probe: is the dependency direction still the direction, and does anything
@@ -51,88 +78,24 @@ import java.util.stream.Stream;
  * <p><b>Clause 3 is shallow, and says so.</b> <i>{@code World} holds no
  * real-world objects</i> is not an import question: a field typed
  * {@code Object}, or a collection of a shared supertype, holds one without
- * naming one. What is read is the DECLARED TYPE of each field, which catches
- * every way the law has ever been broken in this tree and does not pretend to
- * catch a laundered one. A deeper answer needs a parser and D-009 refuses the
- * dependency.
+ * naming one. What is read is the attributed declared type of each field,
+ * recursively through generic, array, wildcard and bounded forms. This does
+ * not claim points-to identity hidden behind Object/shared supertypes, or
+ * reflection and dynamic loading.
  *
- * <p><b>Comments are stripped before every count.</b> This file's own subject
- * is a sentence about imports, and {@code src/matrix/package-info.java} says
- * {@code {@link matrix.Main}} out loud while explaining what {@code Main} is
- * for — documentation, not a dependency. A checker that finds its own subject
- * is the shape {@code SheetFence} was bitten by four separate times.
+ * <p>The JDK 17 compiler parses and attributes the complete supplied tree.
+ * Package/type/member identity therefore comes from resolved elements rather
+ * than comments, strings, formatting, Unicode spelling, or simple names. Any
+ * syntax or attribution error is a refusal, never an empty green graph.
  *
  * <p>{@code --root DIR} points the whole reading at another tree.
- * {@code --selfcheck} builds private source trees for every clause, including
- * a multiline NeuralLink transport signature, so the reader is retained
- * against the exact false shapes it claims to reject.
+ * {@code --selfcheck} builds semantically valid private source trees for every
+ * clause and retains Unicode, inherited reducer, generic-erasure, multiline,
+ * annotation, comment and string escape attempts.
  */
 public final class LatticeFence {
 
     private static final String DEFAULT_ROOT = "src";
-
-    /** Any reverse reference, imported or fully qualified. */
-    private static final Pattern REAL_WORLD_REFERENCE =
-            Pattern.compile("\\bmatrix\\s*\\.\\s*realworld\\s*\\.");
-
-    /** The neutral grammar may depend on Java and itself, never a runtime room. */
-    private static final Pattern OUTSIDE_CAUSAL_REFERENCE =
-            Pattern.compile("\\bmatrix\\s*\\.\\s*(?!causal\\b)[A-Za-z_]");
-
-    /** The entry point is a forbidden type/value dependency under any dot spacing. */
-    private static final Pattern MAIN_REFERENCE =
-            Pattern.compile("\\b(?:matrix\\s*\\.\\s*)?Main\\b");
-
-    /** A mind-side causal participant is derived from its input/output vocabulary. */
-    private static final Pattern MIND_REDUCER_VOCABULARY = Pattern.compile(
-            "\\b(?:CausalRecord(?:\\s*\\.\\s*(?:PerceptReceipt|IntentProposal))?"
-                    + "|PerceptReceipt|IntentProposal)\\b");
-    private static final Pattern WORLD_REFERENCE =
-            Pattern.compile("\\b(?:matrix\\.core\\.)?World\\b");
-
-    private static final String JAVA_IDENTIFIER =
-            "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
-
-    /** A Java declaration prefix whose visibility may follow annotations/modifiers. */
-    private static final Pattern VISIBLE_DECLARATION_START = Pattern.compile(
-            "^(?:(?:@" + JAVA_IDENTIFIER + "(?:\\." + JAVA_IDENTIFIER + ")*"
-                    + "(?:\\([^;]*\\))?"
-                    + "|abstract|default|static|final|sealed|non-sealed|strictfp"
-                    + "|synchronized|native|transient|volatile)\\s+)*"
-                    + "(?:public|protected)\\b.*");
-
-    /** Runtime declarations are read after comments are stripped. */
-    private static final String TYPE_DECLARATION_PREFIX =
-            "^[\\t ]*(?:(?:@" + JAVA_IDENTIFIER + "(?:\\." + JAVA_IDENTIFIER + ")*"
-                    + "(?:\\([^\\r\\n;]*\\))?"
-                    + "|public|protected|private|abstract|static|final|sealed|non-sealed"
-                    + "|strictfp)\\s+)*";
-    private static final Pattern MUTABLE_TYPE_DECLARATION = Pattern.compile(
-            TYPE_DECLARATION_PREFIX
-                    + "(?:class|interface|record|enum)\\s+(" + JAVA_IDENTIFIER + ")",
-            Pattern.MULTILINE);
-    private static final Pattern REAL_WORLD_TYPE_DECLARATION = Pattern.compile(
-            TYPE_DECLARATION_PREFIX
-                    + "(?:class|interface|record|enum)\\s+(" + JAVA_IDENTIFIER + ")",
-            Pattern.MULTILINE);
-
-    /** D-013's existing jack, normalized without whitespace. */
-    private static final List<String> AUDITED_LINK_DECLARATIONS = List.of(
-            "publicfinalclassNeuralLink{",
-            "publicfinalHumanhuman;",
-            "publicfinalAvataravatar;",
-            "publicfinalLinkKindkind;",
-            "publicNeuralLink(Humanhuman,Avataravatar,LinkKindkind){");
-
-    /** Existing root declarations that name a runtime class without exporting one. */
-    private static final List<String> AUDITED_ROOT_DECLARATIONS = List.of(
-            "publicfinalclassSimulation{",
-            "publicSimulation(longseed,OutputStreamsink,StringfollowName){",
-            "publicSimulation(longseed,OutputStreamsink,StringfollowName,OutputStreamchronosSink){",
-            "publicList<ChronosLog.Birth>births(){",
-            "publicList<CausalPhase>lastCausalPhases(){",
-            "publicList<Digest>run(longticks){",
-            "publicSnapshotsnapshotNow(){");
 
     public static void main(String[] args) throws IOException {
         // Clause 7 of the probe contract, and lock 8 is its keeper: a probe's
@@ -184,311 +147,340 @@ public final class LatticeFence {
     /** Read every fire-door clause from one source root. */
     private static Reading inspect(Path root) throws IOException {
         List<Path> files = javaFiles(root);
-        Pattern mutableCrossing = mutableCrossing(root, files);
-        List<String> realWorldTypes = realWorldTypes(root, files);
-        int swept = 0;
-        int entitiesReach = 0;
-        int coreReach = 0;
-        int worldHolds = 0;
-        int mainDepended = 0;
-        int causalReach = 0;
-        int reducerWorld = 0;
-        int bridgeMutable = 0;
-        int worldFields = 0;
-        int mindParticipants = 0;
-        int bridgeDeclarations = 0;
-        List<String> offences = new ArrayList<>();
-
-        Path entitiesDir = root.resolve(Path.of("matrix", "entities"));
-        Path coreDir = root.resolve(Path.of("matrix", "core"));
-        for (Path file : files) {
-            swept++;
-            List<String> code = Probes.uncommentedLines(file);
-            String source = String.join("\n", code);
-            String relative = root.relativize(file).toString().replace('\\', '/');
-
-            // CLAUSE 1 — the bridge is one-way. Matrix entities may not reach out.
-            if (file.startsWith(entitiesDir)) {
-                int findings = occurrences(REAL_WORLD_REFERENCE, source);
-                entitiesReach += findings;
-                for (int i = 0; i < findings; i++) {
-                    offences.add("LATTICE entities " + file + " reaches the real world");
+        if (files.isEmpty()) {
+            return new Reading(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of());
+        }
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IOException("JDK compiler unavailable for lattice fence");
+        }
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        try (StandardJavaFileManager manager = compiler.getStandardFileManager(
+                diagnostics, null, StandardCharsets.UTF_8)) {
+            JavacTask task = (JavacTask) compiler.getTask(null, manager, diagnostics,
+                    List.of("--release", "17", "-proc:none", "-classpath",
+                            System.getProperty("java.class.path")), null,
+                    manager.getJavaFileObjectsFromPaths(files));
+            List<CompilationUnitTree> units = new ArrayList<>();
+            task.parse().forEach(units::add);
+            task.analyze();
+            for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                    throw new IOException("lattice source unreadable: "
+                            + diagnostic.getMessage(null));
                 }
             }
-
-            // CLAUSE 2 — the Matrix kernel cannot receive a real-side type either.
-            if (file.startsWith(coreDir)) {
-                int findings = occurrences(REAL_WORLD_REFERENCE, source);
-                coreReach += findings;
-                for (int i = 0; i < findings; i++) {
-                    offences.add("LATTICE core " + file + " reaches the real world");
-                }
+            Trees trees = Trees.instance(task);
+            Elements elements = task.getElements();
+            SemanticReading reading = new SemanticReading(trees, elements);
+            for (CompilationUnitTree unit : units) {
+                reading.scan(unit, null);
             }
+            return reading.finish(files.size());
+        }
+    }
 
-            // CLAUSE 7 — nothing depends on the composition root's entry point.
-            if (!file.getFileName().toString().equals("Main.java")) {
-                int findings = occurrences(MAIN_REFERENCE, source);
-                mainDepended += findings;
-                for (int i = 0; i < findings; i++) {
-                    offences.add("LATTICE main " + file + " depends on Main");
-                }
+    /** One attributed source model; Unicode spelling and formatting vanish at attribution. */
+    private static final class SemanticReading extends TreePathScanner<Void, Void> {
+        private final Trees trees;
+        private final Elements elements;
+        private final Map<String, TypeElement> types = new LinkedHashMap<>();
+        private final java.util.Set<String> worldQueryOwners = new java.util.HashSet<>();
+        private final List<String> offences = new ArrayList<>();
+        private CompilationUnitTree unit;
+        private boolean entitiesFile;
+        private boolean coreFile;
+        private boolean causalFile;
+        private boolean mainFile;
+        private boolean entitiesHit;
+        private boolean coreHit;
+        private boolean causalHit;
+        private boolean mainHit;
+        private int entitiesReach;
+        private int coreReach;
+        private int causalReach;
+        private int mainDepended;
+
+        private SemanticReading(Trees trees, Elements elements) {
+            this.trees = trees;
+            this.elements = elements;
+        }
+
+        @Override public Void visitCompilationUnit(CompilationUnitTree node, Void unused) {
+            CompilationUnitTree outer = unit;
+            unit = node;
+            String pkg = node.getPackageName() == null ? "" : node.getPackageName().toString();
+            entitiesFile = pkg.equals("matrix.entities");
+            coreFile = pkg.equals("matrix.core");
+            causalFile = pkg.equals("matrix.causal");
+            mainFile = node.getSourceFile().getName().endsWith("/Main.java");
+            entitiesHit = coreHit = causalHit = mainHit = false;
+            super.visitCompilationUnit(node, unused);
+            unit = outer;
+            return null;
+        }
+
+        @Override public Void visitClass(com.sun.source.tree.ClassTree node, Void unused) {
+            Element element = trees.getElement(getCurrentPath());
+            if (element instanceof TypeElement type) {
+                types.put(type.getQualifiedName().toString(), type);
             }
+            return super.visitClass(node, unused);
+        }
 
-            // CLAUSE 3 — World holds no real-world object, read off declared types.
-            if (file.endsWith(Path.of("core", "World.java"))) {
-                for (String field : fieldDeclarations(code)) {
-                    worldFields++;
-                    for (String type : realWorldTypes) {
-                        if (mentionsType(field, type)) {
+        @Override public Void visitIdentifier(IdentifierTree node, Void unused) {
+            reference(trees.getElement(getCurrentPath()));
+            return super.visitIdentifier(node, unused);
+        }
+
+        @Override public Void visitMemberSelect(MemberSelectTree node, Void unused) {
+            reference(trees.getElement(getCurrentPath()));
+            return super.visitMemberSelect(node, unused);
+        }
+
+        private void reference(Element element) {
+            TypeElement owner = owningType(element);
+            if (owner == null) return;
+            String name = owner.getQualifiedName().toString();
+            String pkg = elements.getPackageOf(owner).getQualifiedName().toString();
+            if (entitiesFile && pkg.equals("matrix.realworld") && !entitiesHit) {
+                entitiesHit = true; entitiesReach++;
+                offences.add("LATTICE entities reaches " + name);
+            }
+            if (coreFile && pkg.equals("matrix.realworld") && !coreHit) {
+                coreHit = true; coreReach++;
+                offences.add("LATTICE core reaches " + name);
+            }
+            if (causalFile && pkg.startsWith("matrix.") && !pkg.equals("matrix.causal")
+                    && !causalHit) {
+                causalHit = true; causalReach++;
+                offences.add("LATTICE causal reaches " + name);
+            }
+            if (!mainFile && name.equals("matrix.Main") && !mainHit) {
+                mainHit = true; mainDepended++;
+                offences.add("LATTICE depends on matrix.Main");
+            }
+            TypeElement current = enclosingSourceType();
+            if (current != null && (name.equals("matrix.core.World")
+                    || containsQualified(element.asType(), "matrix.core.World"))) {
+                worldQueryOwners.add(current.getQualifiedName().toString());
+            }
+        }
+
+        private Reading finish(int swept) throws IOException {
+            TypeElement world = types.get("matrix.core.World");
+            int worldFields = 0;
+            int worldHolds = 0;
+            if (world != null) {
+                for (Element member : world.getEnclosedElements()) {
+                    if (member.getKind() == ElementKind.FIELD
+                            || member.getKind() == ElementKind.RECORD_COMPONENT) {
+                        worldFields++;
+                        if (containsPackage(member.asType(), "matrix.realworld")) {
                             worldHolds++;
-                            offences.add("LATTICE world field of type " + type + ": " + field.trim());
-                            break;
+                            offences.add("LATTICE World holds " + member.asType());
                         }
                     }
                 }
             }
-
-            // CLAUSE 4 — IDs and records are neutral grammar, not a back stair.
-            if (relative.startsWith("matrix/causal/")) {
-                int findings = occurrences(OUTSIDE_CAUSAL_REFERENCE, source);
-                causalReach += findings;
-                for (int i = 0; i < findings; i++) {
-                    offences.add("LATTICE causal " + file + " reaches runtime code");
-                }
-            }
-
-            // CLAUSE 5 — derive a mind reducer from the causal values it handles,
-            // not from a class-name convention. A receipt/intent participant may
-            // not also consult omniscient World.
-            if (relative.startsWith("matrix/realworld/")
-                    && MIND_REDUCER_VOCABULARY.matcher(source).find()) {
+            int mindParticipants = 0;
+            int reducerWorld = 0;
+            for (TypeElement type : types.values()) {
+                if (!elements.getPackageOf(type).getQualifiedName()
+                        .contentEquals("matrix.realworld")) continue;
+                List<? extends Element> members = elements.getAllMembers(type);
+                boolean participant = members.stream().anyMatch(this::mindSignature);
+                if (!participant) continue;
                 mindParticipants++;
-                if (WORLD_REFERENCE.matcher(source).find()) {
+                boolean declaredWorldCapability = members.stream().anyMatch(member ->
+                        member.getKind() == ElementKind.FIELD
+                                && containsQualified(member.asType(), "matrix.core.World")
+                        || member instanceof ExecutableElement method
+                                && (containsQualified(method.getReturnType(), "matrix.core.World")
+                                || method.getParameters().stream().anyMatch(parameter ->
+                                containsQualified(parameter.asType(), "matrix.core.World"))));
+                boolean usedWorldCapability = members.stream()
+                                .map(SemanticReading::owningType)
+                                .filter(java.util.Objects::nonNull)
+                                .map(owner -> owner.getQualifiedName().toString())
+                                .anyMatch(worldQueryOwners::contains);
+                boolean worldCapability = declaredWorldCapability || usedWorldCapability;
+                if (worldCapability) {
                     reducerWorld++;
-                    offences.add("LATTICE reducer " + file + " queries World");
+                    offences.add("LATTICE reducer " + type.getQualifiedName()
+                            + " inherits/holds World");
                 }
             }
-
-            // CLAUSE 6 — the only mutable public NeuralLink declarations are the
-            // historical D-013 jack. Simulation gets no such exception.
-            boolean link = relative.equals("matrix/realworld/NeuralLink.java");
-            boolean simulation = relative.equals("matrix/Simulation.java");
-            if (link || simulation) {
-                for (String declaration : visibleDeclarations(code)) {
+            int bridgeDeclarations = 0;
+            int bridgeMutable = 0;
+            for (String bridge : List.of("matrix.Simulation", "matrix.realworld.NeuralLink")) {
+                TypeElement type = types.get(bridge);
+                if (type == null) continue;
+                for (Element member : elements.getAllMembers(type)) {
+                    if (!sourceMember(member) || !visible(member)) continue;
                     bridgeDeclarations++;
-                    if (!mutableCrossing.matcher(declaration).find()) {
-                        continue;
-                    }
-                    if (link && auditedLinkDeclaration(declaration)) {
-                        continue;
-                    }
-                    if (simulation && auditedRootDeclaration(declaration)) {
-                        continue;
-                    }
-                    bridgeMutable++;
-                    offences.add("LATTICE bridge " + file
-                            + " exposes mutable declaration: " + declaration.strip());
-                }
-            }
-        }
-
-        return new Reading(swept, entitiesReach, coreReach, worldHolds, causalReach,
-                reducerWorld, bridgeMutable, mainDepended, worldFields,
-                mindParticipants, bridgeDeclarations, offences);
-    }
-
-    private static int occurrences(Pattern pattern, String source) {
-        int count = 0;
-        var matcher = pattern.matcher(source);
-        while (matcher.find()) {
-            count++;
-        }
-        return count;
-    }
-
-    private static boolean mentionsType(String declaration, String type) {
-        return Pattern.compile("(?<!\\p{javaJavaIdentifierPart})"
-                + Pattern.quote(type) + "(?!\\p{javaJavaIdentifierPart})")
-                .matcher(declaration).find();
-    }
-
-    /**
-     * Every runtime class, interface, record or enum is conservatively mutable at
-     * this boundary. A causal record may cross only after its exact root/jack
-     * declaration is audited and allowlisted; package location alone grants
-     * no trust. Deriving the
-     * names from the inspected root means a newly introduced mind/runtime type
-     * enters the fence in the same commit rather than waiting for a hand-kept
-     * blacklist update. Object remains explicit because it can erase any such
-     * type without naming a repository class.
-     */
-    private static Pattern mutableCrossing(Path root, List<Path> files) throws IOException {
-        List<String> names = new ArrayList<>();
-        names.add("Object");
-        for (Path file : files) {
-            String source = String.join("\n", Probes.uncommentedLines(file));
-            var declarations = MUTABLE_TYPE_DECLARATION.matcher(source);
-            while (declarations.find()) {
-                String name = declarations.group(1);
-                if (!names.contains(name)) {
-                    names.add(name);
-                }
-            }
-        }
-        names.sort(String::compareTo);
-        List<String> quoted = new ArrayList<>();
-        for (String name : names) {
-            quoted.add(Pattern.quote(name));
-        }
-        return Pattern.compile("(?<!\\p{javaJavaIdentifierPart})(?:"
-                + String.join("|", quoted) + ")(?!\\p{javaJavaIdentifierPart})");
-    }
-
-    /** Every declared real-side type is forbidden as a direct World field. */
-    private static List<String> realWorldTypes(Path root, List<Path> files) throws IOException {
-        List<String> names = new ArrayList<>();
-        for (Path file : files) {
-            String relative = root.relativize(file).toString().replace('\\', '/');
-            if (!relative.startsWith("matrix/realworld/")) {
-                continue;
-            }
-            String source = String.join("\n", Probes.uncommentedLines(file));
-            var declarations = REAL_WORLD_TYPE_DECLARATION.matcher(source);
-            while (declarations.find()) {
-                String name = declarations.group(1);
-                if (!names.contains(name)) {
-                    names.add(name);
-                }
-            }
-        }
-        names.sort(String::compareTo);
-        return names;
-    }
-
-    /**
-     * Class-body declarations ending in a semicolon, normalized across source
-     * lines. This is still a source reader rather than a Java parser, but it
-     * tracks the outer class body so a package-private field, a split type, or
-     * an initializer call cannot hide a direct real-side declaration. Method,
-     * initializer and nested-class bodies are skipped; quoted braces do not
-     * move the depth.
-     */
-    private static List<String> fieldDeclarations(List<String> code) {
-        String source = String.join("\n", code);
-        List<String> declarations = new ArrayList<>();
-        StringBuilder member = new StringBuilder();
-        int depth = 0;
-        boolean quoted = false;
-        boolean character = false;
-        boolean escaped = false;
-        boolean fieldInitializer = false;
-
-        for (int i = 0; i < source.length(); i++) {
-            char ch = source.charAt(i);
-            if (quoted || character) {
-                if (escaped) {
-                    escaped = false;
-                } else if (ch == '\\') {
-                    escaped = true;
-                } else if ((quoted && ch == '"') || (character && ch == '\'')) {
-                    quoted = false;
-                    character = false;
-                }
-                continue;
-            }
-            if (ch == '"') {
-                quoted = true;
-                continue;
-            }
-            if (ch == '\'') {
-                character = true;
-                continue;
-            }
-            if (ch == '{') {
-                if (depth == 0) {
-                    depth = 1;
-                    member.setLength(0);
-                    continue;
-                }
-                if (depth == 1) {
-                    String prefix = member.toString();
-                    int equals = prefix.indexOf('=');
-                    int paren = prefix.indexOf('(');
-                    fieldInitializer = equals >= 0 && (paren < 0 || equals < paren);
-                    if (!fieldInitializer) {
-                        member.setLength(0);
+                    if (auditedBridge(bridge, member)) continue;
+                    if (mutableApi(member)) {
+                        bridgeMutable++;
+                        offences.add("LATTICE bridge " + bridge + " exposes " + member);
                     }
                 }
-                depth++;
-                continue;
             }
-            if (ch == '}') {
-                if (depth > 0) {
-                    depth--;
-                }
-                if (depth == 1 && !fieldInitializer) {
-                    member.setLength(0);
-                } else if (depth == 1) {
-                    member.append(' ');
-                    fieldInitializer = false;
-                } else if (depth == 0) {
-                    member.setLength(0);
-                }
-                continue;
+            if (swept == 0 || types.isEmpty() || world == null
+                    || worldFields == 0 || bridgeDeclarations == 0) {
+                throw new IOException("lattice semantic populations vanished");
             }
-            if (depth != 1) {
-                continue;
-            }
-            member.append(ch);
-            if (ch == ';') {
-                String declaration = member.toString().strip().replaceAll("\\s+", " ");
-                if (!declaration.isEmpty()) {
-                    declarations.add(declaration);
-                }
-                member.setLength(0);
-            }
+            return new Reading(swept, entitiesReach, coreReach, worldHolds, causalReach,
+                    reducerWorld, bridgeMutable, mainDepended, worldFields,
+                    mindParticipants, bridgeDeclarations, offences);
         }
-        return declarations;
-    }
 
-    /** Public/protected member headers, joined across their formatting lines. */
-    private static List<String> visibleDeclarations(List<String> code) {
-        List<String> declarations = new ArrayList<>();
-        StringBuilder declaration = null;
-        for (String line : code) {
-            String trimmed = line.strip();
-            if (declaration == null) {
-                // Java permits annotations and modifiers before visibility.
-                // The explicit prefix grammar catches that order without
-                // mistaking method-body text such as "public Human" for an API.
-                if (!VISIBLE_DECLARATION_START.matcher(trimmed).matches()) {
-                    continue;
-                }
-                declaration = new StringBuilder(trimmed);
-            } else if (!trimmed.isEmpty()) {
-                declaration.append(' ').append(trimmed);
-            }
-            if (trimmed.contains("{") || trimmed.endsWith(";")) {
-                declarations.add(declaration.toString());
-                declaration = null;
-            }
+        private boolean mindSignature(Element member) {
+            if (!(member instanceof ExecutableElement method)) return false;
+            if (causalMindType(method.getReturnType())) return true;
+            return method.getParameters().stream().anyMatch(p -> causalMindType(p.asType()));
         }
-        return declarations;
-    }
 
-    /** True only for the four public declarations that constitute D-013's jack. */
-    private static boolean auditedLinkDeclaration(String declaration) {
-        String compact = declaration.replaceAll("\\s+", "");
-        return AUDITED_LINK_DECLARATIONS.contains(compact);
-    }
+        private boolean causalMindType(TypeMirror type) {
+            return containsQualified(type, "matrix.causal.CausalRecord")
+                    || containsQualified(type, "matrix.causal.CausalRecord.PerceptReceipt")
+                    || containsQualified(type, "matrix.causal.CausalRecord.IntentProposal");
+        }
 
-    /** True only for the existing root declarations whose returned values were audited. */
-    private static boolean auditedRootDeclaration(String declaration) {
-        String compact = declaration.replaceAll("\\s+", "");
-        return AUDITED_ROOT_DECLARATIONS.contains(compact);
-    }
+        private boolean auditedBridge(String bridge, Element member) {
+            String name = member.getSimpleName().toString();
+            if (bridge.equals("matrix.realworld.NeuralLink")) {
+                if (member instanceof VariableElement field) {
+                    return field.getModifiers().equals(Set.of(Modifier.PUBLIC, Modifier.FINAL))
+                            && Map.of("human", "matrix.realworld.Human",
+                            "avatar", "matrix.entities.Avatar",
+                            "kind", "matrix.realworld.LinkKind")
+                            .getOrDefault(name, "").equals(field.asType().toString());
+                }
+                if (member.getKind() == ElementKind.CONSTRUCTOR
+                        && member instanceof ExecutableElement constructor) {
+                    return constructor.getModifiers().equals(Set.of(Modifier.PUBLIC))
+                            && parameterTypes(constructor).equals(List.of("matrix.realworld.Human",
+                            "matrix.entities.Avatar", "matrix.realworld.LinkKind"));
+                }
+                return false;
+            }
+            if (member instanceof ExecutableElement method) {
+                if (member.getKind() == ElementKind.CONSTRUCTOR) {
+                    return method.getModifiers().equals(Set.of(Modifier.PUBLIC))
+                            && (parameterTypes(method).equals(List.of("long", "java.io.OutputStream",
+                            "java.lang.String")) || parameterTypes(method).equals(List.of("long",
+                            "java.io.OutputStream", "java.lang.String", "java.io.OutputStream")));
+                }
+                if (!method.getModifiers().equals(Set.of(Modifier.PUBLIC))) return false;
+                Map<String, List<String>> parameters = Map.of(
+                        "births", List.of(), "lastCausalPhases", List.of(),
+                        "run", List.of("long"), "snapshotNow", List.of());
+                return parameters.getOrDefault(name, List.of("<absent>"))
+                        .equals(parameterTypes(method))
+                        && Map.of("births", "java.util.List<matrix.core.ChronosLog.Birth>",
+                        "lastCausalPhases", "java.util.List<matrix.causal.CausalPhase>",
+                        "run", "java.util.List<matrix.core.Digest>",
+                        "snapshotNow", "matrix.core.Snapshot")
+                        .getOrDefault(name, "").equals(method.getReturnType().toString());
+            }
+            return false;
+        }
 
-    /** Retain the source reader against one clean tree and every named mutant. */
+        private boolean mutableApi(Element member) {
+            if (member instanceof VariableElement field) return mutableType(field.asType());
+            if (member instanceof ExecutableElement method) {
+                if (mutableType(method.getReturnType())) return true;
+                if (method.getParameters().stream().anyMatch(p -> mutableType(p.asType()))) return true;
+                return method.getTypeParameters().stream().anyMatch(p -> mutableType(p.asType()));
+            }
+            return false;
+        }
+
+        private boolean mutableType(TypeMirror type) {
+            if (type.getKind().isPrimitive() || type.getKind() == TypeKind.VOID) return false;
+            if (type.getKind() == TypeKind.TYPEVAR) return true;
+            if (type.getKind() == TypeKind.ARRAY) return mutableType(((ArrayType) type).getComponentType());
+            if (type instanceof DeclaredType declared) {
+                TypeElement element = (TypeElement) declared.asElement();
+                String pkg = elements.getPackageOf(element).getQualifiedName().toString();
+                if (pkg.startsWith("matrix.")) return true;
+                return declared.getTypeArguments().stream().anyMatch(this::mutableType);
+            }
+            return true;
+        }
+
+        private boolean containsPackage(TypeMirror type, String pkg) {
+            return containsPackage(type, pkg, new java.util.HashSet<>());
+        }
+
+        private boolean containsPackage(TypeMirror type, String pkg, java.util.Set<String> seen) {
+            if (!seen.add(type.getKind() + ":" + type)) return false;
+            if (type instanceof DeclaredType declared) {
+                TypeElement element = (TypeElement) declared.asElement();
+                if (elements.getPackageOf(element).getQualifiedName().contentEquals(pkg)) return true;
+                return declared.getTypeArguments().stream().anyMatch(t -> containsPackage(t, pkg, seen));
+            }
+            if (type instanceof ArrayType array) return containsPackage(array.getComponentType(), pkg, seen);
+            if (type instanceof TypeVariable variable) return containsPackage(variable.getUpperBound(), pkg, seen)
+                    || containsPackage(variable.getLowerBound(), pkg, seen);
+            if (type instanceof WildcardType wildcard) return (wildcard.getExtendsBound() != null
+                    && containsPackage(wildcard.getExtendsBound(), pkg, seen))
+                    || (wildcard.getSuperBound() != null
+                    && containsPackage(wildcard.getSuperBound(), pkg, seen));
+            return false;
+        }
+
+        private boolean containsQualified(TypeMirror type, String qualified) {
+            return containsQualified(type, qualified, new java.util.HashSet<>());
+        }
+
+        private boolean containsQualified(TypeMirror type, String qualified,
+                java.util.Set<String> seen) {
+            if (!seen.add(type.getKind() + ":" + type)) return false;
+            if (type instanceof DeclaredType declared) {
+                TypeElement element = (TypeElement) declared.asElement();
+                if (element.getQualifiedName().contentEquals(qualified)) return true;
+                return declared.getTypeArguments().stream().anyMatch(
+                        t -> containsQualified(t, qualified, seen));
+            }
+            if (type instanceof ArrayType array) return containsQualified(array.getComponentType(), qualified, seen);
+            if (type instanceof TypeVariable variable) return containsQualified(variable.getUpperBound(), qualified, seen);
+            if (type instanceof WildcardType wildcard) return wildcard.getExtendsBound() != null
+                    && containsQualified(wildcard.getExtendsBound(), qualified, seen);
+            return false;
+        }
+
+        private static boolean visible(Element member) {
+            return member.getModifiers().contains(Modifier.PUBLIC)
+                    || member.getModifiers().contains(Modifier.PROTECTED);
+        }
+
+        private boolean sourceMember(Element member) {
+            TypeElement owner = owningType(member);
+            return owner != null && types.containsKey(owner.getQualifiedName().toString());
+        }
+
+        private static TypeElement owningType(Element element) {
+            while (element != null && !(element instanceof TypeElement)) {
+                element = element.getEnclosingElement();
+            }
+            return (TypeElement) element;
+        }
+
+        private TypeElement enclosingSourceType() {
+            for (var path = getCurrentPath(); path != null; path = path.getParentPath()) {
+                Element element = trees.getElement(path);
+                if (element instanceof TypeElement type) return type;
+            }
+            return null;
+        }
+
+        private static List<String> parameterTypes(ExecutableElement method) {
+            return method.getParameters().stream().map(p -> p.asType().toString()).toList();
+        }
+    }
+    /** Retain the semantic reader against one clean tree and every named mutant. */
     private static void selfcheck() throws IOException {
         Path scratch = Files.createTempDirectory("lattice-fire-door-");
         List<Case> cases = new ArrayList<>();
@@ -512,6 +504,12 @@ public final class LatticeFence {
                                     + "    . Human;\n"
                                     + "public final class Avatar { Human mind; }\n"),
                     reading -> oneFinding(reading, reading.entitiesReach())));
+            cases.add(readCase(scratch, "entities-unicode-realworld",
+                    changed(clean, "matrix/entities/Avatar.java",
+                            "package matrix.entities;\n"
+                                    + "import matrix.\\u0072ealworld.Human;\n"
+                                    + "public final class Avatar { private Human mind; }\n"),
+                    reading -> oneFinding(reading, reading.entitiesReach())));
             cases.add(readCase(scratch, "core-realworld",
                     changed(clean, "matrix/core/Kernel.java",
                             "package matrix.core;\n"
@@ -520,23 +518,27 @@ public final class LatticeFence {
             cases.add(readCase(scratch, "world-holds-human",
                     changed(clean, "matrix/core/World.java",
                             "package matrix.core;\n"
+                                    + "import matrix.realworld.Human;\n"
                                     + "public final class World {\n"
                                     + "  private final java.util.List<Human> minds = null;\n"
                                     + "}\n"),
-                    reading -> oneFinding(reading, reading.worldHolds())));
+                    reading -> reading.worldHolds() == 1 && reading.coreReach() == 1
+                            && reading.findings() == 2));
             cases.add(readCase(scratch, "world-split-field",
                     changed(clean, "matrix/core/World.java",
                             "package matrix.core;\n"
+                                    + "import matrix.realworld.Human;\n"
                                     + "public final class World {\n"
                                     + "  Human\n"
-                                    + "      mind = load();\n"
+                                    + "      mind = null;\n"
                                     + "}\n"),
-                    reading -> oneFinding(reading, reading.worldHolds())));
+                    reading -> reading.worldHolds() == 1 && reading.coreReach() == 1
+                            && reading.findings() == 2));
             cases.add(readCase(scratch, "main-dependency",
                     changed(clean, "matrix/entities/Avatar.java",
                             "package matrix.entities;\n"
                                     + "public final class Avatar {\n"
-                                    + "  void run() { matrix . Main . run(); }\n"
+                                    + "  Class<?> root() { return matrix . Main . class; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.mainDepended())));
             cases.add(readCase(scratch, "causal-runtime-reach",
@@ -569,6 +571,24 @@ public final class LatticeFence {
                                     + "  CausalRecord reduce(World world) { return null; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.reducerWorld())));
+            Map<String, String> inheritedReducer = changed(clean,
+                    "matrix/realworld/ReceiptConsumer.java",
+                    "package matrix.realworld;\n"
+                            + "import matrix.causal.CausalRecord.PerceptReceipt;\n"
+                            + "interface ReceiptConsumer { void reduce(PerceptReceipt value); }\n");
+            inheritedReducer = changed(inheritedReducer,
+                    "matrix/realworld/WorldReader.java",
+                    "package matrix.realworld;\nimport matrix.core.World;\n"
+                            + "class WorldReader { protected final World world = null; }\n");
+            inheritedReducer = changed(inheritedReducer,
+                    "matrix/realworld/MindReducer.java",
+                    "package matrix.realworld;\n"
+                            + "final class MindReducer extends WorldReader"
+                            + " implements ReceiptConsumer {\n"
+                            + " public void reduce(matrix.causal.CausalRecord.PerceptReceipt value)"
+                            + " { world.toString(); } }\n");
+            cases.add(readCase(scratch, "inherited-reducer-world", inheritedReducer,
+                    reading -> reading.reducerWorld() >= 1 && !reading.held()));
             cases.add(readCase(scratch, "reducer-receipts-only",
                     changed(clean, "matrix/realworld/MindReducer.java",
                             "package matrix.realworld;\n"
@@ -581,6 +601,8 @@ public final class LatticeFence {
             cases.add(readCase(scratch, "link-mutable-transport",
                     changed(clean, "matrix/realworld/NeuralLink.java",
                             "package matrix.realworld;\n"
+                                    + "import matrix.entities.Avatar;\n"
+                                    + "import matrix.causal.CausalRecord;\n"
                                     + "public final class NeuralLink {\n"
                                     + "  public final Human human;\n"
                                     + "  public final Avatar avatar;\n"
@@ -601,13 +623,27 @@ public final class LatticeFence {
             cases.add(readCase(scratch, "link-modifier-smuggle",
                     changed(clean, "matrix/realworld/NeuralLink.java",
                             "package matrix.realworld;\n"
+                                    + "import matrix.entities.Avatar;\n"
                                     + "public final class NeuralLink {\n"
                                     + "  @Deprecated static public Human leak() { return null; }\n"
                                     + "}\n"),
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "link-protected-human-refused",
+                    changed(clean, "matrix/realworld/NeuralLink.java",
+                            linkFieldFixture("protected final Human human = null;")),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "link-static-human-refused",
+                    changed(clean, "matrix/realworld/NeuralLink.java",
+                            linkFieldFixture("public static final Human human = null;")),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "link-nonfinal-human-refused",
+                    changed(clean, "matrix/realworld/NeuralLink.java",
+                            linkFieldFixture("public Human human;")),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
             cases.add(readCase(scratch, "link-string-is-not-api",
                     changed(clean, "matrix/realworld/NeuralLink.java",
                             "package matrix.realworld;\n"
+                                    + "import matrix.entities.Avatar;\n"
                                     + "public final class NeuralLink {\n"
                                     + "  public final Human human;\n"
                                     + "  public final Avatar avatar;\n"
@@ -622,9 +658,27 @@ public final class LatticeFence {
             cases.add(readCase(scratch, "simulation-mutable-export",
                     changed(clean, "matrix/Simulation.java",
                             "package matrix;\n"
+                                    + "import matrix.realworld.Human;\n"
                                     + "public final class Simulation {\n"
                                     + "  public Human exposeMind() { return null; }\n"
                                     + "}\n"),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
+            cases.add(readCase(scratch, "simulation-generic-erasure-export",
+                    changed(clean, "matrix/Simulation.java",
+                            "package matrix;\nimport matrix.realworld.Human;\n"
+                                    + "public final class Simulation {"
+                                    + " private final Human hidden = new Human();"
+                                    + " @SuppressWarnings(\"unchecked\")"
+                                    + " public <T> T exposeMind() { return (T) hidden; } }\n"),
+                    reading -> oneFinding(reading, reading.bridgeMutable())));
+            Map<String, String> runOverload = changed(clean, "matrix/core/Digest.java",
+                    "package matrix.core; public record Digest(long tick, String value) {}\n");
+            runOverload = changed(runOverload, "matrix/Simulation.java",
+                    "package matrix;\nimport java.util.List;\n"
+                            + "import matrix.core.Digest; import matrix.realworld.Human;\n"
+                            + "public final class Simulation {"
+                            + " public List<Digest> run(Human ignored) { return List.of(); } }\n");
+            cases.add(readCase(scratch, "simulation-run-overload-refused", runOverload,
                     reading -> oneFinding(reading, reading.bridgeMutable())));
             Map<String, String> futureMind = changed(clean, "matrix/realworld/Human.java",
                     "package matrix.realworld;\n"
@@ -677,6 +731,9 @@ public final class LatticeFence {
                             + "  /* public Human exposeMind() { return null; } */\n"
                             + "}\n");
             cases.add(readCase(scratch, "comments-ignored", comments, Reading::held));
+            cases.add(refusedCase(scratch, "malformed-refused",
+                    changed(clean, "matrix/entities/Broken.java",
+                            "package matrix.entities; final class Broken { void x( }")));
         } finally {
             deleteTree(scratch);
         }
@@ -711,6 +768,24 @@ public final class LatticeFence {
         return new Case(name, expectation.test(inspect(root)));
     }
 
+    /** Invalid or unattributed Java must be a refusal, never an empty green graph. */
+    private static Case refusedCase(Path scratch, String name, Map<String, String> sources)
+            throws IOException {
+        Path root = scratch.resolve(name);
+        Files.createDirectories(root);
+        for (Map.Entry<String, String> source : sources.entrySet()) {
+            Path file = root.resolve(source.getKey());
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, source.getValue(), StandardCharsets.UTF_8);
+        }
+        try {
+            inspect(root);
+            return new Case(name, false);
+        } catch (IOException expected) {
+            return new Case(name, true);
+        }
+    }
+
     private static Map<String, String> cleanSources() {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("matrix/entities/Avatar.java",
@@ -721,9 +796,12 @@ public final class LatticeFence {
         sources.put("matrix/Main.java",
                 "package matrix;\npublic final class Main { }\n");
         sources.put("matrix/causal/CausalRecord.java",
-                "package matrix.causal;\npublic interface CausalRecord { }\n");
+                "package matrix.causal;\npublic interface CausalRecord {"
+                        + " record PerceptReceipt() implements CausalRecord {}"
+                        + " record IntentProposal() implements CausalRecord {} }\n");
         sources.put("matrix/realworld/NeuralLink.java",
                 "package matrix.realworld;\n"
+                        + "import matrix.entities.Avatar;\n"
                         + "public final class NeuralLink {\n"
                         + "  public final Human human;\n"
                         + "  public final Avatar avatar;\n"
@@ -733,6 +811,8 @@ public final class LatticeFence {
                         + "  }\n"
                         + "  public boolean closed() { return false; }\n"
                         + "}\n");
+        sources.put("matrix/realworld/LinkKind.java",
+                "package matrix.realworld;\npublic enum LinkKind { POD }\n");
         sources.put("matrix/realworld/Human.java",
                 "package matrix.realworld;\npublic final class Human { }\n");
         sources.put("matrix/Simulation.java",
@@ -741,6 +821,15 @@ public final class LatticeFence {
                         + "  public long tick() { return 0; }\n"
                         + "}\n");
         return sources;
+    }
+
+    /** One historical jack with a deliberately misshaped Human field. */
+    private static String linkFieldFixture(String humanField) {
+        return "package matrix.realworld;\nimport matrix.entities.Avatar;\n"
+                + "public final class NeuralLink { " + humanField + "\n"
+                + " public final Avatar avatar; public final LinkKind kind;\n"
+                + " public NeuralLink(Human human, Avatar avatar, LinkKind kind) {"
+                + " this.avatar=avatar; this.kind=kind; } }\n";
     }
 
     private static Map<String, String> changed(Map<String, String> source,
