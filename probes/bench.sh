@@ -296,6 +296,14 @@ table() {
   # it costs twenty-six JVM starts and no universe: a refusal returns before the JVM has
   # warmed. `crashed=` rides the census and is reported, not judged (#1481).
   judge DoorRefusal  'VERDICT EVERY_DOOR_REFUSES swallowed=0 crashed=0 swept_none=0'
+  # Every flag that takes a value refuses a missing or unparsable one in the refusal
+  # grammar (#1747). DoorRefusal's question one population over, and here the convention
+  # DoorRefusal declines to assert IS set: #791 made exit 2 the operator's only notice
+  # that an argument will not be honoured, so exit 1 with a stack trace is a wrong answer
+  # and not merely an ugly one. Judged by BEHAVIOUR, and the population is every arm that
+  # consumes the next argument HOWEVER it consumes it — read off the repair instead, the
+  # probe would stay green while a reverted flag simply left the population.
+  judge OperandRefusal 'VERDICT EVERY_OPERAND_REFUSES swallowed=0 crashed=0 swept_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
   # D-066's first runtime seam (#1686). Six nested records share one parser but
