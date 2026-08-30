@@ -147,6 +147,18 @@ Ordering within each phase is explicit and stable. Randomness, where a later dec
 
 **Percept noninterference is law.** Holding prior mind state and the complete ordered mind-visible receipt projections fixed, changing only actual source, hidden truth, audit provenance or audit-only identity must produce byte-identical mind transitions and intent proposals. The audit and later world validation may still differ; the resident's interpretation may not. This covers payload, equality and ordering side channels: hiding the fact while leaking a fact-derived identifier is still a truth bypass.
 
+Percept identity is scoped by Subject and tick. Equal visible occurrences are
+not content-deduplicated before allocation: without a visible occurrence
+identity, two genuine perceptions cannot be distinguished from a retry.
+Allocation preserves their multiplicity, orders only the complete visible
+tuple, and assigns dense Subject-local identities. Idempotence begins only
+after that point: one exact `(Subject, Percept)` retransmission is one input,
+while a conflicting value under the same scoped identity is invalid. The
+canonical `MindInput` bytes establish ingress equivalence. Actual reducer
+transition equivalence and intent-proposal equivalence remain mandatory gates
+on their production leaves; a sample reducer or hand-built intent is not an
+end-to-end noninterference proof.
+
 ### Java and state boundaries
 
 The decision authorizes categories of change, not a class diagram:

@@ -191,7 +191,7 @@ public final class CausalRecords {
         CausalRecord.IntentProposal intent = new CausalRecord.IntentProposal(
                 new CausalId.Intent(10, 0), new CausalId.Choice(10, 0), neo,
                 symbol("escape"), symbol("open_door"), door,
-                List.of(receipt.id()), List.of());
+                List.of(receipt.ref()), List.of());
         CausalRecord.IntentValidation validation = new CausalRecord.IntentValidation(
                 intent.id(), neo, CausalRecord.ValidationOutcome.ACCEPTED,
                 symbol("door.capability"), Optional.empty());
@@ -353,20 +353,23 @@ public final class CausalRecords {
     }
 
     private static void immutability(Fixture fixture) {
-        ArrayList<CausalId.Percept> receiptBasis = new ArrayList<>();
-        receiptBasis.add(new CausalId.Percept(1, 0));
+        ArrayList<CausalRecord.PerceptRef> receiptBasis = new ArrayList<>();
+        receiptBasis.add(new CausalRecord.PerceptRef(
+                fixture.receipt.subject(), new CausalId.Percept(1, 0)));
         ArrayList<CausalRecord.MemoryRef> memoryBasis = new ArrayList<>();
         memoryBasis.add(new CausalRecord.MemoryRef("first_memory"));
         CausalRecord.IntentProposal intent = new CausalRecord.IntentProposal(
                 new CausalId.Intent(2, 0), new CausalId.Choice(2, 0),
                 fixture.receipt.subject(), symbol("remember"), symbol("wait"),
                 fixture.delivery.truth().subject(), receiptBasis, memoryBasis);
-        receiptBasis.add(new CausalId.Percept(1, 1));
+        receiptBasis.add(new CausalRecord.PerceptRef(
+                fixture.receipt.subject(), new CausalId.Percept(1, 1)));
         memoryBasis.add(new CausalRecord.MemoryRef("second_memory"));
         check("immutable", "intent-defensive-receipts", intent.receiptBasis().size() == 1);
         check("immutable", "intent-defensive-memories", intent.memoryBasis().size() == 1);
         rejectsMutation("intent-receipts-unmodifiable",
-                () -> intent.receiptBasis().add(new CausalId.Percept(1, 2)));
+                () -> intent.receiptBasis().add(new CausalRecord.PerceptRef(
+                        fixture.receipt.subject(), new CausalId.Percept(1, 2))));
         rejectsMutation("intent-memories-unmodifiable",
                 () -> intent.memoryBasis().add(new CausalRecord.MemoryRef("third_memory")));
 
@@ -443,7 +446,7 @@ public final class CausalRecords {
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 1),
                         new CausalId.Choice(10, 0), neo, symbol("escape"),
                         symbol("open"), CausalRecord.Principal.unknown(),
-                        List.of(fixture.receipt.id()), List.of()));
+                        List.of(fixture.receipt.ref()), List.of()));
         rejects("constructor", "intent-needs-basis",
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 1),
                         new CausalId.Choice(10, 0), neo, symbol("escape"),
@@ -452,22 +455,41 @@ public final class CausalRecords {
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 2),
                         new CausalId.Choice(10, 0), neo, symbol("escape"),
                         symbol("open"), door,
-                        List.of(new CausalId.Percept(10, 1), new CausalId.Percept(10, 0)),
+                        List.of(new CausalRecord.PerceptRef(neo, new CausalId.Percept(10, 1)),
+                                new CausalRecord.PerceptRef(neo,
+                                        new CausalId.Percept(10, 0))),
                         List.of()));
         rejects("constructor", "intent-receipts-distinct",
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 2),
                         new CausalId.Choice(10, 0), neo, symbol("escape"),
                         symbol("open"), door,
-                        List.of(fixture.receipt.id(), fixture.receipt.id()), List.of()));
+                        List.of(fixture.receipt.ref(), fixture.receipt.ref()), List.of()));
         rejects("constructor", "intent-no-future-choice",
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 0),
                         new CausalId.Choice(11, 0), neo, symbol("escape"),
-                        symbol("open"), door, List.of(fixture.receipt.id()), List.of()));
+                        symbol("open"), door, List.of(fixture.receipt.ref()), List.of()));
         rejects("constructor", "intent-no-future-percept",
                 () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 0),
                         new CausalId.Choice(10, 0), neo, symbol("escape"),
-                        symbol("open"), door, List.of(new CausalId.Percept(11, 0)),
+                        symbol("open"), door, List.of(new CausalRecord.PerceptRef(
+                                neo, new CausalId.Percept(11, 0))),
                         List.of()));
+        rejects("constructor", "intent-no-other-subject-percept",
+                () -> new CausalRecord.IntentProposal(new CausalId.Intent(10, 0),
+                        new CausalId.Choice(10, 0), neo, symbol("escape"),
+                        symbol("open"), door, List.of(new CausalRecord.PerceptRef(
+                                new CausalRecord.Subject("trinity"),
+                                new CausalId.Percept(10, 0))), List.of()));
+        rejects("constructor", "percept-ref-needs-subject",
+                () -> new CausalRecord.PerceptRef(null, new CausalId.Percept(10, 0)));
+        rejects("constructor", "percept-ref-needs-id",
+                () -> new CausalRecord.PerceptRef(neo, null));
+        rejects("constructor", "payload-refuses-lone-high-surrogate",
+                () -> new CausalRecord.Payload("\uD800"));
+        rejects("constructor", "payload-refuses-lone-low-surrogate",
+                () -> new CausalRecord.Payload("\uDC00"));
+        check("constructor", "payload-allows-valid-surrogate-pair",
+                new CausalRecord.Payload("signal-😀").text().equals("signal-😀"));
 
         rejects("constructor", "accepted-has-no-rejection",
                 () -> new CausalRecord.IntentValidation(fixture.intent.id(), neo,

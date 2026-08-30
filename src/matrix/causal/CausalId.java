@@ -7,11 +7,13 @@ import java.util.Objects;
  * The six non-interchangeable identity domains in D-066's Human causal path.
  *
  * <p>An identity says only <em>where in canonical causal order</em> a value
- * was born: its domain, tick, and within-domain sequence. It carries no
- * subject name, object reference, hidden truth, audit provenance, wall clock,
- * random value, or JVM-shaped hash. Later records own those meanings. Keeping
- * them out of the identity is what lets a mind-visible percept keep the same
- * identity when only root-side audit facts differ.
+ * was born: its domain, tick, and within-scope sequence. Percept scope is the
+ * Subject carried beside the ID in {@code PerceptReceipt}/{@code PerceptRef};
+ * the bare spelling is deliberately not a globally unique percept key. It
+ * carries no subject name, object reference, hidden truth, audit provenance,
+ * wall clock, random value, or JVM-shaped hash. Later records own those
+ * meanings. Keeping them out of the identity is what lets a mind-visible
+ * percept keep the same identity when only root-side audit facts differ.
  *
  * <p>The nested records share one strict textual grammar while remaining
  * distinct Java types. Code that asks for a {@link Commit} cannot be handed a
