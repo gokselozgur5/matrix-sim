@@ -7,21 +7,47 @@ import matrix.realworld.Human;
 import matrix.realworld.NeuralLink;
 import matrix.realworld.RealWorld;
 
+import com.sun.source.tree.AssignmentTree;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.LambdaExpressionTree;
+import com.sun.source.tree.MemberReferenceTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.NewClassTree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreePath;
+import com.sun.source.util.TreePathScanner;
+import com.sun.source.util.Trees;
+
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.Elements;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 
 /**
  * Probe: does phase one freeze only the declared tick-start truth? (#1690)
@@ -41,10 +67,12 @@ import java.util.regex.Pattern;
  * is a first-class value with its tick and rule intact.
  *
  * <p>The source half keeps #1691's door narrow before #1691 exists: the
- * production delivery hook must hand over {@code tickTruth} and may not name
-     * {@code world} or {@code realWorld}. It also drives the same scanner over
-     * a private live-read mutant, so a green source count cannot mean the
-     * reader forgot its subject.
+ * production delivery hook must hand over {@code tickTruth} and its reachable
+ * helper graph may not read {@code world} or {@code realWorld}. Direct reads,
+ * same-class helpers, accessor aliases, and static or instance external helpers
+ * are retained
+ * mutants: a green count therefore means the scanner followed each supported
+ * escape route, not merely that one method body avoided two field spellings.
  *
  * <p>Usage: {@code java -cp out:probes/out TruthSnapshots [--root src]}
  */
@@ -55,8 +83,6 @@ public final class TruthSnapshots {
             TruthSnapshot.Predicate.AVATAR_PILL,
             TruthSnapshot.Predicate.AVATAR_POSITION_CM);
 
-    private static final Pattern LIVE_DELIVERY_READ =
-            Pattern.compile("\\b(?:world|realWorld)\\b");
     private static final Map<String, Integer> CASES = new LinkedHashMap<>();
     private static final Map<String, Integer> FAILURES = new LinkedHashMap<>();
     private static final List<String> BREAKS = new ArrayList<>();
@@ -266,84 +292,696 @@ public final class TruthSnapshots {
 
         Simulation ordinary = new Simulation(42, null, null);
         ordinary.tickOnce();
-        TruthSnapshot ordinaryTruth = truth(ordinary, "tickTruth");
+        TruthSnapshot firstTickTruth = truth(ordinary, "tickTruth");
         check("delivery", "ordinary-tick-handover",
-                ordinaryTruth == truth(ordinary, "deliveryTruth")
-                        && ordinaryTruth.tick() == 1);
+                firstTickTruth == truth(ordinary, "deliveryTruth")
+                        && firstTickTruth.tick() == 1);
+        ordinary.tickOnce();
+        TruthSnapshot secondTickTruth = truth(ordinary, "tickTruth");
+        check("freeze", "consecutive-source-ticks",
+                secondTickTruth.tick() == 2
+                        && secondTickTruth == truth(ordinary, "deliveryTruth")
+                        && secondTickTruth != firstTickTruth);
 
         return new Production(frozen.tick(), frozen.subjects(), frozen.entries().size());
     }
 
-    /** Pin the real delivery body and prove the source reader sees a live lookup. */
+    /**
+     * Pin the real delivery call graph and retain every known live-read escape.
+     *
+     * <p>{@link #inspect} starts at {@code Simulation.deliverPercepts}, follows
+     * unqualified calls into the same class and class-qualified calls into
+     * sibling source files, then counts forbidden world fields over the entire
+     * reachable graph. Each fixture below changes only the route to the same
+     * forbidden read. That makes the fixtures executable evidence for the
+     * scanner's reach rather than examples which merely resemble production.
+     */
     private static void sourceContract(Path root) throws IOException {
         SourceReading production = inspect(root.resolve(Path.of("matrix", "Simulation.java")));
         check("delivery", "production-source-read", production.swept() == 1);
-        check("delivery", "no-live-delivery-read", production.liveReads() == 0);
+        check("delivery", "no-live-delivery-read",
+                production.liveReads() == 0 && production.callbacks() == 0);
         check("delivery", "one-frozen-handover", production.handovers() == 1);
         Path scratch = Files.createTempDirectory("truth-snapshot-source-");
         Path file = scratch.resolve("Simulation.java");
+        Path external = scratch.resolve("DeliveryEscape.java");
         try {
             Files.writeString(file, fixture("deliveryTruth = tickTruth;"));
             SourceReading clean = inspect(file);
             check("delivery", "fixture-clean", clean.liveReads() == 0
                     && clean.handovers() == 1);
+            Files.writeString(file, fixture("this.deliveryTruth = this.tickTruth;"));
+            SourceReading explicitHandoff = inspect(file);
+            check("delivery", "fixture-explicit-this-handoff",
+                    explicitHandoff.liveReads() == 0 && explicitHandoff.handovers() == 1);
+            Files.writeString(file, fixture("Class<?> type = getClass();"
+                    + " deliveryTruth = tickTruth;"));
+            SourceReading harmlessClass = inspect(file);
+            check("delivery", "fixture-harmless-get-class",
+                    harmlessClass.liveReads() == 0 && harmlessClass.callbacks() == 0
+                            && harmlessClass.handovers() == 1);
 
-            Files.writeString(file, fixture("world.entities(); deliveryTruth = tickTruth;"));
-            SourceReading escaped = inspect(file);
-            check("delivery", "fixture-live-read-red", escaped.liveReads() == 1
-                    && escaped.handovers() == 1);
+            assertLiveFixture(file, "fixture-direct-live-read-red",
+                    fixture("world.entities(); deliveryTruth = tickTruth;"));
+            assertLiveFixture(file, "fixture-helper-live-read-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private void leak() { realWorld.humans(); }"));
+            assertLiveFixture(file, "fixture-this-helper-live-read-red",
+                    fixture("this.leak(); deliveryTruth = tickTruth;",
+                            "private void leak() { realWorld.humans(); }"));
+            assertLiveFixture(file, "fixture-accessor-alias-red",
+                    fixture("liveWorld().entities(); deliveryTruth = tickTruth;",
+                            "private World liveWorld() { return world; }"));
+            assertLiveFixture(file, "fixture-renamed-field-alias-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private final World live = new World();"
+                                    + " private void leak() { live.entities(); }"));
+            assertLiveFixture(file, "fixture-cached-live-view-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private final Object liveEntities = world.entities();"
+                                    + " private void leak() { liveEntities.toString(); }"));
+            assertLiveFixture(file, "fixture-unrelated-field-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private final int unrelated = 1;"
+                                    + " private void leak() { System.out.println(unrelated); }"));
+            Files.writeString(file, fixture("leak(); deliveryTruth = tickTruth;",
+                    "private void leak() {}"
+                            + " private void leak(int ignored) { world.entities(); }"));
+            SourceReading overload = inspect(file);
+            check("delivery", "fixture-uncalled-overload-is-not-reachable",
+                    overload.liveReads() == 0 && overload.handovers() == 1);
+            Files.writeString(file, fixture("deliveryTruth = tickTruth;",
+                    "private void deliverPercepts(int ignored) { world.entities(); }"));
+            SourceReading entryOverload = inspect(file);
+            check("delivery", "fixture-exact-no-arg-entry",
+                    entryOverload.liveReads() == 0 && entryOverload.handovers() == 1);
+            assertLiveFixture(file, "fixture-string-brace-helper-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private void leak() { String brace = \"}\"; world.entities(); }"));
+            assertLiveFixture(file, "fixture-generic-helper-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private Map<String, Integer> leak() {"
+                                    + " world.entities(); return Map.of(); }"));
+            assertLiveFixture(file, "fixture-annotated-array-throws-helper-red",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "@Deprecated private Object[] leak() throws Exception {"
+                                    + " world.entities(); return new Object[0]; }"));
+            Files.writeString(external, "class DeliveryEscape {\n"
+                    + "  private static final RealWorld realWorld = new RealWorld();\n"
+                    + "  static void leak() { realWorld.humans(); }\n"
+                    + "  private final World world = new World();\n"
+                    + "  void instanceLeak() { world.entities(); }\n"
+                    + "}\n");
+            assertLiveFixture(file, "fixture-external-helper-red",
+                    fixture("DeliveryEscape.leak(); deliveryTruth = tickTruth;"));
+            assertLiveFixture(file, "fixture-instance-helper-red",
+                    fixture("escape.instanceLeak(); deliveryTruth = tickTruth;",
+                            "private final DeliveryEscape escape = new DeliveryEscape();"));
+            Files.writeString(external, "interface Escape { void leak(); }\n"
+                    + "final class DeliveryEscape implements Escape {\n"
+                    + "  private final World world = new World();\n"
+                    + "  public void leak() { world.entities(); }\n"
+                    + "}\n");
+            assertLiveFixture(file, "fixture-interface-dispatch-red",
+                    fixture("escape.leak(); deliveryTruth = tickTruth;",
+                            "private final Escape escape = new DeliveryEscape();"));
+            assertLiveFixture(file, "fixture-local-interface-dispatch-red",
+                    fixture("Escape local = implementation(); local.leak();"
+                                    + " deliveryTruth = tickTruth;",
+                            "private Escape implementation() { return null; }"));
+            Files.writeString(external, "final class ConstructedEscape {\n"
+                    + "  private final World world = new World();\n"
+                    + "  ConstructedEscape() { world.entities(); }\n"
+                    + "}\n");
+            assertBoundaryFixture(file, "fixture-source-construction-refused",
+                    fixture("Object local = new ConstructedEscape();"
+                            + " deliveryTruth = tickTruth;"));
+            assertBoundaryFixture(file, "fixture-callback-constructs-refused",
+                    fixture("Runnable first = () -> {}; Runnable second = this::noop;"
+                                    + " deliveryTruth = tickTruth;",
+                            "private void noop() {}"));
+            assertBoundaryFixture(file, "fixture-reflective-field-access-refused",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private void leak() throws Exception {"
+                                    + " java.lang.reflect.Field found = getClass()"
+                                    + ".getDeclaredField(\"world\");"
+                                    + " found.setAccessible(true); found.get(this); }"));
+            assertBoundaryFixture(file, "fixture-jdk-callback-refused",
+                    fixture("java.util.Objects.toString(this);"
+                            + " deliveryTruth = tickTruth;"));
+            assertCustomCanonicalRefused(scratch);
+            assertUnreadableFixture(file, "fixture-malformed-source-refused",
+                    fixture("leak(); deliveryTruth = tickTruth;",
+                            "private void leak( { world.entities(); }"));
         } finally {
+            Files.deleteIfExists(external);
             Files.deleteIfExists(file);
             Files.deleteIfExists(scratch);
         }
     }
 
     private static String fixture(String deliveryBody) {
-        return "class Simulation {\n"
-                + "  private void deliverPercepts() { " + deliveryBody + " }\n"
-                + "}\n";
+        return fixture(deliveryBody, "");
     }
 
+    /** Build one scanner fixture; {@code helpers} remain inside Simulation. */
+    private static String fixture(String deliveryBody, String helpers) {
+        return "import java.util.Map;\n"
+                + "class Simulation {\n"
+                + "  private TruthSnapshot tickTruth;\n"
+                + "  private TruthSnapshot deliveryTruth;\n"
+                + "  private final World world = new World();\n"
+                + "  private final RealWorld realWorld = new RealWorld();\n"
+                + "  private void deliverPercepts() throws Exception { "
+                + deliveryBody + " }\n"
+                + "  " + helpers + "\n"
+                + "}\n"
+                + "class TruthSnapshot {}\n"
+                + "class World { Object entities() { return new Object(); } }\n"
+                + "class RealWorld { void humans() {} }\n";
+    }
+
+    /** Write one mutant and require its reachable forbidden read to be counted. */
+    private static void assertLiveFixture(Path file, String name, String source)
+            throws IOException {
+        Files.writeString(file, source);
+        SourceReading escaped = inspect(file);
+        check("delivery", name, escaped.liveReads() > 0 && escaped.handovers() == 1);
+    }
+
+    /** Retain a deliberately unsupported boundary without calling it a live read. */
+    private static void assertBoundaryFixture(Path file, String name, String source)
+            throws IOException {
+        Files.writeString(file, source);
+        SourceReading escaped = inspect(file);
+        check("delivery", name, escaped.callbacks() > 0 && escaped.handovers() == 1);
+    }
+
+    /** A syntax-broken graph must be refused, never reinterpreted as empty. */
+    private static void assertUnreadableFixture(Path file, String name, String source)
+            throws IOException {
+        Files.writeString(file, source);
+        boolean refused = false;
+        try {
+            inspect(file);
+        } catch (IOException expected) {
+            refused = true;
+        }
+        check("delivery", name, refused);
+    }
+
+    /** A source-defined List behind CANONICAL must break its declaration seal. */
+    private static void assertCustomCanonicalRefused(Path scratch) throws IOException {
+        Path matrix = scratch.resolve("matrix");
+        Path causal = matrix.resolve("causal");
+        Files.createDirectories(causal);
+        Path simulation = matrix.resolve("Simulation.java");
+        Path phase = causal.resolve("CausalPhase.java");
+        try {
+            Files.writeString(simulation, "package matrix;\n"
+                    + "import java.util.List; import matrix.causal.CausalPhase;\n"
+                    + "class Simulation {\n"
+                    + " private TruthSnapshot tickTruth; private TruthSnapshot deliveryTruth;"
+                    + " private int causalPhaseCursor;\n"
+                    + " private void deliverPercepts() { enterCausalPhase("
+                    + "CausalPhase.DELIVER_PERCEPTS); deliveryTruth=tickTruth; }\n"
+                    + " private void enterCausalPhase(CausalPhase phase) {"
+                    + " List<CausalPhase> order=CausalPhase.canonicalOrder();"
+                    + " if(causalPhaseCursor>=order.size()"
+                    + " || phase!=order.get(causalPhaseCursor))"
+                    + " throw new IllegalStateException(\"bad\"); causalPhaseCursor++; } }\n"
+                    + "class TruthSnapshot {}\n");
+            Files.writeString(phase, "package matrix.causal;\n"
+                    + "import java.util.*;\n"
+                    + "public enum CausalPhase { DELIVER_PERCEPTS;\n"
+                    + " private static final List<CausalPhase> CANONICAL="
+                    + " new EscapeList();\n"
+                    + " public static List<CausalPhase> canonicalOrder()"
+                    + " { return CANONICAL; }\n"
+                    + " private static final class EscapeList"
+                    + " extends AbstractList<CausalPhase> {"
+                    + " private final Object live=new Object();"
+                    + " public int size(){ live.toString(); return 1; }"
+                    + " public CausalPhase get(int i){ return DELIVER_PERCEPTS; } } }\n");
+            boolean refused = false;
+            try {
+                inspect(simulation);
+            } catch (IOException expected) {
+                refused = true;
+            }
+            check("delivery", "fixture-custom-canonical-list-refused", refused);
+        } finally {
+            Files.deleteIfExists(phase);
+            Files.deleteIfExists(simulation);
+            Files.deleteIfExists(causal);
+            Files.deleteIfExists(matrix);
+        }
+    }
+
+    /**
+     * Read and attribute the source tree containing {@code Simulation}, then
+     * walk every invocation which resolves to another supplied source method.
+     * JDK/library calls resolve too but have no source-owned facts and stop.
+     */
     private static SourceReading inspect(Path source) throws IOException {
         if (!Files.isRegularFile(source)) {
             return new SourceReading(0, 0, 0);
         }
-        String code = String.join("\n", Probes.uncommentedLines(source));
-        String body = methodBody(code, "private void deliverPercepts()");
-        int liveReads = occurrences(LIVE_DELIVERY_READ, body);
-        int handovers = occurrences(Pattern.compile(
-                "\\bdeliveryTruth\\s*=\\s*tickTruth\\s*;"), body);
-        return new SourceReading(1, liveReads, handovers);
+        SourceGraph graph = sourceMethods(source.getParent());
+        Map<MethodKey, MethodFacts> methods = graph.methods();
+        List<MethodKey> entries = methods.keySet().stream()
+                .filter(key -> key.className().equals("Simulation")
+                        || key.className().endsWith(".Simulation"))
+                .filter(key -> key.methodName().equals("deliverPercepts"))
+                .filter(key -> key.parameters().isEmpty()).toList();
+        if (entries.size() != 1) {
+            throw new IOException("truth delivery entry must be one exact no-arg method: "
+                    + entries);
+        }
+        MethodKey entry = entries.get(0);
+        MethodFacts entryFacts = methods.getOrDefault(entry, MethodFacts.empty());
+        Reachable reachable = reachableFacts(entry, methods, new HashSet<>());
+        if (!reachable.allowedFields().equals(graph.allowedFields())) {
+            throw new IOException("truth field allowlist reach disagrees: expected="
+                    + graph.allowedFields() + " reached=" + reachable.allowedFields());
+        }
+        if (graph.requireAllExternalCalls()
+                && !reachable.allowedExternalCalls().equals(graph.allowedExternalCalls())) {
+            throw new IOException("truth external-call allowlist reach disagrees: expected="
+                    + graph.allowedExternalCalls() + " reached="
+                    + reachable.allowedExternalCalls());
+        }
+        return new SourceReading(1, reachable.liveReads(), entryFacts.handovers(),
+                reachable.callbacks());
     }
 
-    private static String methodBody(String code, String signature) {
-        int start = code.indexOf(signature);
-        if (start < 0) {
-            return "";
+    /**
+     * Ask the JDK 17 compiler to parse and attribute the complete supplied
+     * source tree. Attribution binds implicit, explicit-this, static and
+     * instance calls to their actual {@link ExecutableElement}; no receiver
+     * spelling heuristic remains. Any syntax or semantic diagnostic is refused
+     * instead of turning an unresolved project helper into an empty graph.
+     */
+    private static SourceGraph sourceMethods(Path directory)
+            throws IOException {
+        List<Path> sources;
+        try (var files = Files.walk(directory)) {
+            sources = files.filter(path -> path.toString().endsWith(".java")).toList();
         }
-        int open = code.indexOf('{', start + signature.length());
-        if (open < 0) {
-            return "";
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IOException("JDK compiler unavailable for truth source fence");
         }
-        int depth = 0;
-        for (int i = open; i < code.length(); i++) {
-            char c = code.charAt(i);
-            if (c == '{') {
-                depth++;
-            } else if (c == '}' && --depth == 0) {
-                return code.substring(open + 1, i);
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        Map<MethodKey, MethodFacts> methods = new LinkedHashMap<>();
+        Set<FieldKey> allowedFields;
+        Set<MethodKey> allowedExternalCalls;
+        boolean requireAllExternalCalls;
+        try (StandardJavaFileManager files = compiler.getStandardFileManager(
+                diagnostics, null, StandardCharsets.UTF_8)) {
+            Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromPaths(sources);
+            JavacTask task = (JavacTask) compiler.getTask(null, files, diagnostics,
+                    List.of("--release", "17", "-proc:none", "-classpath",
+                            System.getProperty("java.class.path")), null, units);
+            List<CompilationUnitTree> parsed = new ArrayList<>();
+            task.parse().forEach(parsed::add);
+            task.analyze();
+            Trees trees = Trees.instance(task);
+            List<ExecutableElement> sourceExecutables = new ArrayList<>();
+            List<TypeElement> sourceTypes = new ArrayList<>();
+            List<VariableElement> sourceFields = new ArrayList<>();
+            MethodElements elementReader = new MethodElements(
+                    trees, sourceExecutables, sourceTypes, sourceFields);
+            for (CompilationUnitTree unit : parsed) {
+                elementReader.scan(unit, null);
+            }
+            boolean production = sourceTypes.stream().anyMatch(type ->
+                    type.getQualifiedName().contentEquals("matrix.Simulation"));
+            allowedFields = production ? Set.of(
+                    new FieldKey("matrix.Simulation", "tickTruth"),
+                    new FieldKey("matrix.Simulation", "deliveryTruth"),
+                    new FieldKey("matrix.Simulation", "causalPhaseCursor"),
+                    new FieldKey("matrix.causal.CausalPhase", "DELIVER_PERCEPTS"),
+                    new FieldKey("matrix.causal.CausalPhase", "CANONICAL")) : Set.of(
+                    new FieldKey("Simulation", "tickTruth"),
+                    new FieldKey("Simulation", "deliveryTruth"));
+            allowedExternalCalls = production ? Set.of(
+                    new MethodKey("java.util.List", "size", List.of()),
+                    new MethodKey("java.util.List", "get", List.of("int")),
+                    new MethodKey("java.lang.IllegalStateException", "<init>",
+                            List.of("java.lang.String"))) : Set.of(
+                    new MethodKey("java.lang.Object", "getClass", List.of()));
+            requireAllExternalCalls = production;
+            Set<FieldKey> resolvedFields = new HashSet<>();
+            for (VariableElement field : sourceFields) {
+                resolvedFields.add(fieldKey(field));
+            }
+            if (allowedFields.isEmpty() || !resolvedFields.containsAll(allowedFields)) {
+                throw new IOException("truth field allowlist unresolved: allowed="
+                        + allowedFields + " resolved=" + resolvedFields);
+            }
+            if (production) {
+                certifyProductionFields(trees, sourceFields);
+            }
+            Set<MethodKey> sourceMethodKeys = new HashSet<>();
+            for (ExecutableElement method : sourceExecutables) {
+                sourceMethodKeys.add(SourceFacts.methodKey(method));
+            }
+            Set<String> sourceTypeNames = new HashSet<>();
+            for (TypeElement type : sourceTypes) {
+                sourceTypeNames.add(type.getQualifiedName().toString());
+            }
+            SourceFacts reader = new SourceFacts(methods, trees, task.getElements(),
+                    sourceExecutables, sourceMethodKeys, sourceTypeNames, allowedFields,
+                    allowedExternalCalls);
+            for (CompilationUnitTree unit : parsed) {
+                reader.scan(unit, null);
             }
         }
-        return "";
+        for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+            if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                throw new IOException("truth source graph unreadable: "
+                        + diagnostic.getMessage(null));
+            }
+        }
+        return new SourceGraph(methods, allowedFields, allowedExternalCalls,
+                requireAllExternalCalls);
     }
 
-    private static int occurrences(Pattern pattern, String text) {
-        int count = 0;
-        Matcher matcher = pattern.matcher(text);
-        while (matcher.find()) {
-            count++;
+    /**
+     * Count forbidden fields in one method and every newly reached helper.
+     * {@code visited} terminates recursion and also ensures a shared helper is
+     * judged once, independent of how many call paths reach it.
+     */
+    private static Reachable reachableFacts(MethodKey key, Map<MethodKey, MethodFacts> methods,
+            Set<MethodKey> visited) {
+        if (!visited.add(key)) {
+            return new Reachable(0, 0, Set.of(), Set.of());
         }
-        return count;
+        MethodFacts facts = methods.get(key);
+        if (facts == null) {
+            return new Reachable(0, 0, Set.of(), Set.of());
+        }
+        int reads = facts.liveReads();
+        int callbacks = facts.callbacks();
+        Set<FieldKey> allowed = new HashSet<>(facts.allowedFields());
+        Set<MethodKey> external = new HashSet<>(facts.allowedExternalCalls());
+        for (MethodKey called : facts.calls()) {
+            Reachable nested = reachableFacts(called, methods, visited);
+            reads += nested.liveReads();
+            callbacks += nested.callbacks();
+            allowed.addAll(nested.allowedFields());
+            external.addAll(nested.allowedExternalCalls());
+        }
+        return new Reachable(reads, callbacks, allowed, external);
+    }
+
+    /** Exact attributed field identity; local variables and parameters have no owner type. */
+    private static FieldKey fieldKey(VariableElement field) {
+        Element owner = field.getEnclosingElement();
+        String className = owner instanceof TypeElement type
+                ? type.getQualifiedName().toString() : owner.toString();
+        return new FieldKey(className, field.getSimpleName().toString());
+    }
+
+    /**
+     * Seal the declarations which justify production's field and List-call
+     * admissions. In particular CANONICAL is proven to be the JDK List.of
+     * value built directly from this enum's values array, so unrelated source
+     * List overrides are not possible receivers of its size/get calls.
+     */
+    private static void certifyProductionFields(Trees trees,
+            List<VariableElement> fields) throws IOException {
+        Map<FieldKey, VariableElement> byKey = new LinkedHashMap<>();
+        for (VariableElement field : fields) {
+            byKey.put(fieldKey(field), field);
+        }
+        requireFieldCertificate(byKey, "matrix.Simulation", "tickTruth",
+                "matrix.causal.TruthSnapshot", Set.of(javax.lang.model.element.Modifier.PRIVATE));
+        requireFieldCertificate(byKey, "matrix.Simulation", "deliveryTruth",
+                "matrix.causal.TruthSnapshot", Set.of(javax.lang.model.element.Modifier.PRIVATE));
+        requireFieldCertificate(byKey, "matrix.Simulation", "causalPhaseCursor", "int",
+                Set.of(javax.lang.model.element.Modifier.PRIVATE));
+        VariableElement phase = byKey.get(new FieldKey(
+                "matrix.causal.CausalPhase", "DELIVER_PERCEPTS"));
+        if (phase == null || phase.getKind()
+                != javax.lang.model.element.ElementKind.ENUM_CONSTANT) {
+            throw new IOException("truth phase enum certificate failed");
+        }
+        VariableElement canonical = requireFieldCertificate(byKey,
+                "matrix.causal.CausalPhase", "CANONICAL",
+                "java.util.List<matrix.causal.CausalPhase>", Set.of(
+                        javax.lang.model.element.Modifier.PRIVATE,
+                        javax.lang.model.element.Modifier.STATIC,
+                        javax.lang.model.element.Modifier.FINAL));
+        TreePath fieldPath = trees.getPath(canonical);
+        if (fieldPath == null || !(fieldPath.getLeaf()
+                instanceof com.sun.source.tree.VariableTree declaration)
+                || !(declaration.getInitializer() instanceof MethodInvocationTree listOf)) {
+            throw new IOException("truth CANONICAL initializer certificate failed");
+        }
+        Element listElement = trees.getElement(new TreePath(fieldPath, listOf));
+        if (!(listElement instanceof ExecutableElement listMethod)
+                || !SourceFacts.methodKey(listMethod).className().equals("java.util.List")
+                || !listMethod.getSimpleName().contentEquals("of")
+                || listOf.getArguments().size() != 1
+                || !(listOf.getArguments().get(0) instanceof MethodInvocationTree values)) {
+            throw new IOException("truth CANONICAL List.of certificate failed");
+        }
+        Element valuesElement = trees.getElement(new TreePath(
+                new TreePath(fieldPath, listOf), values));
+        if (!(valuesElement instanceof ExecutableElement valuesMethod)
+                || !SourceFacts.methodKey(valuesMethod).className()
+                        .equals("matrix.causal.CausalPhase")
+                || !valuesMethod.getSimpleName().contentEquals("values")
+                || !valuesMethod.getParameters().isEmpty()) {
+            throw new IOException("truth CANONICAL values certificate failed");
+        }
+    }
+
+    private static VariableElement requireFieldCertificate(
+            Map<FieldKey, VariableElement> fields, String owner, String name,
+            String type, Set<javax.lang.model.element.Modifier> modifiers)
+            throws IOException {
+        VariableElement field = fields.get(new FieldKey(owner, name));
+        if (field == null || !field.asType().toString().equals(type)
+                || !field.getModifiers().equals(modifiers)) {
+            throw new IOException("truth field declaration certificate failed: "
+                    + owner + "." + name);
+        }
+        return field;
+    }
+
+    /** First attributed pass: retain every source method as an override candidate. */
+    private static final class MethodElements extends TreePathScanner<Void, Void> {
+        private final Trees trees;
+        private final List<ExecutableElement> methods;
+        private final List<TypeElement> types;
+        private final List<VariableElement> fields;
+
+        private MethodElements(Trees trees, List<ExecutableElement> methods,
+                List<TypeElement> types, List<VariableElement> fields) {
+            this.trees = trees;
+            this.methods = methods;
+            this.types = types;
+            this.fields = fields;
+        }
+
+        @Override
+        public Void visitClass(ClassTree node, Void unused) {
+            Element element = trees.getElement(getCurrentPath());
+            if (element instanceof TypeElement type) {
+                types.add(type);
+            }
+            return super.visitClass(node, unused);
+        }
+
+        @Override
+        public Void visitMethod(MethodTree node, Void unused) {
+            Element element = trees.getElement(getCurrentPath());
+            if (element instanceof ExecutableElement executable) {
+                methods.add(executable);
+            }
+            return super.visitMethod(node, unused);
+        }
+
+        @Override
+        public Void visitVariable(com.sun.source.tree.VariableTree node, Void unused) {
+            Element element = trees.getElement(getCurrentPath());
+            if (element instanceof VariableElement variable
+                    && (variable.getKind() == javax.lang.model.element.ElementKind.FIELD
+                            || variable.getKind()
+                                    == javax.lang.model.element.ElementKind.ENUM_CONSTANT)) {
+                fields.add(variable);
+            }
+            return super.visitVariable(node, unused);
+        }
+    }
+
+    /**
+     * One attributed-tree reader. Executable elements supply declaring owners
+     * for both method bodies and invocations; a method-local accumulator records
+     * identifiers, exact handoff assignments and resolved call edges.
+     */
+    private static final class SourceFacts extends TreePathScanner<Void, Void> {
+        private final Map<MethodKey, MethodFacts> methods;
+        private final Trees trees;
+        private final Elements elements;
+        private final List<ExecutableElement> sourceExecutables;
+        private final Set<MethodKey> sourceMethodKeys;
+        private final Set<String> sourceTypeNames;
+        private final Set<FieldKey> allowedFields;
+        private final Set<MethodKey> allowedExternalCalls;
+        private MethodFacts facts;
+
+        private SourceFacts(Map<MethodKey, MethodFacts> methods, Trees trees,
+                Elements elements, List<ExecutableElement> sourceExecutables,
+                Set<MethodKey> sourceMethodKeys, Set<String> sourceTypeNames,
+                Set<FieldKey> allowedFields, Set<MethodKey> allowedExternalCalls) {
+            this.methods = methods;
+            this.trees = trees;
+            this.elements = elements;
+            this.sourceExecutables = sourceExecutables;
+            this.sourceMethodKeys = sourceMethodKeys;
+            this.sourceTypeNames = sourceTypeNames;
+            this.allowedFields = allowedFields;
+            this.allowedExternalCalls = allowedExternalCalls;
+        }
+
+        @Override
+        public Void visitMethod(MethodTree node, Void unused) {
+            Element element = trees.getElement(getCurrentPath());
+            if (!(element instanceof ExecutableElement executable) || node.getBody() == null) {
+                return null;
+            }
+            MethodFacts outerFacts = facts;
+            facts = MethodFacts.empty();
+            scan(node.getBody(), unused);
+            MethodKey key = methodKey(executable);
+            methods.merge(key, facts, MethodFacts::merge);
+            facts = outerFacts;
+            return null;
+        }
+
+        @Override
+        public Void visitIdentifier(IdentifierTree node, Void unused) {
+            if (facts != null) {
+                facts = recordField(trees.getElement(getCurrentPath()), facts);
+            }
+            return super.visitIdentifier(node, unused);
+        }
+
+        @Override
+        public Void visitMemberSelect(com.sun.source.tree.MemberSelectTree node, Void unused) {
+            if (facts != null) {
+                facts = recordField(trees.getElement(getCurrentPath()), facts);
+            }
+            return super.visitMemberSelect(node, unused);
+        }
+
+        @Override
+        public Void visitAssignment(AssignmentTree node, Void unused) {
+            Element target = trees.getElement(new TreePath(
+                    getCurrentPath(), node.getVariable()));
+            Element source = trees.getElement(new TreePath(
+                    getCurrentPath(), node.getExpression()));
+            if (facts != null && target instanceof VariableElement targetField
+                    && source instanceof VariableElement sourceField
+                    && fieldKey(targetField).fieldName().equals("deliveryTruth")
+                    && fieldKey(sourceField).fieldName().equals("tickTruth")
+                    && fieldKey(targetField).className().equals(
+                            fieldKey(sourceField).className())) {
+                facts = facts.withHandover();
+            }
+            return super.visitAssignment(node, unused);
+        }
+
+        @Override
+        public Void visitMethodInvocation(MethodInvocationTree node, Void unused) {
+            if (facts != null) {
+                Element element = trees.getElement(getCurrentPath());
+                if (element instanceof ExecutableElement executable) {
+                    MethodKey target = methodKey(executable);
+                    facts = facts.withCall(target);
+                    boolean sourceTarget = sourceMethodKeys.contains(target);
+                    boolean admittedExternal = allowedExternalCalls.contains(target);
+                    if (admittedExternal) {
+                        facts = facts.withAllowedExternalCall(target);
+                    }
+                    if (sourceTarget) {
+                        for (ExecutableElement candidate : sourceExecutables) {
+                            Element owner = candidate.getEnclosingElement();
+                            if (owner instanceof TypeElement candidateOwner
+                                    && elements.overrides(
+                                            candidate, executable, candidateOwner)) {
+                                facts = facts.withCall(methodKey(candidate));
+                            }
+                        }
+                    }
+                    if (!sourceTarget && !admittedExternal) {
+                        facts = facts.withCallback();
+                    }
+                }
+            }
+            return super.visitMethodInvocation(node, unused);
+        }
+
+        private MethodFacts recordField(Element element, MethodFacts current) {
+            if (!(element instanceof VariableElement field)
+                    || (field.getKind() != javax.lang.model.element.ElementKind.FIELD
+                            && field.getKind()
+                                    != javax.lang.model.element.ElementKind.ENUM_CONSTANT)
+                    || field.getSimpleName().contentEquals("this")) {
+                return current;
+            }
+            FieldKey key = fieldKey(field);
+            return allowedFields.contains(key)
+                    ? current.withAllowedField(key) : current.withLiveRead();
+        }
+
+        @Override
+        public Void visitLambdaExpression(LambdaExpressionTree node, Void unused) {
+            if (facts != null) {
+                facts = facts.withCallback();
+            }
+            return super.visitLambdaExpression(node, unused);
+        }
+
+        @Override
+        public Void visitMemberReference(MemberReferenceTree node, Void unused) {
+            if (facts != null) {
+                facts = facts.withCallback();
+            }
+            return super.visitMemberReference(node, unused);
+        }
+
+        @Override
+        public Void visitNewClass(NewClassTree node, Void unused) {
+            if (facts != null) {
+                Element element = trees.getElement(getCurrentPath());
+                if (element instanceof ExecutableElement constructor
+                        && constructor.getEnclosingElement() instanceof TypeElement owner
+                        && sourceTypeNames.contains(owner.getQualifiedName().toString())) {
+                    facts = facts.withCallback();
+                } else if (element instanceof ExecutableElement constructor
+                        && allowedExternalCalls.contains(methodKey(constructor))) {
+                    facts = facts.withAllowedExternalCall(methodKey(constructor));
+                } else if (element instanceof ExecutableElement) {
+                    facts = facts.withCallback();
+                }
+            }
+            return super.visitNewClass(node, unused);
+        }
+
+        private static MethodKey methodKey(ExecutableElement method) {
+            Element owner = method.getEnclosingElement();
+            String className = owner instanceof TypeElement type
+                    ? type.getQualifiedName().toString() : owner.toString();
+            List<String> parameters = method.getParameters().stream()
+                    .map(parameter -> parameter.asType().toString()).toList();
+            return new MethodKey(className, method.getSimpleName().toString(), parameters);
+        }
+
     }
 
     private static TruthSnapshot.Builder begun() {
@@ -647,7 +1285,104 @@ public final class TruthSnapshots {
 
     private record Production(long tick, int subjects, int entries) {}
 
-    private record SourceReading(int swept, int liveReads, int handovers) {}
+    private record SourceReading(int swept, int liveReads, int handovers, int callbacks) {
+        private SourceReading(int swept, int liveReads, int handovers) {
+            this(swept, liveReads, handovers, 0);
+        }
+    }
+
+    /** Reachable findings; callback syntax is refused until its target is modeled. */
+    private record Reachable(int liveReads, int callbacks, Set<FieldKey> allowedFields,
+            Set<MethodKey> allowedExternalCalls) {
+        private Reachable {
+            allowedFields = Set.copyOf(allowedFields);
+            allowedExternalCalls = Set.copyOf(allowedExternalCalls);
+        }
+    }
+
+    /** Attributed method graph plus the exact non-vacuous field admission set. */
+    private record SourceGraph(Map<MethodKey, MethodFacts> methods,
+            Set<FieldKey> allowedFields, Set<MethodKey> allowedExternalCalls,
+            boolean requireAllExternalCalls) {
+        private SourceGraph {
+            methods = Map.copyOf(methods);
+            allowedFields = Set.copyOf(allowedFields);
+            allowedExternalCalls = Set.copyOf(allowedExternalCalls);
+        }
+    }
+
+    /** Exact attributed method identity; overloads remain separate graph nodes. */
+    private record MethodKey(String className, String methodName, List<String> parameters) {
+        private MethodKey {
+            parameters = List.copyOf(parameters);
+        }
+    }
+
+    /** Exact attributed field owner and declaration name. */
+    private record FieldKey(String className, String fieldName) {}
+
+    /** Immutable syntax facts merged across overloads with no last-body winner. */
+    private record MethodFacts(int liveReads, int handovers, int callbacks,
+            Set<MethodKey> calls, Set<FieldKey> allowedFields,
+            Set<MethodKey> allowedExternalCalls) {
+        private MethodFacts {
+            calls = Set.copyOf(calls);
+            allowedFields = Set.copyOf(allowedFields);
+            allowedExternalCalls = Set.copyOf(allowedExternalCalls);
+        }
+
+        private static MethodFacts empty() {
+            return new MethodFacts(0, 0, 0, Set.of(), Set.of(), Set.of());
+        }
+
+        private MethodFacts withLiveRead() {
+            return new MethodFacts(liveReads + 1, handovers, callbacks,
+                    calls, allowedFields, allowedExternalCalls);
+        }
+
+        private MethodFacts withHandover() {
+            return new MethodFacts(liveReads, handovers + 1, callbacks,
+                    calls, allowedFields, allowedExternalCalls);
+        }
+
+        private MethodFacts withCallback() {
+            return new MethodFacts(liveReads, handovers, callbacks + 1,
+                    calls, allowedFields, allowedExternalCalls);
+        }
+
+        private MethodFacts withCall(MethodKey call) {
+            Set<MethodKey> joined = new HashSet<>(calls);
+            joined.add(call);
+            return new MethodFacts(liveReads, handovers, callbacks,
+                    joined, allowedFields, allowedExternalCalls);
+        }
+
+        private MethodFacts withAllowedField(FieldKey field) {
+            Set<FieldKey> joined = new HashSet<>(allowedFields);
+            joined.add(field);
+            return new MethodFacts(liveReads, handovers, callbacks, calls, joined,
+                    allowedExternalCalls);
+        }
+
+        private MethodFacts withAllowedExternalCall(MethodKey call) {
+            Set<MethodKey> joined = new HashSet<>(allowedExternalCalls);
+            joined.add(call);
+            return new MethodFacts(liveReads, handovers, callbacks, calls,
+                    allowedFields, joined);
+        }
+
+        private MethodFacts merge(MethodFacts other) {
+            Set<MethodKey> joined = new HashSet<>(calls);
+            joined.addAll(other.calls);
+            Set<FieldKey> fields = new HashSet<>(allowedFields);
+            fields.addAll(other.allowedFields);
+            Set<MethodKey> external = new HashSet<>(allowedExternalCalls);
+            external.addAll(other.allowedExternalCalls);
+            return new MethodFacts(Math.addExact(liveReads, other.liveReads),
+                    Math.addExact(handovers, other.handovers),
+                    Math.addExact(callbacks, other.callbacks), joined, fields, external);
+        }
+    }
 
     private TruthSnapshots() {}
 }
