@@ -17,6 +17,8 @@ import matrix.core.Snapshot;
 import matrix.core.World;
 import matrix.core.WorldEvent;
 import matrix.causal.CausalPhase;
+import matrix.causal.CausalRecord;
+import matrix.causal.DeliveryAttempts;
 import matrix.causal.TruthSnapshot;
 import matrix.entities.Agent;
 import matrix.entities.AgentSmith;
@@ -101,6 +103,8 @@ public final class Simulation {
     private TruthSnapshot tickTruth;
     /** The exact immutable phase-one object accepted by phase two. */
     private TruthSnapshot deliveryTruth;
+    /** Root-only, immutable phase-two audit view derived solely from deliveryTruth. */
+    private List<CausalRecord.DeliveryAttempt> deliveryAttempts;
     /** Reused primitive staging; published snapshots own separate compact arrays. */
     private final TruthSnapshot.Builder truthBuilder = new TruthSnapshot.Builder();
     private final PrintStream out;
@@ -657,6 +661,7 @@ public final class Simulation {
         causalTickCompleted = false;
         tickTruth = null;
         deliveryTruth = null;
+        deliveryAttempts = null;
     }
 
     /** Phase 1: freeze eligible truth before either world advances. */
@@ -666,9 +671,8 @@ public final class Simulation {
     }
 
     /**
-     * Phase 2 currently accepts only the frozen phase-one input. #1691 will
-     * turn entries into audited attempts; it must extend this method without
-     * consulting either live world.
+     * Phase 2 derives the complete root-only audit view from frozen phase-one
+     * input. No live world is consulted and no mind receives this hidden view.
      */
     private void deliverPercepts() {
         enterCausalPhase(CausalPhase.DELIVER_PERCEPTS);
@@ -676,6 +680,7 @@ public final class Simulation {
             throw new IllegalStateException("delivery has no tick-start truth snapshot");
         }
         deliveryTruth = tickTruth;
+        deliveryAttempts = DeliveryAttempts.connectedResidentSelfV1(deliveryTruth);
     }
 
     /**
@@ -770,9 +775,10 @@ public final class Simulation {
             throw new IllegalStateException("causal tick incomplete: phases="
                     + causalPhaseCursor);
         }
-        if (tickTruth == null || deliveryTruth != tickTruth) {
+        if (tickTruth == null || deliveryTruth != tickTruth || deliveryAttempts == null
+                || deliveryAttempts.size() != tickTruth.entries().size()) {
             throw new IllegalStateException(
-                    "causal tick did not deliver its exact frozen truth snapshot");
+                    "causal tick did not audit its exact frozen truth snapshot");
         }
         causalTickCompleted = true;
     }

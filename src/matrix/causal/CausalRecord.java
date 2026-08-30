@@ -295,11 +295,35 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         OCCLUDED
     }
 
+    /** Named policy that selected a fact for an attempted delivery. */
+    enum DeliveryRule {
+        CONNECTED_RESIDENT_SELF_V1
+    }
+
+    /** Epistemic classifications: none of these values manufactures permission. */
+    enum AuthorityClass { UNESTABLISHED }
+    enum ConsentClass { UNESTABLISHED }
+
+    /** Structural relation between presented material and the frozen audit fact. */
+    enum DisclosureClass {
+        AUDIT_MATCHED,
+        AUDIT_DIVERGED,
+        NOT_PRESENTED
+    }
+
+    enum ConstraintClass { NO_EVIDENCE }
+
+    /** NONE_CITED means no obligation evidence accompanies this attempt, not no debt. */
+    enum ObligationClass { NONE_CITED }
+
     /** Root-side account of one attempted delivery, including hidden audit facts. */
     record DeliveryAttempt(long tick, int sequence, Subject subject, Channel channel,
                            Principal actualSource, Principal declaredSource,
                            TruthEntry truth, Fidelity fidelity, DeliveryOutcome outcome,
-                           Optional<Payload> presentedContent)
+                           Optional<Payload> presentedContent, DeliveryRule rule,
+                           AuthorityClass authority, ConsentClass consent,
+                           DisclosureClass disclosure, ConstraintClass constraint,
+                           ObligationClass obligation)
             implements CausalRecord, Comparable<DeliveryAttempt> {
         public DeliveryAttempt {
             requireOrder(tick, sequence, "delivery attempt");
@@ -312,18 +336,41 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
             Objects.requireNonNull(outcome, "delivery outcome");
             presentedContent = Objects.requireNonNull(presentedContent,
                     "presented content");
-            if (truth.tick() != tick) {
+            Objects.requireNonNull(rule, "delivery rule");
+            Objects.requireNonNull(authority, "delivery authority classification");
+            Objects.requireNonNull(consent, "delivery consent classification");
+            Objects.requireNonNull(disclosure, "delivery disclosure classification");
+            Objects.requireNonNull(constraint, "delivery constraint classification");
+            Objects.requireNonNull(obligation, "delivery obligation classification");
+            if (truth.tick() != tick || truth.sequence() != sequence) {
                 throw new IllegalArgumentException(
-                        "delivery and frozen truth must belong to the same tick");
+                        "delivery and frozen truth must have the same order");
             }
+            if (truth.subject().kind() != PrincipalKind.HUMAN
+                    || !truth.subject().key().equals(subject.key())) {
+                throw new IllegalArgumentException(
+                        "delivery subject must be the frozen truth's Human subject");
+            }
+            if (!actualSource.equals(truth.provenance())) {
+                throw new IllegalArgumentException(
+                        "actual delivery source must be frozen truth provenance");
+            }
+            boolean contentMatches = presentedContent
+                    .map(content -> content.equals(truth.fact().value()))
+                    .orElse(false);
+            boolean sourceMatches = declaredSource.equals(actualSource);
             boolean shapeHeld = switch (outcome) {
-                case DELIVERED -> fidelity == Fidelity.FULL && presentedContent.isPresent();
-                case DEGRADED -> fidelity == Fidelity.PARTIAL && presentedContent.isPresent();
-                case OCCLUDED -> fidelity == Fidelity.NONE && presentedContent.isEmpty();
+                case DELIVERED -> fidelity == Fidelity.FULL && contentMatches
+                        && sourceMatches && disclosure == DisclosureClass.AUDIT_MATCHED;
+                case DEGRADED -> fidelity == Fidelity.PARTIAL && presentedContent.isPresent()
+                        && (!contentMatches || !sourceMatches)
+                        && disclosure == DisclosureClass.AUDIT_DIVERGED;
+                case OCCLUDED -> fidelity == Fidelity.NONE && presentedContent.isEmpty()
+                        && disclosure == DisclosureClass.NOT_PRESENTED;
             };
             if (!shapeHeld) {
                 throw new IllegalArgumentException(
-                        "delivery outcome, fidelity, and presented content disagree");
+                        "delivery outcome, fidelity, disclosure, and frozen audit disagree");
             }
         }
 

@@ -312,7 +312,9 @@ public final class TruthSnapshots {
      * <p>{@link #inspect} starts at {@code Simulation.deliverPercepts}, follows
      * unqualified calls into the same class and class-qualified calls into
      * sibling source files, then counts forbidden world fields over the entire
-     * reachable graph. Each fixture below changes only the route to the same
+     * reachable graph. The exact phase-two mapper signature is a jurisdiction
+     * transfer to {@code DeliveryAttempts}' complete-source attributed proof;
+     * no overload is admitted. Each fixture below changes only the route to the same
      * forbidden read. That makes the fixtures executable evidence for the
      * scanner's reach rather than examples which merely resemble production.
      */
@@ -620,6 +622,7 @@ public final class TruthSnapshots {
             allowedFields = production ? Set.of(
                     new FieldKey("matrix.Simulation", "tickTruth"),
                     new FieldKey("matrix.Simulation", "deliveryTruth"),
+                    new FieldKey("matrix.Simulation", "deliveryAttempts"),
                     new FieldKey("matrix.Simulation", "causalPhaseCursor"),
                     new FieldKey("matrix.causal.CausalPhase", "DELIVER_PERCEPTS"),
                     new FieldKey("matrix.causal.CausalPhase", "CANONICAL")) : Set.of(
@@ -628,6 +631,9 @@ public final class TruthSnapshots {
             allowedExternalCalls = production ? Set.of(
                     new MethodKey("java.util.List", "size", List.of()),
                     new MethodKey("java.util.List", "get", List.of("int")),
+                    new MethodKey("matrix.causal.DeliveryAttempts",
+                            "connectedResidentSelfV1",
+                            List.of("matrix.causal.TruthSnapshot")),
                     new MethodKey("java.lang.IllegalStateException", "<init>",
                             List.of("java.lang.String"))) : Set.of(
                     new MethodKey("java.lang.Object", "getClass", List.of()));
@@ -720,6 +726,9 @@ public final class TruthSnapshots {
                 "matrix.causal.TruthSnapshot", Set.of(javax.lang.model.element.Modifier.PRIVATE));
         requireFieldCertificate(byKey, "matrix.Simulation", "deliveryTruth",
                 "matrix.causal.TruthSnapshot", Set.of(javax.lang.model.element.Modifier.PRIVATE));
+        requireFieldCertificate(byKey, "matrix.Simulation", "deliveryAttempts",
+                "java.util.List<matrix.causal.CausalRecord.DeliveryAttempt>",
+                Set.of(javax.lang.model.element.Modifier.PRIVATE));
         requireFieldCertificate(byKey, "matrix.Simulation", "causalPhaseCursor", "int",
                 Set.of(javax.lang.model.element.Modifier.PRIVATE));
         VariableElement phase = byKey.get(new FieldKey(
@@ -902,13 +911,12 @@ public final class TruthSnapshots {
                 Element element = trees.getElement(getCurrentPath());
                 if (element instanceof ExecutableElement executable) {
                     MethodKey target = methodKey(executable);
-                    facts = facts.withCall(target);
                     boolean sourceTarget = sourceMethodKeys.contains(target);
                     boolean admittedExternal = allowedExternalCalls.contains(target);
                     if (admittedExternal) {
                         facts = facts.withAllowedExternalCall(target);
-                    }
-                    if (sourceTarget) {
+                    } else if (sourceTarget) {
+                        facts = facts.withCall(target);
                         for (ExecutableElement candidate : sourceExecutables) {
                             Element owner = candidate.getEnclosingElement();
                             if (owner instanceof TypeElement candidateOwner
@@ -917,8 +925,7 @@ public final class TruthSnapshots {
                                 facts = facts.withCall(methodKey(candidate));
                             }
                         }
-                    }
-                    if (!sourceTarget && !admittedExternal) {
+                    } else {
                         facts = facts.withCallback();
                     }
                 }

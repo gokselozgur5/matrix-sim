@@ -191,14 +191,26 @@ when a consumer asks. There is no generic fact/provenance constructor through
 which an unknown predicate, malformed payload or alternate order can enter.
 The builder refuses duplicate subjects, invalid scalars and broken capture
 state, and later builder reuse cannot move published arrays. Empty is an
-explicit value. Phase two currently accepts
-the exact phase-one object and nothing else: delivery policy, fidelity,
-outcome, audit, visible projection and percept allocation remain #1691–#1693.
+explicit value. Phase two accepts the exact phase-one object and nothing else.
 Consequently a same-tick move, pill change or brain death after phase one
 cannot rewrite what that delivery phase could read, while the same change
 before phase one changes or removes the corresponding truth. Ledger, RNG,
 birth key, residue, pod, other-entity state and observer configuration are not
 V1 facts and cannot enter through this rule.
+
+The fifth seam is the phase-two delivery audit (#1691). The closed
+`CONNECTED_RESIDENT_SELF_V1` rule derives exactly one root-only
+`DeliveryAttempt` for every frozen entry, preserving tick, sequence, Human
+subject, truth provenance and canonical order. Brain life and pill state use
+the internal channel; position uses vision. V1 currently presents every
+eligible fact at full fidelity with an exact frozen payload and source, while
+authority and consent remain unestablished. `NO_EVIDENCE` and `NONE_CITED`
+are deliberately epistemic absences, never permission, innocence or debt
+discharge. The carrier also has exact degraded and occluded structural shapes
+without issuing an automatic receipt. Its immutable random-access view derives
+attempts lazily from the snapshot, so phase two adds one small view per tick
+rather than hundreds of unused audit objects. Visible projection and percept
+allocation remain #1692–#1693.
 
 ## Sequence — jack-in and the death rule
 
