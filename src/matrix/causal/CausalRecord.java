@@ -244,6 +244,28 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         }
     }
 
+    /**
+     * Subject-scoped citation of one mind-visible percept.
+     *
+     * <p>{@link CausalId.Percept} sequences are dense only inside one
+     * subject's tick input. Carrying the subject in the reference prevents two
+     * residents' equal local identities from aliasing in deduplication,
+     * memory, or later intent evidence.
+     */
+    record PerceptRef(Subject subject, CausalId.Percept id)
+            implements Comparable<PerceptRef> {
+        public PerceptRef {
+            Objects.requireNonNull(subject, "percept reference subject");
+            Objects.requireNonNull(id, "percept reference id");
+        }
+
+        @Override public int compareTo(PerceptRef other) {
+            Objects.requireNonNull(other, "other percept reference");
+            int bySubject = subject.compareTo(other.subject);
+            return bySubject != 0 ? bySubject : id.compareTo(other.id);
+        }
+    }
+
     record ConsentRef(Symbol key) {
         public ConsentRef {
             Objects.requireNonNull(key, "consent key");
@@ -422,8 +444,21 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
         /** Visible source tick, normalized through the percept identity. */
         public long tick() { return id.tick(); }
 
+        /** Subject-scoped identity used by deduplication and later citations. */
+        public PerceptRef ref() { return new PerceptRef(subject, id); }
+
         @Override public int compareTo(PerceptReceipt other) {
-            return id.compareTo(Objects.requireNonNull(other, "other percept receipt").id);
+            Objects.requireNonNull(other, "other percept receipt");
+            int order = ref().compareTo(other.ref());
+            if (order == 0) order = channel.compareTo(other.channel);
+            if (order == 0) order = content.text().compareTo(other.content.text());
+            if (order == 0) order = perceivedSource.compareTo(other.perceivedSource);
+            if (order == 0) {
+                order = Integer.compare(uncertaintyBasisPoints,
+                        other.uncertaintyBasisPoints);
+            }
+            if (order == 0) order = fidelity.compareTo(other.fidelity);
+            return order;
         }
     }
 
@@ -453,7 +488,7 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
     /** Immutable request emitted by a mind; it has no authority to mutate state. */
     record IntentProposal(CausalId.Intent id, CausalId.Choice choice, Subject actor,
                           Symbol goal, Symbol requestedAct, Principal target,
-                          List<CausalId.Percept> receiptBasis,
+                          List<PerceptRef> receiptBasis,
                           List<MemoryRef> memoryBasis)
             implements CausalRecord, Comparable<IntentProposal> {
         public IntentProposal {
@@ -471,8 +506,12 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
             if (choice.tick() > id.tick()) {
                 throw new IllegalArgumentException("a future choice cannot cause an intent");
             }
-            for (CausalId.Percept percept : receiptBasis) {
-                if (percept.tick() > id.tick()) {
+            for (PerceptRef percept : receiptBasis) {
+                if (!percept.subject().equals(actor)) {
+                    throw new IllegalArgumentException(
+                            "an intent cannot cite another subject's percept");
+                }
+                if (percept.id().tick() > id.tick()) {
                     throw new IllegalArgumentException(
                             "a future percept cannot be an intent basis");
                 }
@@ -700,7 +739,21 @@ public sealed interface CausalRecord permits CausalRecord.TruthEntry,
             throw new IllegalArgumentException(name + " must be bounded canonical text");
         }
         for (int i = 0; i < value.length(); i++) {
-            if (Character.isISOControl(value.charAt(i))) {
+            char current = value.charAt(i);
+            if (Character.isHighSurrogate(current)) {
+                if (i + 1 >= value.length()
+                        || !Character.isLowSurrogate(value.charAt(i + 1))) {
+                    throw new IllegalArgumentException(
+                            name + " contains an unpaired UTF-16 surrogate");
+                }
+                i++;
+                continue;
+            }
+            if (Character.isLowSurrogate(current)) {
+                throw new IllegalArgumentException(
+                        name + " contains an unpaired UTF-16 surrogate");
+            }
+            if (Character.isISOControl(current)) {
                 throw new IllegalArgumentException(name + " contains a control character");
             }
         }

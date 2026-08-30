@@ -227,6 +227,20 @@ its own typed, observable availability fact; hidden occlusion cannot be renamed 
 Identity allocation, subject-local batching, ordering, gaps, deduplication and
 reducer/intent noninterference remain #1693.
 
+The seventh seam is the canonical subject-local mind input (#1693). Root-side
+provisional receipts are grouped by an explicitly supplied visible tick and
+Subject. Their old Percept sequence and every DeliveryAttempt field are ignored
+for ordering; the complete visible tuple has an explicit rank, equal visible
+occurrences keep their multiplicity, and dense Percept identities are allocated
+only after that order exists. Each root attempt remains paired bijectively with
+one final receipt. After allocation, retransmission is idempotent only by the
+scoped `(Subject, Percept)` identity: an exact repeat is retained once, while a
+conflicting value under the same identity is refused. `MindInput.canonical()`
+length-prefixes text by UTF-8 byte count and is the sole immutable handoff a
+future reducer may consume. Thus hidden-audit twins produce byte-identical
+ingress; #1695 and #1699 still owe the corresponding production reducer and
+intent equality proofs rather than borrowing a toy implementation here.
+
 ## Sequence — jack-in and the death rule
 
 ```mermaid
