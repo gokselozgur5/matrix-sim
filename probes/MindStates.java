@@ -145,6 +145,16 @@ public final class MindStates {
 
         roster(MindState.class.isRecord() && java.lang.reflect.Modifier.isFinal(MindState.class.getModifiers()), "state-final-record");
         roster(MindState.class.getRecordComponents().length == 3, "state-components");
+        List<java.lang.reflect.Method> decodeDoors = Arrays.stream(MindState.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("fromCanonicalBytes"))
+                .toList();
+        roster(decodeDoors.size() == 1
+                && java.lang.reflect.Modifier.isPublic(decodeDoors.get(0).getModifiers())
+                && java.lang.reflect.Modifier.isStatic(decodeDoors.get(0).getModifiers())
+                && decodeDoors.get(0).getReturnType() == MindState.class
+                && Arrays.equals(decodeDoors.get(0).getParameterTypes(),
+                        new Class<?>[]{byte[].class}),
+                "exact-v3-decoder-door");
         Set<String> humanApi = new TreeSet<>();
         for (java.lang.reflect.Method method : Human.class.getDeclaredMethods()) {
             if (java.lang.reflect.Modifier.isPublic(method.getModifiers())) {
