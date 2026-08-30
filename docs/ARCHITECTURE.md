@@ -253,6 +253,16 @@ future reducer may consume. Thus hidden-audit twins produce byte-identical
 ingress; #1695 and #1699 still owe the corresponding production reducer and
 intent equality proofs rather than borrowing a toy implementation here.
 
+The eighth seam is the first real but deliberately narrow mind transition
+(#1695). `MindReducer` consumes only prior `MindState` and one complete ordered
+`MindInput`; it does not install state or reach either world. Empty input is an
+exact no-op. A later nonempty batch advances revision once and retains every
+receipt as a scoped citation plus the complete visible presentation. V1 calls
+that interpretation `UNRESOLVED`: presented content is not thereby true,
+believed, deceptive, consented to, resisted or persuasive. The 64-trace bound
+evicts only oldest prior traces and never part of the current batch. Live
+presentation, allocation and Human installation remain an explicit later seam.
+
 ## Sequence — jack-in and the death rule
 
 ```mermaid

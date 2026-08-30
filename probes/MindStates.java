@@ -51,6 +51,29 @@ public final class MindStates {
                 trace(s, 1, 0, 12, 0, "voice said stay"),
                 trace(s, 1, 1, 12, 1, "door looked open")));
         canonical(!Arrays.equals(lived.canonicalBytes(), swappedMeaning.canonicalBytes()), "ordered-values-covered");
+        MindState.MemoryTrace changedChannel = trace(s, 1, 0, 12, 0, "door looked open",
+                CausalRecord.Channel.VISION, CausalRecord.Principal.unknown(), 5_000,
+                CausalRecord.Fidelity.PARTIAL);
+        MindState.MemoryTrace changedSource = trace(s, 1, 0, 12, 0, "door looked open",
+                CausalRecord.Channel.TEXT,
+                new CausalRecord.Principal(CausalRecord.PrincipalKind.PLACE, "room-303"),
+                5_000, CausalRecord.Fidelity.PARTIAL);
+        MindState.MemoryTrace changedUncertainty = trace(s, 1, 0, 12, 0, "door looked open",
+                CausalRecord.Channel.TEXT, CausalRecord.Principal.unknown(), 4_999,
+                CausalRecord.Fidelity.PARTIAL);
+        MindState.MemoryTrace changedFidelity = trace(s, 1, 0, 12, 0, "door looked open",
+                CausalRecord.Channel.TEXT, CausalRecord.Principal.unknown(), 5_000,
+                CausalRecord.Fidelity.FULL);
+        canonical(!Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
+                new MindState(s, 1, List.of(changedChannel)).canonicalBytes()), "channel-covered");
+        canonical(!Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
+                new MindState(s, 1, List.of(changedSource)).canonicalBytes()), "source-covered");
+        canonical(!Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
+                new MindState(s, 1, List.of(changedUncertainty)).canonicalBytes()), "uncertainty-covered");
+        canonical(!Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
+                new MindState(s, 1, List.of(changedFidelity)).canonicalBytes()), "fidelity-covered");
+        canonical(Arrays.equals(new MindState(s, 1, List.of(a)).canonicalBytes(),
+                independentV2(s, a)), "independent-complete-v2-frame");
         canonical(!Arrays.equals(genesis.canonicalBytes(), MindState.initial(new CausalRecord.Subject("human-8")).canonicalBytes()), "subject-covered");
 
         refused(() -> new MindState(s, -1, List.of()), "negative-revision");
@@ -58,6 +81,12 @@ public final class MindStates {
         refused(() -> new MindState(s, 0, List.of(new MindState.MemoryTrace(
                 new CausalRecord.MemoryRef(otherSubject(), 1, 0), a.basis(), a.interpretation()))), "foreign-memory-id");
         refused(() -> new MindState(s, 1, List.of(a, a)), "duplicate-memory");
+        refused(() -> new MindState(s, 2, List.of(
+                trace(s, 1, 0, 100, 0, "later"),
+                trace(s, 2, 0, 10, 0, "earlier"))), "basis-time-cannot-reverse");
+        refused(() -> new MindState(s, 2, List.of(
+                trace(s, 1, 0, 12, 1, "second"),
+                trace(s, 2, 0, 12, 0, "first"))), "basis-sequence-cannot-reverse");
         CausalRecord.Subject other = new CausalRecord.Subject("human-8");
         refused(() -> new MindState(s, 1, List.of(trace(other, 1, 0, 12, 0, "foreign"))), "foreign-basis");
         ArrayList<MindState.MemoryTrace> tooMany = new ArrayList<>();
@@ -149,10 +178,42 @@ public final class MindStates {
 
     private static MindState.MemoryTrace trace(CausalRecord.Subject s, long revision, int sequence,
             long tick, int percept, String text) {
+        return trace(s, revision, sequence, tick, percept, text, CausalRecord.Channel.TEXT,
+                CausalRecord.Principal.unknown(), 5_000, CausalRecord.Fidelity.PARTIAL);
+    }
+    private static MindState.MemoryTrace trace(CausalRecord.Subject s, long revision, int sequence,
+            long tick, int percept, String text, CausalRecord.Channel channel,
+            CausalRecord.Principal source, int uncertainty, CausalRecord.Fidelity fidelity) {
         return new MindState.MemoryTrace(new CausalRecord.MemoryRef(s, revision, sequence),
-                new CausalRecord.PerceptRef(s, new CausalId.Percept(tick, percept)), new CausalRecord.Payload(text));
+                new CausalRecord.PerceptRef(s, new CausalId.Percept(tick, percept)),
+                new MindState.InterpretationV1(channel, new CausalRecord.Payload(text), source,
+                        uncertainty, fidelity,
+                        MindState.EpistemicStatus.UNRESOLVED));
     }
     private static CausalRecord.Subject otherSubject() { return new CausalRecord.Subject("human-999"); }
+    private static byte[] independentV2(CausalRecord.Subject subject, MindState.MemoryTrace trace) {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        putInt(out, 2); putWord(out, subject.key().value()); putLong(out, 1); putInt(out, 1);
+        putWord(out, trace.id().subject().key().value()); putLong(out, trace.id().revision());
+        putInt(out, trace.id().sequence()); putWord(out, trace.basis().subject().key().value());
+        putLong(out, trace.basis().id().tick()); putInt(out, trace.basis().id().sequence());
+        MindState.InterpretationV1 value = trace.interpretation();
+        putWord(out, value.channel().name()); putWord(out, value.presentedContent().text());
+        putWord(out, value.perceivedSource().kind().name());
+        putWord(out, value.perceivedSource().key().value());
+        putInt(out, value.uncertaintyBasisPoints()); putWord(out, value.presentedFidelity().name());
+        putWord(out, value.status().name()); return out.toByteArray();
+    }
+    private static void putWord(java.io.ByteArrayOutputStream out, String value) {
+        byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        putInt(out, bytes.length); out.writeBytes(bytes);
+    }
+    private static void putInt(java.io.ByteArrayOutputStream out, int value) {
+        out.write(value >>> 24); out.write(value >>> 16); out.write(value >>> 8); out.write(value);
+    }
+    private static void putLong(java.io.ByteArrayOutputStream out, long value) {
+        putInt(out, (int) (value >>> 32)); putInt(out, (int) value);
+    }
     @SuppressWarnings("unchecked")
     private static List<Human> privateHumans(RealWorld real) throws Exception {
         java.lang.reflect.Field field = RealWorld.class.getDeclaredField("humans");

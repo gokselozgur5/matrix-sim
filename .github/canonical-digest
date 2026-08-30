@@ -1,6 +1,6 @@
 # The canonical digest — the seal's one home in the tree.
 #
-# sealed: 2026-08-30 #1694 crown #1761
+# sealed: 2026-08-30 #1695 crown #1763
 #
 # The date this value was set, so "how long has this world stood" is a READ and not a
 # walk of the log. Forty units landed in one night against this sha and nothing in the
@@ -53,4 +53,4 @@
 #
 #     git log --format=%B | grep '^Declared digest move:'
 
-5fa058ca3b754fe6ce8f6b176afb7a9716a6607d4e9932ebffb7dc5c382d7cd1  seed 42, 6,000 ticks — moved by #1694 because every persistent Human now contributes a schema-versioned MindState byte segment in immutable ordinal order, including disconnected and dead Humans. The simulated film and its draw order are unchanged; the seal is intentionally wider, covering the lived-history state that #1695 may first revise. Was be383798973dfe15006edaf96884e2ea4472e22142ada7518fc85d6f60cfa969; crown #1761.
+0562e4a52b58439b4b29edd76bec53ca809ee338f0d835637ccf83250a640f24  seed 42, 6,000 ticks — moved by #1695 because the MindState schema now encodes the complete typed visible interpretation: channel, presented content, perceived source kind/key, supplied uncertainty, presented fidelity and explicit UNRESOLVED status. The simulated film and draw order are unchanged; every genesis mind now carries schema V2 so a later retained interpretation cannot be omitted from the seal. Was 5fa058ca3b754fe6ce8f6b176afb7a9716a6607d4e9932ebffb7dc5c382d7cd1; crown #1763.
