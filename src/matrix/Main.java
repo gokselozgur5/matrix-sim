@@ -86,21 +86,21 @@ public final class Main {
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--seed" -> seed = Long.parseLong(args[++i]);
-                case "--ticks" -> ticks = Long.parseLong(args[++i]);
-                case "--scale" -> scale = Integer.parseInt(args[++i]);
+                case "--seed" -> seed = longOperand(args, ++i, "--seed");
+                case "--ticks" -> ticks = longOperand(args, ++i, "--ticks");
+                case "--scale" -> scale = intOperand(args, ++i, "--scale");
                 case "--headless" -> headless = true;
                 case "--selftest" -> selftest = true;
                 case "--neutral" -> neutral = true;
                 case "--bench" -> bench = true;
-                case "--follow" -> follow = args[++i];
-                case "--sink-at" -> sinkAt = Long.parseLong(args[++i]);
+                case "--follow" -> follow = operand(args, ++i, "--follow");
+                case "--sink-at" -> sinkAt = longOperand(args, ++i, "--sink-at");
                 // Judged where it is read, not in the refusal block below:
                 // -1 is this flag's "off", so once the loop is over a user's
                 // own -1 is indistinguishable from the default and would run
                 // as a silent no-op — the shape #791 named on --reload-at.
                 case "--sink-every" -> {
-                    sinkEvery = Long.parseLong(args[++i]);
+                    sinkEvery = longOperand(args, ++i, "--sink-every");
                     if (sinkEvery < 1) {
                         System.err.println("--sink-every " + sinkEvery
                                 + " is not a cadence — the period is a count of ticks, at least 1");
@@ -108,14 +108,14 @@ public final class Main {
                     }
                 }
                 case "--reload-at" -> {
-                    reloadAt = Long.parseLong(args[++i]);
+                    reloadAt = longOperand(args, ++i, "--reload-at");
                     reloadRequested = true;
                 }
-                case "--chronos" -> chronosPath = args[++i];
-                case "--replay" -> replayPath = args[++i];
-                case "--expect" -> expectPath = args[++i];
-                case "--audit" -> auditPath = args[++i];
-                case "--snapshot-at" -> snapshotAt = Long.parseLong(args[++i]);
+                case "--chronos" -> chronosPath = operand(args, ++i, "--chronos");
+                case "--replay" -> replayPath = operand(args, ++i, "--replay");
+                case "--expect" -> expectPath = operand(args, ++i, "--expect");
+                case "--audit" -> auditPath = operand(args, ++i, "--audit");
+                case "--snapshot-at" -> snapshotAt = longOperand(args, ++i, "--snapshot-at");
                 case "--help" -> {
                     usage();
                     return;
@@ -532,6 +532,69 @@ public final class Main {
         }
     }
 
+
+    /**
+     * The value that follows a flag, or a refusal in the voice the range laws
+     * already speak (#1747).
+     *
+     * <p>Every flag that takes an operand used to read it as {@code args[++i]}
+     * and parse it bare. Two operator mistakes — the flag written last with
+     * nothing after it, and a value that is not a number — left through an
+     * uncaught exception: a stack trace naming a line inside this file, and
+     * exit 1.
+     *
+     * <p>That is the wrong answer to the right question, and #791 is why. A
+     * scenario flag is a promise that its command will happen, and the exit
+     * code is the only place the operator learns their argument will not be
+     * honoured. Exit 2 with the flag named says <i>your argument was refused</i>.
+     * Exit 1 with a stack trace says <i>this program broke</i>, and points at
+     * the parser's line number rather than at what the operator typed. An
+     * unparsable operand is the same class of mistake as an out-of-range one,
+     * so it leaves the same way.
+     */
+    private static String operand(String[] args, int valueIndex, String flag) {
+        if (valueIndex >= args.length) {
+            throw refuse(flag + " takes a value and nothing followed it");
+        }
+        return args[valueIndex];
+    }
+
+    /** {@link #operand} for the flags whose value is a count, a tick or a seed. */
+    private static long longOperand(String[] args, int valueIndex, String flag) {
+        String raw = operand(args, valueIndex, flag);
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException notANumber) {
+            throw refuse(flag + " " + raw + " is not a number");
+        }
+    }
+
+    /** {@link #longOperand} for the one dial that is an {@code int}. */
+    private static int intOperand(String[] args, int valueIndex, String flag) {
+        String raw = operand(args, valueIndex, flag);
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException notANumber) {
+            throw refuse(flag + " " + raw + " is not a number");
+        }
+    }
+
+    /**
+     * Prints the refusal, spends the refusal code, and hands back an exception
+     * the caller throws.
+     *
+     * <p>The throw is unreachable — {@code System.exit} does not return — and
+     * it is written this way on purpose. The alternative is a {@code return 0}
+     * after the exit, which is a value no caller can ever observe sitting in
+     * the one place a reader looks for the flag's default. #1741 is about
+     * branches nobody can reach surviving wrong indefinitely; the smallest
+     * repayment is not to author a new one.
+     */
+    private static RuntimeException refuse(String message) {
+        System.err.println(message);
+        System.exit(2);
+        return new IllegalStateException("unreachable: System.exit does not return");
+    }
     private static void usage() {
         System.out.print("""
                 matrix-sim daemon (v3.0)
