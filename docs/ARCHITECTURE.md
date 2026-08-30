@@ -212,6 +212,21 @@ attempts lazily from the snapshot, so phase two adds one small view per tick
 rather than hundreds of unused audit objects. Visible projection and percept
 allocation remain #1692–#1693.
 
+The sixth seam is the one-attempt visible projection (#1692). The root may
+project only a DELIVERED or DEGRADED attempt, and only after a caller supplies
+the visible percept identity and uncertainty metadata; this mapper neither
+allocates nor derives them. The receipt carries subject, identity-derived tick,
+channel, presented payload, declared/claimed source, uncertainty, and the
+delivery system's presented fidelity classification. That classification is
+what the system tells the subject, not independent access to frozen truth and
+not a moral truth claim. Actual source, TruthEntry, provenance, delivery
+outcome, policy and audit classifications remain reachable only through the
+root-owned ReceiptAudit pairing. OCCLUDED consumes no visible metadata and
+produces no receipt. This mapper refuses NO_SIGNAL until a later unit supplies
+its own typed, observable availability fact; hidden occlusion cannot be renamed silence.
+Identity allocation, subject-local batching, ordering, gaps, deduplication and
+reducer/intent noninterference remain #1693.
+
 ## Sequence — jack-in and the death rule
 
 ```mermaid
