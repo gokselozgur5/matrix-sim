@@ -65,7 +65,7 @@ public final class RealWorld {
     }
 
     public List<Human> humans() {
-        return humans;
+        return List.copyOf(humans);
     }
 
     public Human grow() {
@@ -303,6 +303,26 @@ public final class RealWorld {
         for (NeuralLink link : links) {
             sink.putLong(AcceptanceLoop.threshold(link.human.birthKey));
             sink.putLong(link.personalResidue);
+        }
+        // Persistent Human state is future-causal even while disconnected.
+        // Immutable Human ordinal is the stable subject order; no mutable
+        // census/link/avatar walk may decide the canonical sequence.
+        List<Human> canonicalHumans = new ArrayList<>(humans);
+        canonicalHumans.sort(java.util.Comparator.comparingInt(human -> human.id));
+        for (int i = 1; i < canonicalHumans.size(); i++) {
+            if (canonicalHumans.get(i - 1).id == canonicalHumans.get(i).id) {
+                throw new IllegalStateException("duplicate Human ordinal in canonical census");
+            }
+        }
+        sink.putCount(canonicalHumans.size());
+        for (Human human : canonicalHumans) {
+            MindState mind = human.mindState();
+            sink.putInt(human.id);
+            byte[] canonical = mind.canonicalBytes();
+            sink.putCount(canonical.length);
+            for (byte value : canonical) {
+                sink.putInt(Byte.toUnsignedInt(value));
+            }
         }
     }
 

@@ -273,10 +273,10 @@ table() {
   # Entity/core reverse reaches, a real-side field on World, a causal grammar that
   # reaches runtime, an omniscient receipt reducer, a new mutable root/jack surface,
   # or a Main dependency are seven separately named findings. Reads src/ only.
-  judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 core_reach=0 world_holds=0 causal_reach=0 reducer_world=0 bridge_mutable=0 main_depended=0 swept_none=0'
+  judge LatticeFence 'VERDICT LATTICE_HELD entities_reach=0 core_reach=0 world_holds=0 causal_reach=0 reducer_world=0 bridge_mutable=0 mind_misowned=0 main_depended=0 swept_none=0'
   # Twenty-four private source trees retain every reader branch, including the D-013
   # jack allowlist, a multiline transport, a same-line smuggle, and comment stripping.
-  judge LatticeFence 'LATTICE SELFCHECK VERDICT READER_HOLDS cases=32 cases_none=0 failed=0' --selfcheck
+  judge LatticeFence 'LATTICE SELFCHECK VERDICT READER_HOLDS cases=35 cases_none=0 failed=0' --selfcheck
   # The row #1153 wrote in its PR body and never committed (#1162). Its `perl` substitution
   # was anchored on `judge SpeciesReach`, which was on a different branch at the time; the
   # pattern matched nothing, perl exited 0, and the tree gained an instrument that ran on
@@ -351,6 +351,9 @@ table() {
   # preserves equal occurrences before allocation; scoped identity then makes
   # exact retransmission idempotent and conflicting reuse impossible.
   judge PerceptInputs 'VERDICT PERCEPT_INPUTS_HELD cases=59 cases_none=0 allocation_fail=0 multiplicity_fail=0 hidden_leak=0 scoped_fail=0 canonical_fail=0 source_fail=0 roster_fail=0'
+  # D-066's persistent real-side continuity substrate (#1694). Human owns one
+  # stable Subject and bounded cited history while links, avatars and reload move.
+  judge MindStates 'VERDICT MIND_STATES_HELD cases=33 cases_none=0 lifecycle_fail=0 bounds_fail=0 canonical_fail=0 roster_fail=0'
   # The contract on the rows above, read off this table. `by_hand=` is the honest half of
   # the count: those probes exit with their own code, which is not a lie, only a second
   # place the contract lives (#1214).

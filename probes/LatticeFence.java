@@ -138,17 +138,17 @@ public final class LatticeFence {
         Probes.leave(String.format(
                 "VERDICT LATTICE_HELD entities_reach=%d core_reach=%d world_holds=%d"
                         + " causal_reach=%d reducer_world=%d bridge_mutable=%d"
-                        + " main_depended=%d swept_none=%d",
+                        + " mind_misowned=%d main_depended=%d swept_none=%d",
                 reading.entitiesReach(), reading.coreReach(), reading.worldHolds(),
                 reading.causalReach(), reading.reducerWorld(), reading.bridgeMutable(),
-                reading.mainDepended(), reading.swept() == 0 ? 1 : 0), reading.held());
+                reading.mindMisowned(), reading.mainDepended(), reading.swept() == 0 ? 1 : 0), reading.held());
     }
 
     /** Read every fire-door clause from one source root. */
     private static Reading inspect(Path root) throws IOException {
         List<Path> files = javaFiles(root);
         if (files.isEmpty()) {
-            return new Reading(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of());
+            return new Reading(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of());
         }
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
@@ -172,7 +172,7 @@ public final class LatticeFence {
             }
             Trees trees = Trees.instance(task);
             Elements elements = task.getElements();
-            SemanticReading reading = new SemanticReading(trees, elements);
+            SemanticReading reading = new SemanticReading(trees, elements, task.getTypes());
             for (CompilationUnitTree unit : units) {
                 reading.scan(unit, null);
             }
@@ -184,6 +184,7 @@ public final class LatticeFence {
     private static final class SemanticReading extends TreePathScanner<Void, Void> {
         private final Trees trees;
         private final Elements elements;
+        private final javax.lang.model.util.Types typeUtils;
         private final Map<String, TypeElement> types = new LinkedHashMap<>();
         private final java.util.Set<String> worldQueryOwners = new java.util.HashSet<>();
         private final List<String> offences = new ArrayList<>();
@@ -201,9 +202,11 @@ public final class LatticeFence {
         private int causalReach;
         private int mainDepended;
 
-        private SemanticReading(Trees trees, Elements elements) {
+        private SemanticReading(Trees trees, Elements elements,
+                                javax.lang.model.util.Types typeUtils) {
             this.trees = trees;
             this.elements = elements;
+            this.typeUtils = typeUtils;
         }
 
         @Override public Void visitCompilationUnit(CompilationUnitTree node, Void unused) {
@@ -285,7 +288,23 @@ public final class LatticeFence {
             }
             int mindParticipants = 0;
             int reducerWorld = 0;
+            int mindMisowned = 0;
             for (TypeElement type : types.values()) {
+                DeclaredType receiver = (DeclaredType) type.asType();
+                for (Element member : elements.getAllMembers(type)) {
+                    TypeMirror memberType = member.getKind() == ElementKind.FIELD
+                            ? typeUtils.asMemberOf(receiver, member) : member.asType();
+                    if (member.getKind() == ElementKind.FIELD
+                            && containsQualified(memberType, "matrix.realworld.MindState")
+                            && (!type.getQualifiedName().contentEquals("matrix.realworld.Human")
+                            || !member.getSimpleName().contentEquals("mindState")
+                            || !member.getModifiers().contains(Modifier.PRIVATE)
+                            || member.getModifiers().contains(Modifier.STATIC))) {
+                        mindMisowned++;
+                        offences.add("LATTICE mind state misowned/multiplied by "
+                                + type.getQualifiedName() + "." + member.getSimpleName());
+                    }
+                }
                 if (!elements.getPackageOf(type).getQualifiedName()
                         .contentEquals("matrix.realworld")) continue;
                 List<? extends Element> members = elements.getAllMembers(type);
@@ -331,7 +350,7 @@ public final class LatticeFence {
                 throw new IOException("lattice semantic populations vanished");
             }
             return new Reading(swept, entitiesReach, coreReach, worldHolds, causalReach,
-                    reducerWorld, bridgeMutable, mainDepended, worldFields,
+                    reducerWorld, bridgeMutable, mindMisowned, mainDepended, worldFields,
                     mindParticipants, bridgeDeclarations, offences);
         }
 
@@ -344,7 +363,8 @@ public final class LatticeFence {
         private boolean causalMindType(TypeMirror type) {
             return containsQualified(type, "matrix.causal.CausalRecord")
                     || containsQualified(type, "matrix.causal.CausalRecord.PerceptReceipt")
-                    || containsQualified(type, "matrix.causal.CausalRecord.IntentProposal");
+                    || containsQualified(type, "matrix.causal.CausalRecord.IntentProposal")
+                    || containsQualified(type, "matrix.realworld.MindState");
         }
 
         private boolean auditedBridge(String bridge, Element member) {
@@ -693,6 +713,32 @@ public final class LatticeFence {
                             + "}\n");
             cases.add(readCase(scratch, "future-mind-export", futureMind,
                     reading -> oneFinding(reading, reading.bridgeMutable())));
+            Map<String, String> misplacedMind = changed(clean, "matrix/realworld/MindState.java",
+                    "package matrix.realworld; public record MindState(int revision) {}\n");
+            misplacedMind = changed(misplacedMind, "matrix/realworld/NeuralLink.java",
+                    "package matrix.realworld; public final class NeuralLink {"
+                            + " private final MindState copied = new MindState(0); }\n");
+            cases.add(readCase(scratch, "mind-state-owned-by-link", misplacedMind,
+                    reading -> oneFinding(reading, reading.mindMisowned())));
+            Map<String, String> inheritedMind = changed(clean, "matrix/realworld/MindState.java",
+                    "package matrix.realworld; public record MindState(int revision) {"
+                            + " public static MindState initial(Object ignored){return new MindState(0);} }\n");
+            inheritedMind = changed(inheritedMind, "matrix/realworld/Box.java",
+                    "package matrix.realworld; class Box<T> { final T value; Box(T value){this.value=value;} }\n");
+            inheritedMind = changed(inheritedMind, "matrix/realworld/Human.java",
+                    "package matrix.realworld; public final class Human { public final Object subject=new Object(); }\n");
+            inheritedMind = changed(inheritedMind, "matrix/realworld/NeuralLink.java",
+                    "package matrix.realworld; public final class NeuralLink extends Box<MindState> {"
+                            + " NeuralLink(Human human){super(MindState.initial(human.subject));} }\n");
+            cases.add(readCase(scratch, "mind-state-inherited-generic-link", inheritedMind,
+                    reading -> oneFinding(reading, reading.mindMisowned())));
+            Map<String, String> duplicateMind = changed(clean, "matrix/realworld/MindState.java",
+                    "package matrix.realworld; public record MindState(int revision) {}\n");
+            duplicateMind = changed(duplicateMind, "matrix/realworld/Human.java",
+                    "package matrix.realworld; import java.util.List; public final class Human {"
+                            + " private MindState mindState; private List<MindState> backups; }\n");
+            cases.add(readCase(scratch, "human-generic-mind-backup", duplicateMind,
+                    reading -> oneFinding(reading, reading.mindMisowned())));
             Map<String, String> futureCausal = changed(clean,
                     "matrix/causal/MutableMind.java",
                     "package matrix.causal;\n"
@@ -863,7 +909,7 @@ public final class LatticeFence {
 
     private record Reading(int swept, int entitiesReach, int coreReach,
                            int worldHolds, int causalReach, int reducerWorld,
-                           int bridgeMutable, int mainDepended, int worldFields,
+                           int bridgeMutable, int mindMisowned, int mainDepended, int worldFields,
                            int mindParticipants, int bridgeDeclarations,
                            List<String> offences) {
         private Reading {
@@ -872,7 +918,7 @@ public final class LatticeFence {
 
         private int findings() {
             return entitiesReach + coreReach + worldHolds + causalReach
-                    + reducerWorld + bridgeMutable + mainDepended;
+                    + reducerWorld + bridgeMutable + mindMisowned + mainDepended;
         }
 
         private boolean held() {
