@@ -304,6 +304,17 @@ table() {
   # consumes the next argument HOWEVER it consumes it — read off the repair instead, the
   # probe would stay green while a reverted flag simply left the population.
   judge OperandRefusal 'VERDICT EVERY_OPERAND_REFUSES swallowed=0 crashed=0 swept_none=0'
+  # How many verdict words can this tree print, and how many has anything ever asked for
+  # (#1741)? Two arms are known unreachable from any input and both were found by a person
+  # reading the code, which is not a method. THE THREE NUMBERS ARE PINNED AND NONE OF THEM
+  # IS A GATE: #1741 warns in the same breath that unobserved and unreachable are different
+  # claims and that a reader conflating them deletes working guards. `unasked=` is the
+  # candidate list's size, `unresolved=` the sites that hand their word in from a variable
+  # so no reading can name it, `unmatched=` words a row greps for that no resolvable
+  # literal spells — noise while `unresolved` is above zero, and SEAL_HYGIENE_HELD is the
+  # proof: pinned, printed every green run, formatted rather than written. Pinning them
+  # makes the next word to join them arrive as a decision instead of as a default.
+  judge VerdictCensus 'VERDICT VERDICT_CENSUS_STATED unasked=72 unresolved=9 unmatched=15 read_none=0'
   judge GrammarTwins 'VERDICT GRAMMAR_TWINS_AGREE writer_only=0 reader_only=0 diverged=0 read_none=0'
   judge SealHygiene  'VERDICT SEAL_HYGIENE_HELD breaks=0 checked_none=0'
   # D-066's first runtime seam (#1686). Six nested records share one parser but
