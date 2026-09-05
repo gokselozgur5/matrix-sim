@@ -19,12 +19,15 @@ usage() {
   awk 'NR==1 {next} !/^#/ {exit} /^#$/ {if (++blank == 2) exit} {print}' "$0"
 }
 
-verdict() { # state, stable evidence fields
+# verdict <state> <stable evidence fields>
+verdict() {
   printf 'ORCHESTRA VERDICT %s %s\n' "$1" "$2"
   case "$1" in PASS) return 0 ;; FAILED) return 1 ;; *) return 2 ;; esac
 }
 
-is_sha() { printf '%s' "$1" | grep -qE '^[0-9a-f]{40}$'; }
+is_sha() {
+  printf '%s' "$1" | grep -qE '^[0-9a-f]{40}$'
+}
 
 repo_from_origin() {
   git remote get-url origin 2>/dev/null \
@@ -34,12 +37,14 @@ repo_from_origin() {
 # Check-runs are read for this commit, then selected by exact NAME and greatest
 # monotonically assigned id. Completion time cannot order them: an older slow run
 # may complete after a newer queued run starts, and must not bless that newer run.
-check_rows() { # sha
+# check_rows <sha>
+check_rows() {
   gh api "repos/$REPO/commits/$1/check-runs?per_page=100" \
     --jq '.check_runs[] | [.name,.status,(.conclusion // "-"),(.completed_at // .started_at // ""),(.id|tostring)] | @tsv' 2>/dev/null
 }
 
-review_status() { # sha: the status endpoint itself binds the receipt to this exact commit
+# review_status <sha>: the status endpoint itself binds the receipt to this exact commit.
+review_status() {
   local rows
   rows="$(gh api "repos/$REPO/commits/$1/status" \
     --jq '.statuses[] | [.context,.state,.created_at,(.id|tostring)] | @tsv' 2>/dev/null || true)"
@@ -50,7 +55,8 @@ review_status() { # sha: the status endpoint itself binds the receipt to this ex
     END { print (state == "" ? "absent" : state) }'
 }
 
-named_check() { # name, rows -> newest exact-name result
+# named_check <name> <rows> -> newest exact-name result
+named_check() {
   printf '%s\n' "$2" | awk -F '\t' -v want="$1" '
     $1 == want && $5 + 0 > id + 0 {
       found=1; id=$5; status=$2; conclusion=$3
