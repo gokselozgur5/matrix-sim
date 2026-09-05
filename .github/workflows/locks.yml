@@ -819,6 +819,23 @@ jobs:
             || { echo "FATAL the suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
           echo "PROVENANCE SUITE FLOOR OK cases=$ran floor=$floor"
 
+      # WHY: #1774 — the merge-capable path is exercised here only through its
+      # token-free fake transports; CI never receives merge authority.
+      - name: tools — the orchestra integration gate's own cases (#1774)
+        shell: bash
+        run: |
+          set -euo pipefail
+          floor=33   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          bash tools/orchestra.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/orchestra-selftest.log"
+          verdict="$(grep -E '^ORCHESTRA SELFTEST VERDICT PASS cases=[0-9]+ failed=0$' \
+                       "${RUNNER_TEMP:-/tmp}/orchestra-selftest.log" || true)"
+          [ -n "$verdict" ] \
+            || { echo "FATAL the orchestra suite reached no passing verdict" >&2; exit 1; }
+          ran="${verdict##*cases=}"; ran="${ran%% *}"
+          [ "$ran" -ge "$floor" ] \
+            || { echo "FATAL the orchestra suite ran $ran cases and the floor is $floor — cases went missing, or the floor was lowered without saying so" >&2; exit 1; }
+          echo "ORCHESTRA SUITE FLOOR OK cases=$ran floor=$floor"
+
       # WHY: #1590 — two readers of one table, and until #1588 nothing compared them.
       # `counters.sh` walks `probes/bench.sh` in shell and `CatalogFlags` in Java, and
       # the shell one returned 67 of 70 rows for the file's whole life. It was found by

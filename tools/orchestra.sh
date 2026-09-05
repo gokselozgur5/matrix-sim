@@ -124,11 +124,13 @@ check_pr() {
   [ "$LITANY" = ok ] && [ "$LOCKS" = ok ] && { [ "$REVIEW" = success ] || [ "$REVIEW" = NOT_CONFIGURED ]; } \
     || { verdict FAILED "stage=checks pr=$PR repo=$REPO head=$HEAD_SHA base=$BASE_SHA litany=$LITANY locks=$LOCKS review=$REVIEW"; return; }
 
-  END_META="$(gh api "repos/$REPO/pulls/$PR" --jq '[.head.sha,.base.sha,.base.ref] | @tsv' 2>/dev/null || true)"
+  END_META="$(gh api "repos/$REPO/pulls/$PR" \
+    --jq '[.state,(.draft|tostring),.head.sha,.head.repo.full_name,.base.sha,.base.ref] | @tsv' 2>/dev/null || true)"
   [ -n "$END_META" ] || { verdict REFUSED "stage=check-reread pr=$PR repo=$REPO reason=metadata-unreadable"; return; }
   OLDIFS=$IFS; IFS=$'\t'; set -- $END_META; IFS=$OLDIFS
-  [ "${1:-}" = "$HEAD_SHA" ] && [ "${2:-}" = "$BASE_SHA" ] && [ "${3:-}" = main ] \
-    || { verdict FAILED "stage=check-race pr=$PR repo=$REPO checked_head=$HEAD_SHA current_head=${1:-unreadable} checked_base=$BASE_SHA current_base=${2:-unreadable}"; return; }
+  [ "${1:-}" = open ] && [ "${2:-}" = false ] && [ "${3:-}" = "$HEAD_SHA" ] \
+    && [ "${4:-}" = "$REPO" ] && [ "${5:-}" = "$BASE_SHA" ] && [ "${6:-}" = main ] \
+    || { verdict FAILED "stage=check-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
 
   verdict PASS "stage=check pr=$PR repo=$REPO head=$HEAD_SHA base=$BASE_SHA base_ref=$BASE_REF local_head=$LOCAL_HEAD prstate=GREEN checkage=CURRENT litany=success locks=success review=$REVIEW"
 }
@@ -148,11 +150,13 @@ merge_pr() {
   fi
   PRE_TREE="$(git show -s --format=%T "$HEAD_SHA" 2>/dev/null || true)"
   is_sha "$PRE_TREE" || { verdict REFUSED "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA reason=head-tree-unreadable"; return; }
-  NOW="$(gh api "repos/$REPO/pulls/$PR" --jq '[.head.sha,.base.sha,.base.ref] | @tsv' 2>/dev/null || true)"
+  NOW="$(gh api "repos/$REPO/pulls/$PR" \
+    --jq '[.state,(.draft|tostring),.head.sha,.head.repo.full_name,.base.sha,.base.ref] | @tsv' 2>/dev/null || true)"
   [ -n "$NOW" ] || { verdict REFUSED "stage=pre-merge-read pr=$PR repo=$REPO reason=metadata-unreadable"; return; }
   OLDIFS=$IFS; IFS=$'\t'; set -- $NOW; IFS=$OLDIFS
-  [ "${1:-}" = "$HEAD_SHA" ] && [ "${2:-}" = "$BASE_SHA" ] && [ "${3:-}" = main ] \
-    || { verdict FAILED "stage=pre-merge-race pr=$PR repo=$REPO checked_head=$HEAD_SHA current_head=${1:-unreadable} checked_base=$BASE_SHA current_base=${2:-unreadable}"; return; }
+  [ "${1:-}" = open ] && [ "${2:-}" = false ] && [ "${3:-}" = "$HEAD_SHA" ] \
+    && [ "${4:-}" = "$REPO" ] && [ "${5:-}" = "$BASE_SHA" ] && [ "${6:-}" = main ] \
+    || { verdict FAILED "stage=pre-merge-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
   # No mutation occurs before the immediately preceding exact-head gate passes.
   gh pr merge "$PR" --repo "$REPO" --match-head-commit "$HEAD_SHA" --rebase >/dev/null 2>&1 \
     || { verdict FAILED "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA reason=merge-command-failed"; return; }
@@ -212,11 +216,14 @@ case "$2" in
     if [ -s "$ORCHESTRA_FIX_STATE" ]; then printf 'closed\ttrue\tcccccccccccccccccccccccccccccccccccccccc\n'
     else
       case " $* " in
-        *'--jq [.head.sha,.base.sha,.base.ref'* )
+        *'--jq [.state,(.draft|tostring),.head.sha,.head.repo.full_name,.base.sha,.base.ref'* )
           reads=0; [ -f "$ORCHESTRA_FIX_STATE.reads" ] && reads="$(cat "$ORCHESTRA_FIX_STATE.reads")"; reads=$((reads + 1)); echo "$reads" > "$ORCHESTRA_FIX_STATE.reads"
-          if { [ "${CASE:-}" = check_head_race ] && [ "$reads" -eq 1 ]; } || { [ "${CASE:-}" = merge_head_race ] && [ "$reads" -eq 2 ]; }; then printf 'dddddddddddddddddddddddddddddddddddddddd\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tmain\n'
-          elif { [ "${CASE:-}" = check_base_race ] && [ "$reads" -eq 1 ]; } || { [ "${CASE:-}" = merge_base_race ] && [ "$reads" -eq 2 ]; }; then printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\tdddddddddddddddddddddddddddddddddddddddd\tmain\n'
-          else printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tmain\n'; fi
+          state=open; draft=false
+          { [ "${CASE:-}" = check_state_race ] && [ "$reads" -eq 1 ]; } && state=closed
+          { [ "${CASE:-}" = merge_draft_race ] && [ "$reads" -eq 2 ]; } && draft=true
+          if { [ "${CASE:-}" = check_head_race ] && [ "$reads" -eq 1 ]; } || { [ "${CASE:-}" = merge_head_race ] && [ "$reads" -eq 2 ]; }; then head=dddddddddddddddddddddddddddddddddddddddd; else head=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; fi
+          if { [ "${CASE:-}" = check_base_race ] && [ "$reads" -eq 1 ]; } || { [ "${CASE:-}" = merge_base_race ] && [ "$reads" -eq 2 ]; }; then base=dddddddddddddddddddddddddddddddddddddddd; else base=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; fi
+          printf '%s\t%s\t%s\tgokselozgur5/matrix-sim\t%s\tmain\n' "$state" "$draft" "$head" "$base"
           exit 0 ;;
       esac
       draft=false; [ "${CASE:-}" = draft ] && draft=true
@@ -314,8 +321,10 @@ EOF
   case_is failed-merge merge merge_fail 1 merge
   case_is check-head-race check check_head_race 1 check-race
   case_is check-base-race check check_base_race 1 check-race
+  case_is check-state-race check check_state_race 1 check-race
   case_is merge-head-race merge merge_head_race 1 pre-merge-race
   case_is merge-base-race merge merge_base_race 1 pre-merge-race
+  case_is merge-draft-race merge merge_draft_race 1 pre-merge-race
   case_is incomplete-parity merge parity_bad 1 post-merge
   case_is canonical-tree-mismatch merge tree_mismatch 1 post-merge
   case_is review-not-configured-check check no_config 0 check
