@@ -842,7 +842,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          floor=17   # raise it in the PR that adds a case; lowering it is a claim, not a bump
+          floor=25   # raise it in the PR that adds a case; lowering it is a claim, not a bump
           bash tools/orchestra-review.sh --selftest | tee "${RUNNER_TEMP:-/tmp}/orchestra-review-selftest.log"
           verdict="$(grep -E '^ORCHESTRA REVIEW SELFTEST VERDICT PASS cases=[0-9]+ red_paths=[0-9]+ fake_transport=2$' \
                        "${RUNNER_TEMP:-/tmp}/orchestra-review-selftest.log" || true)"

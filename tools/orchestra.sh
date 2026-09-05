@@ -192,7 +192,7 @@ check_pr() {
     || { verdict FAILED "stage=check-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
   require_issue_binding check-issue-race || return $?
 
-  verdict PASS "stage=check pr=$PR repo=$REPO issue=$EXPECTED_ISSUE head=$HEAD_SHA base=$BASE_SHA base_ref=$BASE_REF local_head=$LOCAL_HEAD prstate=GREEN checkage=CURRENT litany=success locks=success review=$REVIEW"
+  verdict PASS "stage=check pr=$PR repo=$REPO issue=$EXPECTED_ISSUE head=$HEAD_SHA base=$BASE_SHA base_ref=$BASE_REF local_head=$LOCAL_HEAD prstate=GREEN checkage=CURRENT litany=success locks=success review=$REVIEW issue_binding=observed"
 }
 
 merge_pr() {
@@ -220,7 +220,8 @@ merge_pr() {
     || { verdict FAILED "stage=pre-merge-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
   require_issue_binding pre-merge-issue-race || return $?
   require_open_build_unit pre-merge-issue || return $?
-  # No mutation occurs before the immediately preceding exact-head gate passes.
+  # GitHub exposes compare-and-swap for the head only. Closing-issue metadata is
+  # observed immediately before and after the merge; the API cannot lock it.
   gh pr merge "$PR" --repo "$REPO" --match-head-commit "$HEAD_SHA" --rebase >/dev/null 2>&1 \
     || { verdict FAILED "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA reason=merge-command-failed"; return; }
   git fetch --quiet --no-tags origin main >/dev/null 2>&1 \
@@ -253,7 +254,7 @@ merge_pr() {
   [ "$PSTATE" = closed ] && [ "$PMERGED" = true ] && [ "$REACHABLE" = yes ] \
     && is_sha "$API_TREE" && [ "$API_TREE" = "$LOCAL_TREE" ] && [ "$LOCAL_TREE" = "$PRE_TREE" ] && [ "$PARITY" = complete ] \
     || { verdict FAILED "stage=post-merge pr=$PR repo=$REPO state=$PSTATE merged=$PMERGED merge=$MERGE_SHA origin_main=$LOCAL_MAIN reachable=$REACHABLE head_tree=$PRE_TREE api_tree=${API_TREE:-unreadable} local_tree=${LOCAL_TREE:-unreadable} parity=INCOMPLETE issues=$ISSUE_EVIDENCE"; return; }
-  verdict PASS "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA merge=$MERGE_SHA origin_main=$LOCAL_MAIN reachable=yes tree=$LOCAL_TREE issues=$ISSUE_EVIDENCE parity=COMPLETE"
+  verdict PASS "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA merge=$MERGE_SHA origin_main=$LOCAL_MAIN reachable=yes tree=$LOCAL_TREE issues=$ISSUE_EVIDENCE parity=COMPLETE head_lock=atomic issue_binding=pre/post-observed metadata_lock=unavailable"
 }
 
 selftest() {

@@ -1,0 +1,22 @@
+web_search = "disabled"
+include_apply_patch_tool = false
+
+[features]
+apps = false
+browser_use = false
+browser_use_external = false
+browser_use_full_cdp_access = false
+code_mode_host = false
+computer_use = false
+hooks = false
+image_generation = false
+in_app_browser = false
+multi_agent = false
+plugins = false
+shell_snapshot = false
+shell_tool = false
+skill_mcp_dependency_install = false
+skill_search = false
+tool_suggest = false
+view_image = false
+workspace_dependencies = false
