@@ -71,7 +71,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-064](adr/D-064-reciprocal-debt.md) | Reciprocal debt: resistance belongs to the mind; breach belongs to the actor | 🟢 | Human Foundation | #1670 |
 | [D-065](adr/D-065-inhabited-finish-line.md) | The film is the specimen; inhabited causality is the finish line | 🟢 | Human Foundation | #1671 |
 | [D-066](adr/D-066-human-causal-boundary.md) | Open the Human causal boundary without uploading the mind | 🟢 | Human Foundation | #1672 |
-| [D-067](adr/D-067-epistemic-revision.md) | Epistemic revision: carried tension and honest discharge | 🟡 | Human Foundation | #1772 |
+| [D-067](adr/D-067-epistemic-revision.md) | Epistemic revision: carried tension and honest discharge | 🟢 | Human Foundation | #1772 |
 
 D-063 keeps its yellow proposal title above as the stable historical identifier. Its accepted-title alias and current law are **“Quality admits; value leads; activity breaks ties”**: the graph never admits or outranks work, but may choose between comparably valuable ready units after value and dependencies leave a genuine tie.
 

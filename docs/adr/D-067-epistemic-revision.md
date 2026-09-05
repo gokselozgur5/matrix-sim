@@ -1,11 +1,13 @@
 ---
 title: "D-067 — Epistemic revision: carried tension and honest discharge"
-status: proposed
+status: accepted
 date: 2026-09-05
 decision-makers: gokselozgur5 (owner), the resident machine (pair)
 consulted: thread #1772
 informed: phase tracker #1677
 ---
+
+<!-- Pre-verdict proposal below is preserved; the accepted outcome is appended after it. -->
 
 # D-067 — Epistemic revision: carried tension and honest discharge
 
@@ -145,6 +147,174 @@ This is an escape hatch for the verdict, not a fourth design evaluated at lower 
 * Neutral, because not every resident or claim needs the same eventual revision strategy.
 * Bad, because an alternative without explicit owner, visible authority, cause, bound, overflow, persistence and falsifiers recreates the gap under new names and is not yet a comparable option.
 
+## Accepted Outcome — Binary tension, cited revision, bounded living journal
+
+On 2026-09-05 the owner delegated the Matrix's product, architecture and
+delivery decisions to the resident machine while retaining the right to follow,
+redirect or veto. Under that standing authority, Aether accepted the carried
+revision ledger and the following deliberately small first psychology. It
+resolves the five blanks above; it does not pretend that the current Java
+already implements them.
+
+### Relation, identity and quanta
+
+The visible claim vocabulary gains an explicit relation mode with at least
+`UNSPECIFIED` and `EXCLUSIVE_ALTERNATIVES`. Existing structured claims remain
+unspecified and narrative-only; unequal opaque positions never become a
+contradiction by inference. Two available assertions may OPEN only when both
+present the same `ClaimKey`, explicitly use `EXCLUSIVE_ALTERNATIVES`, and carry
+different positions.
+
+Receipts are processed in canonical `MindInput` order. For each new eligible
+ASSERT and each available opposite position, the opening anchor is the newest
+eligible prior ASSERT at that position in canonical receipt order; its exact
+`PerceptRef` is copied into the episode. Earlier receipts in the same input are
+eligible. Selection observes the working narrative after those earlier
+receipts but immediately before appending the current receipt and performing
+its oldest-entry eviction, so an about-to-be-evicted anchor can still be
+carried. A relation that is already active RETAINs its existing episode and
+anchors rather than silently swapping to a newer assertion.
+
+The relation key is `(ClaimKey, min(position), max(position))` in lexical
+canonical order. At most one episode for that relation is active at once, but
+many different pairs may coexist under one claim and a closed pair may later
+open a new episode. Each episode is identified by its OPEN event identity, so a
+reopening cannot rewrite or impersonate an older episode. There is no
+cross-pair or per-claim scalar aggregation.
+
+V1 resistance is binary: OPEN moves `0 -> 1`, RETAIN leaves `1`, and CLOSE
+moves `1 -> 0`. INCREASE and partial DECREASE are unreachable rather than
+filled with arbitrary arithmetic. Carrying starts only at OPEN; the two sides
+must still be available within the existing bounded narrative window before
+that event, while an opened episode copies and carries its two complete visible
+bases after those traces are evicted.
+
+### Reachable revision
+
+The mind-visible presentation grammar gains typed speech acts. `ASSERT` may
+open a relation. `WITHDRAW(target PerceptRef)` presents a retraction of one
+exact carried opening assertion. `RECALL_CORRECTION(target PerceptRef,
+replacementPosition)` presents that the same occurrence should be remembered
+with another position. These tags describe what the Human received; none is a
+root verdict that the statement was false, corrected or trustworthy.
+
+The pure mind transition may revise an exact target when a newly received
+WITHDRAW or RECALL_CORRECTION has the same perceived source as that target. A
+withdrawal retires the target. A correction retires the old target and makes
+the current correction receipt eligible as a new ASSERT at the replacement
+position; it never mutates the historical receipt in place. Either act CLOSEs
+every active episode whose carried opening basis is the retired target. Thus a
+correction from A to B closes an A/B episode, while a correction from A to C
+closes A/B and may then OPEN B/C against the surviving B assertion.
+
+When the target is still retained in narrative history it is canonically
+marked `PREMISE_WITHDRAWN` or `MEMORY_RECONSOLIDATED` and excluded from every
+future OPEN. When narrative eviction has already removed it, the carried
+anchor and its CLOSE entry are sufficient; no synthetic narrative trace is
+created merely to mark it. A closed episode is `PROVISIONALLY_SETTLED`, never
+true, and a replacement is evaluated afresh rather than inheriting that label.
+
+Every CLOSE is one canonical revision entry produced in the same transition.
+It cites the new receipt, exact target, OPEN episode, both carried bases and the
+`1 -> 0` delta. One receipt may close several episodes, but each delta has its
+own entry and the entries follow relation-key order. Target retirement and all
+of its CLOSE entries form the receipt's first atomic stage and cannot be
+blocked by active-episode capacity. Candidate OPENs are decided separately by
+the capacity rule below.
+
+Bare ASSERT repetition, elapsed time, reset, source-name plurality, refusal,
+consent and actor-side contract repair cannot discharge. Corroboration and
+repair of the experienced contradiction remain accepted D-064 families but
+unreachable in this first policy: no honest trust or attestation model exists
+yet, so this decision will not manufacture one. A later reachable rule must add
+a perceivable carrier and mind-owned trust policy without consulting hidden
+source independence. Empty input remains an exact no-op.
+
+### Bounds, overflow and the honest archive boundary
+
+One Human may carry at most 32 concurrent active episodes. The canonical
+epistemic journal retains the latest 128 OPEN/CLOSE events with their bounded
+visible bases. Existing symbol and payload limits bound every copied variable
+field. Capacity is concurrent, not a lifetime budget: closing frees a slot and
+no count of past revisions permanently disables cognition.
+
+Canonical state owns one checkpoint followed by one journal; it does not store
+a second mutable copy of the current ledger. The checkpoint contains the active
+episodes after the compacted prefix, the optional identity of the last folded
+event and a domain-separated SHA-256 commitment to that prefix. It carries no
+unbounded or smaller-lifetime compacted-event counter. On event 129 the
+transition folds the oldest event into the checkpoint and commitment before
+appending the new event. Folding the checkpoint through the retained journal
+must reconstruct the current active ledger exactly.
+
+Event identity uses the existing fixed-width mind revision and per-transition
+sequence with checked arithmetic. Its exhaustion follows the canonical
+substrate's existing refusal horizon; D-067 introduces neither an earlier
+cognitive lifetime cap nor an arbitrary-precision field that would break
+bounded encoding.
+
+This is intentionally weaker than infinite recall. Every retained CLOSE has
+one fully reconstructible revision and visible basis. Compaction preserves the
+exact resulting ledger and commits to the discarded canonical prefix, but does
+not claim that old per-event evidence can be recovered from a hash. Biography
+after death/archive freezes the same bounded checkpoint, commitment, journal
+and outstanding episodes; it never zeroes resistance. #1703 owns the later
+lifecycle placement rather than this decision inventing an archive outside the
+current world.
+
+After the retirement/CLOSE stage, the transition computes the complete set of
+new relation pairs proposed by that receipt. Relations already active merely
+RETAIN and consume no new slot. The whole new-pair set is admitted or refused:
+if 31 relations are active and one ASSERT proposes two new pairs, neither
+OPENs. The narrative receipt still lands with one canonical
+`CAPACITY_BLOCKED` disposition; existing episodes remain unchanged, and later
+lawful CLOSE events continue to work. A correction's CLOSEs therefore remain
+committed even when every replacement-position OPEN is capacity-blocked. All
+OPEN entries admitted from one receipt, including required journal compaction,
+commit atomically in relation-key order.
+
+The boundary witness creates 129 lawful events. The 129th must fold then append
+while preserving the reconstructed ledger and changing the prefix commitment.
+Dropping any event must differ from lawful replay in canonical bytes or prefix
+commitment, even when a balanced event's final scalar happens to match. A
+fixture whose retained CLOSE cites a dropped OPEN must additionally fail ledger
+reconstruction. Reusing a closed episode identity when the same pair reopens
+must be rejected by monotone, unique identity validation rather than merely
+noticed through a coincidental state difference.
+
+### Canonical realization
+
+Realization moves `MindState` to schema V4 and the complete visible input
+spelling to `mind-input/3`. In canonical order V4 writes the existing subject,
+revision and narrative history, then policy version, overflow disposition,
+optional last-folded event identity and prefix commitment, checkpoint episodes,
+and chronological journal. Relation keys and checkpoint episodes sort
+lexically; event identities are `(mind revision, event sequence)` and journal
+order is chronological.
+
+The visible receipt and allocation comparator include relation mode, speech
+act, target and replacement fields in one declared order. V4 decoding refuses
+missing, unknown and old layouts rather than silently making V3 presentations
+eligible. Standalone snapshots retain the checkpoint and suffix needed for the
+same next transition, but cannot authenticate their own forgotten prefix from
+the commitment alone; canonical replay or external evidence is required for
+that comparison. Genesis plus complete declared inputs reconstructs the whole
+sequence. `MindState.canonicalBytes()` remains in the Human digest walk, so the
+implementation must declare and pin the digest and snapshot seal moves. Chronos
+remains optional external replay evidence and never substitutes for resident
+state.
+
+The first implementation belongs to #1697 and may realize the value and pure
+transition without claiming that a production Human install path already
+exists. Its distinguishing cases must cover hidden-audit twins, more than 64
+later narrative receipts, deterministic newest-anchor selection including
+same-input receipts and eviction, withdrawal, A-to-B and A-to-C correction,
+bare repetition, empty input, 32-plus-one overflow, the 31-plus-two atomic
+refusal and a capacity-blocked correction whose CLOSE still succeeds,
+128-plus-one compaction, a retained CLOSE with its OPEN removed, balanced event
+omission, close-and-reopen identity reuse, exact V4 decode/re-encode and the
+declared digest/snapshot move.
+
 ## More Information
 
-Extends [D-062](D-062-human-subject-contract.md), proposes to narrow and realize [D-064](D-064-reciprocal-debt.md)'s mind-side discharge mechanism without deleting its four accepted semantic families, supports [D-065](D-065-inhabited-finish-line.md), and must preserve [D-066](D-066-human-causal-boundary.md). [D-023](D-023-chronos-event-sourcing.md) remains the optional external input/re-execution proof and does not replace canonical resident accountability. Governance and delivery are distinct here. The DECISIONS index and the ROADMAP gate that carry this record are **Human Foundation**, because D-067 elaborates accepted D-064 under D-066's noninterference constraint. The #1772/#1697 milestone and the branch phase tracker #1677 are **Living Matrix Foundation** delivery scheduling; they schedule work and never confer decision authority. Decision thread: #1772. Primary realization: #1697 under branch #1677. Downstream consumers: #1698 and #1708. #1765 supplies visible claim identity/position only; #1768 supplies exact V3 value decoding only. Neither decides this ontology.
+Extends [D-062](D-062-human-subject-contract.md), narrows and realizes [D-064](D-064-reciprocal-debt.md)'s mind-side discharge mechanism without deleting its four accepted semantic families, supports [D-065](D-065-inhabited-finish-line.md), and preserves [D-066](D-066-human-causal-boundary.md). [D-023](D-023-chronos-event-sourcing.md) remains the optional external input/re-execution proof and does not replace canonical resident accountability. Governance and delivery are distinct here. The DECISIONS index and the ROADMAP gate that carry this record are **Human Foundation**, because D-067 elaborates accepted D-064 under D-066's noninterference constraint. The #1772/#1697 milestone and the branch phase tracker #1677 are **Living Matrix Foundation** delivery scheduling. Decision thread: #1772. Primary realization: #1697 under branch #1677. Downstream consumers: #1698, #1703 and #1708. #1765 supplies visible claim identity/position only; #1768 supplies exact V3 value decoding only. Neither decided this ontology.
