@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: tools/orchestra-review.sh resolve|prepare|verify-packet|publish|--policy-check|--selftest|--help
 # Exit 0 held; 1 evidence failed; 2 invocation refused.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'exit 1' ERR  # every unhandled evidence/configuration failure spends the documented code
 GH_BIN="${GH_BIN:-gh}"; GIT_BIN="${GIT_BIN:-git}"; MARKER='<!-- orchestra-codex-review -->'
 MAX_PROMPT_BYTES=1048576
 fatal(){ echo "FATAL $*" >&2; return 1; }
@@ -294,7 +295,7 @@ selftest(){
   ready_blocking=${changes/CHANGES_REQUIRED/READY}; bad=${ready/$h/0000000000000000000000000000000000000000}
   env "${common[@]}" REVIEW_JSON="$ready" "$0" publish; jq -e '.state=="success"' "$t/status-payload">/dev/null; green ready-status
   :>"$t/log"; if env "${common[@]}" REVIEW_JSON="$changes" "$0" publish >/dev/null 2>&1;then fatal changes-pass;fi; jq -e '.state=="failure"' "$t/status-payload">/dev/null; red changes-status
-  :>"$t/log"; if env "${common[@]}" REVIEW_JSON="$bad" "$0" publish >/dev/null 2>&1;then fatal schema-pass;fi; [ ! -s "$t/log" ]; red head-mismatch
+  :>"$t/log"; if env "${common[@]}" REVIEW_JSON="$bad" "$0" publish >/dev/null 2>&1;then fatal schema-pass;else [ "$?" -eq 1 ];fi; [ ! -s "$t/log" ]; red head-mismatch
   :>"$t/log"; if env "${common[@]}" REVIEW_JSON="$ready_blocking" "$0" publish >/dev/null 2>&1;then fatal ready-blocking-pass;fi; [ ! -s "$t/log" ]; red ready-with-blocking
   :>"$t/log"; if env "${common[@]}" REVIEW_JSON="${ready/READY/CHANGES_REQUIRED}" "$0" publish >/dev/null 2>&1;then fatal changes-without-blocking-pass;fi; [ ! -s "$t/log" ]; red changes-without-blocking
   printf '%s\n' '{"id":99,"created_at":"2026-02-01","user":{"login":"attacker"},"body":"<!-- orchestra-codex-review -->"}' '{"id":8,"created_at":"2026-02-02","user":{"login":"github-actions[bot]"},"body":"<!-- orchestra-codex-review -->"}' '{"id":9,"created_at":"2026-02-03","user":{"login":"github-actions[bot]"},"body":"<!-- orchestra-codex-review -->"}'|jq -s .>"$t/fixture-comments"
@@ -322,6 +323,7 @@ w.dig('jobs','review','steps').insert(1,{'uses'=>'actions/checkout@bad','with'=>
 File.write(ARGV[1],YAML.dump(w))
 RUBY
   if ORCHESTRA_WORKFLOW_FILE="$t/subject-in-secret-job.yml" "$0" --policy-check >/dev/null 2>&1; then fatal subject-in-secret-job-pass; fi; red subject-in-secret-job
+  if "$0" nonsense >/dev/null 2>&1; then fatal unknown-command-pass; else [ "$?" -eq 2 ]; fi; red unknown-command-refused
   rm -rf "$t"; echo "ORCHESTRA REVIEW SELFTEST VERDICT PASS cases=$cases red_paths=$red_paths fake_transport=2"
 }
 
