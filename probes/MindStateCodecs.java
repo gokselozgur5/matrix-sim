@@ -125,8 +125,11 @@ public final class MindStateCodecs {
         refused("malformed-utf8", () -> decode(malformed));
         byte[] overlong = valid.clone(); malformedSymbol(overlong, (byte) 0xc0, (byte) 0xaf);
         refused("overlong-utf8", () -> decode(overlong));
+        byte[] malformedPayload = valid.clone(); malformedPayload[contentLength + 4] = (byte) 0xc0;
+        refused("malformed-payload-utf8", () -> decode(malformedPayload));
         refusedFrame("negative-history-count", base, -1);
         refusedFrame("oversized-history-count", base, 65);
+        refusedFrame("hostile-history-count-before-allocation", base, Integer.MAX_VALUE);
         refused("unknown-channel", () -> decode(frame(base, "CHANNEL_UNKNOWN", null, null)));
         refused("wrong-case-channel", () -> decode(frame(base, "text", null, null)));
         refused("unknown-principal-kind", () -> decode(replaceWord(valid,
