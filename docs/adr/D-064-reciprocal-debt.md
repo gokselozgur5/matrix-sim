@@ -176,3 +176,5 @@ D-066 defines the causal seam between the first three. D-065 supplies the first 
 This acceptance flips the record, index and Human Foundation gate together; adds the reciprocal D-022 disposition; preserves the pre-verdict proposal; and changes no Java, digest, snapshot, workflow or probe contract. DocLint, DocFigures, DocsRoster, daemon selftests, the digest leash and an adversarial decision review confirm the documentation unit.
 
 Realization confirmation is stricter: an exhaustive event/handler census must account for every resistance, breach and repair delta; reset/death/persuasion counterexamples must leave contract debt conserved; and the same declared inputs must replay both ledgers byte-identically. No implementation issue may merge both ledgers into one owner or let either mutate the world outside D-066's committed causal path.
+
+Referenced by: [D-022](D-022-acceptance-loop.md), [D-062](D-062-human-subject-contract.md), [D-066](D-066-human-causal-boundary.md), [D-067](D-067-epistemic-revision.md).

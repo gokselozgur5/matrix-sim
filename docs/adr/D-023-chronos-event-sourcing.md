@@ -71,4 +71,4 @@ java -cp out matrix.Main --audit /tmp/c.jsonl
 
 The record's own first milestone — replaying a recorded arc to identical digests — is `--replay`'s contract, and it is exercised where the digest is: the replay path re-runs from the recording's genesis rather than trusting the recording.
 
-Referenced by: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md), [D-024](D-024-attention-lod.md), [D-038](D-038-season-two.md).
+Referenced by: [D-010](D-010-determinism.md), [D-020](D-020-observability-contract.md), [D-024](D-024-attention-lod.md), [D-038](D-038-season-two.md), [D-046](D-046-cypher-protocol.md), [D-050](D-050-live-events.md), [D-058](D-058-spec-shelf.md), [D-067](D-067-epistemic-revision.md).

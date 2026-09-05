@@ -155,3 +155,5 @@ Scene names, exact occupations, travel geometry, dialogue, psychology scales and
 This acceptance flips the record, index and Human Foundation gate together; adds reciprocal D-036 and D-054 dispositions; preserves the pre-verdict proposal; clarifies the living ROADMAP finish line; and changes no Java, digest, snapshot, workflow or probe contract. DocLint, DocFigures, DocsRoster, daemon selftests, the digest leash and an adversarial decision review confirm the documentation unit.
 
 Realization completes only when one command proves both replayed ordinary-day branches, pre-split equality, exact first divergence, D-066 causal attribution, persistent biography/relationship/institutional consequences, later-perception closure, observer isolation and the separately preserved film profile. Breadth is neither necessary nor sufficient.
+
+Referenced by: [D-036](D-036-finish-line.md), [D-054](D-054-the-year.md), [D-062](D-062-human-subject-contract.md), [D-066](D-066-human-causal-boundary.md), [D-067](D-067-epistemic-revision.md).
