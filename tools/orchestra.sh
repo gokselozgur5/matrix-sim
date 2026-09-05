@@ -53,14 +53,14 @@ repo_from_origin() {
 # may complete after a newer queued run starts, and must not bless that newer run.
 # check_rows <sha>
 check_rows() {
-  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" \
+  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" --paginate \
     --jq '.check_runs[] | [.name,.status,(.conclusion // "-"),(.completed_at // .started_at // ""),(.id|tostring)] | @tsv' 2>/dev/null
 }
 
 # review_status <sha>: the status endpoint itself binds the receipt to this exact commit.
 review_status() {
   local rows
-  rows="$(gh api "repos/$REPO/commits/$1/status" \
+  rows="$(gh api "repos/$REPO/commits/$1/status?per_page=100" --paginate \
     --jq '.statuses[] | [.context,.state,.created_at,(.id|tostring)] | @tsv' 2>/dev/null || true)"
   printf '%s\n' "$rows" | awk -F '\t' '
     $1 == "orchestra/review" && ($3 > newest || ($3 == newest && $4 + 0 > id + 0)) {
@@ -167,12 +167,19 @@ check_pr() {
   fi
   [ -n "$ROWS" ] || { verdict FAILED "stage=checks pr=$PR repo=$REPO head=$HEAD_SHA litany=absent locks=absent review=unknown"; return; }
   LITANY="$(named_check litany "$ROWS")"; LOCKS="$(named_check locks "$ROWS")"
-  ENABLED="$(gh api "repos/$REPO/actions/variables/ORCHESTRA_CODEX_ENABLED" --jq .value 2>/dev/null || true)"
-  REVIEW=NOT_CONFIGURED
-  if [ "$ENABLED" = true ]; then
-    REVIEW="$(review_status "$HEAD_SHA")"
-    [ "$REVIEW" = success ] || REVIEW="${REVIEW:-absent}"
+  if ! ENABLED="$(gh api "repos/$REPO/actions/variables?per_page=100" --paginate \
+      --jq '.variables[] | select(.name == "ORCHESTRA_CODEX_ENABLED") | .value' 2>/dev/null)"; then
+    verdict REFUSED "stage=review-config pr=$PR repo=$REPO head=$HEAD_SHA reason=api-unreadable"; return
   fi
+  REVIEW=NOT_CONFIGURED
+  case "$ENABLED" in
+    ""|false) ;;
+    true)
+      REVIEW="$(review_status "$HEAD_SHA")"
+      [ "$REVIEW" = success ] || REVIEW="${REVIEW:-absent}"
+      ;;
+    *) verdict REFUSED "stage=review-config pr=$PR repo=$REPO head=$HEAD_SHA reason=ambiguous-or-invalid-value"; return ;;
+  esac
   [ "$LITANY" = ok ] && [ "$LOCKS" = ok ] && { [ "$REVIEW" = success ] || [ "$REVIEW" = NOT_CONFIGURED ]; } \
     || { verdict FAILED "stage=checks pr=$PR repo=$REPO head=$HEAD_SHA base=$BASE_SHA litany=$LITANY locks=$LOCKS review=$REVIEW"; return; }
 
@@ -306,8 +313,8 @@ case "$2" in
       head_repo=gokselozgur5/matrix-sim; [ "${CASE:-}" = fork_head ] && head_repo=somebody/fork
       printf 'open\t%s\t%s\t%s\taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\t%s\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\t%s\tfalse\t-\n' "$draft" "$mergeable" "$merge_state" "$head_repo" "$base_ref"
     fi ;;
-  repos/gokselozgur5/matrix-sim/actions/variables/ORCHESTRA_CODEX_ENABLED)
-    case "${CASE:-}" in no_config*) exit 1 ;; *) echo true ;; esac ;;
+  repos/gokselozgur5/matrix-sim/actions/variables?per_page=100)
+    case "${CASE:-}" in no_config*) : ;; config_unreadable) exit 1 ;; config_invalid) printf 'true\nfalse\n' ;; *) echo true ;; esac ;;
   repos/gokselozgur5/matrix-sim/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/check-runs*)
     [ "${CASE:-}" = checks_unreadable ] && exit 1
     case "${CASE:-}" in
@@ -321,7 +328,7 @@ case "$2" in
     [ -n "$locks" ] && printf 'locks\t%b\n' "$locks"
     true
     ;;
-  repos/gokselozgur5/matrix-sim/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/status)
+  repos/gokselozgur5/matrix-sim/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/status*)
     state=success; [ "${CASE:-}" = stale_review ] && state=absent
     if [ "${CASE:-}" = review_new_failure ]; then printf 'orchestra/review\tfailure\t2026-09-05T12:00:00Z\t2\norchestra/review\tsuccess\t2026-09-05T11:00:00Z\t1\n'
     elif [ "$state" = success ]; then printf 'orchestra/review\tsuccess\t2026-09-05T12:00:00Z\t2\norchestra/review\tfailure\t2026-09-05T11:00:00Z\t1\n'; fi ;;
@@ -396,6 +403,8 @@ EOF
   case_is new-red-old-green check new_red_old_green 1 checks
   case_is overlap-old-completes-late check overlap_old_completed_late 1 checks
   case_is newest-review-failure check review_new_failure 1 checks
+  case_is review-config-unreadable check config_unreadable 2 review-config
+  case_is malformed-review-config check config_invalid 2 review-config
   case_is prstate-red check prstate_bad 1 prstate
   case_is checkage-stale check checkage_bad 1 checkage
   case_is failed-merge merge merge_fail 1 merge
