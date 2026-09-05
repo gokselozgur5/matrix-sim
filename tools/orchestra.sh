@@ -155,10 +155,10 @@ check_pr() {
   git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1 \
     || { verdict FAILED "stage=base-ancestry pr=$PR repo=$REPO head=$HEAD_SHA base=$BASE_SHA"; return; }
 
-  PRSTATE_OUT="$($PRSTATE --pr "$PR" 2>/dev/null || true)"
+  PRSTATE_OUT="$(bash "$PRSTATE" --pr "$PR" 2>/dev/null || true)"
   printf '%s\n' "$PRSTATE_OUT" | grep -qE '^PR STATE VERDICT GREEN([[:space:]]|$)' \
     || { verdict FAILED "stage=prstate pr=$PR repo=$REPO head=$HEAD_SHA result=not-green"; return; }
-  CHECKAGE_OUT="$($CHECKAGE --pr "$PR" 2>/dev/null || true)"
+  CHECKAGE_OUT="$(bash "$CHECKAGE" --pr "$PR" 2>/dev/null || true)"
   printf '%s\n' "$CHECKAGE_OUT" | grep -qE '^CHECKAGE VERDICT CURRENT([[:space:]]|$)' \
     || { verdict FAILED "stage=checkage pr=$PR repo=$REPO head=$HEAD_SHA result=not-current"; return; }
 
@@ -364,7 +364,9 @@ EOF
 #!/usr/bin/env bash
 [ "${CASE:-}" = checkage_bad ] && echo 'CHECKAGE VERDICT STALE run=1' || echo 'CHECKAGE VERDICT CURRENT run=1'
 EOF
-  chmod +x "$TMP/bin/"*
+  chmod +x "$TMP/bin/gh" "$TMP/bin/git"
+  chmod 644 "$TMP/bin/prstate" "$TMP/bin/checkage"  # production judges are sourced through bash too
+  [ ! -x "$TMP/bin/prstate" ] && [ ! -x "$TMP/bin/checkage" ] || return 1
   PASS=0; FAIL=0
   case_is() { # name command case expected-code expected-stage
     N="$1"; CMD="$2"; C="$3"; WANT="$4"; STAGE="$5"
@@ -432,6 +434,6 @@ EOF
 if [ "$CMD" = selftest ]; then selftest; exit $?; fi
 command -v gh >/dev/null 2>&1 && command -v git >/dev/null 2>&1 \
   || { verdict REFUSED "stage=tools pr=$2 reason=gh-or-git-missing"; exit $?; }
-[ -x "$PRSTATE" ] && [ -x "$CHECKAGE" ] \
+[ -f "$PRSTATE" ] && [ -f "$CHECKAGE" ] \
   || { verdict REFUSED "stage=tools pr=$2 reason=judge-missing"; exit $?; }
 if [ "$CMD" = check ]; then check_pr "$2" "$3"; exit $?; else merge_pr "$2" "$3"; exit $?; fi
