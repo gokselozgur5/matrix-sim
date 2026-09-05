@@ -76,4 +76,4 @@ Leaning: native trees. **The doctrine:**
 
 Related: [D-039](D-039-unit-pr-granularity.md) (the leaf's definition), [D-054](D-054-the-year.md) (the year this board must carry), [D-000](D-000-process-constitution.md). Thread: #358. Principle: Dev13.
 
-Referenced by: [D-063](D-063-outcome-first-delivery.md) (retains exact partitions and conjunctive closure while refusing depth created for activity alone).
+Referenced by: [D-063](D-063-outcome-first-delivery.md) (retains exact partitions and conjunctive closure while refusing depth created for activity alone), [D-068](D-068-agent-run-identity.md) (requires each implementation workstream to decompose into one-mechanism leaves before code).
