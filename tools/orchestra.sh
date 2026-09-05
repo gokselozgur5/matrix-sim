@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # tools/orchestra.sh — guarded exact-head integration receipt (#1774)
 #
-# Usage: tools/orchestra.sh check <pr>    read and judge the exact remote PR head
-#        tools/orchestra.sh merge <pr>    recheck, rebase-merge, and verify canonical parity
+# Usage: tools/orchestra.sh check <pr> <expected-issue>    judge the exact PR/issue binding
+#        tools/orchestra.sh merge <pr> <expected-issue>    recheck, rebase-merge, verify parity
 #        tools/orchestra.sh --selftest    run fixture cases; no token and no network
 #        tools/orchestra.sh --help | -h   print this clause, and stop
 #
@@ -28,6 +28,20 @@ verdict() {
 is_sha() {
   printf '%s' "$1" | grep -qE '^[0-9a-f]{40}$'
 }
+
+# Resolve the public door before any function containing a repository/network read.
+case "${1:-}" in
+  -h|--help) [ "$#" -eq 1 ] || { verdict REFUSED "stage=usage reason=extra-arguments"; exit $?; }; usage; exit 0 ;;
+  --selftest) [ "$#" -eq 1 ] || { verdict REFUSED "stage=usage reason=extra-arguments"; exit $?; }; CMD=selftest ;;
+  check|merge) CMD="$1" ;;
+  "") usage >&2; verdict REFUSED "stage=usage reason=missing-command"; exit $? ;;
+  *) verdict REFUSED "stage=usage reason=unknown-command"; exit $? ;;
+esac
+if [ "$CMD" != selftest ]; then
+  [ "$#" -eq 3 ] || { verdict REFUSED "stage=usage reason=expected-pr-and-issue"; exit $?; }
+  printf '%s' "$2" | grep -qE '^[1-9][0-9]*$' || { verdict REFUSED "stage=usage reason=pr-not-numeric"; exit $?; }
+  printf '%s' "$3" | grep -qE '^[1-9][0-9]*$' || { verdict REFUSED "stage=usage reason=issue-not-numeric"; exit $?; }
+fi
 
 repo_from_origin() {
   git remote get-url origin 2>/dev/null \
@@ -69,8 +83,37 @@ named_check() {
     }'
 }
 
+closing_issues() {
+  gh pr view "$PR" --repo "$REPO" --json closingIssuesReferences \
+    --jq '.closingIssuesReferences[].number' 2>/dev/null
+}
+
+require_issue_binding() { # stage
+  local stage="$1" refs shown
+  if ! refs="$(closing_issues)"; then
+    verdict REFUSED "stage=$stage pr=$PR repo=$REPO issue=$EXPECTED_ISSUE reason=closing-issues-unreadable"; return 2
+  fi
+  shown="$(printf '%s' "$refs" | tr '\n' ',' | sed 's/,$//')"
+  [ "$refs" = "$EXPECTED_ISSUE" ] \
+    || { verdict FAILED "stage=$stage pr=$PR repo=$REPO expected_issue=$EXPECTED_ISSUE closing_issues=${shown:-none}"; return 1; }
+  return 0
+}
+
+require_open_build_unit() { # stage
+  local stage="$1" row oldifs
+  if ! row="$(gh issue view "$EXPECTED_ISSUE" --repo "$REPO" --json state,labels \
+      --jq '[.state,(any(.labels[]; .name == "build-unit")|tostring)] | @tsv' 2>/dev/null)"; then
+    verdict REFUSED "stage=$stage pr=$PR repo=$REPO issue=$EXPECTED_ISSUE reason=issue-unreadable"; return 2
+  fi
+  oldifs=$IFS; IFS=$'\t'; set -- $row; IFS=$oldifs
+  [ "${1:-}" = OPEN ] && [ "${2:-}" = true ] \
+    || { verdict FAILED "stage=$stage pr=$PR repo=$REPO issue=$EXPECTED_ISSUE state=${1:-unreadable} build_unit=${2:-false}"; return 1; }
+  return 0
+}
+
 check_pr() {
   PR="$1"
+  EXPECTED_ISSUE="$2"
   REPO="$(repo_from_origin || true)"
   printf '%s' "$REPO" | grep -qE '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' \
     || { verdict REFUSED "stage=identity pr=$PR reason=origin-repository-unreadable"; return; }
@@ -94,6 +137,9 @@ check_pr() {
     || { verdict FAILED "stage=head-repository pr=$PR repo=$REPO head_repo=${HEAD_REPO:-missing} head=$HEAD_SHA"; return; }
   [ "$STATE" = open ] && [ "$DRAFT" = false ] && [ "$MERGEABLE" = true ] && [ "$CLEAN" = clean ] && [ "$BASE_REF" = main ] \
     || { verdict FAILED "stage=eligibility pr=$PR repo=$REPO state=$STATE draft=$DRAFT mergeable=$MERGEABLE merge_state=$CLEAN head=$HEAD_SHA base=$BASE_SHA"; return; }
+
+  require_issue_binding issue-binding || return $?
+  require_open_build_unit issue-eligibility || return $?
 
   git fetch --quiet --no-tags origin "pull/$PR/head" >/dev/null 2>&1 \
     || { verdict REFUSED "stage=fetch pr=$PR repo=$REPO head=$HEAD_SHA reason=fetch-failed"; return; }
@@ -137,15 +183,17 @@ check_pr() {
   [ "${1:-}" = open ] && [ "${2:-}" = false ] && [ "${3:-}" = "$HEAD_SHA" ] \
     && [ "${4:-}" = "$REPO" ] && [ "${5:-}" = "$BASE_SHA" ] && [ "${6:-}" = main ] \
     || { verdict FAILED "stage=check-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
+  require_issue_binding check-issue-race || return $?
 
-  verdict PASS "stage=check pr=$PR repo=$REPO head=$HEAD_SHA base=$BASE_SHA base_ref=$BASE_REF local_head=$LOCAL_HEAD prstate=GREEN checkage=CURRENT litany=success locks=success review=$REVIEW"
+  verdict PASS "stage=check pr=$PR repo=$REPO issue=$EXPECTED_ISSUE head=$HEAD_SHA base=$BASE_SHA base_ref=$BASE_REF local_head=$LOCAL_HEAD prstate=GREEN checkage=CURRENT litany=success locks=success review=$REVIEW"
 }
 
 merge_pr() {
   PR="$1"
+  EXPECTED_ISSUE="$2"
   CHECK_TMP="$(mktemp "${TMPDIR:-/tmp}/orchestra-check.XXXXXX")" \
     || { verdict REFUSED "stage=check pr=$PR reason=tempfile-failed"; return; }
-  check_pr "$PR" > "$CHECK_TMP"; RC=$?; PRE="$(cat "$CHECK_TMP")"; rm -f "$CHECK_TMP"
+  check_pr "$PR" "$EXPECTED_ISSUE" > "$CHECK_TMP"; RC=$?; PRE="$(cat "$CHECK_TMP")"; rm -f "$CHECK_TMP"
   [ "$RC" -eq 0 ] || { printf '%s\n' "$PRE"; return "$RC"; }
   if [ "$REVIEW" != success ]; then
     if ! is_sha "$MANUAL_REVIEW_SHA" || [ "$MANUAL_REVIEW_SHA" != "$HEAD_SHA" ]; then
@@ -163,6 +211,8 @@ merge_pr() {
   [ "${1:-}" = open ] && [ "${2:-}" = false ] && [ "${3:-}" = "$HEAD_SHA" ] \
     && [ "${4:-}" = "$REPO" ] && [ "${5:-}" = "$BASE_SHA" ] && [ "${6:-}" = main ] \
     || { verdict FAILED "stage=pre-merge-race pr=$PR repo=$REPO state=${1:-unreadable} draft=${2:-unreadable} checked_head=$HEAD_SHA current_head=${3:-unreadable} head_repo=${4:-unreadable} checked_base=$BASE_SHA current_base=${5:-unreadable}"; return; }
+  require_issue_binding pre-merge-issue-race || return $?
+  require_open_build_unit pre-merge-issue || return $?
   # No mutation occurs before the immediately preceding exact-head gate passes.
   gh pr merge "$PR" --repo "$REPO" --match-head-commit "$HEAD_SHA" --rebase >/dev/null 2>&1 \
     || { verdict FAILED "stage=merge pr=$PR repo=$REPO head=$HEAD_SHA reason=merge-command-failed"; return; }
@@ -178,8 +228,8 @@ merge_pr() {
   API_TREE="$(gh api "repos/$REPO/git/commits/$MERGE_SHA" --jq .tree.sha 2>/dev/null || true)"
   LOCAL_TREE="$(git show -s --format=%T "$MERGE_SHA" 2>/dev/null || true)"
 
-  ISSUES="$(gh pr view "$PR" --repo "$REPO" --json closingIssuesReferences --jq '.closingIssuesReferences[].number' 2>/dev/null || true)"
-  [ -n "$ISSUES" ] || { verdict FAILED "stage=parity pr=$PR repo=$REPO merge=$MERGE_SHA reason=no-closing-issue"; return; }
+  require_issue_binding post-merge-issue || return $?
+  ISSUES="$EXPECTED_ISSUE"
   PARITY=complete; ISSUE_EVIDENCE=""
   for ISSUE in $ISSUES; do
     IR="$(gh issue view "$ISSUE" --repo "$REPO" --json state,stateReason,labels \
@@ -211,9 +261,27 @@ case " $* " in
     case " $* " in *" --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "*) ;; *) exit 1 ;; esac
     case " $* " in *" --rebase "*) ;; *) exit 1 ;; esac
     echo merged > "$ORCHESTRA_FIX_STATE"; exit 0 ;;
-  *" pr view "*) echo 1774; exit 0 ;;
+  *" pr view "*)
+    refs=0; [ -f "$ORCHESTRA_FIX_STATE.refs" ] && refs="$(cat "$ORCHESTRA_FIX_STATE.refs")"; refs=$((refs + 1)); echo "$refs" > "$ORCHESTRA_FIX_STATE.refs"
+    case "${CASE:-}" in
+      issue_absent) : ;;
+      issue_wrong) echo 1773 ;;
+      issue_multiple) printf '1774\n1775\n' ;;
+      issue_changed_check) [ "$refs" -eq 2 ] && echo 1775 || echo 1774 ;;
+      issue_changed_merge) [ "$refs" -eq 3 ] && echo 1775 || echo 1774 ;;
+      issue_changed_post) [ "$refs" -eq 4 ] && echo 1775 || echo 1774 ;;
+      *) echo 1774 ;;
+    esac
+    exit 0 ;;
   *" issue view "*)
-    [ "${CASE:-}" = parity_bad ] && printf 'CLOSED\tCOMPLETED\tfalse\n' || printf 'CLOSED\tCOMPLETED\ttrue\n'; exit 0 ;;
+    if [ ! -s "$ORCHESTRA_FIX_STATE" ]; then
+      state=OPEN; build=true
+      [ "${CASE:-}" = issue_closed ] && state=CLOSED
+      [ "${CASE:-}" = issue_not_build_unit ] && build=false
+      printf '%s\t%s\n' "$state" "$build"
+    elif [ "${CASE:-}" = parity_bad ]; then printf 'CLOSED\tCOMPLETED\tfalse\n'
+    else printf 'CLOSED\tCOMPLETED\ttrue\n'; fi
+    exit 0 ;;
   *" api graphql "*) echo true; exit 0 ;;
 esac
 case "$2" in
@@ -292,12 +360,12 @@ EOF
   PASS=0; FAIL=0
   case_is() { # name command case expected-code expected-stage
     N="$1"; CMD="$2"; C="$3"; WANT="$4"; STAGE="$5"
-    : > "$STATE_FILE"; rm -f "$STATE_FILE.reads"; [ "$CMD" = merge ] || rm -f "$STATE_FILE"
+    : > "$STATE_FILE"; rm -f "$STATE_FILE.reads" "$STATE_FILE.refs"; [ "$CMD" = merge ] || rm -f "$STATE_FILE"
     MANUAL=""; [ "$C" = no_config_manual ] && MANUAL=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     [ "$C" = no_config_bad ] && MANUAL=dddddddddddddddddddddddddddddddddddddddd
     OUT="$(PATH="$TMP/bin:$PATH" CASE="$C" ORCHESTRA_FIX_STATE="$STATE_FILE" ORCHESTRA_MANUAL_REVIEW_SHA="$MANUAL" \
       ORCHESTRA_PRSTATE="$TMP/bin/prstate" ORCHESTRA_CHECKAGE="$TMP/bin/checkage" \
-      "$0" "$CMD" 7 2>/dev/null)"; GOT=$?
+      "$0" "$CMD" 7 1774 2>/dev/null)"; GOT=$?
     LINES="$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')"
     if [ "$GOT" -eq "$WANT" ] && [ "$LINES" -eq 1 ] && printf '%s' "$OUT" | grep -q "stage=$STAGE"; then
       PASS=$((PASS + 1)); printf 'ORCHESTRA CASE %s PASS\n' "$N"
@@ -306,6 +374,12 @@ EOF
     fi
   }
   case_is clean-check check clean 0 check
+  case_is issue-absent check issue_absent 1 issue-binding
+  case_is issue-wrong check issue_wrong 1 issue-binding
+  case_is issue-multiple check issue_multiple 1 issue-binding
+  case_is issue-changed-during-check check issue_changed_check 1 check-issue-race
+  case_is issue-closed check issue_closed 1 issue-eligibility
+  case_is issue-not-build-unit check issue_not_build_unit 1 issue-eligibility
   case_is stale-review check stale_review 1 checks
   case_is draft check draft 1 eligibility
   case_is mergeability-unknown check mergeability_unknown 2 mergeability-read
@@ -325,6 +399,8 @@ EOF
   case_is prstate-red check prstate_bad 1 prstate
   case_is checkage-stale check checkage_bad 1 checkage
   case_is failed-merge merge merge_fail 1 merge
+  case_is issue-changed-before-merge merge issue_changed_merge 1 pre-merge-issue-race
+  case_is issue-changed-after-merge merge issue_changed_post 1 post-merge-issue
   case_is check-head-race check check_head_race 1 check-race
   case_is check-base-race check check_base_race 1 check-race
   case_is check-state-race check check_state_race 1 check-race
@@ -337,24 +413,15 @@ EOF
   case_is review-not-configured-merge merge no_config 2 review
   case_is wrong-manual-review-head merge no_config_bad 2 review
   case_is exact-manual-review-head merge no_config_manual 0 merge
-  ZERO="$(PATH="$TMP/bin:$PATH" "$0" check 0 2>/dev/null)"; ZERO_RC=$?
+  ZERO="$(PATH="$TMP/bin:$PATH" "$0" check 0 1774 2>/dev/null)"; ZERO_RC=$?
   if [ "$ZERO_RC" -eq 2 ] && printf '%s' "$ZERO" | grep -q 'reason=pr-not-numeric'; then PASS=$((PASS + 1)); echo 'ORCHESTRA CASE zero-pr-refused PASS'; else FAIL=$((FAIL + 1)); echo 'ORCHESTRA CASE zero-pr-refused FAIL'; fi
   if [ "$FAIL" -eq 0 ]; then printf 'ORCHESTRA SELFTEST VERDICT PASS cases=%d failed=0\n' "$PASS"; return 0; fi
   printf 'ORCHESTRA SELFTEST VERDICT FAIL cases=%d failed=%d\n' "$((PASS + FAIL))" "$FAIL"; return 1
 }
 
-# The argument door is resolved before gh/git/auth/network is touched.
-case "${1:-}" in
-  -h|--help) [ "$#" -eq 1 ] || { verdict REFUSED "stage=usage reason=extra-arguments"; exit $?; }; usage; exit 0 ;;
-  --selftest) [ "$#" -eq 1 ] || { verdict REFUSED "stage=usage reason=extra-arguments"; exit $?; }; selftest; exit $? ;;
-  check|merge) CMD="$1" ;;
-  "") usage >&2; verdict REFUSED "stage=usage reason=missing-command"; exit $? ;;
-  *) verdict REFUSED "stage=usage reason=unknown-command"; exit $? ;;
-esac
-[ "$#" -eq 2 ] || { verdict REFUSED "stage=usage reason=expected-one-pr"; exit $?; }
-printf '%s' "$2" | grep -qE '^[1-9][0-9]*$' || { verdict REFUSED "stage=usage reason=pr-not-numeric"; exit $?; }
+if [ "$CMD" = selftest ]; then selftest; exit $?; fi
 command -v gh >/dev/null 2>&1 && command -v git >/dev/null 2>&1 \
   || { verdict REFUSED "stage=tools pr=$2 reason=gh-or-git-missing"; exit $?; }
 [ -x "$PRSTATE" ] && [ -x "$CHECKAGE" ] \
   || { verdict REFUSED "stage=tools pr=$2 reason=judge-missing"; exit $?; }
-if [ "$CMD" = check ]; then check_pr "$2"; exit $?; else merge_pr "$2"; exit $?; fi
+if [ "$CMD" = check ]; then check_pr "$2" "$3"; exit $?; else merge_pr "$2" "$3"; exit $?; fi
