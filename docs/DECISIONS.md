@@ -2,8 +2,8 @@
 
 One row per decision; the full MADR record (Y-statement, context, drivers, options with pros and cons, outcome, confirmation) lives under [docs/adr/](adr/) — next decision starts from [adr/TEMPLATE.md](adr/TEMPLATE.md). One rule stands: a 🟡 decision is **never merged into code before being discussed together** — discussion happens in the linked thread. Records are immutable: changed minds supersede, they do not rewrite. 🟢 accepted · 🟡 proposed · ❌ rejected · 🔵 parked idea.
 
-<!-- figure: ls docs/adr/D-*.md | wc -l == 65 -->
-<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 65 -->
+<!-- figure: ls docs/adr/D-*.md | wc -l == 66 -->
+<!-- figure: grep -c '^| .D-' docs/DECISIONS.md == 66 -->
 
 | ID | Decision | Status | Gate | Thread |
 |---|---|---|---|---|
@@ -72,6 +72,7 @@ One row per decision; the full MADR record (Y-statement, context, drivers, optio
 | [D-065](adr/D-065-inhabited-finish-line.md) | The film is the specimen; inhabited causality is the finish line | 🟢 | Human Foundation | #1671 |
 | [D-066](adr/D-066-human-causal-boundary.md) | Open the Human causal boundary without uploading the mind | 🟢 | Human Foundation | #1672 |
 | [D-067](adr/D-067-epistemic-revision.md) | Epistemic revision: carried tension and honest discharge | 🟢 | Human Foundation | #1772 |
+| [D-068](adr/D-068-agent-run-identity.md) | Agent run identity and causal audit: names are not keys | 🟢 | — | #1776 |
 
 D-063 keeps its yellow proposal title above as the stable historical identifier. Its accepted-title alias and current law are **“Quality admits; value leads; activity breaks ties”**: the graph never admits or outranks work, but may choose between comparably valuable ready units after value and dependencies leave a genuine tie.
 

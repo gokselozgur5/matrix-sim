@@ -64,4 +64,4 @@ Spot-checkable: recent PRs and phase trackers contain mission statements with is
 
 Full text: PRINCIPLES.md → "The Ritual". Related: [D-028](D-028-five-document-canon.md) (the door), [D-030](D-030-agent-operating-model.md) (Ag2, Ag4). The closing law: a session that ends without a hardline exit did not end — it crashed.
 
-Referenced by: [D-035](D-035-lens-catalog.md).
+Referenced by: [D-035](D-035-lens-catalog.md), [D-068](D-068-agent-run-identity.md) (narrows the rejected heavyweight-log option to a content-minimized causal ledger while retaining the ritual).
