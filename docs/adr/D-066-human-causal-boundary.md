@@ -292,3 +292,5 @@ Reusable means the invariant survives, not that the issue is ready. Adapters mus
 This acceptance flips the record, index and Human Foundation gate together; adds reciprocal D-041/D-062 dispositions; updates the living architecture with an explicitly unrealized target seam; preserves the pre-verdict proposal; and changes no Java, workflow, probe or canonical digest. DocLint, DocFigures, DocsRoster, daemon selftests, the digest leash, the dependency-direction audit and an adversarial decision review confirm the documentation unit.
 
 Realization requires two independent terminal proofs. The dynamic D-065 witness proves the full causal day and replay. The static fence derives all choice entries and Human-affecting effect sites from runtime grammar and requires nonzero, equal checked/total populations with no unclassified, unreadable, truth-bypass, role or provenance gap. Neither terminal may stand in for the other.
+
+Referenced by: [D-041](D-041-season-three-character-layer.md), [D-062](D-062-human-subject-contract.md), [D-067](D-067-epistemic-revision.md).
