@@ -120,9 +120,13 @@ and model replacement receives a fresh `run_id` with an explicit lineage edge.
 
 The immutable `manifest_digest` is the event chain's genesis: every event and
 terminal receipt binds it. The manifest records the requested model only.
-After invocation, a trusted adapter emits `MODEL_OBSERVED` with the provider
-attestation source and digest, or the explicit value `UNAVAILABLE`; a requested
-alias is never silently promoted to an observed model.
+After every provider response, a trusted adapter emits exactly one
+`MODEL_OBSERVED` with response ordinal, safe provider/model value and evidence
+class (`PROVIDER_ATTESTED`, `RUNTIME_REPORTED` or `UNAVAILABLE`). The terminal
+receipt retains the complete ordered observation summary and counts after the
+private events expire; a requested alias is never silently promoted to an
+observed model. The summary is bounded: capacity exhaustion terminalizes the
+run before another provider request rather than dropping an observation.
 
 The manifest is read-only to the worker. Its requested authority fields are
 not a grant. A separate capability broker issues a signed, run-bound `grant_id`
@@ -297,7 +301,9 @@ manifest_digest + run_id + principal_id + role_id + task_ref
 head_before + head_after + approved_handoff_digest
 event_count + first_hash + final_root
 coverage_final + coverage_gap_codes
-model_observation_event_hash
+provider_response_count + model_observation_count
+ordered_model_observations[] = ordinal + provider + model|UNAVAILABLE + evidence
+model_unavailable_count + model_observation_root
 pending_operation_count + pending_operation_refs
 authority_event_count + active_grants=0
 redactions_by_class + redaction_policy_digest + retention_policy_digest
@@ -339,8 +345,9 @@ Realization is confirmed only when behavior fixtures show that the issuer's
 atomic reservation survives concurrent launches and an injected random-value
 collision; workers cannot replace their manifest, principal, role, profile,
 authority, coverage or lineage; requested and provider-attested model values
-remain distinguishable; and changing any manifest field invalidates the chain
-genesis and receipt.
+remain distinguishable; every provider response has exactly one ordered model
+observation; and changing any manifest field invalidates the chain genesis and
+receipt.
 
 Fixtures must also show that expired, revoked, wrong-run and never-issued grants
 are denied; every tool/effect intent has a trusted authorization decision;
@@ -368,6 +375,10 @@ bounded-field or event-count exhaustion cannot silently omit an effect, and
 pre-genesis work cannot be backfilled with a valid identity. Controlled-clock
 tests must enforce provider-reference deletion, the detailed-ledger TTL, ACLs,
 replica crypto-erasure and minimal pending tombstones.
+
+A post-expiry fixture must delete the private ledger and still recover from the
+durable receipt whether every response was provider-attested, runtime-reported
+or unavailable, including requested/observed mismatch and mixed-model order.
 
 At least one retained mutant must preserve the reassuring schema strings while
 breaking each security property and still turn the suite red.
@@ -417,9 +428,10 @@ D-068 narrows only D-034's rejection of heavyweight session logs: a raw
 transcript archive remains rejected, while a content-minimized causal event
 ledger is accepted. D-034's short jack-in/work/hardline ritual remains law.
 
-Implementation follows as separate D-039 leaves: canonical schemas plus
-issuer/recorder/verifier and capability broker; Codex/Claude adapters plus
-confinement, private resume mapping and crash reconciliation; and exact-head
-notary anchoring plus retention/redaction/crypto-erasure enforcement. This
-record alone ships no recorder, provider integration, credential store,
+Implementation has three workstreams: identity/recording/authority; provider
+adapters/confinement/reconciliation; and notary/privacy/retention. They are
+parents, not pre-approved PR units. Before implementation, each must be
+decomposed under [D-059](D-059-issue-tree.md) into genuine D-039 leaves with
+one mechanism, one independently executable evidence line and one small PR.
+This record alone ships no recorder, provider integration, credential store,
 surveillance path, unattended merge or company-repository authority.
